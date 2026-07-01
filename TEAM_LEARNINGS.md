@@ -49,6 +49,20 @@ the main PDF report doesn't yet cover branch-connection results at all
 since `WeldPdfReportService` only accepts `JointType`/`GrooveType`, not a
 branch-connection result shape — worth a scoped follow-up.
 
+### 2026-07-01 — [all] Human owner — deliberate decision, not an oversight
+
+Considered upgrading the Set-on Nozzle branch weld length from the simple
+circumference approximation (`π × Branch OD`) to the exact saddle
+intersection curve (two perpendicular cylinders: `y(θ) = sqrt(R² −
+r²·sin²θ)`, integrated numerically for true arc length — this is the real
+"hole/saddle template" formula used in pipe fabrication). Decision: **stay
+with the simple approximation for now**, revisit only if there's concrete
+evidence it's insufficient (e.g. QA flags a real accuracy complaint, or a
+high branch/run ratio case shows a meaningful error in practice). If you
+are picking this up later: the exact formula is documented above and ready
+to implement, don't re-derive it from scratch — but don't switch to it
+without a concrete trigger either.
+
 ## Archive
 
 (nothing yet)
