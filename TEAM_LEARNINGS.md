@@ -31,6 +31,26 @@ Weld-Detail-panel overlap/clarity fix were the first two pieces of real work
 landed before this log existed (see PRs #1–#3 area in git history around this
 date).
 
+### 2026-07-01 — [engineer] Human owner — refactor, not a formula/PR-#1/#2 change
+
+Split `lib/ui/calculator_page.dart` (4,173 lines, the largest file in the
+project) into `calculator_page.dart` (state, 2,509 lines) +
+`calculator_page/calculator_page_models.dart` (shared data classes/enums,
+81 lines) + `calculator_page/calculator_page_widgets.dart` (20
+presentational widgets, 1,599 lines). Pure move, no behavior change — see
+PR #3. Lesson: moving private (`_Foo`) classes across files requires
+de-privatizing them (Dart privacy is per-library/file, not per-project),
+which is mechanical but has one sharp edge — an **unnamed** `extension on
+Foo` stopped resolving once moved to a different file even though it was
+imported correctly; giving it an explicit name (`extension FooX on Foo`,
+matching the `WeldingProcessX` convention already used in
+`weld_models.dart`) fixed it immediately. If you split another file with an
+anonymous extension in it, name it during the move rather than debugging
+why `.label`-style getters go missing. Also: `flutter analyze` run from the
+project root recurses into `work/flutter` (the vendored SDK) and produces
+~189k irrelevant issues — always scope it, e.g. `flutter analyze lib/
+test/`.
+
 ## Archive
 
 (nothing yet)
