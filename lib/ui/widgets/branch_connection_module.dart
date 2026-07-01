@@ -3,6 +3,10 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../../core/weld_formulas.dart';
+import '../../core/welding_defaults.dart';
+import '../../models/weld_models.dart';
+import 'result_card.dart';
 import 'weld_drawing_preview.dart';
 
 enum BranchConnectionType { setOnNozzle, setInNozzle, weldolet }
@@ -62,9 +66,13 @@ class _BranchConnectionsModuleState extends State<BranchConnectionsModule> {
   final TextEditingController _oletHeightController = TextEditingController(
     text: '28',
   );
+  final TextEditingController _quantityController = TextEditingController(
+    text: '1',
+  );
 
   BranchConnectionType _connectionType = BranchConnectionType.setOnNozzle;
   DrawingMode _drawingMode = DrawingMode.technical;
+  WeldingProcess _process = WeldingProcess.smaw;
 
   @override
   void dispose() {
@@ -78,7 +86,88 @@ class _BranchConnectionsModuleState extends State<BranchConnectionsModule> {
     _repadThicknessController.dispose();
     _repadOdController.dispose();
     _oletHeightController.dispose();
+    _quantityController.dispose();
     super.dispose();
+  }
+
+  static const List<WeldingProcess> _supportedProcesses = [
+    WeldingProcess.smaw,
+    WeldingProcess.gtaw,
+    WeldingProcess.gmaw,
+    WeldingProcess.fcaw,
+  ];
+
+  int get _quantity {
+    final parsed = int.tryParse(_quantityController.text);
+    if (parsed == null || parsed <= 0) return 1;
+    return parsed;
+  }
+
+  /// Quantity estimate for the branch-to-run fillet weld (and, for
+  /// Set-on Nozzle, the optional repad-to-run fillet weld).
+  ///
+  /// The branch/repad weld path is a "saddle" curve where the branch
+  /// cylinder intersects the run cylinder; its exact length has no closed
+  /// form. This estimator uses the branch (or repad) OD circumference as a
+  /// practical approximation, which is standard practice for preliminary
+  /// takeoff on small-branch-on-large-run connections.
+  _BranchWeldEstimate? get _weldEstimate {
+    if (_connectionType != BranchConnectionType.setOnNozzle) return null;
+
+    final data = _drawingData;
+    final filletAreaMm2 = WeldFormulas.filletAreaMm2(
+      legSizeMm: data.filletSizeMm,
+    );
+    final branchLengthMm = WeldFormulas.circumferenceLengthMm(
+      pipeOdMm: data.branchOdMm,
+      quantity: 1,
+    );
+    var volumeCm3 = WeldFormulas.volumeCm3(
+      areaMm2: filletAreaMm2,
+      lengthMm: branchLengthMm,
+    );
+    var totalLengthMm = branchLengthMm;
+
+    final hasRepad = data.repadThicknessMm > 0 && data.repadOdMm > data.branchOdMm;
+    if (hasRepad) {
+      final repadLengthMm = WeldFormulas.circumferenceLengthMm(
+        pipeOdMm: data.repadOdMm,
+        quantity: 1,
+      );
+      volumeCm3 += WeldFormulas.volumeCm3(
+        areaMm2: filletAreaMm2,
+        lengthMm: repadLengthMm,
+      );
+      totalLengthMm += repadLengthMm;
+    }
+
+    volumeCm3 *= _quantity;
+    totalLengthMm *= _quantity;
+
+    final weldMetalKg = WeldFormulas.weldMetalKg(
+      volumeCm3: volumeCm3,
+      densityGPerCm3: WeldingDefaults.densityGPerCm3,
+    );
+    final efficiency = WeldingDefaults.efficiencyFor(_process);
+    final fillerKg = WeldFormulas.fillerKg(
+      weldMetalKg: weldMetalKg,
+      depositionEfficiency: efficiency,
+      wasteFactorPercent: WeldingDefaults.wasteFactorPercent,
+    );
+    final depositionRate = WeldingDefaults.depositionRateFor(_process);
+    final arcTimeHours = WeldFormulas.arcTimeHours(
+      fillerKg: fillerKg,
+      depositionRateKgPerHour: depositionRate,
+    );
+
+    return _BranchWeldEstimate(
+      hasRepad: hasRepad,
+      lengthMm: totalLengthMm,
+      volumeCm3: volumeCm3,
+      weldMetalKg: weldMetalKg,
+      fillerKg: fillerKg,
+      arcTimeHours: arcTimeHours,
+    );
   }
 
   BranchConnectionDrawingData get _drawingData => BranchConnectionDrawingData(
@@ -118,7 +207,7 @@ class _BranchConnectionsModuleState extends State<BranchConnectionsModule> {
     final data = _drawingData;
     final branchRatio = data.branchOdMm / data.runOdMm;
     final questions = <String>[
-      'This is still a section-driven visual prototype. True saddle weld path and developed intersection length are not solved yet.',
+      'Set-on Nozzle now has a first quantity estimate using the branch OD circumference as a stand-in for the true saddle intersection curve. Set-in Nozzle and Weldolet still need their own weld-path model.',
       'This view is intentionally 2D-first. It is optimized for weld-seat clarity rather than free-rotation visualization.',
     ];
 
@@ -409,7 +498,7 @@ class _BranchConnectionsModuleState extends State<BranchConnectionsModule> {
                 ),
                 const SizedBox(height: 6),
                 Text(
-                  'These values currently drive the drawing only. The point is to test if the geometry feels believable enough before branch-specific quantity formulas are added.',
+                  'These values drive both the drawing and, for Set-on Nozzle, the quantity estimate below.',
                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                     color: const Color(0xFF5E7380),
                   ),
@@ -536,6 +625,8 @@ class _BranchConnectionsModuleState extends State<BranchConnectionsModule> {
           ),
         ),
         const SizedBox(height: 18),
+        _buildQuantityCard(context),
+        const SizedBox(height: 18),
         Card(
           child: Padding(
             padding: const EdgeInsets.all(20),
@@ -590,6 +681,161 @@ class _BranchConnectionsModuleState extends State<BranchConnectionsModule> {
       inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]'))],
       decoration: InputDecoration(labelText: label, helperText: helperText),
       onChanged: (_) => setState(() {}),
+    );
+  }
+
+  Widget _buildQuantityCard(BuildContext context) {
+    final data = _drawingData;
+    final branchRatio = data.branchOdMm / data.runOdMm;
+    final estimate = _weldEstimate;
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Quantity & Consumables',
+              style: Theme.of(
+                context,
+              ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              _connectionType == BranchConnectionType.setOnNozzle
+                  ? 'Branch-to-run fillet weld length uses the branch OD circumference as a practical stand-in for the exact saddle intersection curve, which has no simple closed-form length.'
+                  : 'Quantity estimation is available for Set-on Nozzle only for now. Set-in Nozzle and Weldolet still need their own weld-path model before a reliable takeoff can be shown here.',
+              style: Theme.of(
+                context,
+              ).textTheme.bodyMedium?.copyWith(color: const Color(0xFF5E7380)),
+            ),
+            if (estimate == null) ...[
+              const SizedBox(height: 4),
+            ] else ...[
+              const SizedBox(height: 16),
+              LayoutBuilder(
+                builder: (context, constraints) {
+                  final wide = constraints.maxWidth >= 720;
+                  final fieldWidth = wide
+                      ? (constraints.maxWidth - 16) / 2
+                      : constraints.maxWidth;
+
+                  return Wrap(
+                    spacing: 16,
+                    runSpacing: 16,
+                    children: [
+                      SizedBox(
+                        width: fieldWidth,
+                        child: _numberField(
+                          controller: _quantityController,
+                          label: 'Quantity',
+                          helperText: 'Number of identical branch connections.',
+                        ),
+                      ),
+                      SizedBox(
+                        width: fieldWidth,
+                        child: DropdownButtonFormField<WeldingProcess>(
+                          initialValue: _process,
+                          isExpanded: true,
+                          decoration: const InputDecoration(
+                            labelText: 'Welding Process',
+                            helperText:
+                                'Drives deposition efficiency and rate defaults.',
+                          ),
+                          items: _supportedProcesses
+                              .map(
+                                (process) => DropdownMenuItem(
+                                  value: process,
+                                  child: Text(process.label),
+                                ),
+                              )
+                              .toList(),
+                          onChanged: (value) {
+                            if (value == null) return;
+                            setState(() => _process = value);
+                          },
+                        ),
+                      ),
+                    ],
+                  );
+                },
+              ),
+              const SizedBox(height: 16),
+              if (branchRatio > 0.5)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: _InfoStrip(
+                    icon: Icons.warning_amber_rounded,
+                    text:
+                        'Branch/run ratio is ${branchRatio.toStringAsFixed(2)}. Above 0.5 the circumference approximation understates the true saddle length more noticeably; treat this as a rough order-of-magnitude figure.',
+                  ),
+                ),
+              LayoutBuilder(
+                builder: (context, constraints) {
+                  final columns = constraints.maxWidth >= 900
+                      ? 4
+                      : constraints.maxWidth >= 620
+                      ? 2
+                      : 1;
+                  final cardWidth =
+                      (constraints.maxWidth - (columns - 1) * 16) / columns;
+
+                  return Wrap(
+                    spacing: 16,
+                    runSpacing: 16,
+                    children: [
+                      SizedBox(
+                        width: cardWidth,
+                        child: ResultCard(
+                          title: 'Weld Length',
+                          value: estimate.lengthMm.toStringAsFixed(0),
+                          unit: 'mm',
+                          icon: Icons.straighten,
+                        ),
+                      ),
+                      SizedBox(
+                        width: cardWidth,
+                        child: ResultCard(
+                          title: 'Weld Volume',
+                          value: estimate.volumeCm3.toStringAsFixed(2),
+                          unit: 'cm3',
+                          icon: Icons.view_in_ar_outlined,
+                        ),
+                      ),
+                      SizedBox(
+                        width: cardWidth,
+                        child: ResultCard(
+                          title: 'Weld Metal',
+                          value: estimate.weldMetalKg.toStringAsFixed(3),
+                          unit: 'kg',
+                          icon: Icons.scale_outlined,
+                        ),
+                      ),
+                      SizedBox(
+                        width: cardWidth,
+                        child: ResultCard(
+                          title: 'Filler Required',
+                          value: estimate.fillerKg.toStringAsFixed(3),
+                          unit: 'kg',
+                          icon: Icons.inventory_2_outlined,
+                        ),
+                      ),
+                    ],
+                  );
+                },
+              ),
+              const SizedBox(height: 12),
+              _InfoStrip(
+                icon: Icons.timer_outlined,
+                text:
+                    'Estimated arc-on time: ${estimate.arcTimeHours.toStringAsFixed(2)} h at ${WeldingDefaults.depositionRateFor(_process).toStringAsFixed(2)} kg/h deposition rate'
+                    '${estimate.hasRepad ? ' (includes repad-to-run fillet weld).' : '.'}',
+              ),
+            ],
+          ],
+        ),
+      ),
     );
   }
 
@@ -774,6 +1020,24 @@ class _DrawingSurface extends StatelessWidget {
       ),
     );
   }
+}
+
+class _BranchWeldEstimate {
+  const _BranchWeldEstimate({
+    required this.hasRepad,
+    required this.lengthMm,
+    required this.volumeCm3,
+    required this.weldMetalKg,
+    required this.fillerKg,
+    required this.arcTimeHours,
+  });
+
+  final bool hasRepad;
+  final double lengthMm;
+  final double volumeCm3;
+  final double weldMetalKg;
+  final double fillerKg;
+  final double arcTimeHours;
 }
 
 class BranchConnectionDrawingData {
@@ -1268,9 +1532,9 @@ class _BranchDetailPainter extends CustomPainter {
       fill: const Color(0xFFE7EEF2),
       textColor: _outline,
     );
-    _drawLegendPanel(
+    final legendRect = _drawLegendPanel(
       canvas,
-      rect: Rect.fromLTWH(size.width * 0.64, size.height * 0.16, 178, 142),
+      canvasSize: size,
       title: 'DETAIL KEY',
       rows: [
         (id: '1', label: 'Branch neck', color: const Color(0xFF274552)),
@@ -1304,7 +1568,10 @@ class _BranchDetailPainter extends CustomPainter {
       canvas,
       label: 'Fillet size ${data.filletSizeMm.toStringAsFixed(1)} mm',
       target: Offset(branchRight + 12, seatY + 12),
-      labelCenter: Offset(size.width * 0.77, size.height * 0.39),
+      labelCenter: Offset(
+        legendRect.center.dx,
+        math.min(legendRect.bottom + 30, size.height - 20),
+      ),
       accent: _weldShade,
     );
   }
@@ -1471,14 +1738,14 @@ class _BranchDetailPainter extends CustomPainter {
       canvas,
       label: 'Weld metal\n${data.filletSizeMm.toStringAsFixed(1)} mm fillet',
       target: Offset(branchRight + 10, runTopY + 12),
-      labelCenter: Offset(size.width * 0.8, size.height * 0.28),
+      labelCenter: Offset(size.width * 0.8, size.height * 0.2),
       accent: _weldShade,
     );
     _drawCallout(
       canvas,
       label: 'Inserted branch wall',
       target: Offset(branchRight - 4, runTopY + 18),
-      labelCenter: Offset(size.width * 0.79, size.height * 0.28),
+      labelCenter: Offset(size.width * 0.82, size.height * 0.5),
       accent: _outline,
     );
     _drawCallout(
@@ -2164,24 +2431,22 @@ class _BranchDetailPainter extends CustomPainter {
     );
   }
 
-  void _drawLegendPanel(
+  /// Draws a legend panel sized and positioned to fit [canvasSize], with row
+  /// heights measured from the actual (possibly wrapped) label text so rows
+  /// never overlap. Returns the panel's bounds so callers can keep other
+  /// callouts clear of it.
+  Rect _drawLegendPanel(
     Canvas canvas, {
-    required Rect rect,
+    required Size canvasSize,
     required String title,
     required List<({String id, String label, Color color})> rows,
   }) {
-    final panel = RRect.fromRectAndRadius(rect, const Radius.circular(14));
-    canvas.drawRRect(
-      panel,
-      Paint()..color = Colors.white.withValues(alpha: 0.97),
+    final panelWidth = math.min(196.0, canvasSize.width * 0.46).clamp(
+      132.0,
+      196.0,
     );
-    canvas.drawRRect(
-      panel,
-      Paint()
-        ..color = _guide.withValues(alpha: 0.25)
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 1.0,
-    );
+    final rowLabelMaxWidth = panelWidth - 46;
+
     final titlePainter = TextPainter(
       text: TextSpan(
         text: title,
@@ -2193,31 +2458,73 @@ class _BranchDetailPainter extends CustomPainter {
         ),
       ),
       textDirection: TextDirection.ltr,
-    )..layout(maxWidth: rect.width - 24);
+    )..layout(maxWidth: panelWidth - 24);
+
+    final rowPainters = [
+      for (final row in rows)
+        TextPainter(
+          text: TextSpan(
+            text: row.label,
+            style: const TextStyle(
+              color: _outline,
+              fontSize: 10.2,
+              fontWeight: FontWeight.w700,
+              height: 1.25,
+            ),
+          ),
+          textDirection: TextDirection.ltr,
+        )..layout(maxWidth: rowLabelMaxWidth),
+    ];
+
+    const rowGap = 10.0;
+    final rowSlotHeights = [
+      for (final painter in rowPainters) math.max(painter.height, 20.0) + rowGap,
+    ];
+    final rowsHeight = rowSlotHeights.fold(0.0, (sum, h) => sum + h) - rowGap;
+    final panelHeight = 20 + titlePainter.height + 14 + rowsHeight + 12;
+
+    final left = math.max(12.0, canvasSize.width - panelWidth - 14);
+    const top = 14.0;
+    final rect = Rect.fromLTWH(left, top, panelWidth, panelHeight);
+
+    final panel = RRect.fromRectAndRadius(rect, const Radius.circular(14));
+    canvas.drawRRect(
+      panel,
+      Paint()..color = Colors.white.withValues(alpha: 0.98),
+    );
+    canvas.drawRRect(
+      panel,
+      Paint()
+        ..color = _guide.withValues(alpha: 0.3)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.0,
+    );
     titlePainter.paint(canvas, Offset(rect.left + 12, rect.top + 10));
-    var y = rect.top + 32;
-    for (final row in rows) {
+    canvas.drawLine(
+      Offset(rect.left + 12, rect.top + 18 + titlePainter.height + 4),
+      Offset(rect.right - 12, rect.top + 18 + titlePainter.height + 4),
+      Paint()
+        ..color = _guide.withValues(alpha: 0.18)
+        ..strokeWidth = 0.8,
+    );
+
+    var y = rect.top + 18 + titlePainter.height + 14;
+    for (var i = 0; i < rows.length; i++) {
+      final row = rows[i];
+      final rowPainter = rowPainters[i];
+      final markerCenterY = y + (rowPainter.height / 2);
       _drawNumberMarker(
         canvas,
-        center: Offset(rect.left + 18, y + 8),
+        center: Offset(rect.left + 18, markerCenterY),
         number: row.id,
         fill: row.color,
         textColor: row.color.computeLuminance() > 0.6 ? _outline : Colors.white,
       );
-      final textPainter = TextPainter(
-        text: TextSpan(
-          text: row.label,
-          style: const TextStyle(
-            color: _outline,
-            fontSize: 10.4,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-        textDirection: TextDirection.ltr,
-      )..layout(maxWidth: rect.width - 42);
-      textPainter.paint(canvas, Offset(rect.left + 34, y));
-      y += 22;
+      rowPainter.paint(canvas, Offset(rect.left + 34, y));
+      y += rowSlotHeights[i];
     }
+
+    return rect;
   }
 
   void _paintGapZone(Canvas canvas, Path path, {double strokeWidth = 1.0}) {
