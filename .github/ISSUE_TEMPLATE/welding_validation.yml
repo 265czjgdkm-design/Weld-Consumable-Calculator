@@ -1,0 +1,34 @@
+name: Welding Validation Review
+description: Log a technical review item from a welding-engineering perspective
+title: "[Welding Review] "
+labels: ["welding-review"]
+body:
+  - type: dropdown
+    id: item_type
+    attributes:
+      label: Review Type
+      options:
+        - Terminology
+        - Geometry
+        - Formula assumption
+        - Drawing realism
+        - Consumable classification
+        - Report language
+    validations:
+      required: true
+
+  - type: textarea
+    id: finding
+    attributes:
+      label: Finding
+      description: What appears incorrect or weak?
+    validations:
+      required: true
+
+  - type: textarea
+    id: recommendation
+    attributes:
+      label: Recommendation
+      description: What should be changed?
+    validations:
+      required: true

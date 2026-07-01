@@ -1,0 +1,40 @@
+name: Feature Request
+description: Propose a product, engineering, or report improvement
+title: "[Feature] "
+labels: ["enhancement"]
+body:
+  - type: dropdown
+    id: category
+    attributes:
+      label: Category
+      options:
+        - Estimation
+        - Technical Drawing
+        - Branch Module
+        - Report and PDF
+        - Website and Landing Page
+        - Premium Feature
+    validations:
+      required: true
+
+  - type: textarea
+    id: outcome
+    attributes:
+      label: Desired Outcome
+      description: What should the user be able to do?
+    validations:
+      required: true
+
+  - type: textarea
+    id: why
+    attributes:
+      label: Why It Matters
+      description: Explain the engineering or product value.
+    validations:
+      required: true
+
+  - type: textarea
+    id: notes
+    attributes:
+      label: Notes
+      description: Add workflow notes, examples, or market ideas.

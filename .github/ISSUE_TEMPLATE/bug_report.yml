@@ -1,0 +1,45 @@
+name: Bug Report
+description: Report a defect in calculation, UI, drawing, or report export
+title: "[Bug] "
+labels: ["bug"]
+body:
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Calculation
+        - Technical Drawing
+        - PDF Report
+        - Presets
+        - Branch Module
+        - UI and UX
+    validations:
+      required: true
+
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: What is wrong?
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected Behavior
+    validations:
+      required: true
+
+  - type: textarea
+    id: input_data
+    attributes:
+      label: Input Data
+      description: Enter the weld inputs used when the issue happened.
+
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Evidence
+      description: Add screenshot, formula note, or engineer feedback if available.
