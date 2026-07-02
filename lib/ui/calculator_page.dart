@@ -7,8 +7,9 @@ import '../models/weld_models.dart';
 import '../services/user_preset_store.dart';
 import '../services/weld_pdf_report_service.dart';
 import 'widgets/branch_connection_module.dart';
-import 'widgets/result_card.dart';
 import 'widgets/weld_drawing_preview.dart';
+import 'calculator_page/calculator_page_models.dart';
+import 'calculator_page/calculator_page_widgets.dart';
 
 class CalculatorPage extends StatefulWidget {
   const CalculatorPage({super.key});
@@ -23,17 +24,17 @@ class _CalculatorPageState extends State<CalculatorPage> {
   final UserPresetStore _userPresetStore = const UserPresetStore();
   static const _customDiameterValue = 'custom';
 
-  final Map<_FieldKey, TextEditingController> _controllers = {
-    for (final key in _FieldKey.values) key: TextEditingController(),
+  final Map<FieldKey, TextEditingController> _controllers = {
+    for (final key in FieldKey.values) key: TextEditingController(),
   };
-  final Map<_FieldKey, String> _diameterPresetModes = {};
+  final Map<FieldKey, String> _diameterPresetModes = {};
 
   JointType _jointType = JointType.plateButt;
   GrooveType _grooveType = GrooveType.singleV;
   WeldingProcess _weldingProcess = WeldingProcess.gtaw;
   DepositionRateMode _depositionRateMode = DepositionRateMode.preset;
   DrawingMode _drawingMode = DrawingMode.visual;
-  _CalculatorModule _activeModule = _CalculatorModule.weldEstimator;
+  CalculatorModule _activeModule = CalculatorModule.weldEstimator;
   JointGeometryMode _jointGeometryMode = JointGeometryMode.equal;
   JointAlignment _jointAlignment = JointAlignment.centerline;
   ConsumablePreset _consumablePreset = ConsumablePreset.er70s2;
@@ -113,15 +114,15 @@ class _CalculatorPageState extends State<CalculatorPage> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        _TopNavigationBar(
+                        TopNavigationBar(
                           activeModuleLabel:
                               _activeModule ==
-                                  _CalculatorModule.branchConnections
+                                  CalculatorModule.branchConnections
                               ? 'Branch detailing lab'
                               : 'Butt and fillet estimator',
                         ),
                         const SizedBox(height: 18),
-                        _ExperienceHero(
+                        ExperienceHero(
                           activeModule: _activeModule,
                           jointTypeLabel: _jointType.label,
                           grooveLabel: _grooveType.label,
@@ -132,21 +133,21 @@ class _CalculatorPageState extends State<CalculatorPage> {
                           hasResults: _result != null,
                         ),
                         const SizedBox(height: 18),
-                        _CapabilityStrip(
+                        CapabilityStrip(
                           isBranchMode:
                               _activeModule ==
-                              _CalculatorModule.branchConnections,
+                              CalculatorModule.branchConnections,
                         ),
                         const SizedBox(height: 18),
                         _buildModuleWorkspaceCard(context),
                         const SizedBox(height: 18),
                         if (_activeModule ==
-                            _CalculatorModule.branchConnections)
+                            CalculatorModule.branchConnections)
                           const BranchConnectionsModule()
                         else
                           _buildEstimatorWorkspace(context),
                         const SizedBox(height: 18),
-                        const _WebsiteReadyFooter(),
+                        const WebsiteReadyFooter(),
                       ],
                     ),
                   ),
@@ -177,7 +178,7 @@ class _CalculatorPageState extends State<CalculatorPage> {
                     context,
                   ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
                 ),
-                const _StatusPill(
+                const StatusPill(
                   label: 'WEB APP PREVIEW',
                   color: Color(0xFFE5F1F5),
                   textColor: Color(0xFF0F4C5C),
@@ -196,7 +197,7 @@ class _CalculatorPageState extends State<CalculatorPage> {
               spacing: 10,
               runSpacing: 10,
               children: [
-                for (final module in _CalculatorModule.values)
+                for (final module in CalculatorModule.values)
                   _buildSelectionChip(
                     label: module.label,
                     selected: _activeModule == module,
@@ -318,32 +319,32 @@ class _CalculatorPageState extends State<CalculatorPage> {
               spacing: 12,
               runSpacing: 12,
               children: [
-                _QuickMetricTile(
+                QuickMetricTile(
                   label: 'Joint',
                   value: _jointType.label,
                   icon: Icons.alt_route_outlined,
                 ),
-                _QuickMetricTile(
+                QuickMetricTile(
                   label: 'Groove',
                   value: _grooveType.label,
                   icon: Icons.change_history_outlined,
                 ),
-                _QuickMetricTile(
+                QuickMetricTile(
                   label: 'Process',
                   value: _weldingProcess.label,
                   icon: Icons.bolt_outlined,
                 ),
-                _QuickMetricTile(
+                QuickMetricTile(
                   label: 'Drawing',
                   value: _drawingMode.label,
                   icon: Icons.draw_outlined,
                 ),
-                _QuickMetricTile(
+                QuickMetricTile(
                   label: 'Efficiency',
                   value: _formatPercent(processEfficiency),
                   icon: Icons.speed_outlined,
                 ),
-                _QuickMetricTile(
+                QuickMetricTile(
                   label: 'Rate',
                   value: '${_formatNumber(depositionRate, 2)} kg/h',
                   icon: Icons.tips_and_updates_outlined,
@@ -683,7 +684,7 @@ class _CalculatorPageState extends State<CalculatorPage> {
 
   Widget _buildInputParametersCard(
     BuildContext context,
-    List<_InputFieldSpec> visibleFields,
+    List<InputFieldSpec> visibleFields,
     List<ConsumablePreset> availableConsumables,
     UserWeldPreset? selectedUserPreset,
   ) {
@@ -707,7 +708,7 @@ class _CalculatorPageState extends State<CalculatorPage> {
               ).textTheme.bodyMedium?.copyWith(color: const Color(0xFF5E7380)),
             ),
             const SizedBox(height: 16),
-            _InputPanelSection(
+            InputPanelSection(
               icon: Icons.auto_awesome_outlined,
               title: 'Preset Workspace',
               subtitle:
@@ -756,12 +757,12 @@ class _CalculatorPageState extends State<CalculatorPage> {
                     ),
                   ),
                   const SizedBox(height: 12),
-                  _PanelNote(
+                  PanelNote(
                     icon: Icons.auto_fix_high_outlined,
                     text: _inputPreset.description,
                   ),
                   const SizedBox(height: 14),
-                  _UserPresetSection(
+                  UserPresetSection(
                     presets: _userPresets,
                     selectedPresetId: _selectedUserPresetId,
                     selectedPresetName: selectedUserPreset?.name,
@@ -789,7 +790,7 @@ class _CalculatorPageState extends State<CalculatorPage> {
               ),
             ),
             const SizedBox(height: 14),
-            _InputPanelSection(
+            InputPanelSection(
               icon: Icons.inventory_2_outlined,
               title: 'Consumable & Density',
               subtitle:
@@ -835,7 +836,7 @@ class _CalculatorPageState extends State<CalculatorPage> {
                     ),
                   ),
                   const SizedBox(height: 12),
-                  _PanelNote(
+                  PanelNote(
                     icon: Icons.verified_outlined,
                     text:
                         'Selected classification: ${_consumablePreset.awsSpecification} | ${_consumablePreset.label} | ${_consumablePreset.family.label} | Density ${_formatNumber(_consumablePreset.densityGPerCm3, 2)} g/cm3',
@@ -844,7 +845,7 @@ class _CalculatorPageState extends State<CalculatorPage> {
               ),
             ),
             const SizedBox(height: 14),
-            _InputPanelSection(
+            InputPanelSection(
               icon: Icons.speed_outlined,
               title: 'Rate Basis',
               subtitle:
@@ -870,7 +871,7 @@ class _CalculatorPageState extends State<CalculatorPage> {
                     ],
                   ),
                   const SizedBox(height: 12),
-                  _PanelNote(
+                  PanelNote(
                     icon: _depositionRateMode == DepositionRateMode.manual
                         ? Icons.tune_outlined
                         : Icons.auto_awesome_motion_outlined,
@@ -882,7 +883,7 @@ class _CalculatorPageState extends State<CalculatorPage> {
               ),
             ),
             const SizedBox(height: 14),
-            _InputPanelSection(
+            InputPanelSection(
               icon: Icons.straighten_outlined,
               title: 'Dimensional Inputs',
               subtitle:
@@ -1002,8 +1003,8 @@ class _CalculatorPageState extends State<CalculatorPage> {
       child: Padding(
         padding: const EdgeInsets.all(22),
         child: _result == null
-            ? _EmptyResultsState(process: _weldingProcess)
-            : _ResultsSection(
+            ? EmptyResultsState(process: _weldingProcess)
+            : ResultsSection(
                 result: _result!,
                 basis: _buildCalculationBasis(),
                 consumablePreset: _consumablePreset,
@@ -1022,18 +1023,18 @@ class _CalculatorPageState extends State<CalculatorPage> {
       _jointGeometryMode == JointGeometryMode.unequal;
 
   double? get _thicknessAPreview => _isUnequalGeometry
-      ? _parsePreviewValue(_FieldKey.thicknessAMm)
-      : _parsePreviewValue(_FieldKey.thicknessMm);
+      ? _parsePreviewValue(FieldKey.thicknessAMm)
+      : _parsePreviewValue(FieldKey.thicknessMm);
 
   double? get _thicknessBPreview => _isUnequalGeometry
-      ? _parsePreviewValue(_FieldKey.thicknessBMm)
-      : _parsePreviewValue(_FieldKey.thicknessMm);
+      ? _parsePreviewValue(FieldKey.thicknessBMm)
+      : _parsePreviewValue(FieldKey.thicknessMm);
 
   double? get _governingThicknessPreview {
     final a = _thicknessAPreview;
     final b = _thicknessBPreview;
     if (a == null && b == null) {
-      return _parsePreviewValue(_FieldKey.thicknessMm);
+      return _parsePreviewValue(FieldKey.thicknessMm);
     }
     if (a == null) return b;
     if (b == null) return a;
@@ -1041,26 +1042,26 @@ class _CalculatorPageState extends State<CalculatorPage> {
   }
 
   double? get _pipeOdAPreview => _isUnequalGeometry
-      ? _parsePreviewValue(_FieldKey.pipeOdAMm)
-      : _parsePreviewValue(_FieldKey.pipeOdMm);
+      ? _parsePreviewValue(FieldKey.pipeOdAMm)
+      : _parsePreviewValue(FieldKey.pipeOdMm);
 
   double? get _pipeOdBPreview => _isUnequalGeometry
-      ? _parsePreviewValue(_FieldKey.pipeOdBMm)
-      : _parsePreviewValue(_FieldKey.pipeOdMm);
+      ? _parsePreviewValue(FieldKey.pipeOdBMm)
+      : _parsePreviewValue(FieldKey.pipeOdMm);
 
   double? get _governingPipeOdPreview {
     final a = _pipeOdAPreview;
     final b = _pipeOdBPreview;
-    if (a == null && b == null) return _parsePreviewValue(_FieldKey.pipeOdMm);
+    if (a == null && b == null) return _parsePreviewValue(FieldKey.pipeOdMm);
     if (a == null) return b;
     if (b == null) return a;
     return a >= b ? a : b;
   }
 
-  List<_InputFieldSpec> get _visibleFieldSpecs {
-    final specs = <_InputFieldSpec>[
-      const _InputFieldSpec(
-        key: _FieldKey.quantity,
+  List<InputFieldSpec> get _visibleFieldSpecs {
+    final specs = <InputFieldSpec>[
+      const InputFieldSpec(
+        key: FieldKey.quantity,
         label: 'Quantity',
         helperText: 'Number of identical welds.',
       ),
@@ -1068,8 +1069,8 @@ class _CalculatorPageState extends State<CalculatorPage> {
 
     if (_jointType == JointType.plateButt || _jointType == JointType.fillet) {
       specs.add(
-        const _InputFieldSpec(
-          key: _FieldKey.lengthMm,
+        const InputFieldSpec(
+          key: FieldKey.lengthMm,
           label: 'Weld Length per Piece (mm)',
           helperText: 'Straight weld run length.',
         ),
@@ -1079,21 +1080,21 @@ class _CalculatorPageState extends State<CalculatorPage> {
     if (_jointType == JointType.pipeButt) {
       if (_isUnequalGeometry) {
         specs.addAll(const [
-          _InputFieldSpec(
-            key: _FieldKey.pipeOdAMm,
+          InputFieldSpec(
+            key: FieldKey.pipeOdAMm,
             label: 'Pipe OD A (mm)',
             helperText: 'Outside diameter of member A.',
           ),
-          _InputFieldSpec(
-            key: _FieldKey.pipeOdBMm,
+          InputFieldSpec(
+            key: FieldKey.pipeOdBMm,
             label: 'Pipe OD B (mm)',
             helperText: 'Outside diameter of member B.',
           ),
         ]);
       } else {
         specs.add(
-          const _InputFieldSpec(
-            key: _FieldKey.pipeOdMm,
+          const InputFieldSpec(
+            key: FieldKey.pipeOdMm,
             label: 'Pipe OD (mm)',
             helperText: 'Outside diameter used for circumference calculation.',
           ),
@@ -1108,31 +1109,31 @@ class _CalculatorPageState extends State<CalculatorPage> {
         _grooveType == GrooveType.doubleV) {
       if (_isUnequalGeometry) {
         specs.addAll(const [
-          _InputFieldSpec(
-            key: _FieldKey.thicknessAMm,
+          InputFieldSpec(
+            key: FieldKey.thicknessAMm,
             label: 'Thickness A (mm)',
             helperText: 'Wall or plate thickness of member A.',
           ),
-          _InputFieldSpec(
-            key: _FieldKey.thicknessBMm,
+          InputFieldSpec(
+            key: FieldKey.thicknessBMm,
             label: 'Thickness B (mm)',
             helperText: 'Wall or plate thickness of member B.',
           ),
-          _InputFieldSpec(
-            key: _FieldKey.rootGapMm,
+          InputFieldSpec(
+            key: FieldKey.rootGapMm,
             label: 'Root Gap (mm)',
             helperText: 'Root opening.',
           ),
         ]);
       } else {
         specs.addAll(const [
-          _InputFieldSpec(
-            key: _FieldKey.thicknessMm,
+          InputFieldSpec(
+            key: FieldKey.thicknessMm,
             label: 'Thickness (mm)',
             helperText: 'Base material thickness.',
           ),
-          _InputFieldSpec(
-            key: _FieldKey.rootGapMm,
+          InputFieldSpec(
+            key: FieldKey.rootGapMm,
             label: 'Root Gap (mm)',
             helperText: 'Root opening.',
           ),
@@ -1144,8 +1145,8 @@ class _CalculatorPageState extends State<CalculatorPage> {
         _grooveType == GrooveType.halfV ||
         _grooveType == GrooveType.doubleV) {
       specs.add(
-        _InputFieldSpec(
-          key: _FieldKey.rootFaceMm,
+        InputFieldSpec(
+          key: FieldKey.rootFaceMm,
           label: _grooveType == GrooveType.doubleV
               ? 'Root Face per Side (mm)'
               : 'Root Face (mm)',
@@ -1155,8 +1156,8 @@ class _CalculatorPageState extends State<CalculatorPage> {
         ),
       );
       specs.add(
-        const _InputFieldSpec(
-          key: _FieldKey.bevelAngleDeg,
+        const InputFieldSpec(
+          key: FieldKey.bevelAngleDeg,
           label: 'Bevel Angle (deg)',
           helperText: 'Included as bevel angle in degrees.',
         ),
@@ -1165,23 +1166,23 @@ class _CalculatorPageState extends State<CalculatorPage> {
 
     if (_grooveType == GrooveType.compoundV) {
       specs.addAll(const [
-        _InputFieldSpec(
-          key: _FieldKey.rootFaceMm,
+        InputFieldSpec(
+          key: FieldKey.rootFaceMm,
           label: 'Root Face (mm)',
           helperText: 'Root face before the bevel starts.',
         ),
-        _InputFieldSpec(
-          key: _FieldKey.bevelAngleDeg,
+        InputFieldSpec(
+          key: FieldKey.bevelAngleDeg,
           label: 'Primary Angle alpha (deg)',
           helperText: 'Lower bevel angle near the root.',
         ),
-        _InputFieldSpec(
-          key: _FieldKey.secondaryBevelAngleDeg,
+        InputFieldSpec(
+          key: FieldKey.secondaryBevelAngleDeg,
           label: 'Secondary Angle beta (deg)',
           helperText: 'Upper bevel angle above the break point.',
         ),
-        _InputFieldSpec(
-          key: _FieldKey.breakHeightMm,
+        InputFieldSpec(
+          key: FieldKey.breakHeightMm,
           label: 'Break Height h (mm)',
           helperText: 'Distance from root face to bevel break point.',
         ),
@@ -1190,8 +1191,8 @@ class _CalculatorPageState extends State<CalculatorPage> {
 
     if (_grooveType == GrooveType.fillet) {
       specs.add(
-        const _InputFieldSpec(
-          key: _FieldKey.legSizeMm,
+        const InputFieldSpec(
+          key: FieldKey.legSizeMm,
           label: 'Leg Size (mm)',
           helperText: 'Equal leg size of the fillet weld.',
         ),
@@ -1200,15 +1201,15 @@ class _CalculatorPageState extends State<CalculatorPage> {
 
     if (_weldingProcess == WeldingProcess.gtaw) {
       specs.add(
-        const _InputFieldSpec.diameter(
-          key: _FieldKey.wireDiameterMm,
+        const InputFieldSpec.diameter(
+          key: FieldKey.wireDiameterMm,
           label: 'GTAW Wire Diameter (mm)',
           helperText: 'Common filler diameters: 1.6, 2.0, 2.4, 3.2 mm.',
           diameterOptions: [
-            _DiameterPresetOption(label: '1.6 mm', value: 1.6),
-            _DiameterPresetOption(label: '2.0 mm', value: 2.0),
-            _DiameterPresetOption(label: '2.4 mm', value: 2.4),
-            _DiameterPresetOption(label: '3.2 mm', value: 3.2),
+            DiameterPresetOption(label: '1.6 mm', value: 1.6),
+            DiameterPresetOption(label: '2.0 mm', value: 2.0),
+            DiameterPresetOption(label: '2.4 mm', value: 2.4),
+            DiameterPresetOption(label: '3.2 mm', value: 3.2),
           ],
         ),
       );
@@ -1216,15 +1217,15 @@ class _CalculatorPageState extends State<CalculatorPage> {
 
     if (_weldingProcess == WeldingProcess.smaw) {
       specs.add(
-        const _InputFieldSpec.diameter(
-          key: _FieldKey.electrodeDiameterMm,
+        const InputFieldSpec.diameter(
+          key: FieldKey.electrodeDiameterMm,
           label: 'SMAW Electrode Diameter (mm)',
           helperText: 'Common electrode diameters: 2.5, 3.2, 4.0, 5.0 mm.',
           diameterOptions: [
-            _DiameterPresetOption(label: '2.5 mm', value: 2.5),
-            _DiameterPresetOption(label: '3.2 mm', value: 3.2),
-            _DiameterPresetOption(label: '4.0 mm', value: 4.0),
-            _DiameterPresetOption(label: '5.0 mm', value: 5.0),
+            DiameterPresetOption(label: '2.5 mm', value: 2.5),
+            DiameterPresetOption(label: '3.2 mm', value: 3.2),
+            DiameterPresetOption(label: '4.0 mm', value: 4.0),
+            DiameterPresetOption(label: '5.0 mm', value: 5.0),
           ],
         ),
       );
@@ -1233,8 +1234,8 @@ class _CalculatorPageState extends State<CalculatorPage> {
     if (_weldingProcess == WeldingProcess.gmaw ||
         _weldingProcess == WeldingProcess.fcaw) {
       specs.add(
-        _InputFieldSpec.diameter(
-          key: _FieldKey.wireDiameterMm,
+        InputFieldSpec.diameter(
+          key: FieldKey.wireDiameterMm,
           label: _weldingProcess == WeldingProcess.gmaw
               ? 'GMAW Wire Diameter (mm)'
               : 'FCAW Wire Diameter (mm)',
@@ -1243,15 +1244,15 @@ class _CalculatorPageState extends State<CalculatorPage> {
               : 'Common wire diameters: 1.2, 1.6, 2.0 mm.',
           diameterOptions: _weldingProcess == WeldingProcess.gmaw
               ? const [
-                  _DiameterPresetOption(label: '0.8 mm', value: 0.8),
-                  _DiameterPresetOption(label: '1.0 mm', value: 1.0),
-                  _DiameterPresetOption(label: '1.2 mm', value: 1.2),
-                  _DiameterPresetOption(label: '1.6 mm', value: 1.6),
+                  DiameterPresetOption(label: '0.8 mm', value: 0.8),
+                  DiameterPresetOption(label: '1.0 mm', value: 1.0),
+                  DiameterPresetOption(label: '1.2 mm', value: 1.2),
+                  DiameterPresetOption(label: '1.6 mm', value: 1.6),
                 ]
               : const [
-                  _DiameterPresetOption(label: '1.2 mm', value: 1.2),
-                  _DiameterPresetOption(label: '1.6 mm', value: 1.6),
-                  _DiameterPresetOption(label: '2.0 mm', value: 2.0),
+                  DiameterPresetOption(label: '1.2 mm', value: 1.2),
+                  DiameterPresetOption(label: '1.6 mm', value: 1.6),
+                  DiameterPresetOption(label: '2.0 mm', value: 2.0),
                 ],
         ),
       );
@@ -1259,32 +1260,32 @@ class _CalculatorPageState extends State<CalculatorPage> {
 
     if (_weldingProcess == WeldingProcess.gtawSmaw) {
       specs.addAll(const [
-        _InputFieldSpec(
-          key: _FieldKey.gtawTransitionMm,
+        InputFieldSpec(
+          key: FieldKey.gtawTransitionMm,
           label: 'GTAW Transition Depth (mm)',
           helperText:
               'Depth deposited by GTAW from the root side before switching to SMAW.',
         ),
-        _InputFieldSpec.diameter(
-          key: _FieldKey.gtawWireDiameterMm,
+        InputFieldSpec.diameter(
+          key: FieldKey.gtawWireDiameterMm,
           label: 'GTAW Wire Diameter (mm)',
           helperText: 'Common filler diameters: 1.6, 2.0, 2.4, 3.2 mm.',
           diameterOptions: [
-            _DiameterPresetOption(label: '1.6 mm', value: 1.6),
-            _DiameterPresetOption(label: '2.0 mm', value: 2.0),
-            _DiameterPresetOption(label: '2.4 mm', value: 2.4),
-            _DiameterPresetOption(label: '3.2 mm', value: 3.2),
+            DiameterPresetOption(label: '1.6 mm', value: 1.6),
+            DiameterPresetOption(label: '2.0 mm', value: 2.0),
+            DiameterPresetOption(label: '2.4 mm', value: 2.4),
+            DiameterPresetOption(label: '3.2 mm', value: 3.2),
           ],
         ),
-        _InputFieldSpec.diameter(
-          key: _FieldKey.smawElectrodeDiameterMm,
+        InputFieldSpec.diameter(
+          key: FieldKey.smawElectrodeDiameterMm,
           label: 'SMAW Electrode Diameter (mm)',
           helperText: 'Common electrode diameters: 2.5, 3.2, 4.0, 5.0 mm.',
           diameterOptions: [
-            _DiameterPresetOption(label: '2.5 mm', value: 2.5),
-            _DiameterPresetOption(label: '3.2 mm', value: 3.2),
-            _DiameterPresetOption(label: '4.0 mm', value: 4.0),
-            _DiameterPresetOption(label: '5.0 mm', value: 5.0),
+            DiameterPresetOption(label: '2.5 mm', value: 2.5),
+            DiameterPresetOption(label: '3.2 mm', value: 3.2),
+            DiameterPresetOption(label: '4.0 mm', value: 4.0),
+            DiameterPresetOption(label: '5.0 mm', value: 5.0),
           ],
         ),
       ]);
@@ -1293,14 +1294,14 @@ class _CalculatorPageState extends State<CalculatorPage> {
     if (_depositionRateMode == DepositionRateMode.manual) {
       if (_weldingProcess == WeldingProcess.gtawSmaw) {
         specs.addAll(const [
-          _InputFieldSpec(
-            key: _FieldKey.manualGtawRateKgPerHour,
+          InputFieldSpec(
+            key: FieldKey.manualGtawRateKgPerHour,
             label: 'GTAW Deposition Rate (kg/h)',
             helperText:
                 'User-defined deposition rate for the GTAW root portion.',
           ),
-          _InputFieldSpec(
-            key: _FieldKey.manualSmawRateKgPerHour,
+          InputFieldSpec(
+            key: FieldKey.manualSmawRateKgPerHour,
             label: 'SMAW Deposition Rate (kg/h)',
             helperText:
                 'User-defined deposition rate for the SMAW fill and cap portion.',
@@ -1308,8 +1309,8 @@ class _CalculatorPageState extends State<CalculatorPage> {
         ]);
       } else {
         specs.add(
-          const _InputFieldSpec(
-            key: _FieldKey.manualDepositionRateKgPerHour,
+          const InputFieldSpec(
+            key: FieldKey.manualDepositionRateKgPerHour,
             label: 'Deposition Rate (kg/h)',
             helperText:
                 'User-defined deposition rate based on shop data, planning value, or WPS assumption.',
@@ -1319,14 +1320,14 @@ class _CalculatorPageState extends State<CalculatorPage> {
     }
 
     specs.addAll(const [
-      _InputFieldSpec(
-        key: _FieldKey.density,
+      InputFieldSpec(
+        key: FieldKey.density,
         label: 'Density (g/cm3)',
         helperText:
             'Bulk weld metal density. Default follows the selected classification.',
       ),
-      _InputFieldSpec(
-        key: _FieldKey.wasteFactor,
+      InputFieldSpec(
+        key: FieldKey.wasteFactor,
         label: 'Waste Allowance (%)',
         helperText: 'Allowance for stub loss, cut-off, spatter, and handling.',
       ),
@@ -1352,32 +1353,32 @@ class _CalculatorPageState extends State<CalculatorPage> {
 
     return switch (_weldingProcess) {
       WeldingProcess.gtaw => WeldingDefaults.gtawRateForWire(
-        _parsePreviewValue(_FieldKey.wireDiameterMm),
+        _parsePreviewValue(FieldKey.wireDiameterMm),
       ),
       WeldingProcess.smaw => WeldingDefaults.smawRateForElectrode(
-        _parsePreviewValue(_FieldKey.electrodeDiameterMm),
+        _parsePreviewValue(FieldKey.electrodeDiameterMm),
       ),
       WeldingProcess.gtawSmaw => _combinedPreviewRate,
       WeldingProcess.gmaw => WeldingDefaults.gmawRateForWire(
-        _parsePreviewValue(_FieldKey.wireDiameterMm),
+        _parsePreviewValue(FieldKey.wireDiameterMm),
       ),
       WeldingProcess.fcaw => WeldingDefaults.fcawRateForWire(
-        _parsePreviewValue(_FieldKey.wireDiameterMm),
+        _parsePreviewValue(FieldKey.wireDiameterMm),
       ),
     };
   }
 
   double get _manualPreviewDepositionRate {
     if (_weldingProcess != WeldingProcess.gtawSmaw) {
-      return _parsePreviewValue(_FieldKey.manualDepositionRateKgPerHour) ??
+      return _parsePreviewValue(FieldKey.manualDepositionRateKgPerHour) ??
           WeldingDefaults.depositionRateFor(_weldingProcess);
     }
 
     final gtawRate =
-        _parsePreviewValue(_FieldKey.manualGtawRateKgPerHour) ??
+        _parsePreviewValue(FieldKey.manualGtawRateKgPerHour) ??
         WeldingDefaults.depositionRateFor(WeldingProcess.gtaw);
     final smawRate =
-        _parsePreviewValue(_FieldKey.manualSmawRateKgPerHour) ??
+        _parsePreviewValue(FieldKey.manualSmawRateKgPerHour) ??
         WeldingDefaults.depositionRateFor(WeldingProcess.smaw);
     final ratio = _combinedProcessPreviewRatio;
     return (gtawRate * ratio) + (smawRate * (1 - ratio));
@@ -1388,9 +1389,9 @@ class _CalculatorPageState extends State<CalculatorPage> {
       return WeldingDefaults.efficiencyFor(_weldingProcess);
     }
 
-    final gtawMm = _parsePreviewValue(_FieldKey.gtawTransitionMm) ?? 3;
-    final thickness = _parsePreviewValue(_FieldKey.thicknessMm);
-    final leg = _parsePreviewValue(_FieldKey.legSizeMm);
+    final gtawMm = _parsePreviewValue(FieldKey.gtawTransitionMm) ?? 3;
+    final thickness = _parsePreviewValue(FieldKey.thicknessMm);
+    final leg = _parsePreviewValue(FieldKey.legSizeMm);
     final totalHeight = thickness ?? leg ?? gtawMm;
     final ratio = totalHeight <= 0
         ? 0.5
@@ -1403,19 +1404,19 @@ class _CalculatorPageState extends State<CalculatorPage> {
 
   double get _combinedPreviewRate {
     final gtawRate = WeldingDefaults.gtawRateForWire(
-      _parsePreviewValue(_FieldKey.gtawWireDiameterMm),
+      _parsePreviewValue(FieldKey.gtawWireDiameterMm),
     );
     final smawRate = WeldingDefaults.smawRateForElectrode(
-      _parsePreviewValue(_FieldKey.smawElectrodeDiameterMm),
+      _parsePreviewValue(FieldKey.smawElectrodeDiameterMm),
     );
     final ratio = _combinedProcessPreviewRatio;
     return (gtawRate * ratio) + (smawRate * (1 - ratio));
   }
 
   double get _combinedProcessPreviewRatio {
-    final gtawMm = _parsePreviewValue(_FieldKey.gtawTransitionMm) ?? 3;
-    final thickness = _parsePreviewValue(_FieldKey.thicknessMm);
-    final leg = _parsePreviewValue(_FieldKey.legSizeMm);
+    final gtawMm = _parsePreviewValue(FieldKey.gtawTransitionMm) ?? 3;
+    final thickness = _parsePreviewValue(FieldKey.thicknessMm);
+    final leg = _parsePreviewValue(FieldKey.legSizeMm);
     final totalHeight = thickness ?? leg ?? gtawMm;
     return totalHeight <= 0 ? 0.5 : (gtawMm / totalHeight).clamp(0.0, 1.0);
   }
@@ -1427,29 +1428,29 @@ class _CalculatorPageState extends State<CalculatorPage> {
 
     if (_weldingProcess == WeldingProcess.gtawSmaw) {
       final gtawUpTo = _formatNumber(
-        _parsePreviewValue(_FieldKey.gtawTransitionMm) ?? 3,
+        _parsePreviewValue(FieldKey.gtawTransitionMm) ?? 3,
         1,
       );
       final gtawSetting = _depositionRateMode == DepositionRateMode.manual
-          ? '${_formatNumber(_parsePreviewValue(_FieldKey.manualGtawRateKgPerHour) ?? WeldingDefaults.depositionRateFor(WeldingProcess.gtaw), 2)} kg/h'
-          : '${_formatNumber(_parsePreviewValue(_FieldKey.gtawWireDiameterMm) ?? 2.4, 1)} mm wire';
+          ? '${_formatNumber(_parsePreviewValue(FieldKey.manualGtawRateKgPerHour) ?? WeldingDefaults.depositionRateFor(WeldingProcess.gtaw), 2)} kg/h'
+          : '${_formatNumber(_parsePreviewValue(FieldKey.gtawWireDiameterMm) ?? 2.4, 1)} mm wire';
       final smawSetting = _depositionRateMode == DepositionRateMode.manual
-          ? '${_formatNumber(_parsePreviewValue(_FieldKey.manualSmawRateKgPerHour) ?? WeldingDefaults.depositionRateFor(WeldingProcess.smaw), 2)} kg/h'
-          : '${_formatNumber(_parsePreviewValue(_FieldKey.smawElectrodeDiameterMm) ?? 3.2, 1)} mm electrode';
+          ? '${_formatNumber(_parsePreviewValue(FieldKey.manualSmawRateKgPerHour) ?? WeldingDefaults.depositionRateFor(WeldingProcess.smaw), 2)} kg/h'
+          : '${_formatNumber(_parsePreviewValue(FieldKey.smawElectrodeDiameterMm) ?? 3.2, 1)} mm electrode';
       return 'Rate basis $sourceText | GTAW transition depth $gtawUpTo mm, then SMAW | Deposition efficiency ${_formatPercent(efficiency)} | Equivalent deposition rate ${_formatNumber(depositionRate, 2)} kg/h | GTAW $gtawSetting | SMAW $smawSetting';
     }
 
     final detailText = _depositionRateMode == DepositionRateMode.manual
-        ? ' | User-defined ${_formatNumber(_parsePreviewValue(_FieldKey.manualDepositionRateKgPerHour) ?? WeldingDefaults.depositionRateFor(_weldingProcess), 2)} kg/h'
+        ? ' | User-defined ${_formatNumber(_parsePreviewValue(FieldKey.manualDepositionRateKgPerHour) ?? WeldingDefaults.depositionRateFor(_weldingProcess), 2)} kg/h'
         : switch (_weldingProcess) {
             WeldingProcess.gtaw =>
-              ' | Wire ${_formatNumber(_parsePreviewValue(_FieldKey.wireDiameterMm) ?? 2.4, 1)} mm',
+              ' | Wire ${_formatNumber(_parsePreviewValue(FieldKey.wireDiameterMm) ?? 2.4, 1)} mm',
             WeldingProcess.smaw =>
-              ' | Electrode ${_formatNumber(_parsePreviewValue(_FieldKey.electrodeDiameterMm) ?? 3.2, 1)} mm',
+              ' | Electrode ${_formatNumber(_parsePreviewValue(FieldKey.electrodeDiameterMm) ?? 3.2, 1)} mm',
             WeldingProcess.gmaw =>
-              ' | Wire ${_formatNumber(_parsePreviewValue(_FieldKey.wireDiameterMm) ?? 1.2, 1)} mm',
+              ' | Wire ${_formatNumber(_parsePreviewValue(FieldKey.wireDiameterMm) ?? 1.2, 1)} mm',
             WeldingProcess.fcaw =>
-              ' | Wire ${_formatNumber(_parsePreviewValue(_FieldKey.wireDiameterMm) ?? 1.6, 1)} mm',
+              ' | Wire ${_formatNumber(_parsePreviewValue(FieldKey.wireDiameterMm) ?? 1.6, 1)} mm',
             WeldingProcess.gtawSmaw => '',
           };
     return 'Rate basis $sourceText | Deposition efficiency ${_formatPercent(efficiency)} | Deposition rate ${_formatNumber(depositionRate, 2)} kg/h$detailText';
@@ -1552,61 +1553,61 @@ class _CalculatorPageState extends State<CalculatorPage> {
     _applyProcessFieldDefaults();
     _syncConsumableForProcess();
 
-    _setControllerValue(_FieldKey.quantity, data.quantity);
-    _setControllerValue(_FieldKey.lengthMm, data.lengthPerPieceMm);
-    _setControllerValue(_FieldKey.pipeOdMm, data.pipeOdMm);
-    _setControllerValue(_FieldKey.pipeOdAMm, data.pipeOdAMm);
-    _setControllerValue(_FieldKey.pipeOdBMm, data.pipeOdBMm);
-    _setControllerValue(_FieldKey.thicknessMm, data.thicknessMm);
-    _setControllerValue(_FieldKey.thicknessAMm, data.thicknessAMm);
-    _setControllerValue(_FieldKey.thicknessBMm, data.thicknessBMm);
-    _setControllerValue(_FieldKey.rootGapMm, data.rootGapMm);
-    _setControllerValue(_FieldKey.rootFaceMm, data.rootFaceMm);
-    _setControllerValue(_FieldKey.bevelAngleDeg, data.bevelAngleDeg);
+    _setControllerValue(FieldKey.quantity, data.quantity);
+    _setControllerValue(FieldKey.lengthMm, data.lengthPerPieceMm);
+    _setControllerValue(FieldKey.pipeOdMm, data.pipeOdMm);
+    _setControllerValue(FieldKey.pipeOdAMm, data.pipeOdAMm);
+    _setControllerValue(FieldKey.pipeOdBMm, data.pipeOdBMm);
+    _setControllerValue(FieldKey.thicknessMm, data.thicknessMm);
+    _setControllerValue(FieldKey.thicknessAMm, data.thicknessAMm);
+    _setControllerValue(FieldKey.thicknessBMm, data.thicknessBMm);
+    _setControllerValue(FieldKey.rootGapMm, data.rootGapMm);
+    _setControllerValue(FieldKey.rootFaceMm, data.rootFaceMm);
+    _setControllerValue(FieldKey.bevelAngleDeg, data.bevelAngleDeg);
     _setControllerValue(
-      _FieldKey.secondaryBevelAngleDeg,
+      FieldKey.secondaryBevelAngleDeg,
       data.secondaryBevelAngleDeg,
     );
-    _setControllerValue(_FieldKey.breakHeightMm, data.breakHeightMm);
-    _setControllerValue(_FieldKey.legSizeMm, data.legSizeMm);
-    _setControllerValue(_FieldKey.gtawTransitionMm, data.gtawTransitionMm);
+    _setControllerValue(FieldKey.breakHeightMm, data.breakHeightMm);
+    _setControllerValue(FieldKey.legSizeMm, data.legSizeMm);
+    _setControllerValue(FieldKey.gtawTransitionMm, data.gtawTransitionMm);
     _setControllerValue(
-      _FieldKey.manualDepositionRateKgPerHour,
+      FieldKey.manualDepositionRateKgPerHour,
       data.manualDepositionRateKgPerHour,
     );
     _setControllerValue(
-      _FieldKey.manualGtawRateKgPerHour,
+      FieldKey.manualGtawRateKgPerHour,
       data.manualGtawRateKgPerHour,
     );
     _setControllerValue(
-      _FieldKey.manualSmawRateKgPerHour,
+      FieldKey.manualSmawRateKgPerHour,
       data.manualSmawRateKgPerHour,
     );
-    _setControllerValue(_FieldKey.wasteFactor, data.wasteFactorPercent);
+    _setControllerValue(FieldKey.wasteFactor, data.wasteFactorPercent);
 
     _applyDiameterOrValue(
-      _FieldKey.wireDiameterMm,
+      FieldKey.wireDiameterMm,
       data.wireDiameterMm,
       usePreset: usePresetDiameters,
     );
     _applyDiameterOrValue(
-      _FieldKey.electrodeDiameterMm,
+      FieldKey.electrodeDiameterMm,
       data.electrodeDiameterMm,
       usePreset: usePresetDiameters,
     );
     _applyDiameterOrValue(
-      _FieldKey.gtawWireDiameterMm,
+      FieldKey.gtawWireDiameterMm,
       data.gtawWireDiameterMm,
       usePreset: usePresetDiameters,
     );
     _applyDiameterOrValue(
-      _FieldKey.smawElectrodeDiameterMm,
+      FieldKey.smawElectrodeDiameterMm,
       data.smawElectrodeDiameterMm,
       usePreset: usePresetDiameters,
     );
 
     if (data.densityGPerCm3 != null) {
-      _setControllerValue(_FieldKey.density, data.densityGPerCm3);
+      _setControllerValue(FieldKey.density, data.densityGPerCm3);
     }
   }
 
@@ -1712,62 +1713,62 @@ class _CalculatorPageState extends State<CalculatorPage> {
     depositionRateMode: _depositionRateMode,
     jointGeometryMode: _jointGeometryMode,
     jointAlignment: _jointAlignment,
-    quantity: _parsePresetValue(_FieldKey.quantity, 'Quantity') ?? 1,
+    quantity: _parsePresetValue(FieldKey.quantity, 'Quantity') ?? 1,
     wasteFactorPercent:
-        _parsePresetValue(_FieldKey.wasteFactor, 'Waste allowance') ??
+        _parsePresetValue(FieldKey.wasteFactor, 'Waste allowance') ??
         WeldingDefaults.wasteFactorPercent,
-    densityGPerCm3: _parsePresetValue(_FieldKey.density, 'Density'),
-    lengthPerPieceMm: _parsePresetValue(_FieldKey.lengthMm, 'Weld length'),
-    pipeOdMm: _parsePresetValue(_FieldKey.pipeOdMm, 'Pipe OD'),
-    pipeOdAMm: _parsePresetValue(_FieldKey.pipeOdAMm, 'Pipe OD A'),
-    pipeOdBMm: _parsePresetValue(_FieldKey.pipeOdBMm, 'Pipe OD B'),
-    thicknessMm: _parsePresetValue(_FieldKey.thicknessMm, 'Thickness'),
-    thicknessAMm: _parsePresetValue(_FieldKey.thicknessAMm, 'Thickness A'),
-    thicknessBMm: _parsePresetValue(_FieldKey.thicknessBMm, 'Thickness B'),
-    rootGapMm: _parsePresetValue(_FieldKey.rootGapMm, 'Root gap'),
-    rootFaceMm: _parsePresetValue(_FieldKey.rootFaceMm, 'Root face'),
-    bevelAngleDeg: _parsePresetValue(_FieldKey.bevelAngleDeg, 'Bevel angle'),
+    densityGPerCm3: _parsePresetValue(FieldKey.density, 'Density'),
+    lengthPerPieceMm: _parsePresetValue(FieldKey.lengthMm, 'Weld length'),
+    pipeOdMm: _parsePresetValue(FieldKey.pipeOdMm, 'Pipe OD'),
+    pipeOdAMm: _parsePresetValue(FieldKey.pipeOdAMm, 'Pipe OD A'),
+    pipeOdBMm: _parsePresetValue(FieldKey.pipeOdBMm, 'Pipe OD B'),
+    thicknessMm: _parsePresetValue(FieldKey.thicknessMm, 'Thickness'),
+    thicknessAMm: _parsePresetValue(FieldKey.thicknessAMm, 'Thickness A'),
+    thicknessBMm: _parsePresetValue(FieldKey.thicknessBMm, 'Thickness B'),
+    rootGapMm: _parsePresetValue(FieldKey.rootGapMm, 'Root gap'),
+    rootFaceMm: _parsePresetValue(FieldKey.rootFaceMm, 'Root face'),
+    bevelAngleDeg: _parsePresetValue(FieldKey.bevelAngleDeg, 'Bevel angle'),
     secondaryBevelAngleDeg: _parsePresetValue(
-      _FieldKey.secondaryBevelAngleDeg,
+      FieldKey.secondaryBevelAngleDeg,
       'Secondary bevel angle',
     ),
-    breakHeightMm: _parsePresetValue(_FieldKey.breakHeightMm, 'Break height'),
-    legSizeMm: _parsePresetValue(_FieldKey.legSizeMm, 'Leg size'),
+    breakHeightMm: _parsePresetValue(FieldKey.breakHeightMm, 'Break height'),
+    legSizeMm: _parsePresetValue(FieldKey.legSizeMm, 'Leg size'),
     gtawTransitionMm: _parsePresetValue(
-      _FieldKey.gtawTransitionMm,
+      FieldKey.gtawTransitionMm,
       'GTAW transition depth',
     ),
     wireDiameterMm: _parsePresetValue(
-      _FieldKey.wireDiameterMm,
+      FieldKey.wireDiameterMm,
       'Wire diameter',
     ),
     electrodeDiameterMm: _parsePresetValue(
-      _FieldKey.electrodeDiameterMm,
+      FieldKey.electrodeDiameterMm,
       'Electrode diameter',
     ),
     gtawWireDiameterMm: _parsePresetValue(
-      _FieldKey.gtawWireDiameterMm,
+      FieldKey.gtawWireDiameterMm,
       'GTAW wire diameter',
     ),
     smawElectrodeDiameterMm: _parsePresetValue(
-      _FieldKey.smawElectrodeDiameterMm,
+      FieldKey.smawElectrodeDiameterMm,
       'SMAW electrode diameter',
     ),
     manualDepositionRateKgPerHour: _parsePresetValue(
-      _FieldKey.manualDepositionRateKgPerHour,
+      FieldKey.manualDepositionRateKgPerHour,
       'Deposition rate',
     ),
     manualGtawRateKgPerHour: _parsePresetValue(
-      _FieldKey.manualGtawRateKgPerHour,
+      FieldKey.manualGtawRateKgPerHour,
       'GTAW deposition rate',
     ),
     manualSmawRateKgPerHour: _parsePresetValue(
-      _FieldKey.manualSmawRateKgPerHour,
+      FieldKey.manualSmawRateKgPerHour,
       'SMAW deposition rate',
     ),
   );
 
-  double? _parsePresetValue(_FieldKey key, String label) {
+  double? _parsePresetValue(FieldKey key, String label) {
     final raw = _controllers[key]!.text.trim();
     if (raw.isEmpty) return null;
     final parsed = double.tryParse(raw.replaceAll(',', '.'));
@@ -1835,34 +1836,34 @@ class _CalculatorPageState extends State<CalculatorPage> {
   }
 
   void _applyConsumablePreset(ConsumablePreset preset) {
-    _controllers[_FieldKey.density]!.text = preset.densityGPerCm3
+    _controllers[FieldKey.density]!.text = preset.densityGPerCm3
         .toStringAsFixed(2);
   }
 
   void _applyProcessFieldDefaults() {
-    _controllers[_FieldKey.manualDepositionRateKgPerHour]!.text =
+    _controllers[FieldKey.manualDepositionRateKgPerHour]!.text =
         WeldingDefaults.depositionRateFor(_weldingProcess).toStringAsFixed(1);
-    _controllers[_FieldKey.manualGtawRateKgPerHour]!.text =
+    _controllers[FieldKey.manualGtawRateKgPerHour]!.text =
         WeldingDefaults.depositionRateFor(
           WeldingProcess.gtaw,
         ).toStringAsFixed(1);
-    _controllers[_FieldKey.manualSmawRateKgPerHour]!.text =
+    _controllers[FieldKey.manualSmawRateKgPerHour]!.text =
         WeldingDefaults.depositionRateFor(
           WeldingProcess.smaw,
         ).toStringAsFixed(1);
 
     if (_weldingProcess == WeldingProcess.gtaw) {
-      _setDiameterPreset(_FieldKey.wireDiameterMm, 2.4);
+      _setDiameterPreset(FieldKey.wireDiameterMm, 2.4);
     } else if (_weldingProcess == WeldingProcess.smaw) {
-      _setDiameterPreset(_FieldKey.electrodeDiameterMm, 3.2);
+      _setDiameterPreset(FieldKey.electrodeDiameterMm, 3.2);
     } else if (_weldingProcess == WeldingProcess.gtawSmaw) {
-      _controllers[_FieldKey.gtawTransitionMm]!.text = '3';
-      _setDiameterPreset(_FieldKey.gtawWireDiameterMm, 2.4);
-      _setDiameterPreset(_FieldKey.smawElectrodeDiameterMm, 3.2);
+      _controllers[FieldKey.gtawTransitionMm]!.text = '3';
+      _setDiameterPreset(FieldKey.gtawWireDiameterMm, 2.4);
+      _setDiameterPreset(FieldKey.smawElectrodeDiameterMm, 3.2);
     } else if (_weldingProcess == WeldingProcess.gmaw) {
-      _setDiameterPreset(_FieldKey.wireDiameterMm, 1.2);
+      _setDiameterPreset(FieldKey.wireDiameterMm, 1.2);
     } else if (_weldingProcess == WeldingProcess.fcaw) {
-      _setDiameterPreset(_FieldKey.wireDiameterMm, 1.6);
+      _setDiameterPreset(FieldKey.wireDiameterMm, 1.6);
     }
   }
 
@@ -1873,21 +1874,21 @@ class _CalculatorPageState extends State<CalculatorPage> {
     thicknessMm: _governingThicknessPreview,
     thicknessAMm: _thicknessAPreview,
     thicknessBMm: _thicknessBPreview,
-    rootGapMm: _parsePreviewValue(_FieldKey.rootGapMm),
-    rootFaceMm: _parsePreviewValue(_FieldKey.rootFaceMm),
-    bevelAngleDeg: _parsePreviewValue(_FieldKey.bevelAngleDeg),
+    rootGapMm: _parsePreviewValue(FieldKey.rootGapMm),
+    rootFaceMm: _parsePreviewValue(FieldKey.rootFaceMm),
+    bevelAngleDeg: _parsePreviewValue(FieldKey.bevelAngleDeg),
     secondaryBevelAngleDeg: _parsePreviewValue(
-      _FieldKey.secondaryBevelAngleDeg,
+      FieldKey.secondaryBevelAngleDeg,
     ),
-    breakHeightMm: _parsePreviewValue(_FieldKey.breakHeightMm),
-    legSizeMm: _parsePreviewValue(_FieldKey.legSizeMm),
+    breakHeightMm: _parsePreviewValue(FieldKey.breakHeightMm),
+    legSizeMm: _parsePreviewValue(FieldKey.legSizeMm),
     pipeOdMm: _governingPipeOdPreview,
     pipeOdAMm: _pipeOdAPreview,
     pipeOdBMm: _pipeOdBPreview,
-    gtawTransitionMm: _parsePreviewValue(_FieldKey.gtawTransitionMm),
+    gtawTransitionMm: _parsePreviewValue(FieldKey.gtawTransitionMm),
   );
 
-  Widget _buildFieldInput(_InputFieldSpec field) {
+  Widget _buildFieldInput(InputFieldSpec field) {
     if (field.diameterOptions != null) {
       return _buildDiameterField(field);
     }
@@ -1904,7 +1905,7 @@ class _CalculatorPageState extends State<CalculatorPage> {
     );
   }
 
-  Widget _buildDiameterField(_InputFieldSpec field) {
+  Widget _buildDiameterField(InputFieldSpec field) {
     final selectedMode =
         _diameterPresetModes[field.key] ??
         _resolveDiameterModeFromController(field);
@@ -1968,7 +1969,7 @@ class _CalculatorPageState extends State<CalculatorPage> {
     );
   }
 
-  String _resolveDiameterModeFromController(_InputFieldSpec field) {
+  String _resolveDiameterModeFromController(InputFieldSpec field) {
     final parsed = _parsePreviewValue(field.key);
     if (parsed == null) return _customDiameterValue;
 
@@ -2048,21 +2049,21 @@ class _CalculatorPageState extends State<CalculatorPage> {
 
   String _diameterValueToken(double value) => value.toStringAsFixed(1);
 
-  void _setControllerValue(_FieldKey key, double? value, {int? digits}) {
+  void _setControllerValue(FieldKey key, double? value, {int? digits}) {
     if (value == null) return;
     _controllers[key]!.text = digits == null
         ? value.toString()
         : value.toStringAsFixed(digits);
   }
 
-  void _setDiameterPreset(_FieldKey key, double value) {
+  void _setDiameterPreset(FieldKey key, double value) {
     final token = _diameterValueToken(value);
     _diameterPresetModes[key] = token;
     _controllers[key]!.text = token;
   }
 
   void _applyDiameterOrValue(
-    _FieldKey key,
+    FieldKey key,
     double? value, {
     required bool usePreset,
   }) {
@@ -2082,38 +2083,38 @@ class _CalculatorPageState extends State<CalculatorPage> {
         grooveType: _grooveType,
         weldingProcess: _weldingProcess,
         depositionRateMode: _depositionRateMode,
-        quantity: _parseRequired(_FieldKey.quantity, 'Quantity'),
-        densityGPerCm3: _parseRequired(_FieldKey.density, 'Density'),
+        quantity: _parseRequired(FieldKey.quantity, 'Quantity'),
+        densityGPerCm3: _parseRequired(FieldKey.density, 'Density'),
         wasteFactorPercent: _parseRequired(
-          _FieldKey.wasteFactor,
+          FieldKey.wasteFactor,
           'Waste factor',
         ),
-        lengthPerPieceMm: _parseOptional(_FieldKey.lengthMm),
+        lengthPerPieceMm: _parseOptional(FieldKey.lengthMm),
         pipeOdMm: _resolvePipeOdForCalculation(),
         thicknessMm: _resolveThicknessForCalculation(),
-        rootGapMm: _parseOptional(_FieldKey.rootGapMm),
-        rootFaceMm: _parseOptional(_FieldKey.rootFaceMm),
-        bevelAngleDeg: _parseOptional(_FieldKey.bevelAngleDeg),
+        rootGapMm: _parseOptional(FieldKey.rootGapMm),
+        rootFaceMm: _parseOptional(FieldKey.rootFaceMm),
+        bevelAngleDeg: _parseOptional(FieldKey.bevelAngleDeg),
         secondaryBevelAngleDeg: _parseOptional(
-          _FieldKey.secondaryBevelAngleDeg,
+          FieldKey.secondaryBevelAngleDeg,
         ),
-        breakHeightMm: _parseOptional(_FieldKey.breakHeightMm),
-        legSizeMm: _parseOptional(_FieldKey.legSizeMm),
-        gtawTransitionMm: _parseOptional(_FieldKey.gtawTransitionMm),
-        wireDiameterMm: _parseOptional(_FieldKey.wireDiameterMm),
-        electrodeDiameterMm: _parseOptional(_FieldKey.electrodeDiameterMm),
-        gtawWireDiameterMm: _parseOptional(_FieldKey.gtawWireDiameterMm),
+        breakHeightMm: _parseOptional(FieldKey.breakHeightMm),
+        legSizeMm: _parseOptional(FieldKey.legSizeMm),
+        gtawTransitionMm: _parseOptional(FieldKey.gtawTransitionMm),
+        wireDiameterMm: _parseOptional(FieldKey.wireDiameterMm),
+        electrodeDiameterMm: _parseOptional(FieldKey.electrodeDiameterMm),
+        gtawWireDiameterMm: _parseOptional(FieldKey.gtawWireDiameterMm),
         smawElectrodeDiameterMm: _parseOptional(
-          _FieldKey.smawElectrodeDiameterMm,
+          FieldKey.smawElectrodeDiameterMm,
         ),
         manualDepositionRateKgPerHour: _parseOptional(
-          _FieldKey.manualDepositionRateKgPerHour,
+          FieldKey.manualDepositionRateKgPerHour,
         ),
         manualGtawRateKgPerHour: _parseOptional(
-          _FieldKey.manualGtawRateKgPerHour,
+          FieldKey.manualGtawRateKgPerHour,
         ),
         manualSmawRateKgPerHour: _parseOptional(
-          _FieldKey.manualSmawRateKgPerHour,
+          FieldKey.manualSmawRateKgPerHour,
         ),
       );
 
@@ -2133,10 +2134,10 @@ class _CalculatorPageState extends State<CalculatorPage> {
 
   double? _resolveThicknessForCalculation() {
     if (!_isUnequalGeometry) {
-      return _parseOptional(_FieldKey.thicknessMm);
+      return _parseOptional(FieldKey.thicknessMm);
     }
-    final a = _parseOptional(_FieldKey.thicknessAMm);
-    final b = _parseOptional(_FieldKey.thicknessBMm);
+    final a = _parseOptional(FieldKey.thicknessAMm);
+    final b = _parseOptional(FieldKey.thicknessBMm);
     if (a == null && b == null) return null;
     if (a == null) return b;
     if (b == null) return a;
@@ -2145,10 +2146,10 @@ class _CalculatorPageState extends State<CalculatorPage> {
 
   double? _resolvePipeOdForCalculation() {
     if (!_isUnequalGeometry) {
-      return _parseOptional(_FieldKey.pipeOdMm);
+      return _parseOptional(FieldKey.pipeOdMm);
     }
-    final a = _parseOptional(_FieldKey.pipeOdAMm);
-    final b = _parseOptional(_FieldKey.pipeOdBMm);
+    final a = _parseOptional(FieldKey.pipeOdAMm);
+    final b = _parseOptional(FieldKey.pipeOdBMm);
     if (a == null && b == null) return null;
     if (a == null) return b;
     if (b == null) return a;
@@ -2156,29 +2157,29 @@ class _CalculatorPageState extends State<CalculatorPage> {
   }
 
   void _resetFields() {
-    _controllers[_FieldKey.quantity]!.text = '1';
-    _controllers[_FieldKey.lengthMm]!.text = '1000';
-    _controllers[_FieldKey.pipeOdMm]!.text = '168.3';
-    _controllers[_FieldKey.pipeOdAMm]!.text = '168.3';
-    _controllers[_FieldKey.pipeOdBMm]!.text = '168.3';
-    _controllers[_FieldKey.thicknessMm]!.text = '12';
-    _controllers[_FieldKey.thicknessAMm]!.text = '12';
-    _controllers[_FieldKey.thicknessBMm]!.text = '12';
-    _controllers[_FieldKey.rootGapMm]!.text = '3';
-    _controllers[_FieldKey.rootFaceMm]!.text = '2';
-    _controllers[_FieldKey.bevelAngleDeg]!.text = '30';
-    _controllers[_FieldKey.secondaryBevelAngleDeg]!.text = '10';
-    _controllers[_FieldKey.breakHeightMm]!.text = '4';
-    _controllers[_FieldKey.legSizeMm]!.text = '6';
-    _controllers[_FieldKey.gtawTransitionMm]!.text = '3';
-    _controllers[_FieldKey.wireDiameterMm]!.text = '2.4';
-    _controllers[_FieldKey.electrodeDiameterMm]!.text = '3.2';
-    _controllers[_FieldKey.gtawWireDiameterMm]!.text = '2.4';
-    _controllers[_FieldKey.smawElectrodeDiameterMm]!.text = '3.2';
-    _controllers[_FieldKey.manualDepositionRateKgPerHour]!.text = '0.8';
-    _controllers[_FieldKey.manualGtawRateKgPerHour]!.text = '0.8';
-    _controllers[_FieldKey.manualSmawRateKgPerHour]!.text = '1.2';
-    _controllers[_FieldKey.wasteFactor]!.text = WeldingDefaults
+    _controllers[FieldKey.quantity]!.text = '1';
+    _controllers[FieldKey.lengthMm]!.text = '1000';
+    _controllers[FieldKey.pipeOdMm]!.text = '168.3';
+    _controllers[FieldKey.pipeOdAMm]!.text = '168.3';
+    _controllers[FieldKey.pipeOdBMm]!.text = '168.3';
+    _controllers[FieldKey.thicknessMm]!.text = '12';
+    _controllers[FieldKey.thicknessAMm]!.text = '12';
+    _controllers[FieldKey.thicknessBMm]!.text = '12';
+    _controllers[FieldKey.rootGapMm]!.text = '3';
+    _controllers[FieldKey.rootFaceMm]!.text = '2';
+    _controllers[FieldKey.bevelAngleDeg]!.text = '30';
+    _controllers[FieldKey.secondaryBevelAngleDeg]!.text = '10';
+    _controllers[FieldKey.breakHeightMm]!.text = '4';
+    _controllers[FieldKey.legSizeMm]!.text = '6';
+    _controllers[FieldKey.gtawTransitionMm]!.text = '3';
+    _controllers[FieldKey.wireDiameterMm]!.text = '2.4';
+    _controllers[FieldKey.electrodeDiameterMm]!.text = '3.2';
+    _controllers[FieldKey.gtawWireDiameterMm]!.text = '2.4';
+    _controllers[FieldKey.smawElectrodeDiameterMm]!.text = '3.2';
+    _controllers[FieldKey.manualDepositionRateKgPerHour]!.text = '0.8';
+    _controllers[FieldKey.manualGtawRateKgPerHour]!.text = '0.8';
+    _controllers[FieldKey.manualSmawRateKgPerHour]!.text = '1.2';
+    _controllers[FieldKey.wasteFactor]!.text = WeldingDefaults
         .wasteFactorPercent
         .toStringAsFixed(0);
 
@@ -2199,7 +2200,7 @@ class _CalculatorPageState extends State<CalculatorPage> {
     });
   }
 
-  double _parseRequired(_FieldKey key, String label) {
+  double _parseRequired(FieldKey key, String label) {
     final value = _controllers[key]!.text.trim();
     final parsed = double.tryParse(value.replaceAll(',', '.'));
     if (parsed == null) {
@@ -2208,13 +2209,13 @@ class _CalculatorPageState extends State<CalculatorPage> {
     return parsed;
   }
 
-  double? _parseOptional(_FieldKey key) {
+  double? _parseOptional(FieldKey key) {
     final value = _controllers[key]!.text.trim();
     if (value.isEmpty) return null;
     return double.tryParse(value.replaceAll(',', '.'));
   }
 
-  double? _parsePreviewValue(_FieldKey key) {
+  double? _parsePreviewValue(FieldKey key) {
     final value = _controllers[key]!.text.trim();
     if (value.isEmpty) return null;
     final parsed = double.tryParse(value.replaceAll(',', '.'));
@@ -2266,53 +2267,53 @@ class _CalculatorPageState extends State<CalculatorPage> {
   String _formatPercent(double ratio, {int digits = 1}) =>
       '${(ratio * 100).toStringAsFixed(digits)}%';
 
-  List<_CalculationBasisItem> _buildCalculationBasis() {
-    final items = <_CalculationBasisItem>[
-      _CalculationBasisItem('Process', _weldingProcess.label),
-      _CalculationBasisItem('Rate Basis', _depositionRateMode.label),
+  List<CalculationBasisItem> _buildCalculationBasis() {
+    final items = <CalculationBasisItem>[
+      CalculationBasisItem('Process', _weldingProcess.label),
+      CalculationBasisItem('Rate Basis', _depositionRateMode.label),
       if (_inputPreset != InputPreset.custom)
-        _CalculationBasisItem('Input Preset', _inputPreset.label),
+        CalculationBasisItem('Input Preset', _inputPreset.label),
       if (_selectedUserPreset != null)
-        _CalculationBasisItem('Saved Preset', _selectedUserPreset!.name),
-      _CalculationBasisItem('Joint', _jointType.label),
+        CalculationBasisItem('Saved Preset', _selectedUserPreset!.name),
+      CalculationBasisItem('Joint', _jointType.label),
       if (_supportsUnequalGeometry)
-        _CalculationBasisItem('Geometry', _jointGeometryMode.label),
+        CalculationBasisItem('Geometry', _jointGeometryMode.label),
       if (_isUnequalGeometry)
-        _CalculationBasisItem('Alignment', _jointAlignment.label),
-      _CalculationBasisItem('Groove', _grooveType.label),
-      _CalculationBasisItem(
+        CalculationBasisItem('Alignment', _jointAlignment.label),
+      CalculationBasisItem('Groove', _grooveType.label),
+      CalculationBasisItem(
         'Classification',
         '${_consumablePreset.awsSpecification} ${_consumablePreset.label}',
       ),
-      _CalculationBasisItem(
+      CalculationBasisItem(
         'Filler Metal Family',
         _consumablePreset.family.label,
       ),
-      _CalculationBasisItem(
+      CalculationBasisItem(
         'Density',
-        '${_controllers[_FieldKey.density]!.text} g/cm3',
+        '${_controllers[FieldKey.density]!.text} g/cm3',
       ),
-      _CalculationBasisItem(
+      CalculationBasisItem(
         'Waste Allowance',
-        '${_controllers[_FieldKey.wasteFactor]!.text}%',
+        '${_controllers[FieldKey.wasteFactor]!.text}%',
       ),
-      _CalculationBasisItem('Quantity', _controllers[_FieldKey.quantity]!.text),
+      CalculationBasisItem('Quantity', _controllers[FieldKey.quantity]!.text),
     ];
 
     if (_jointType == JointType.plateButt || _jointType == JointType.fillet) {
       items.add(
-        _CalculationBasisItem(
+        CalculationBasisItem(
           'Weld Length per Piece',
-          '${_controllers[_FieldKey.lengthMm]!.text} mm',
+          '${_controllers[FieldKey.lengthMm]!.text} mm',
         ),
       );
     }
 
     if (_jointType == JointType.pipeButt && !_isUnequalGeometry) {
       items.add(
-        _CalculationBasisItem(
+        CalculationBasisItem(
           'Pipe OD',
-          '${_controllers[_FieldKey.pipeOdMm]!.text} mm',
+          '${_controllers[FieldKey.pipeOdMm]!.text} mm',
         ),
       );
     }
@@ -2321,9 +2322,9 @@ class _CalculatorPageState extends State<CalculatorPage> {
         (_jointType == JointType.plateButt ||
             _jointType == JointType.pipeButt)) {
       items.add(
-        _CalculationBasisItem(
+        CalculationBasisItem(
           'Thickness',
-          '${_controllers[_FieldKey.thicknessMm]!.text} mm',
+          '${_controllers[FieldKey.thicknessMm]!.text} mm',
         ),
       );
     }
@@ -2332,15 +2333,15 @@ class _CalculatorPageState extends State<CalculatorPage> {
       if (_jointType == JointType.plateButt ||
           _jointType == JointType.pipeButt) {
         items.addAll([
-          _CalculationBasisItem(
+          CalculationBasisItem(
             'Thickness A',
-            '${_controllers[_FieldKey.thicknessAMm]!.text} mm',
+            '${_controllers[FieldKey.thicknessAMm]!.text} mm',
           ),
-          _CalculationBasisItem(
+          CalculationBasisItem(
             'Thickness B',
-            '${_controllers[_FieldKey.thicknessBMm]!.text} mm',
+            '${_controllers[FieldKey.thicknessBMm]!.text} mm',
           ),
-          _CalculationBasisItem(
+          CalculationBasisItem(
             'Controlling Thickness',
             '${_formatNumber(_governingThicknessPreview ?? 0, 1)} mm',
           ),
@@ -2348,15 +2349,15 @@ class _CalculatorPageState extends State<CalculatorPage> {
       }
       if (_jointType == JointType.pipeButt) {
         items.addAll([
-          _CalculationBasisItem(
+          CalculationBasisItem(
             'OD A',
-            '${_controllers[_FieldKey.pipeOdAMm]!.text} mm',
+            '${_controllers[FieldKey.pipeOdAMm]!.text} mm',
           ),
-          _CalculationBasisItem(
+          CalculationBasisItem(
             'OD B',
-            '${_controllers[_FieldKey.pipeOdBMm]!.text} mm',
+            '${_controllers[FieldKey.pipeOdBMm]!.text} mm',
           ),
-          _CalculationBasisItem(
+          CalculationBasisItem(
             'Reference OD',
             '${_formatNumber(_governingPipeOdPreview ?? 0, 1)} mm',
           ),
@@ -2370,9 +2371,9 @@ class _CalculatorPageState extends State<CalculatorPage> {
         _grooveType == GrooveType.doubleV ||
         _grooveType == GrooveType.compoundV) {
       items.add(
-        _CalculationBasisItem(
+        CalculationBasisItem(
           'Root Gap',
-          '${_controllers[_FieldKey.rootGapMm]!.text} mm',
+          '${_controllers[FieldKey.rootGapMm]!.text} mm',
         ),
       );
     }
@@ -2381,45 +2382,45 @@ class _CalculatorPageState extends State<CalculatorPage> {
         _grooveType == GrooveType.halfV ||
         _grooveType == GrooveType.doubleV) {
       items.addAll([
-        _CalculationBasisItem(
+        CalculationBasisItem(
           _grooveType == GrooveType.doubleV
               ? 'Root Face per Side'
               : 'Root Face',
-          '${_controllers[_FieldKey.rootFaceMm]!.text} mm',
+          '${_controllers[FieldKey.rootFaceMm]!.text} mm',
         ),
-        _CalculationBasisItem(
+        CalculationBasisItem(
           'Bevel Angle',
-          '${_controllers[_FieldKey.bevelAngleDeg]!.text} deg',
+          '${_controllers[FieldKey.bevelAngleDeg]!.text} deg',
         ),
       ]);
     }
 
     if (_grooveType == GrooveType.compoundV) {
       items.addAll([
-        _CalculationBasisItem(
+        CalculationBasisItem(
           'Root Face',
-          '${_controllers[_FieldKey.rootFaceMm]!.text} mm',
+          '${_controllers[FieldKey.rootFaceMm]!.text} mm',
         ),
-        _CalculationBasisItem(
+        CalculationBasisItem(
           'Primary Bevel Angle',
-          '${_controllers[_FieldKey.bevelAngleDeg]!.text} deg',
+          '${_controllers[FieldKey.bevelAngleDeg]!.text} deg',
         ),
-        _CalculationBasisItem(
+        CalculationBasisItem(
           'Secondary Bevel Angle',
-          '${_controllers[_FieldKey.secondaryBevelAngleDeg]!.text} deg',
+          '${_controllers[FieldKey.secondaryBevelAngleDeg]!.text} deg',
         ),
-        _CalculationBasisItem(
+        CalculationBasisItem(
           'Break Height',
-          '${_controllers[_FieldKey.breakHeightMm]!.text} mm',
+          '${_controllers[FieldKey.breakHeightMm]!.text} mm',
         ),
       ]);
     }
 
     if (_grooveType == GrooveType.fillet) {
       items.add(
-        _CalculationBasisItem(
+        CalculationBasisItem(
           'Fillet Leg Size',
-          '${_controllers[_FieldKey.legSizeMm]!.text} mm',
+          '${_controllers[FieldKey.legSizeMm]!.text} mm',
         ),
       );
     }
@@ -2427,32 +2428,32 @@ class _CalculatorPageState extends State<CalculatorPage> {
     if (_weldingProcess == WeldingProcess.gtaw) {
       if (_depositionRateMode == DepositionRateMode.manual) {
         items.add(
-          _CalculationBasisItem(
+          CalculationBasisItem(
             'User-defined Rate',
-            '${_controllers[_FieldKey.manualDepositionRateKgPerHour]!.text} kg/h',
+            '${_controllers[FieldKey.manualDepositionRateKgPerHour]!.text} kg/h',
           ),
         );
       } else {
         items.add(
-          _CalculationBasisItem(
+          CalculationBasisItem(
             'Wire Diameter',
-            '${_controllers[_FieldKey.wireDiameterMm]!.text} mm',
+            '${_controllers[FieldKey.wireDiameterMm]!.text} mm',
           ),
         );
       }
     } else if (_weldingProcess == WeldingProcess.smaw) {
       if (_depositionRateMode == DepositionRateMode.manual) {
         items.add(
-          _CalculationBasisItem(
+          CalculationBasisItem(
             'User-defined Rate',
-            '${_controllers[_FieldKey.manualDepositionRateKgPerHour]!.text} kg/h',
+            '${_controllers[FieldKey.manualDepositionRateKgPerHour]!.text} kg/h',
           ),
         );
       } else {
         items.add(
-          _CalculationBasisItem(
+          CalculationBasisItem(
             'Electrode Diameter',
-            '${_controllers[_FieldKey.electrodeDiameterMm]!.text} mm',
+            '${_controllers[FieldKey.electrodeDiameterMm]!.text} mm',
           ),
         );
       }
@@ -2460,44 +2461,44 @@ class _CalculatorPageState extends State<CalculatorPage> {
         _weldingProcess == WeldingProcess.fcaw) {
       if (_depositionRateMode == DepositionRateMode.manual) {
         items.add(
-          _CalculationBasisItem(
+          CalculationBasisItem(
             'User-defined Rate',
-            '${_controllers[_FieldKey.manualDepositionRateKgPerHour]!.text} kg/h',
+            '${_controllers[FieldKey.manualDepositionRateKgPerHour]!.text} kg/h',
           ),
         );
       } else {
         items.add(
-          _CalculationBasisItem(
+          CalculationBasisItem(
             'Wire Diameter',
-            '${_controllers[_FieldKey.wireDiameterMm]!.text} mm',
+            '${_controllers[FieldKey.wireDiameterMm]!.text} mm',
           ),
         );
       }
     } else if (_weldingProcess == WeldingProcess.gtawSmaw) {
       items.addAll([
-        _CalculationBasisItem(
+        CalculationBasisItem(
           'GTAW Transition Depth',
-          '${_controllers[_FieldKey.gtawTransitionMm]!.text} mm',
+          '${_controllers[FieldKey.gtawTransitionMm]!.text} mm',
         ),
         if (_depositionRateMode == DepositionRateMode.manual)
-          _CalculationBasisItem(
+          CalculationBasisItem(
             'GTAW Deposition Rate',
-            '${_controllers[_FieldKey.manualGtawRateKgPerHour]!.text} kg/h',
+            '${_controllers[FieldKey.manualGtawRateKgPerHour]!.text} kg/h',
           )
         else
-          _CalculationBasisItem(
+          CalculationBasisItem(
             'GTAW Wire Diameter',
-            '${_controllers[_FieldKey.gtawWireDiameterMm]!.text} mm',
+            '${_controllers[FieldKey.gtawWireDiameterMm]!.text} mm',
           ),
         if (_depositionRateMode == DepositionRateMode.manual)
-          _CalculationBasisItem(
+          CalculationBasisItem(
             'SMAW Deposition Rate',
-            '${_controllers[_FieldKey.manualSmawRateKgPerHour]!.text} kg/h',
+            '${_controllers[FieldKey.manualSmawRateKgPerHour]!.text} kg/h',
           )
         else
-          _CalculationBasisItem(
+          CalculationBasisItem(
             'SMAW Electrode Diameter',
-            '${_controllers[_FieldKey.smawElectrodeDiameterMm]!.text} mm',
+            '${_controllers[FieldKey.smawElectrodeDiameterMm]!.text} mm',
           ),
       ]);
     }
@@ -2506,1668 +2507,3 @@ class _CalculatorPageState extends State<CalculatorPage> {
   }
 }
 
-class _TopNavigationBar extends StatelessWidget {
-  const _TopNavigationBar({required this.activeModuleLabel});
-
-  final String activeModuleLabel;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(26),
-        color: Colors.white.withValues(alpha: 0.84),
-        border: Border.all(color: const Color(0xFFDCE5EB)),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x120F3040),
-            blurRadius: 24,
-            offset: Offset(0, 10),
-          ),
-        ],
-      ),
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final stacked = constraints.maxWidth < 900;
-
-          final identity = Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Container(
-                    width: 42,
-                    height: 42,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(14),
-                      gradient: const LinearGradient(
-                        colors: [Color(0xFF0F4C5C), Color(0xFF2E7B85)],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
-                    ),
-                    child: const Icon(
-                      Icons.precision_manufacturing_outlined,
-                      color: Colors.white,
-                      size: 22,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Weld Consumable Calculator',
-                          style: Theme.of(context).textTheme.titleMedium
-                              ?.copyWith(fontWeight: FontWeight.w800),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          'Professional estimating workspace for weld engineers and client-facing planning.',
-                          style: Theme.of(context).textTheme.bodySmall,
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          );
-
-          final pills = Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            alignment: WrapAlignment.end,
-            children: [
-              _StatusPill(
-                label: activeModuleLabel.toUpperCase(),
-                color: const Color(0xFFE8F2F5),
-                textColor: const Color(0xFF0F4C5C),
-              ),
-              const _StatusPill(
-                label: 'PDF READY',
-                color: Color(0xFFF1F5F8),
-                textColor: Color(0xFF395361),
-              ),
-              const _StatusPill(
-                label: 'RESPONSIVE WEB',
-                color: Color(0xFFF1F5F8),
-                textColor: Color(0xFF395361),
-              ),
-            ],
-          );
-
-          if (stacked) {
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [identity, const SizedBox(height: 14), pills],
-            );
-          }
-
-          return Row(
-            children: [
-              Expanded(child: identity),
-              const SizedBox(width: 20),
-              Flexible(child: pills),
-            ],
-          );
-        },
-      ),
-    );
-  }
-}
-
-class _ExperienceHero extends StatelessWidget {
-  const _ExperienceHero({
-    required this.activeModule,
-    required this.jointTypeLabel,
-    required this.grooveLabel,
-    required this.processLabel,
-    required this.drawingModeLabel,
-    required this.consumableLabel,
-    required this.savedPresetCount,
-    required this.hasResults,
-  });
-
-  final _CalculatorModule activeModule;
-  final String jointTypeLabel;
-  final String grooveLabel;
-  final String processLabel;
-  final String drawingModeLabel;
-  final String consumableLabel;
-  final int savedPresetCount;
-  final bool hasResults;
-
-  @override
-  Widget build(BuildContext context) {
-    final branchMode = activeModule == _CalculatorModule.branchConnections;
-    final title = branchMode
-        ? 'Branch detailing that looks credible to engineers and clear to customers.'
-        : 'A web-ready welding estimator that feels technical, polished, and easy to trust.';
-    final body = branchMode
-        ? 'Develop branch connection visuals in a separate module while preserving the main estimating workflow for daily use.'
-        : 'Build estimates from real joint geometry, AWS consumable selection, and a report-grade result layer that can be shown to clients or production teams.';
-    final heroSignals = branchMode
-        ? const [
-            ('Focus', 'Set-on / Set-in / Weldolet'),
-            ('Preview', 'Section-first detail'),
-            ('Roadmap', '2D now, web 3D later'),
-          ]
-        : [
-            ('Live joint', jointTypeLabel),
-            ('Groove', grooveLabel),
-            ('Process', processLabel),
-          ];
-
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(26),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(30),
-        gradient: const LinearGradient(
-          colors: [Color(0xFF0E3D4A), Color(0xFF205E66), Color(0xFF6C9085)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x220F3040),
-            blurRadius: 34,
-            offset: Offset(0, 16),
-          ),
-        ],
-      ),
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final stacked = constraints.maxWidth < 980;
-          final intro = Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 8,
-                ),
-                decoration: BoxDecoration(
-                  color: const Color(0x26FFFFFF),
-                  borderRadius: BorderRadius.circular(999),
-                  border: Border.all(color: const Color(0x32FFFFFF)),
-                ),
-                child: Text(
-                  branchMode
-                      ? 'ENGINEERING LAB / BRANCH DETAILING'
-                      : 'ENGINEERING PRODUCT / ESTIMATING WORKSPACE',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w800,
-                    fontSize: 12,
-                    letterSpacing: 0.8,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 18),
-              ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 660),
-                child: Text(
-                  title,
-                  style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 12),
-              ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 680),
-                child: Text(
-                  body,
-                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                    color: const Color(0xFFD9EBEF),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 18),
-              Wrap(
-                spacing: 10,
-                runSpacing: 10,
-                children: [
-                  for (final signal in heroSignals)
-                    _HeroSignalCard(label: signal.$1, value: signal.$2),
-                ],
-              ),
-            ],
-          );
-
-          final cockpit = Container(
-            width: stacked ? double.infinity : 330,
-            padding: const EdgeInsets.all(18),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(24),
-              color: const Color(0x1CFFFFFF),
-              border: Border.all(color: const Color(0x2AFFFFFF)),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Session Snapshot',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w800,
-                    fontSize: 13,
-                    letterSpacing: 0.4,
-                  ),
-                ),
-                const SizedBox(height: 14),
-                if (branchMode) ...[
-                  const _SnapshotRow(
-                    label: 'Workspace',
-                    value: 'Branch detailing',
-                  ),
-                  const _SnapshotRow(
-                    label: 'Priority',
-                    value: 'Weld-seat clarity',
-                  ),
-                  const _SnapshotRow(
-                    label: 'Visual logic',
-                    value: 'Technical section',
-                  ),
-                  const _SnapshotRow(
-                    label: 'Delivery path',
-                    value: 'Website-ready module',
-                  ),
-                ] else ...[
-                  _SnapshotRow(label: 'Drawing mode', value: drawingModeLabel),
-                  _SnapshotRow(label: 'Consumable', value: consumableLabel),
-                  _SnapshotRow(
-                    label: 'Saved presets',
-                    value: savedPresetCount.toString(),
-                  ),
-                  _SnapshotRow(
-                    label: 'Estimate state',
-                    value: hasResults ? 'Calculated' : 'Awaiting run',
-                  ),
-                ],
-              ],
-            ),
-          );
-
-          if (stacked) {
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [intro, const SizedBox(height: 18), cockpit],
-            );
-          }
-
-          return Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(child: intro),
-              const SizedBox(width: 18),
-              cockpit,
-            ],
-          );
-        },
-      ),
-    );
-  }
-}
-
-class _CapabilityStrip extends StatelessWidget {
-  const _CapabilityStrip({required this.isBranchMode});
-
-  final bool isBranchMode;
-
-  @override
-  Widget build(BuildContext context) {
-    final items = isBranchMode
-        ? const [
-            (
-              Icons.architecture_outlined,
-              'Section-first clarity',
-              'Keep the drawing focused on weld seat, gap, and member geometry before adding heavier 3D workflows.',
-            ),
-            (
-              Icons.zoom_in_map_outlined,
-              'Detail enlargement',
-              'Promote local weld detail so the user can immediately see where weld metal starts and where the gap remains.',
-            ),
-            (
-              Icons.layers_outlined,
-              'Future web 3D path',
-              'Leave room for a later preview layer without letting 3D overwhelm the technical explanation.',
-            ),
-          ]
-        : const [
-            (
-              Icons.calculate_outlined,
-              'Daily estimating',
-              'Compute weld area, length, volume, weld metal, filler demand, arc-on time, and deposition assumptions in one flow.',
-            ),
-            (
-              Icons.draw_outlined,
-              'Technical drawing',
-              'Show live groove geometry with visual and engineering modes so the section sketch reinforces the estimate.',
-            ),
-            (
-              Icons.picture_as_pdf_outlined,
-              'Report workflow',
-              'Turn the live estimate into a PDF-ready result summary with a clear engineering basis and reusable presets.',
-            ),
-          ];
-
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final compact = constraints.maxWidth < 980;
-        final width = compact
-            ? constraints.maxWidth
-            : (constraints.maxWidth - 24) / 3;
-
-        return Wrap(
-          spacing: 12,
-          runSpacing: 12,
-          children: [
-            for (final item in items)
-              SizedBox(
-                width: width,
-                child: _CapabilityCard(
-                  icon: item.$1,
-                  title: item.$2,
-                  description: item.$3,
-                ),
-              ),
-          ],
-        );
-      },
-    );
-  }
-}
-
-class _CapabilityCard extends StatelessWidget {
-  const _CapabilityCard({
-    required this.icon,
-    required this.title,
-    required this.description,
-  });
-
-  final IconData icon;
-  final String title;
-  final String description;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(22),
-        color: Colors.white.withValues(alpha: 0.84),
-        border: Border.all(color: const Color(0xFFDCE5EB)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            width: 42,
-            height: 42,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(14),
-              color: const Color(0xFFE8F1F5),
-            ),
-            child: Icon(icon, color: const Color(0xFF0F4C5C)),
-          ),
-          const SizedBox(height: 14),
-          Text(
-            title,
-            style: Theme.of(
-              context,
-            ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            description,
-            style: Theme.of(
-              context,
-            ).textTheme.bodyMedium?.copyWith(color: const Color(0xFF607482)),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _HeroSignalCard extends StatelessWidget {
-  const _HeroSignalCard({required this.label, required this.value});
-
-  final String label;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-      decoration: BoxDecoration(
-        color: const Color(0x16FFFFFF),
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: const Color(0x24FFFFFF)),
-      ),
-      child: RichText(
-        text: TextSpan(
-          style: const TextStyle(
-            color: Color(0xFFD9EBEF),
-            fontSize: 12.5,
-            fontWeight: FontWeight.w700,
-          ),
-          children: [
-            TextSpan(text: '$label: '),
-            TextSpan(
-              text: value,
-              style: const TextStyle(color: Colors.white),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _SnapshotRow extends StatelessWidget {
-  const _SnapshotRow({required this.label, required this.value});
-
-  final String label;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
-      child: Row(
-        children: [
-          Expanded(
-            child: Text(
-              label,
-              style: const TextStyle(
-                color: Color(0xFFD0E6EA),
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-          const SizedBox(width: 12),
-          Flexible(
-            child: Text(
-              value,
-              textAlign: TextAlign.right,
-              style: const TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.w800,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _QuickMetricTile extends StatelessWidget {
-  const _QuickMetricTile({
-    required this.label,
-    required this.value,
-    required this.icon,
-  });
-
-  final String label;
-  final String value;
-  final IconData icon;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 148,
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(18),
-        color: const Color(0xFFF7FBFD),
-        border: Border.all(color: const Color(0xFFDCE5EB)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(icon, size: 18, color: const Color(0xFF0F4C5C)),
-          const SizedBox(height: 10),
-          Text(
-            label,
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: const Color(0xFF607482),
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            value,
-            style: Theme.of(
-              context,
-            ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _StatusPill extends StatelessWidget {
-  const _StatusPill({
-    required this.label,
-    required this.color,
-    required this.textColor,
-  });
-
-  final String label;
-  final Color color;
-  final Color textColor;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(
-        color: color,
-        borderRadius: BorderRadius.circular(999),
-      ),
-      child: Text(
-        label,
-        style: TextStyle(
-          color: textColor,
-          fontSize: 12,
-          fontWeight: FontWeight.w800,
-          letterSpacing: 0.5,
-        ),
-      ),
-    );
-  }
-}
-
-class _WebsiteReadyFooter extends StatelessWidget {
-  const _WebsiteReadyFooter();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(22),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(28),
-        color: const Color(0xFF102B36),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x160F3040),
-            blurRadius: 24,
-            offset: Offset(0, 12),
-          ),
-        ],
-      ),
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final compact = constraints.maxWidth < 980;
-          final checklist = Wrap(
-            spacing: 10,
-            runSpacing: 10,
-            children: const [
-              _HeroSignalCard(label: 'UX', value: 'Website-grade shell'),
-              _HeroSignalCard(label: 'Drawing', value: 'Live technical view'),
-              _HeroSignalCard(label: 'Reports', value: 'PDF export path'),
-              _HeroSignalCard(label: 'Data', value: 'Reusable presets'),
-            ],
-          );
-
-          final copy = Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Morning-ready product shell',
-                style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'This interface now reads more like a technical product website instead of a raw prototype: stronger hierarchy, clearer control zones, and a better client-facing presentation.',
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: const Color(0xFFD3E4E8),
-                ),
-              ),
-            ],
-          );
-
-          if (compact) {
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [copy, const SizedBox(height: 16), checklist],
-            );
-          }
-
-          return Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(child: copy),
-              const SizedBox(width: 18),
-              Expanded(child: checklist),
-            ],
-          );
-        },
-      ),
-    );
-  }
-}
-
-class _EmptyResultsState extends StatelessWidget {
-  const _EmptyResultsState({required this.process});
-
-  final WeldingProcess process;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Results',
-          style: Theme.of(
-            context,
-          ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
-        ),
-        const SizedBox(height: 10),
-        Text(
-          process == WeldingProcess.gtawSmaw
-              ? 'Choose the joint, then enter GTAW transition depth together with GTAW wire and SMAW electrode diameters before calculating.'
-              : 'Choose the joint, review the input parameters, then calculate. Process ${process.label} uses its active deposition efficiency and deposition rate basis.',
-          style: Theme.of(
-            context,
-          ).textTheme.bodyMedium?.copyWith(color: const Color(0xFF607482)),
-        ),
-      ],
-    );
-  }
-}
-
-class _InputPanelSection extends StatelessWidget {
-  const _InputPanelSection({
-    required this.icon,
-    required this.title,
-    required this.subtitle,
-    required this.child,
-  });
-
-  final IconData icon;
-  final String title;
-  final String subtitle;
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(22),
-        gradient: const LinearGradient(
-          colors: [Color(0xFFFCFDFE), Color(0xFFF3F8FA)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        border: Border.all(color: const Color(0xFFDCE5EB)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(14),
-                  color: const Color(0xFFE8F1F5),
-                  border: Border.all(color: const Color(0xFFD6E2E8)),
-                ),
-                child: Icon(icon, size: 20, color: const Color(0xFF0F4C5C)),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      title,
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      subtitle,
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: const Color(0xFF607482),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 14),
-          child,
-        ],
-      ),
-    );
-  }
-}
-
-class _PanelNote extends StatelessWidget {
-  const _PanelNote({required this.icon, required this.text});
-
-  final IconData icon;
-  final String text;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(18),
-        color: Colors.white,
-        border: Border.all(color: const Color(0xFFDCE5EB)),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(icon, size: 20, color: const Color(0xFF4E6875)),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text(text, style: Theme.of(context).textTheme.bodyMedium),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _UserPresetSection extends StatelessWidget {
-  const _UserPresetSection({
-    required this.presets,
-    required this.selectedPresetId,
-    required this.selectedPresetName,
-    required this.busy,
-    required this.onChanged,
-    required this.onSavePressed,
-    required this.onUpdatePressed,
-    required this.onDeletePressed,
-  });
-
-  final List<UserWeldPreset> presets;
-  final String? selectedPresetId;
-  final String? selectedPresetName;
-  final bool busy;
-  final ValueChanged<String?> onChanged;
-  final VoidCallback? onSavePressed;
-  final VoidCallback? onUpdatePressed;
-  final VoidCallback? onDeletePressed;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'My Saved Presets',
-          style: Theme.of(
-            context,
-          ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
-        ),
-        const SizedBox(height: 6),
-        Text(
-          'Built-in presets are locked. Save the current setup here to reuse, update, or delete it later.',
-          style: Theme.of(
-            context,
-          ).textTheme.bodyMedium?.copyWith(color: const Color(0xFF607482)),
-        ),
-        const SizedBox(height: 12),
-        Container(
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(24),
-            gradient: const LinearGradient(
-              colors: [Color(0xFFFFFFFF), Color(0xFFF4F8FA)],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-            border: Border.all(color: const Color(0xFFDCE5EB)),
-            boxShadow: const [
-              BoxShadow(
-                color: Color(0x120F3040),
-                blurRadius: 18,
-                offset: Offset(0, 8),
-              ),
-            ],
-          ),
-          padding: const EdgeInsets.all(4),
-          child: DropdownButtonFormField<String?>(
-            initialValue: selectedPresetId,
-            isExpanded: true,
-            decoration: const InputDecoration(
-              labelText: 'Saved Preset',
-              helperText: 'Choose one of your editable local presets.',
-            ),
-            items: [
-              const DropdownMenuItem<String?>(
-                value: null,
-                child: Text('No saved preset selected'),
-              ),
-              ...presets.map(
-                (preset) => DropdownMenuItem<String?>(
-                  value: preset.id,
-                  child: Text(preset.name, overflow: TextOverflow.ellipsis),
-                ),
-              ),
-            ],
-            onChanged: busy ? null : onChanged,
-          ),
-        ),
-        const SizedBox(height: 12),
-        if (selectedPresetName != null) ...[
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: const Color(0xFFDCE5EB)),
-            ),
-            child: Text(
-              'Selected editable preset: $selectedPresetName',
-              style: Theme.of(
-                context,
-              ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
-            ),
-          ),
-          const SizedBox(height: 12),
-        ],
-        Wrap(
-          spacing: 10,
-          runSpacing: 10,
-          children: [
-            FilledButton.tonalIcon(
-              onPressed: onSavePressed,
-              icon: busy
-                  ? const SizedBox(
-                      width: 16,
-                      height: 16,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : const Icon(Icons.save_outlined),
-              label: const Text('Save Current'),
-            ),
-            OutlinedButton.icon(
-              onPressed: onUpdatePressed,
-              icon: const Icon(Icons.edit_outlined),
-              label: const Text('Update Selected'),
-            ),
-            OutlinedButton.icon(
-              onPressed: onDeletePressed,
-              icon: const Icon(Icons.delete_outline),
-              label: const Text('Delete Selected'),
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-}
-
-class _ResultsSection extends StatelessWidget {
-  const _ResultsSection({
-    required this.result,
-    required this.basis,
-    required this.consumablePreset,
-    required this.onPdfPressed,
-    required this.pdfBusy,
-  });
-
-  final WeldCalculationResult result;
-  final List<_CalculationBasisItem> basis;
-  final ConsumablePreset consumablePreset;
-  final VoidCallback? onPdfPressed;
-  final bool pdfBusy;
-
-  @override
-  Widget build(BuildContext context) {
-    final quantity = _basisNumber('Quantity') ?? 1;
-    final totalLengthMeters = result.lengthMm / 1000;
-    final fillerPerMeter = totalLengthMeters > 0
-        ? result.fillerKg / totalLengthMeters
-        : 0.0;
-    final weldMetalPerMeter = totalLengthMeters > 0
-        ? result.weldMetalKg / totalLengthMeters
-        : 0.0;
-    final arcMinutesPerMeter = totalLengthMeters > 0
-        ? (result.arcTimeHours * 60) / totalLengthMeters
-        : 0.0;
-    final fillerPerJoint = quantity > 0 ? result.fillerKg / quantity : 0.0;
-    final arcMinutesPerJoint = quantity > 0
-        ? (result.arcTimeHours * 60) / quantity
-        : 0.0;
-    final theoreticalWithoutWaste = result.depositionEfficiency == 0
-        ? 0.0
-        : result.weldMetalKg / result.depositionEfficiency;
-    final wasteAllowanceKg = result.fillerKg - theoreticalWithoutWaste;
-    final efficiencyLossKg = theoreticalWithoutWaste - result.weldMetalKg;
-    final metrics = [
-      (
-        'Weld Area',
-        _number(result.areaMm2, 2),
-        'mm²',
-        Icons.square_foot_outlined,
-      ),
-      (
-        'Weld Length',
-        _number(result.lengthMm, 2),
-        'mm',
-        Icons.straighten_outlined,
-      ),
-      (
-        'Weld Metal Volume',
-        _number(result.volumeCm3, 3),
-        'cm³',
-        Icons.view_in_ar_outlined,
-      ),
-      (
-        'Weld Metal Weight',
-        _number(result.weldMetalKg, 3),
-        'kg',
-        Icons.scale_outlined,
-      ),
-      (
-        'Filler Metal Consumption',
-        _number(result.fillerKg, 3),
-        'kg',
-        Icons.inventory_2_outlined,
-      ),
-      (
-        'Estimated Arc-On Time',
-        _number(result.arcTimeHours, 3),
-        'h',
-        Icons.timer_outlined,
-      ),
-      (
-        'Effective Deposition Efficiency',
-        _percent(result.depositionEfficiency),
-        '',
-        Icons.speed_outlined,
-      ),
-      (
-        'Effective Deposition Rate',
-        _number(result.depositionRateKgPerHour, 2),
-        'kg/h',
-        Icons.bolt_outlined,
-      ),
-    ];
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Expanded(
-              child: Text(
-                'Results',
-                style: Theme.of(
-                  context,
-                ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
-              ),
-            ),
-            OutlinedButton.icon(
-              onPressed: onPdfPressed,
-              icon: pdfBusy
-                  ? const SizedBox(
-                      width: 18,
-                      height: 18,
-                      child: CircularProgressIndicator(strokeWidth: 2.2),
-                    )
-                  : const Icon(Icons.picture_as_pdf_outlined, size: 18),
-              label: Text(pdfBusy ? 'Preparing PDF...' : 'Export PDF'),
-            ),
-          ],
-        ),
-        const SizedBox(height: 8),
-        Text(
-          'Report-grade summary for engineering review, material planning, and consumable comparison.',
-          style: Theme.of(
-            context,
-          ).textTheme.bodyMedium?.copyWith(color: const Color(0xFF607482)),
-        ),
-        const SizedBox(height: 16),
-        _ResultsHighlightBanner(
-          result: result,
-          fillerPerMeter: fillerPerMeter,
-          arcMinutesPerMeter: arcMinutesPerMeter,
-        ),
-        const SizedBox(height: 18),
-        Wrap(
-          spacing: 16,
-          runSpacing: 16,
-          children: [
-            for (final metric in metrics)
-              SizedBox(
-                width: 280,
-                child: ResultCard(
-                  title: metric.$1,
-                  value: metric.$2,
-                  unit: metric.$3,
-                  icon: metric.$4,
-                ),
-              ),
-          ],
-        ),
-        const SizedBox(height: 22),
-        _PlanningInsightsPanel(
-          items: [
-            _InsightItem(
-              label: 'Filler per Meter',
-              value: _number(fillerPerMeter, 3),
-              unit: 'kg/m',
-            ),
-            _InsightItem(
-              label: 'Weld Metal per Meter',
-              value: _number(weldMetalPerMeter, 3),
-              unit: 'kg/m',
-            ),
-            _InsightItem(
-              label: 'Arc-On per Meter',
-              value: _number(arcMinutesPerMeter, 2),
-              unit: 'min/m',
-            ),
-            _InsightItem(
-              label: 'Filler per Joint',
-              value: _number(fillerPerJoint, 3),
-              unit: 'kg/joint',
-            ),
-            _InsightItem(
-              label: 'Arc-On per Joint',
-              value: _number(arcMinutesPerJoint, 2),
-              unit: 'min/joint',
-            ),
-            _InsightItem(
-              label: 'Efficiency Loss Basis',
-              value: _number(efficiencyLossKg, 3),
-              unit: 'kg',
-            ),
-            _InsightItem(
-              label: 'Waste Allowance Basis',
-              value: _number(wasteAllowanceKg, 3),
-              unit: 'kg',
-            ),
-            _InsightItem(
-              label: 'Consumption Multiplier',
-              value: _number(
-                result.weldMetalKg == 0
-                    ? 0
-                    : result.fillerKg / result.weldMetalKg,
-                3,
-              ),
-              unit: 'x',
-            ),
-          ],
-        ),
-        if (result.processBreakdowns.length > 1) ...[
-          const SizedBox(height: 22),
-          Text(
-            'Process Breakdown',
-            style: Theme.of(
-              context,
-            ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            'Distribution of deposited weld metal, filler demand, and arc-on time by process segment.',
-            style: Theme.of(
-              context,
-            ).textTheme.bodyMedium?.copyWith(color: const Color(0xFF607482)),
-          ),
-          const SizedBox(height: 12),
-          Wrap(
-            spacing: 16,
-            runSpacing: 16,
-            children: [
-              for (final breakdown in result.processBreakdowns)
-                SizedBox(
-                  width: 280,
-                  child: _ProcessBreakdownCard(breakdown: breakdown),
-                ),
-            ],
-          ),
-        ],
-        const SizedBox(height: 22),
-        _ReportMethodPanel(
-          notes: [
-            'Arc-on time covers welding time only. Fit-up, handling, cleaning, repositioning, and inspection are not included.',
-            'Filler metal consumption includes deposited weld metal, process deposition efficiency, and the entered waste allowance.',
-            'Consumable classification provides material family and density reference. Final project or client requirements should always govern.',
-            'This report is suitable for estimation and planning. It is not an approved WPS, PQR, welder qualification, or release document.',
-          ],
-        ),
-        const SizedBox(height: 18),
-        _CalculationBasisPanel(
-          items: basis,
-          consumablePreset: consumablePreset,
-          subtitle:
-              'Full engineering basis used in this estimate, including geometry, process setup, density, and deposition assumptions.',
-        ),
-      ],
-    );
-  }
-
-  double? _basisNumber(String label) {
-    for (final item in basis) {
-      if (item.label != label) continue;
-      final match = RegExp(r'-?\d+(\.\d+)?').firstMatch(item.value);
-      if (match == null) return null;
-      return double.tryParse(match.group(0)!);
-    }
-    return null;
-  }
-
-  static String _number(double value, int digits) =>
-      value.toStringAsFixed(digits);
-
-  static String _percent(double ratio, {int digits = 1}) =>
-      '${(ratio * 100).toStringAsFixed(digits)}%';
-}
-
-class _ProcessBreakdownCard extends StatelessWidget {
-  const _ProcessBreakdownCard({required this.breakdown});
-
-  final ProcessBreakdown breakdown;
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      color: const Color(0xFFF9FBFC),
-      child: Padding(
-        padding: const EdgeInsets.all(18),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              breakdown.process.label,
-              style: Theme.of(
-                context,
-              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              'Area Share ${_ResultsSection._number(breakdown.sharePercent * 100, 1)}%',
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: const Color(0xFF607482),
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            const SizedBox(height: 12),
-            Text(
-              'Weld Metal ${_ResultsSection._number(breakdown.weldMetalKg, 3)} kg',
-            ),
-            Text(
-              'Filler Consumption ${_ResultsSection._number(breakdown.fillerKg, 3)} kg',
-            ),
-            Text(
-              'Arc-On Time ${_ResultsSection._number(breakdown.arcTimeHours, 3)} h',
-            ),
-            Text(
-              'Deposition Rate ${_ResultsSection._number(breakdown.depositionRateKgPerHour, 2)} kg/h',
-            ),
-            Text(
-              'Deposition Efficiency ${_ResultsSection._percent(breakdown.depositionEfficiency)}',
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _CalculationBasisPanel extends StatelessWidget {
-  const _CalculationBasisPanel({
-    required this.items,
-    required this.consumablePreset,
-    required this.subtitle,
-  });
-
-  final List<_CalculationBasisItem> items;
-  final ConsumablePreset consumablePreset;
-  final String subtitle;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(20),
-        gradient: const LinearGradient(
-          colors: [Color(0xFFF8FBFD), Color(0xFFF1F6F8)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        border: Border.all(color: const Color(0xFFDCE5EB)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Engineering Basis',
-            style: Theme.of(
-              context,
-            ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            consumablePreset.description,
-            style: Theme.of(
-              context,
-            ).textTheme.bodyMedium?.copyWith(color: const Color(0xFF607482)),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            subtitle,
-            style: Theme.of(
-              context,
-            ).textTheme.bodyMedium?.copyWith(color: const Color(0xFF607482)),
-          ),
-          const SizedBox(height: 14),
-          Wrap(
-            spacing: 10,
-            runSpacing: 10,
-            children: [
-              for (final item in items)
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 10,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: const Color(0xFFDCE5EB)),
-                  ),
-                  child: RichText(
-                    text: TextSpan(
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: const Color(0xFF15232D),
-                      ),
-                      children: [
-                        TextSpan(
-                          text: '${item.label}: ',
-                          style: const TextStyle(fontWeight: FontWeight.w700),
-                        ),
-                        TextSpan(text: item.value),
-                      ],
-                    ),
-                  ),
-                ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _ResultsHighlightBanner extends StatelessWidget {
-  const _ResultsHighlightBanner({
-    required this.result,
-    required this.fillerPerMeter,
-    required this.arcMinutesPerMeter,
-  });
-
-  final WeldCalculationResult result;
-  final double fillerPerMeter;
-  final double arcMinutesPerMeter;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(22),
-        gradient: const LinearGradient(
-          colors: [Color(0xFF0F4C5C), Color(0xFF1A6670)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-            decoration: BoxDecoration(
-              color: const Color(0x33FFFFFF),
-              borderRadius: BorderRadius.circular(999),
-            ),
-            child: const Text(
-              'ESTIMATE READY',
-              style: TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.w800,
-                fontSize: 12,
-                letterSpacing: 0.6,
-              ),
-            ),
-          ),
-          const SizedBox(height: 12),
-          Text(
-            'Estimated filler metal consumption is ${_ResultsSection._number(result.fillerKg, 3)} kg with ${_ResultsSection._number(result.arcTimeHours, 3)} h of arc-on time.',
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 18,
-              height: 1.28,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-          const SizedBox(height: 12),
-          Wrap(
-            spacing: 10,
-            runSpacing: 10,
-            children: [
-              _HighlightChip(
-                label: 'Effective Rate',
-                value:
-                    '${_ResultsSection._number(result.depositionRateKgPerHour, 2)} kg/h',
-              ),
-              _HighlightChip(
-                label: 'Filler per Meter',
-                value: '${_ResultsSection._number(fillerPerMeter, 3)} kg/m',
-              ),
-              _HighlightChip(
-                label: 'Arc-On per Meter',
-                value:
-                    '${_ResultsSection._number(arcMinutesPerMeter, 2)} min/m',
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _HighlightChip extends StatelessWidget {
-  const _HighlightChip({required this.label, required this.value});
-
-  final String label;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      decoration: BoxDecoration(
-        color: const Color(0x1FFFFFFF),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0x3DFFFFFF)),
-      ),
-      child: RichText(
-        text: TextSpan(
-          style: const TextStyle(
-            color: Color(0xFFD7ECEF),
-            fontSize: 12,
-            fontWeight: FontWeight.w700,
-          ),
-          children: [
-            TextSpan(text: '$label: '),
-            TextSpan(
-              text: value,
-              style: const TextStyle(color: Colors.white, fontSize: 12),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _PlanningInsightsPanel extends StatelessWidget {
-  const _PlanningInsightsPanel({required this.items});
-
-  final List<_InsightItem> items;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(20),
-        gradient: const LinearGradient(
-          colors: [Color(0xFFF8FBFD), Color(0xFFF0F6F9)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        border: Border.all(color: const Color(0xFFDCE5EB)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Planning Indicators',
-            style: Theme.of(
-              context,
-            ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            'Normalized indicators that help compare joint options, labor load, and consumable planning basis.',
-            style: Theme.of(
-              context,
-            ).textTheme.bodyMedium?.copyWith(color: const Color(0xFF607482)),
-          ),
-          const SizedBox(height: 14),
-          Wrap(
-            spacing: 12,
-            runSpacing: 12,
-            children: [
-              for (final item in items)
-                Container(
-                  width: 210,
-                  padding: const EdgeInsets.all(14),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: const Color(0xFFDCE5EB)),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        item.label,
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: const Color(0xFF607482),
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      RichText(
-                        text: TextSpan(
-                          style: Theme.of(context).textTheme.titleLarge
-                              ?.copyWith(
-                                color: const Color(0xFF15232D),
-                                fontWeight: FontWeight.w800,
-                              ),
-                          children: [
-                            TextSpan(text: item.value),
-                            TextSpan(
-                              text: ' ${item.unit}',
-                              style: Theme.of(context).textTheme.bodyMedium
-                                  ?.copyWith(
-                                    color: const Color(0xFF607482),
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _ReportMethodPanel extends StatelessWidget {
-  const _ReportMethodPanel({required this.notes});
-
-  final List<String> notes;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(20),
-        color: const Color(0xFFFAFCFD),
-        border: Border.all(color: const Color(0xFFDCE5EB)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Engineering Notes',
-            style: Theme.of(
-              context,
-            ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
-          ),
-          const SizedBox(height: 12),
-          for (final note in notes)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 10),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Container(
-                    width: 8,
-                    height: 8,
-                    margin: const EdgeInsets.only(top: 6),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF0F4C5C),
-                      borderRadius: BorderRadius.circular(99),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Text(
-                      note,
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: const Color(0xFF334C58),
-                        height: 1.35,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-}
-
-class _InsightItem {
-  const _InsightItem({
-    required this.label,
-    required this.value,
-    required this.unit,
-  });
-
-  final String label;
-  final String value;
-  final String unit;
-}
-
-enum _CalculatorModule { weldEstimator, branchConnections }
-
-extension on _CalculatorModule {
-  String get label => switch (this) {
-    _CalculatorModule.weldEstimator => 'Butt & Fillet Estimator',
-    _CalculatorModule.branchConnections => 'Branch Connections',
-  };
-}
-
-enum _FieldKey {
-  quantity,
-  lengthMm,
-  pipeOdMm,
-  pipeOdAMm,
-  pipeOdBMm,
-  thicknessMm,
-  thicknessAMm,
-  thicknessBMm,
-  rootGapMm,
-  rootFaceMm,
-  bevelAngleDeg,
-  secondaryBevelAngleDeg,
-  breakHeightMm,
-  legSizeMm,
-  gtawTransitionMm,
-  wireDiameterMm,
-  electrodeDiameterMm,
-  gtawWireDiameterMm,
-  smawElectrodeDiameterMm,
-  manualDepositionRateKgPerHour,
-  manualGtawRateKgPerHour,
-  manualSmawRateKgPerHour,
-  density,
-  wasteFactor,
-}
-
-class _InputFieldSpec {
-  const _InputFieldSpec({
-    required this.key,
-    required this.label,
-    required this.helperText,
-  }) : diameterOptions = null;
-
-  const _InputFieldSpec.diameter({
-    required this.key,
-    required this.label,
-    required this.helperText,
-    required this.diameterOptions,
-  });
-
-  final _FieldKey key;
-  final String label;
-  final String helperText;
-  final List<_DiameterPresetOption>? diameterOptions;
-}
-
-class _DiameterPresetOption {
-  const _DiameterPresetOption({required this.label, required this.value});
-
-  final String label;
-  final double value;
-}
-
-class _CalculationBasisItem {
-  const _CalculationBasisItem(this.label, this.value);
-
-  final String label;
-  final String value;
-}
