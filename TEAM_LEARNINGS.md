@@ -26,10 +26,42 @@ Team-of-agents structure created: daily Engineer, weekly Product Lead
 (Friday). Ground rules: never push to `main` directly, never self-merge PRs,
 never guess at welding-engineering formula correctness (flag it for human
 review instead — this is a professional estimation tool, wrong formulas have
-real consequences). Branch quantity estimator for Set-on Nozzle and a
-Weld-Detail-panel overlap/clarity fix were the first two pieces of real work
-landed before this log existed (see PRs #1–#3 area in git history around this
-date).
+real consequences).
+
+### 2026-07-01 — [engineer] Human owner (manual session, before first scheduled run)
+
+Landed two PRs continuing roadmap item 1 and 2: **PR #1** adds a first
+quantity/consumable estimate for Set-on Nozzle branch connections (weld
+length via branch-OD circumference approximation, volume, weld metal,
+filler, arc time) and fixes two real overlap bugs in the Weld Detail
+technical drawing (`DETAIL KEY` legend used fixed pixel size and could
+overflow on narrow canvases; two Set-in Nozzle callouts sat on top of each
+other). **PR #2** adds a dedicated executive cover page to the main weld
+estimation PDF report (logo, title, joint/process chips, headline KPI
+panel) — same pattern already proven useful on the sibling IWTS-Python
+project. Lesson for future Engineer runs: `dart run` crashes with an
+unrelated FFI kernel-transform error on any file that transitively imports
+`package:printing` (used by `pdf_report_exporter_stub.dart`); use
+`flutter test` with a throwaway test file to exercise PDF-building code
+instead, then delete the test file before committing. Still open: Set-in
+Nozzle and Weldolet have no quantity estimate yet (branch connections);
+the main PDF report doesn't yet cover branch-connection results at all
+since `WeldPdfReportService` only accepts `JointType`/`GrooveType`, not a
+branch-connection result shape — worth a scoped follow-up.
+
+### 2026-07-01 — [all] Human owner — deliberate decision, not an oversight
+
+Considered upgrading the Set-on Nozzle branch weld length from the simple
+circumference approximation (`π × Branch OD`) to the exact saddle
+intersection curve (two perpendicular cylinders: `y(θ) = sqrt(R² −
+r²·sin²θ)`, integrated numerically for true arc length — this is the real
+"hole/saddle template" formula used in pipe fabrication). Decision: **stay
+with the simple approximation for now**, revisit only if there's concrete
+evidence it's insufficient (e.g. QA flags a real accuracy complaint, or a
+high branch/run ratio case shows a meaningful error in practice). If you
+are picking this up later: the exact formula is documented above and ready
+to implement, don't re-derive it from scratch — but don't switch to it
+without a concrete trigger either.
 
 ## Archive
 

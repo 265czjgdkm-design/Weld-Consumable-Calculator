@@ -41,6 +41,22 @@ class WeldPdfReportService {
     final basisSections = _groupBasisEntries(basisEntries);
 
     document.addPage(
+      pw.Page(
+        pageFormat: PdfPageFormat.a4,
+        margin: pw.EdgeInsets.zero,
+        build: (context) => _buildCoverPage(
+          reportId: reportId,
+          jointType: jointType,
+          grooveType: grooveType,
+          weldingProcess: weldingProcess,
+          consumablePreset: consumablePreset,
+          generatedAt: generatedAt,
+          result: result,
+        ),
+      ),
+    );
+
+    document.addPage(
       pw.MultiPage(
         pageTheme: pw.PageTheme(
           pageFormat: PdfPageFormat.a4,
@@ -160,6 +176,189 @@ class WeldPdfReportService {
     );
 
     await exportPdfReport(bytes, fileName);
+  }
+
+  pw.Widget _buildCoverPage({
+    required String reportId,
+    required JointType jointType,
+    required GrooveType grooveType,
+    required WeldingProcess weldingProcess,
+    required ConsumablePreset consumablePreset,
+    required DateTime generatedAt,
+    required WeldCalculationResult result,
+  }) {
+    return pw.Container(
+      width: double.infinity,
+      height: double.infinity,
+      decoration: const pw.BoxDecoration(
+        gradient: pw.LinearGradient(
+          colors: [_brandTeal, _brandTeal2],
+          begin: pw.Alignment.topLeft,
+          end: pw.Alignment.bottomRight,
+        ),
+      ),
+      child: pw.Padding(
+        padding: const pw.EdgeInsets.fromLTRB(48, 48, 48, 40),
+        child: pw.Column(
+          crossAxisAlignment: pw.CrossAxisAlignment.start,
+          children: [
+            pw.Row(
+              children: [
+                _buildCoverLogo(),
+                pw.SizedBox(width: 14),
+                pw.Text(
+                  'WELD CONSUMABLE CALCULATOR',
+                  style: pw.TextStyle(
+                    color: PdfColors.white,
+                    fontSize: 12,
+                    fontWeight: pw.FontWeight.bold,
+                    letterSpacing: 1.4,
+                  ),
+                ),
+              ],
+            ),
+            pw.Spacer(flex: 2),
+            pw.Text(
+              'Weld Engineering Report',
+              style: pw.TextStyle(
+                color: PdfColors.white,
+                fontSize: 34,
+                fontWeight: pw.FontWeight.bold,
+              ),
+            ),
+            pw.SizedBox(height: 10),
+            pw.Text(
+              'Professional estimate of weld geometry, weld metal, filler metal consumption, and process-based arc-on time, prepared for engineering review and shop planning.',
+              style: const pw.TextStyle(
+                color: PdfColors.white,
+                fontSize: 12,
+                lineSpacing: 3,
+              ),
+            ),
+            pw.SizedBox(height: 22),
+            pw.Wrap(
+              spacing: 10,
+              runSpacing: 10,
+              children: [
+                _summaryChip('Joint', jointType.label),
+                _summaryChip('Groove', grooveType.label),
+                _summaryChip('Process', weldingProcess.label),
+                _summaryChip(
+                  'Classification',
+                  '${consumablePreset.awsSpecification} ${consumablePreset.label}',
+                ),
+              ],
+            ),
+            pw.Spacer(flex: 3),
+            pw.Container(
+              width: double.infinity,
+              padding: const pw.EdgeInsets.all(18),
+              decoration: pw.BoxDecoration(
+                color: PdfColors.white,
+                borderRadius: pw.BorderRadius.circular(16),
+              ),
+              child: pw.Row(
+                mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                children: [
+                  _coverHeadline(
+                    'Filler Metal Consumption',
+                    '${_number(result.fillerKg, 3)} kg',
+                  ),
+                  _coverHeadline(
+                    'Estimated Arc-On Time',
+                    '${_number(result.arcTimeHours, 3)} h',
+                  ),
+                  _coverHeadline(
+                    'Effective Deposition Rate',
+                    '${_number(result.depositionRateKgPerHour, 2)} kg/h',
+                  ),
+                ],
+              ),
+            ),
+            pw.SizedBox(height: 24),
+            pw.Container(
+              padding: const pw.EdgeInsets.only(top: 14),
+              decoration: const pw.BoxDecoration(
+                border: pw.Border(
+                  top: pw.BorderSide(
+                    color: PdfColor.fromInt(0x33FFFFFF),
+                    width: 0.8,
+                  ),
+                ),
+              ),
+              child: pw.Row(
+                mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                children: [
+                  pw.Text(
+                    'Report ID: $reportId',
+                    style: const pw.TextStyle(
+                      color: PdfColors.white,
+                      fontSize: 9.5,
+                    ),
+                  ),
+                  pw.Text(
+                    'Generated ${generatedAt.year}-${_two(generatedAt.month)}-${_two(generatedAt.day)} ${_two(generatedAt.hour)}:${_two(generatedAt.minute)}',
+                    style: const pw.TextStyle(
+                      color: PdfColors.white,
+                      fontSize: 9.5,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  pw.Widget _buildCoverLogo() {
+    return pw.Container(
+      width: 56,
+      height: 56,
+      decoration: pw.BoxDecoration(
+        shape: pw.BoxShape.circle,
+        color: PdfColors.white,
+        border: pw.Border.all(color: _brandOrange, width: 2.6),
+      ),
+      child: pw.Center(
+        child: pw.Text(
+          'WCC',
+          style: pw.TextStyle(
+            color: _brandTeal,
+            fontSize: 13,
+            fontWeight: pw.FontWeight.bold,
+            letterSpacing: 0.4,
+          ),
+        ),
+      ),
+    );
+  }
+
+  pw.Widget _coverHeadline(String label, String value) {
+    return pw.Column(
+      crossAxisAlignment: pw.CrossAxisAlignment.start,
+      children: [
+        pw.Text(
+          label.toUpperCase(),
+          style: pw.TextStyle(
+            color: _muted,
+            fontSize: 8.2,
+            fontWeight: pw.FontWeight.bold,
+            letterSpacing: 0.6,
+          ),
+        ),
+        pw.SizedBox(height: 6),
+        pw.Text(
+          value,
+          style: pw.TextStyle(
+            color: _ink,
+            fontSize: 18,
+            fontWeight: pw.FontWeight.bold,
+          ),
+        ),
+      ],
+    );
   }
 
   pw.Widget _buildHeader({
