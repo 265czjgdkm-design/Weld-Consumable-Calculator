@@ -37,6 +37,10 @@ migrate_working_dir/
 # `flutter build web --release --base-href /app/ -o site/app`)
 /site/app/
 
+# Local desktop-shortcut build output (regenerate with
+# `flutter build web --release --base-href / -o local_app_build`)
+/local_app_build/
+
 # Symbolication related
 app.*.symbols
 
