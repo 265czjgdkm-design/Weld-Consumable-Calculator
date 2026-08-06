@@ -57,10 +57,10 @@ void main() {
       ],
     );
 
-    final outputDir = Directory(
-      '/Users/muhammetyigit/Documents/Codex/2026-06-30/bu-projede-benim-yerime-geli-tirici/work/tmp/pdfs',
+    final outputDir = await Directory.systemTemp.createTemp(
+      'weld_report_preview_',
     );
-    await outputDir.create(recursive: true);
+    addTearDown(() => outputDir.delete(recursive: true));
     final file = File('${outputDir.path}/report_preview.pdf');
     await file.writeAsBytes(bytes, flush: true);
     expect(await file.exists(), isTrue);

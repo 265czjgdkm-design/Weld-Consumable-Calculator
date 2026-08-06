@@ -10,15 +10,6 @@ class InsightItem {
   final String unit;
 }
 
-enum CalculatorModule { weldEstimator, branchConnections }
-
-extension CalculatorModuleX on CalculatorModule {
-  String get label => switch (this) {
-    CalculatorModule.weldEstimator => 'Butt & Fillet Estimator',
-    CalculatorModule.branchConnections => 'Branch Connections',
-  };
-}
-
 enum FieldKey {
   quantity,
   lengthMm,

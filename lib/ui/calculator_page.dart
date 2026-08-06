@@ -6,7 +6,6 @@ import '../core/welding_defaults.dart';
 import '../models/weld_models.dart';
 import '../services/user_preset_store.dart';
 import '../services/weld_pdf_report_service.dart';
-import 'widgets/branch_connection_module.dart';
 import 'widgets/weld_drawing_preview.dart';
 import 'calculator_page/calculator_page_models.dart';
 import 'calculator_page/calculator_page_widgets.dart';
@@ -34,7 +33,6 @@ class _CalculatorPageState extends State<CalculatorPage> {
   WeldingProcess _weldingProcess = WeldingProcess.gtaw;
   DepositionRateMode _depositionRateMode = DepositionRateMode.preset;
   DrawingMode _drawingMode = DrawingMode.visual;
-  CalculatorModule _activeModule = CalculatorModule.weldEstimator;
   JointGeometryMode _jointGeometryMode = JointGeometryMode.equal;
   JointAlignment _jointAlignment = JointAlignment.centerline;
   ConsumablePreset _consumablePreset = ConsumablePreset.er70s2;
@@ -114,16 +112,9 @@ class _CalculatorPageState extends State<CalculatorPage> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        TopNavigationBar(
-                          activeModuleLabel:
-                              _activeModule ==
-                                  CalculatorModule.branchConnections
-                              ? 'Branch detailing lab'
-                              : 'Butt and fillet estimator',
-                        ),
+                        const TopNavigationBar(),
                         const SizedBox(height: 18),
                         ExperienceHero(
-                          activeModule: _activeModule,
                           jointTypeLabel: _jointType.label,
                           grooveLabel: _grooveType.label,
                           processLabel: _weldingProcess.label,
@@ -133,19 +124,9 @@ class _CalculatorPageState extends State<CalculatorPage> {
                           hasResults: _result != null,
                         ),
                         const SizedBox(height: 18),
-                        CapabilityStrip(
-                          isBranchMode:
-                              _activeModule ==
-                              CalculatorModule.branchConnections,
-                        ),
+                        const CapabilityStrip(),
                         const SizedBox(height: 18),
-                        _buildModuleWorkspaceCard(context),
-                        const SizedBox(height: 18),
-                        if (_activeModule ==
-                            CalculatorModule.branchConnections)
-                          const BranchConnectionsModule()
-                        else
-                          _buildEstimatorWorkspace(context),
+                        _buildEstimatorWorkspace(context),
                         const SizedBox(height: 18),
                         const WebsiteReadyFooter(),
                       ],
@@ -153,61 +134,6 @@ class _CalculatorPageState extends State<CalculatorPage> {
                   ),
                 ),
               ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildModuleWorkspaceCard(BuildContext context) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(22),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Wrap(
-              spacing: 10,
-              runSpacing: 10,
-              crossAxisAlignment: WrapCrossAlignment.center,
-              children: [
-                Text(
-                  'Module Workspace',
-                  style: Theme.of(
-                    context,
-                  ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
-                ),
-                const StatusPill(
-                  label: 'WEB APP PREVIEW',
-                  color: Color(0xFFE5F1F5),
-                  textColor: Color(0xFF0F4C5C),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Use one focused product shell for daily estimating while keeping advanced branch-detail development in a separate lane.',
-              style: Theme.of(
-                context,
-              ).textTheme.bodyMedium?.copyWith(color: const Color(0xFF607482)),
-            ),
-            const SizedBox(height: 16),
-            Wrap(
-              spacing: 10,
-              runSpacing: 10,
-              children: [
-                for (final module in CalculatorModule.values)
-                  _buildSelectionChip(
-                    label: module.label,
-                    selected: _activeModule == module,
-                    onSelected: () {
-                      setState(() {
-                        _activeModule = module;
-                      });
-                    },
-                  ),
-              ],
             ),
           ],
         ),

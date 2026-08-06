@@ -79,20 +79,4 @@ void main() {
 
     expect(find.text('Export PDF'), findsOneWidget);
   });
-
-  testWidgets('branch connections module opens as a separate workspace', (
-    tester,
-  ) async {
-    await tester.pumpWidget(const WeldConsumableCalculatorApp());
-
-    await tester.ensureVisible(find.text('Branch Connections'));
-    await tester.tap(find.text('Branch Connections'));
-    await tester.pumpAndSettle();
-
-    expect(find.text('BRANCH CONNECTIONS / PROTOTYPE'), findsOneWidget);
-    expect(find.text('Set-on Nozzle'), findsAtLeastNWidgets(1));
-    expect(find.text('Prototype Review'), findsAtLeastNWidgets(1));
-    expect(find.text('Dimensional Inputs'), findsOneWidget);
-    expect(find.text('Weld Detail'), findsOneWidget);
-  });
 }

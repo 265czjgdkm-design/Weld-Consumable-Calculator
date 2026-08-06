@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Weld Consumable Calculator — Weld volume, filler, and arc time in seconds</title>
+  <meta name="description" content="A focused weld estimator for welding engineers, estimators, and workshop planners. Compute weld volume, filler consumption, and arc-on time, then export a report-grade PDF. 100% offline, no account required." />
+  <meta property="og:title" content="Weld Consumable Calculator" />
+  <meta property="og:description" content="Weld volume, filler consumption, and arc-on time — calculated in seconds, exported as a report-grade PDF." />
+  <meta property="og:type" content="website" />
+  <meta property="og:image" content="og-image.png" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:image" content="og-image.png" />
+  <meta name="theme-color" content="#0f4c5c" />
+  <link rel="icon" type="image/png" href="favicon.png" />
+  <link rel="apple-touch-icon" href="apple-touch-icon.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+
+  <header class="nav" data-reveal-skip>
+    <div class="nav-inner">
+      <a class="brand" href="#top">
+        <span class="brand-mark" aria-hidden="true">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M5 5L12 19L19 5" stroke="white" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </span>
+        <span class="brand-name">Weld<span class="brand-name-dim">Calc</span></span>
+      </a>
+      <nav class="nav-links" aria-label="Primary">
+        <a href="#features">Features</a>
+        <a href="#how">How it works</a>
+        <a href="#pricing">Pricing</a>
+        <a href="#faq">FAQ</a>
+      </nav>
+      <a class="btn btn-primary btn-sm" href="app/" target="_blank" rel="noopener">Open the calculator</a>
+    </div>
+  </header>
+
+  <main id="main">
+    <section class="hero" id="top">
+      <div class="hero-inner">
+        <div class="hero-copy">
+          <span class="eyebrow">Estimating workspace for weld engineers</span>
+          <h1>Know the filler you need before you strike an arc.</h1>
+          <p class="lede">
+            Enter joint geometry, pick a process and consumable — get weld volume,
+            filler consumption, and arc-on time in seconds. Export a report-grade
+            PDF and hand it straight to a client or the shop floor.
+          </p>
+          <div class="cta-row">
+            <a class="btn btn-primary" href="app/" target="_blank" rel="noopener">Open the calculator →</a>
+            <a class="btn btn-ghost" href="#how">See how it works ↓</a>
+          </div>
+          <div class="proof-row">
+            <div class="proof-item"><strong>0</strong><span>accounts or logins</span></div>
+            <div class="proof-item"><strong>100%</strong><span>offline, on-device</span></div>
+            <div class="proof-item"><strong>3</strong><span>joint types, done right</span></div>
+          </div>
+        </div>
+
+        <div class="hero-visual">
+          <a class="mockup mockup-link" href="app/" target="_blank" rel="noopener" aria-label="Open the live calculator (opens in a new tab)">
+            <div class="mockup-bar">
+              <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+              <span class="mockup-title">Weld Consumable Calculator</span>
+            </div>
+            <div class="mockup-body">
+              <div class="mockup-field">
+                <span>Joint type</span>
+                <strong>Pipe Butt Weld</strong>
+              </div>
+              <div class="mockup-field">
+                <span>Groove</span>
+                <strong>Single-V, 60°</strong>
+              </div>
+              <div class="mockup-row">
+                <div class="mockup-field small"><span>OD</span><strong>168.3 mm</strong></div>
+                <div class="mockup-field small"><span>Thickness</span><strong>7.1 mm</strong></div>
+              </div>
+              <div class="mockup-result">
+                <div class="mockup-result-row">
+                  <span>Weld metal</span><strong>0.842 kg</strong>
+                </div>
+                <div class="mockup-result-row">
+                  <span>Filler required</span><strong>0.961 kg</strong>
+                </div>
+                <div class="mockup-result-row highlight">
+                  <span>Arc-on time</span><strong>0.34 h</strong>
+                </div>
+              </div>
+              <div class="mockup-cta">Try it live in your browser →</div>
+            </div>
+          </a>
+        </div>
+      </div>
+    </section>
+
+    <section class="strip" data-reveal>
+      <div class="strip-inner">
+        <span>Pipe &amp; plate butt welds</span>
+        <span>Fillet welds</span>
+        <span>AWS consumable classification</span>
+        <span>Technical &amp; visual drawing modes</span>
+        <span>Reusable presets</span>
+      </div>
+    </section>
+
+    <section id="features" class="section">
+      <div class="section-head" data-reveal>
+        <span class="kicker">Features</span>
+        <h2>Everything the estimate needs. Nothing it doesn't.</h2>
+      </div>
+
+      <div class="feature-row" data-reveal>
+        <div class="feature-copy">
+          <span class="feature-num">01</span>
+          <h3>Real joint geometry, not guesswork</h3>
+          <p>Set root gap, root face, bevel angle, and thickness for square, single-V, and half-V grooves. Unequal member thickness and diameter are supported for pipe-to-pipe and pipe-to-plate joints.</p>
+        </div>
+        <div class="feature-visual">
+          <div class="mini-mockup">
+            <div class="mini-mockup-row"><span></span><span></span></div>
+            <div class="mini-mockup-row"><span></span><span></span></div>
+            <div class="mini-mockup-shape"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="feature-row reverse" data-reveal>
+        <div class="feature-copy">
+          <span class="feature-num">02</span>
+          <h3>A drawing that reinforces the number</h3>
+          <p>Switch between a visual mode for quick review and a technical mode built for engineering sign-off. The section sketch updates live as inputs change, so the geometry and the estimate never drift apart.</p>
+        </div>
+        <div class="feature-visual">
+          <div class="mini-mockup">
+            <div class="mini-mockup-draw"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="feature-row" data-reveal>
+        <div class="feature-copy">
+          <span class="feature-num">03</span>
+          <h3>A report you can actually send</h3>
+          <p>One tap turns a live estimate into a PDF with an executive cover page, the full engineering basis, and process-by-process breakdown — ready for a client, a purchasing team, or a project file.</p>
+        </div>
+        <div class="feature-visual">
+          <div class="mini-mockup">
+            <div class="mini-mockup-doc">
+              <div class="mini-mockup-doc-line"></div>
+              <div class="mini-mockup-doc-line short"></div>
+              <div class="mini-mockup-doc-line"></div>
+              <div class="mini-mockup-doc-badge">PDF</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="how" class="section alt">
+      <div class="section-head" data-reveal>
+        <span class="kicker">How it works</span>
+        <h2>Three steps, one page.</h2>
+      </div>
+      <div class="steps" data-reveal>
+        <div class="step">
+          <span class="step-index">1</span>
+          <h3>Pick the joint</h3>
+          <p>Pipe butt, plate butt, or fillet — choose the groove and process (GTAW, SMAW, or a GTAW+SMAW split).</p>
+        </div>
+        <div class="step">
+          <span class="step-index">2</span>
+          <h3>Enter the geometry</h3>
+          <p>Dimensions, consumable classification, and deposition basis. Save it as a preset if you'll estimate it again.</p>
+        </div>
+        <div class="step">
+          <span class="step-index">3</span>
+          <h3>Read the result, export it</h3>
+          <p>Weld metal, filler, arc-on time, and deposition rate — with the full basis attached. Export to PDF in one tap.</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="who" class="section" data-reveal>
+      <div class="section-head">
+        <span class="kicker">Built for</span>
+        <h2>People who estimate welds for a living</h2>
+      </div>
+      <div class="audience-grid">
+        <div class="audience-item">Welding engineers</div>
+        <div class="audience-item">Estimators &amp; planners</div>
+        <div class="audience-item">Workshop &amp; production teams</div>
+        <div class="audience-item">Client-facing technical teams</div>
+      </div>
+      <p class="disclaimer">
+        Built for estimation and planning support. Not a substitute for an approved
+        WPS, PQR, code compliance review, or formal release documentation.
+      </p>
+    </section>
+
+    <section id="pricing" class="section alt">
+      <div class="section-head" data-reveal>
+        <span class="kicker">Pricing</span>
+        <h2>Try it free. Simple pricing when it ships.</h2>
+      </div>
+      <div class="pricing-card" data-reveal>
+        <div class="pricing-top">
+          <h3>Weld Consumable Calculator</h3>
+          <div class="price">Free<span>in your browser today</span></div>
+        </div>
+        <ul class="pricing-list">
+          <li>Pipe &amp; plate butt weld estimation</li>
+          <li>Fillet weld estimation</li>
+          <li>Technical &amp; visual drawing modes</li>
+          <li>PDF export</li>
+          <li>Saved presets, no account required</li>
+        </ul>
+        <a class="btn btn-primary btn-block" href="app/" target="_blank" rel="noopener">Use it now in your browser</a>
+        <p class="pricing-note">No ads. No tracking. No data leaves your device.</p>
+
+        <div class="pricing-divider" id="notify">
+          <span>iOS app — coming soon</span>
+        </div>
+        <p class="pricing-note pricing-notify-lede">Get one email the day it's on the App Store. No spam, no other lists.</p>
+        <form class="notify-form" id="notify-form" action="https://formspree.io/f/YOUR_FORM_ID" method="POST">
+          <label class="sr-only" for="notify-email">Email address</label>
+          <input
+            id="notify-email"
+            name="email"
+            type="email"
+            required
+            placeholder="you@company.com"
+            autocomplete="email"
+          />
+          <button class="btn btn-ghost" type="submit">Notify me</button>
+        </form>
+        <p class="notify-status" id="notify-status" role="status" aria-live="polite"></p>
+      </div>
+    </section>
+
+    <section id="faq" class="section">
+      <div class="section-head" data-reveal>
+        <span class="kicker">FAQ</span>
+        <h2>Good to know</h2>
+      </div>
+      <div class="faq-list" data-reveal>
+        <details class="faq-item">
+          <summary>Does it work offline?</summary>
+          <p>Yes. Every calculation runs on-device. No network connection is required at any point.</p>
+        </details>
+        <details class="faq-item">
+          <summary>Do I need an account?</summary>
+          <p>No. There's no sign-in, no account, and nothing to configure before you can calculate.</p>
+        </details>
+        <details class="faq-item">
+          <summary>What welding processes are supported?</summary>
+          <p>GTAW and SMAW are supported individually, plus a combined GTAW root + SMAW fill split for pipe joints.</p>
+        </details>
+        <details class="faq-item">
+          <summary>Is this a substitute for a WPS or PQR?</summary>
+          <p>No. It's an estimation and planning tool. Formal qualification and compliance documentation still governs the actual weld.</p>
+        </details>
+        <details class="faq-item">
+          <summary>What platforms is it available on?</summary>
+          <p>iOS, with Android and desktop builds on the roadmap. Check back on this page for release updates.</p>
+        </details>
+      </div>
+    </section>
+
+    <section class="final-cta" data-reveal>
+      <h2>Stop estimating welds in a spreadsheet.</h2>
+      <p>Get the number, the drawing, and the report — in the time it takes to open a new tab.</p>
+      <a class="btn btn-primary btn-lg" href="app/" target="_blank" rel="noopener">Open the calculator →</a>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="footer-inner">
+      <div class="footer-brand">
+        <span class="brand-mark small" aria-hidden="true">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M5 5L12 19L19 5" stroke="white" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </span>
+        <span>Weld Consumable Calculator</span>
+      </div>
+      <div class="footer-links">
+        <a href="privacy.html">Privacy Policy</a>
+        <a href="terms.html">Terms of Use</a>
+        <a href="#features">Features</a>
+        <a href="#faq">FAQ</a>
+      </div>
+      <span class="footer-copy">© 2026 Weld Consumable Calculator</span>
+    </div>
+  </footer>
+
+  <script src="script.js"></script>
+</body>
+</html>

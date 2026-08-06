@@ -10,13 +10,6 @@ Supported estimator modules:
 - Plate Butt Weld
 - Fillet Weld
 
-Advanced visual development module:
-
-- Branch Connections
-  - Set-on Nozzle
-  - Set-in Nozzle
-  - Weldolet
-
 Current calculation focus:
 
 - Weld area
@@ -61,7 +54,6 @@ The goal is to make it useful for:
 - Manual and preset deposition-rate basis
 - User preset save, update, and delete flow
 - PDF export path
-- Branch connection visualization workspace
 
 ## Local Run
 

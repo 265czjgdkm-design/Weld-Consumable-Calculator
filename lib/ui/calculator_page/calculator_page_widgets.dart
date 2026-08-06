@@ -5,9 +5,7 @@ import '../widgets/result_card.dart';
 import 'calculator_page_models.dart';
 
 class TopNavigationBar extends StatelessWidget {
-  const TopNavigationBar({super.key, required this.activeModuleLabel});
-
-  final String activeModuleLabel;
+  const TopNavigationBar({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -81,10 +79,10 @@ class TopNavigationBar extends StatelessWidget {
             runSpacing: 8,
             alignment: WrapAlignment.end,
             children: [
-              StatusPill(
-                label: activeModuleLabel.toUpperCase(),
-                color: const Color(0xFFE8F2F5),
-                textColor: const Color(0xFF0F4C5C),
+              const StatusPill(
+                label: 'BUTT & FILLET ESTIMATOR',
+                color: Color(0xFFE8F2F5),
+                textColor: Color(0xFF0F4C5C),
               ),
               const StatusPill(
                 label: 'PDF READY',
@@ -122,7 +120,6 @@ class TopNavigationBar extends StatelessWidget {
 class ExperienceHero extends StatelessWidget {
   const ExperienceHero({
     super.key,
-    required this.activeModule,
     required this.jointTypeLabel,
     required this.grooveLabel,
     required this.processLabel,
@@ -132,7 +129,6 @@ class ExperienceHero extends StatelessWidget {
     required this.hasResults,
   });
 
-  final CalculatorModule activeModule;
   final String jointTypeLabel;
   final String grooveLabel;
   final String processLabel;
@@ -143,24 +139,15 @@ class ExperienceHero extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final branchMode = activeModule == CalculatorModule.branchConnections;
-    final title = branchMode
-        ? 'Branch detailing that looks credible to engineers and clear to customers.'
-        : 'A web-ready welding estimator that feels technical, polished, and easy to trust.';
-    final body = branchMode
-        ? 'Develop branch connection visuals in a separate module while preserving the main estimating workflow for daily use.'
-        : 'Build estimates from real joint geometry, AWS consumable selection, and a report-grade result layer that can be shown to clients or production teams.';
-    final heroSignals = branchMode
-        ? const [
-            ('Focus', 'Set-on / Set-in / Weldolet'),
-            ('Preview', 'Section-first detail'),
-            ('Roadmap', '2D now, web 3D later'),
-          ]
-        : [
-            ('Live joint', jointTypeLabel),
-            ('Groove', grooveLabel),
-            ('Process', processLabel),
-          ];
+    const title =
+        'A web-ready welding estimator that feels technical, polished, and easy to trust.';
+    const body =
+        'Build estimates from real joint geometry, AWS consumable selection, and a report-grade result layer that can be shown to clients or production teams.';
+    final heroSignals = [
+      ('Live joint', jointTypeLabel),
+      ('Groove', grooveLabel),
+      ('Process', processLabel),
+    ];
 
     return Container(
       width: double.infinity,
@@ -196,11 +183,9 @@ class ExperienceHero extends StatelessWidget {
                   borderRadius: BorderRadius.circular(999),
                   border: Border.all(color: const Color(0x32FFFFFF)),
                 ),
-                child: Text(
-                  branchMode
-                      ? 'ENGINEERING LAB / BRANCH DETAILING'
-                      : 'ENGINEERING PRODUCT / ESTIMATING WORKSPACE',
-                  style: const TextStyle(
+                child: const Text(
+                  'ENGINEERING PRODUCT / ESTIMATING WORKSPACE',
+                  style: TextStyle(
                     color: Colors.white,
                     fontWeight: FontWeight.w800,
                     fontSize: 12,
@@ -262,35 +247,16 @@ class ExperienceHero extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 14),
-                if (branchMode) ...[
-                  const SnapshotRow(
-                    label: 'Workspace',
-                    value: 'Branch detailing',
-                  ),
-                  const SnapshotRow(
-                    label: 'Priority',
-                    value: 'Weld-seat clarity',
-                  ),
-                  const SnapshotRow(
-                    label: 'Visual logic',
-                    value: 'Technical section',
-                  ),
-                  const SnapshotRow(
-                    label: 'Delivery path',
-                    value: 'Website-ready module',
-                  ),
-                ] else ...[
-                  SnapshotRow(label: 'Drawing mode', value: drawingModeLabel),
-                  SnapshotRow(label: 'Consumable', value: consumableLabel),
-                  SnapshotRow(
-                    label: 'Saved presets',
-                    value: savedPresetCount.toString(),
-                  ),
-                  SnapshotRow(
-                    label: 'Estimate state',
-                    value: hasResults ? 'Calculated' : 'Awaiting run',
-                  ),
-                ],
+                SnapshotRow(label: 'Drawing mode', value: drawingModeLabel),
+                SnapshotRow(label: 'Consumable', value: consumableLabel),
+                SnapshotRow(
+                  label: 'Saved presets',
+                  value: savedPresetCount.toString(),
+                ),
+                SnapshotRow(
+                  label: 'Estimate state',
+                  value: hasResults ? 'Calculated' : 'Awaiting run',
+                ),
               ],
             ),
           );
@@ -317,47 +283,27 @@ class ExperienceHero extends StatelessWidget {
 }
 
 class CapabilityStrip extends StatelessWidget {
-  const CapabilityStrip({super.key, required this.isBranchMode});
-
-  final bool isBranchMode;
+  const CapabilityStrip({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final items = isBranchMode
-        ? const [
-            (
-              Icons.architecture_outlined,
-              'Section-first clarity',
-              'Keep the drawing focused on weld seat, gap, and member geometry before adding heavier 3D workflows.',
-            ),
-            (
-              Icons.zoom_in_map_outlined,
-              'Detail enlargement',
-              'Promote local weld detail so the user can immediately see where weld metal starts and where the gap remains.',
-            ),
-            (
-              Icons.layers_outlined,
-              'Future web 3D path',
-              'Leave room for a later preview layer without letting 3D overwhelm the technical explanation.',
-            ),
-          ]
-        : const [
-            (
-              Icons.calculate_outlined,
-              'Daily estimating',
-              'Compute weld area, length, volume, weld metal, filler demand, arc-on time, and deposition assumptions in one flow.',
-            ),
-            (
-              Icons.draw_outlined,
-              'Technical drawing',
-              'Show live groove geometry with visual and engineering modes so the section sketch reinforces the estimate.',
-            ),
-            (
-              Icons.picture_as_pdf_outlined,
-              'Report workflow',
-              'Turn the live estimate into a PDF-ready result summary with a clear engineering basis and reusable presets.',
-            ),
-          ];
+    const items = [
+      (
+        Icons.calculate_outlined,
+        'Daily estimating',
+        'Compute weld area, length, volume, weld metal, filler demand, arc-on time, and deposition assumptions in one flow.',
+      ),
+      (
+        Icons.draw_outlined,
+        'Technical drawing',
+        'Show live groove geometry with visual and engineering modes so the section sketch reinforces the estimate.',
+      ),
+      (
+        Icons.picture_as_pdf_outlined,
+        'Report workflow',
+        'Turn the live estimate into a PDF-ready result summary with a clear engineering basis and reusable presets.',
+      ),
+    ];
 
     return LayoutBuilder(
       builder: (context, constraints) {

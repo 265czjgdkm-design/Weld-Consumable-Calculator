@@ -33,6 +33,10 @@ migrate_working_dir/
 /build/
 /coverage/
 
+# Flutter web build embedded into the marketing site (regenerate with
+# `flutter build web --release --base-href /app/ -o site/app`)
+/site/app/
+
 # Symbolication related
 app.*.symbols
 
