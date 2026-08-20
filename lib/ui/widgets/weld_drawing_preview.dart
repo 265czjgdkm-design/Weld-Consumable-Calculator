@@ -3,8 +3,21 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
 import '../../models/weld_models.dart';
+import '../calculator_page/calculator_page_models.dart' show FieldKey;
 
 enum DrawingMode { visual, technical }
+
+/// A tappable region of the drawing that corresponds to one editable
+/// [FieldKey], recorded by the painter at the exact spot it draws that
+/// dimension's label so a tap on the drawing can jump to the matching
+/// input field below.
+class DrawingHotspot {
+  const DrawingHotspot(this.fieldKey, this.center, this.radius);
+
+  final FieldKey fieldKey;
+  final Offset center;
+  final double radius;
+}
 
 extension DrawingModeX on DrawingMode {
   String get label => switch (this) {
@@ -51,13 +64,14 @@ class WeldDrawingData {
   final double? gtawTransitionMm;
 }
 
-class WeldDrawingPreview extends StatelessWidget {
+class WeldDrawingPreview extends StatefulWidget {
   const WeldDrawingPreview({
     super.key,
     required this.grooveType,
     required this.jointType,
     required this.drawingMode,
     required this.data,
+    this.onFieldTap,
   });
 
   final GrooveType grooveType;
@@ -65,20 +79,53 @@ class WeldDrawingPreview extends StatelessWidget {
   final DrawingMode drawingMode;
   final WeldDrawingData data;
 
+  /// Called with the [FieldKey] of the dimension nearest to a tap on the
+  /// drawing, so the caller can scroll to and focus that input field.
+  final ValueChanged<FieldKey>? onFieldTap;
+
+  @override
+  State<WeldDrawingPreview> createState() => _WeldDrawingPreviewState();
+}
+
+class _WeldDrawingPreviewState extends State<WeldDrawingPreview> {
+  List<DrawingHotspot> _hotspots = const [];
+
   @override
   Widget build(BuildContext context) {
     return AspectRatio(
       aspectRatio: 1.9,
-      child: CustomPaint(
-        painter: _WeldDrawingPainter(
-          grooveType: grooveType,
-          jointType: jointType,
-          drawingMode: drawingMode,
-          data: data,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTapUp: widget.onFieldTap == null ? null : _handleTapUp,
+        child: CustomPaint(
+          painter: _WeldDrawingPainter(
+            grooveType: widget.grooveType,
+            jointType: widget.jointType,
+            drawingMode: widget.drawingMode,
+            data: widget.data,
+            onHotspots: (hotspots) => _hotspots = hotspots,
+          ),
+          child: const SizedBox.expand(),
         ),
-        child: const SizedBox.expand(),
       ),
     );
+  }
+
+  void _handleTapUp(TapUpDetails details) {
+    final tapPosition = details.localPosition;
+    DrawingHotspot? nearest;
+    var nearestDistanceSq = double.infinity;
+    for (final hotspot in _hotspots) {
+      final distanceSq = (hotspot.center - tapPosition).distanceSquared;
+      if (distanceSq > hotspot.radius * hotspot.radius) continue;
+      if (distanceSq < nearestDistanceSq) {
+        nearest = hotspot;
+        nearestDistanceSq = distanceSq;
+      }
+    }
+    if (nearest != null) {
+      widget.onFieldTap!(nearest.fieldKey);
+    }
   }
 }
 
@@ -117,12 +164,21 @@ class _WeldDrawingPainter extends CustomPainter {
     required this.jointType,
     required this.drawingMode,
     required this.data,
+    this.onHotspots,
   });
 
   final GrooveType grooveType;
   final JointType jointType;
   final DrawingMode drawingMode;
   final WeldDrawingData data;
+  final ValueChanged<List<DrawingHotspot>>? onHotspots;
+
+  final List<DrawingHotspot> _hotspots = [];
+
+  void _hotspot(FieldKey? fieldKey, Offset center, {double radius = 26}) {
+    if (fieldKey == null) return;
+    _hotspots.add(DrawingHotspot(fieldKey, center, radius));
+  }
 
   bool get _isPipeButt => jointType == JointType.pipeButt;
   bool get _isCombinedProcess =>
@@ -264,6 +320,8 @@ class _WeldDrawingPainter extends CustomPainter {
       fontSize: 14,
       weight: FontWeight.w700,
     );
+
+    onHotspots?.call(_hotspots);
   }
 
   void _drawBackdrop(Canvas canvas, Size size) {
@@ -449,6 +507,7 @@ class _WeldDrawingPainter extends CustomPainter {
       labelOffset: const Offset(42, 0),
       extensionStart: p(halfGap, rightGrooveY),
       extensionEnd: p(halfGap, member.rightBottom),
+      fieldKey: FieldKey.rootFaceMm,
     );
     _drawAngleTag(
       canvas,
@@ -463,6 +522,7 @@ class _WeldDrawingPainter extends CustomPainter {
         member.leftTop + ((leftGrooveY - member.leftTop) * 0.20),
       ),
       text: '${_formatValue(bevelAngle)}°',
+      fieldKey: FieldKey.bevelAngleDeg,
     );
     _drawTypeChip(canvas, size, 'Single V');
     _drawPipeChip(canvas, size);
@@ -579,6 +639,7 @@ class _WeldDrawingPainter extends CustomPainter {
       labelOffset: const Offset(42, 0),
       extensionStart: p(halfGap, grooveY),
       extensionEnd: p(halfGap, thickness),
+      fieldKey: FieldKey.rootFaceMm,
     );
     _drawAngleTag(
       canvas,
@@ -587,6 +648,7 @@ class _WeldDrawingPainter extends CustomPainter {
       start: p(halfGap + ((topRight - halfGap) * 0.44), grooveY * 0.34),
       labelCenter: p(topRight + 7.0, grooveY * 0.20),
       text: '${_formatValue(bevelAngle)}°',
+      fieldKey: FieldKey.bevelAngleDeg,
     );
     _drawTypeChip(canvas, size, 'Half V');
     _drawPipeChip(canvas, size);
@@ -746,6 +808,7 @@ class _WeldDrawingPainter extends CustomPainter {
       labelOffset: const Offset(44, 0),
       extensionStart: p(halfGap, rightUpperRootY),
       extensionEnd: p(halfGap, rightLowerRootY),
+      fieldKey: FieldKey.rootFaceMm,
     );
     _drawAngleTag(
       canvas,
@@ -760,6 +823,7 @@ class _WeldDrawingPainter extends CustomPainter {
         member.leftTop + ((leftUpperRootY - member.leftTop) * 0.28),
       ),
       text: '${_formatValue(bevelAngle)}°',
+      fieldKey: FieldKey.bevelAngleDeg,
     );
     if (data.geometryMode == JointGeometryMode.equal) {
       _drawDimensionLine(
@@ -918,6 +982,7 @@ class _WeldDrawingPainter extends CustomPainter {
       labelOffset: const Offset(-44, 0),
       extensionStart: p(-halfBreak, breakY),
       extensionEnd: p(-halfGap, grooveY),
+      fieldKey: FieldKey.breakHeightMm,
     );
     _drawDimensionLine(
       canvas,
@@ -929,6 +994,7 @@ class _WeldDrawingPainter extends CustomPainter {
       labelOffset: const Offset(44, 0),
       extensionStart: p(halfGap, grooveY),
       extensionEnd: p(halfGap, thickness),
+      fieldKey: FieldKey.rootFaceMm,
     );
     _drawAngleTag(
       canvas,
@@ -940,6 +1006,7 @@ class _WeldDrawingPainter extends CustomPainter {
       ),
       labelCenter: p(halfBreak + 8.0, grooveY - ((grooveY - breakY) * 0.56)),
       text: 'α ${_formatValue(primaryAngle)}°',
+      fieldKey: FieldKey.bevelAngleDeg,
     );
     _drawAngleTag(
       canvas,
@@ -948,6 +1015,7 @@ class _WeldDrawingPainter extends CustomPainter {
       start: p(halfBreak + ((halfTop - halfBreak) * 0.48), breakY * 0.48),
       labelCenter: p(halfTop + 8.0, breakY * 0.30),
       text: 'β ${_formatValue(secondaryAngle)}°',
+      fieldKey: FieldKey.secondaryBevelAngleDeg,
     );
     _drawTypeChip(canvas, size, 'Compound V');
     _drawPipeChip(canvas, size);
@@ -1144,6 +1212,7 @@ class _WeldDrawingPainter extends CustomPainter {
       labelSize: size,
       extensionStart: p(webHalfThickness, baseTopY),
       extensionEnd: p(toeX, baseTopY),
+      fieldKey: FieldKey.legSizeMm,
     );
     _drawDimensionLine(
       canvas,
@@ -1155,6 +1224,7 @@ class _WeldDrawingPainter extends CustomPainter {
       labelOffset: const Offset(42, 0),
       extensionStart: p(webHalfThickness, topToeY),
       extensionEnd: p(webHalfThickness, baseTopY),
+      fieldKey: FieldKey.legSizeMm,
     );
     _drawLeader(
       canvas,
@@ -1253,6 +1323,7 @@ class _WeldDrawingPainter extends CustomPainter {
       rootLabelCenter,
       fontSize: 10,
     );
+    _hotspot(FieldKey.gtawTransitionMm, rootLabelCenter, radius: 22);
   }
 
   void _drawButtCommonMeasurements(
@@ -1283,6 +1354,7 @@ class _WeldDrawingPainter extends CustomPainter {
       labelOffset: const Offset(-42, 0),
       extensionStart: p(-halfGap, memberExtents.leftTop),
       extensionEnd: p(-halfGap, memberExtents.leftBottom),
+      fieldKey: unequal ? FieldKey.thicknessAMm : FieldKey.thicknessMm,
     );
     if (unequal && rightThicknessLabelX != null) {
       _drawDimensionLine(
@@ -1296,6 +1368,7 @@ class _WeldDrawingPainter extends CustomPainter {
         labelOffset: const Offset(42, 0),
         extensionStart: p(halfGap, memberExtents.rightTop),
         extensionEnd: p(halfGap, memberExtents.rightBottom),
+        fieldKey: FieldKey.thicknessBMm,
       );
     }
     _drawDimensionLine(
@@ -1308,6 +1381,7 @@ class _WeldDrawingPainter extends CustomPainter {
       labelOffset: const Offset(0, 16),
       extensionStart: p(-halfGap, rootGapLabelY ?? thickness),
       extensionEnd: p(halfGap, rootGapLabelY ?? thickness),
+      fieldKey: FieldKey.rootGapMm,
     );
     if (grooveY > 0) {
       _drawDimensionLine(
@@ -1473,6 +1547,7 @@ class _WeldDrawingPainter extends CustomPainter {
     Offset labelOffset = Offset.zero,
     Offset? extensionStart,
     Offset? extensionEnd,
+    FieldKey? fieldKey,
   }) {
     if (extensionStart != null) {
       canvas.drawLine(extensionStart, start, paint);
@@ -1496,6 +1571,7 @@ class _WeldDrawingPainter extends CustomPainter {
       fontSize: _measurementFontSize(labelSize),
       technicalDimension: true,
     );
+    _hotspot(fieldKey, labelCenter);
   }
 
   void _drawLeader(
@@ -1526,6 +1602,7 @@ class _WeldDrawingPainter extends CustomPainter {
     required Offset start,
     required Offset labelCenter,
     required String text,
+    FieldKey? fieldKey,
   }) {
     final dx = labelCenter.dx - start.dx;
     final dy = labelCenter.dy - start.dy;
@@ -1547,6 +1624,7 @@ class _WeldDrawingPainter extends CustomPainter {
       fontSize: _measurementFontSize(size),
       technicalDimension: true,
     );
+    _hotspot(fieldKey, labelCenter);
   }
 
   void _drawAnnotationLabel(

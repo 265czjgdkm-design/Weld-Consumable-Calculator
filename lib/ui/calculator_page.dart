@@ -21,10 +21,15 @@ class _CalculatorPageState extends State<CalculatorPage> {
   final WeldCalculator _calculator = const WeldCalculator();
   final WeldPdfReportService _pdfReportService = const WeldPdfReportService();
   final UserPresetStore _userPresetStore = const UserPresetStore();
+  final ScrollController _pageScrollController = ScrollController();
+  final GlobalKey _resultsSectionKey = GlobalKey();
   static const _customDiameterValue = 'custom';
 
   final Map<FieldKey, TextEditingController> _controllers = {
     for (final key in FieldKey.values) key: TextEditingController(),
+  };
+  final Map<FieldKey, FocusNode> _fieldFocusNodes = {
+    for (final key in FieldKey.values) key: FocusNode(),
   };
   final Map<FieldKey, String> _diameterPresetModes = {};
 
@@ -52,8 +57,12 @@ class _CalculatorPageState extends State<CalculatorPage> {
 
   @override
   void dispose() {
+    _pageScrollController.dispose();
     for (final controller in _controllers.values) {
       controller.dispose();
+    }
+    for (final focusNode in _fieldFocusNodes.values) {
+      focusNode.dispose();
     }
     super.dispose();
   }
@@ -104,41 +113,127 @@ class _CalculatorPageState extends State<CalculatorPage> {
               ),
             ),
             SafeArea(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(18, 18, 18, 40),
-                child: Center(
-                  child: ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 1320),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const TopNavigationBar(),
-                        const SizedBox(height: 18),
-                        ExperienceHero(
-                          jointTypeLabel: _jointType.label,
-                          grooveLabel: _grooveType.label,
-                          processLabel: _weldingProcess.label,
-                          drawingModeLabel: _drawingMode.label,
-                          consumableLabel: _consumablePreset.label,
-                          savedPresetCount: _userPresets.length,
-                          hasResults: _result != null,
-                        ),
-                        const SizedBox(height: 18),
-                        const CapabilityStrip(),
-                        const SizedBox(height: 18),
-                        _buildEstimatorWorkspace(context),
-                        const SizedBox(height: 18),
-                        const WebsiteReadyFooter(),
-                      ],
-                    ),
-                  ),
-                ),
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  final wide = constraints.maxWidth >= 1120;
+                  if (!wide) {
+                    return _buildNarrowPage(context);
+                  }
+                  return _buildWidePage(context);
+                },
               ),
             ),
           ],
         ),
       ),
     );
+  }
+
+  Widget _buildWidePage(BuildContext context) {
+    return SingleChildScrollView(
+      controller: _pageScrollController,
+      padding: const EdgeInsets.fromLTRB(18, 18, 18, 40),
+      child: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 1320),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const TopNavigationBar(),
+              const SizedBox(height: 18),
+              ExperienceHero(
+                jointTypeLabel: _jointType.label,
+                grooveLabel: _grooveType.label,
+                processLabel: _weldingProcess.label,
+                drawingModeLabel: _drawingMode.label,
+                consumableLabel: _consumablePreset.label,
+                savedPresetCount: _userPresets.length,
+                hasResults: _result != null,
+              ),
+              const SizedBox(height: 18),
+              const CapabilityStrip(),
+              const SizedBox(height: 18),
+              _buildEstimatorWorkspace(context),
+              const SizedBox(height: 18),
+              const WebsiteReadyFooter(),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Mobile layout: the technical drawing stays pinned at the top of the
+  /// screen (outside the scroll view) so the weld-groove sketch is always
+  /// visible while every other card scrolls underneath it.
+  Widget _buildNarrowPage(BuildContext context) {
+    final visibleFields = _visibleFieldSpecs;
+    final availableConsumables = WeldingDefaults.consumablesFor(
+      _weldingProcess,
+    );
+    final selectedUserPreset = _selectedUserPreset;
+
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(14, 12, 14, 0),
+          child: SizedBox(
+            height: _narrowDrawingHeight(context),
+            child: _buildTechnicalDrawingCard(context, compact: true),
+          ),
+        ),
+        Expanded(
+          child: SingleChildScrollView(
+            controller: _pageScrollController,
+            padding: const EdgeInsets.fromLTRB(18, 14, 18, 40),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const TopNavigationBar(),
+                const SizedBox(height: 18),
+                ExperienceHero(
+                  jointTypeLabel: _jointType.label,
+                  grooveLabel: _grooveType.label,
+                  processLabel: _weldingProcess.label,
+                  drawingModeLabel: _drawingMode.label,
+                  consumableLabel: _consumablePreset.label,
+                  savedPresetCount: _userPresets.length,
+                  hasResults: _result != null,
+                ),
+                const SizedBox(height: 18),
+                const CapabilityStrip(),
+                const SizedBox(height: 18),
+                _buildEstimatorControlCard(context),
+                const SizedBox(height: 18),
+                _buildJointConfigurationCard(context),
+                const SizedBox(height: 18),
+                _buildInputParametersCard(
+                  context,
+                  visibleFields,
+                  availableConsumables,
+                  selectedUserPreset,
+                ),
+                const SizedBox(height: 18),
+                _buildActionPanel(context),
+                const SizedBox(height: 18),
+                KeyedSubtree(
+                  key: _resultsSectionKey,
+                  child: _buildResultsCard(),
+                ),
+                const SizedBox(height: 18),
+                const WebsiteReadyFooter(),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  double _narrowDrawingHeight(BuildContext context) {
+    final mediaQuery = MediaQuery.of(context);
+    final safeHeight = mediaQuery.size.height - mediaQuery.padding.vertical;
+    return (safeHeight * 0.34).clamp(230.0, 340.0);
   }
 
   Widget _buildEstimatorWorkspace(BuildContext context) {
@@ -171,50 +266,91 @@ class _CalculatorPageState extends State<CalculatorPage> {
               const SizedBox(height: 18),
               _buildActionPanel(context),
               const SizedBox(height: 18),
-              _buildResultsCard(),
+              KeyedSubtree(key: _resultsSectionKey, child: _buildResultsCard()),
             ],
           );
         }
 
-        return Row(
+        final workspaceHeight = _wideEntryWorkspaceHeight(context);
+
+        return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Expanded(
-              flex: 7,
-              child: Column(
+            SizedBox(
+              height: workspaceHeight,
+              child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _buildJointConfigurationCard(context),
-                  const SizedBox(height: 18),
-                  _buildTechnicalDrawingCard(context),
-                  const SizedBox(height: 18),
-                  _buildResultsCard(),
+                  Expanded(
+                    flex: 6,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _buildJointConfigurationCard(context),
+                        const SizedBox(height: 18),
+                        Expanded(
+                          child: Align(
+                            alignment: Alignment.topCenter,
+                            child: _buildTechnicalDrawingCard(context),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 18),
+                  Expanded(
+                    flex: 6,
+                    child: Scrollbar(
+                      thumbVisibility: true,
+                      child: SingleChildScrollView(
+                        primary: false,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            _buildEstimatorControlCard(context),
+                            const SizedBox(height: 18),
+                            _buildInputParametersCard(
+                              context,
+                              visibleFields,
+                              availableConsumables,
+                              selectedUserPreset,
+                            ),
+                            const SizedBox(height: 18),
+                            _buildActionPanel(context),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
                 ],
               ),
             ),
-            const SizedBox(width: 18),
-            Expanded(
-              flex: 5,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _buildEstimatorControlCard(context),
-                  const SizedBox(height: 18),
-                  _buildInputParametersCard(
-                    context,
-                    visibleFields,
-                    availableConsumables,
-                    selectedUserPreset,
+            const SizedBox(height: 18),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  flex: 6,
+                  child: KeyedSubtree(
+                    key: _resultsSectionKey,
+                    child: _buildResultsCard(),
                   ),
-                  const SizedBox(height: 18),
-                  _buildActionPanel(context),
-                ],
-              ),
+                ),
+                const SizedBox(width: 18),
+                Expanded(flex: 6, child: _buildResultsGuideCard(context)),
+              ],
             ),
           ],
         );
       },
     );
+  }
+
+  double _wideEntryWorkspaceHeight(BuildContext context) {
+    final mediaQuery = MediaQuery.of(context);
+    final safeHeight = mediaQuery.size.height - mediaQuery.padding.vertical;
+    final targetHeight = safeHeight - 84;
+    return targetHeight.clamp(680.0, 860.0);
   }
 
   Widget _buildEstimatorControlCard(BuildContext context) {
@@ -530,79 +666,107 @@ class _CalculatorPageState extends State<CalculatorPage> {
     );
   }
 
-  Widget _buildTechnicalDrawingCard(BuildContext context) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(22),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Technical Drawing',
-                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        _drawingMode == DrawingMode.technical
-                            ? 'Technical mode applies engineering-style line weights, hatch, and dimension annotations.'
-                            : 'Visual mode keeps the sketch softer while still following the live joint geometry.',
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: const Color(0xFF607482),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Flexible(
-                  child: Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    alignment: WrapAlignment.end,
-                    children: [
-                      for (final mode in DrawingMode.values)
-                        _buildSelectionChip(
-                          label: mode.label,
-                          selected: _drawingMode == mode,
-                          onSelected: () {
-                            setState(() {
-                              _drawingMode = mode;
-                            });
-                          },
-                        ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            Container(
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(24),
-                gradient: const LinearGradient(
-                  colors: [Color(0xFFF8FBFD), Color(0xFFEAF1F5)],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-              ),
-              padding: const EdgeInsets.all(12),
+  Widget _buildTechnicalDrawingCard(
+    BuildContext context, {
+    bool compact = false,
+  }) {
+    Widget buildDrawingPreviewPanel() {
+      return Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(24),
+          gradient: const LinearGradient(
+            colors: [Color(0xFFF8FBFD), Color(0xFFEAF1F5)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+        ),
+        padding: EdgeInsets.all(compact ? 8 : 12),
+        child: Center(
+          child: FittedBox(
+            fit: BoxFit.contain,
+            child: SizedBox(
+              width: 760,
               child: WeldDrawingPreview(
                 grooveType: _grooveType,
                 jointType: _jointType,
                 drawingMode: _drawingMode,
                 data: _drawingData,
+                onFieldTap: _handleDrawingFieldTap,
               ),
             ),
-          ],
+          ),
+        ),
+      );
+    }
+
+    return Card(
+      child: Padding(
+        padding: EdgeInsets.all(compact ? 12 : 22),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final hasBoundedHeight = constraints.maxHeight.isFinite;
+
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Technical Drawing',
+                            style:
+                                (compact
+                                        ? Theme.of(context).textTheme.titleMedium
+                                        : Theme.of(context).textTheme.titleLarge)
+                                    ?.copyWith(fontWeight: FontWeight.w800),
+                          ),
+                          if (!compact) ...[
+                            const SizedBox(height: 8),
+                            Text(
+                              _drawingMode == DrawingMode.technical
+                                  ? 'Technical mode applies engineering-style line weights, hatch, and dimension annotations.'
+                                  : 'Visual mode keeps the sketch softer while still following the live joint geometry.',
+                              style: Theme.of(context).textTheme.bodyMedium
+                                  ?.copyWith(color: const Color(0xFF607482)),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Flexible(
+                      child: Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        alignment: WrapAlignment.end,
+                        children: [
+                          for (final mode in DrawingMode.values)
+                            _buildSelectionChip(
+                              label: mode.label,
+                              selected: _drawingMode == mode,
+                              onSelected: () {
+                                setState(() {
+                                  _drawingMode = mode;
+                                });
+                              },
+                            ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                SizedBox(height: compact ? 10 : 16),
+                if (hasBoundedHeight)
+                  Expanded(child: buildDrawingPreviewPanel())
+                else
+                  buildDrawingPreviewPanel(),
+              ],
+            );
+          },
         ),
       ),
     );
@@ -938,6 +1102,132 @@ class _CalculatorPageState extends State<CalculatorPage> {
                 pdfBusy: _isExportingPdf,
               ),
       ),
+    );
+  }
+
+  Widget _buildResultsGuideCard(BuildContext context) {
+    final hasResults = _result != null;
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(22),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              hasResults ? 'Next Step' : 'How This Workspace Flows',
+              style: Theme.of(
+                context,
+              ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              hasResults
+                  ? 'The calculation has been placed in the left results panel below the fixed drawing workspace. You can review it there, then scroll back up on the right to refine inputs.'
+                  : 'Keep the drawing fixed on the left while you move through the input stack on the right. When you press Calculate, the page brings you down to the results panel on the left automatically.',
+              style: Theme.of(
+                context,
+              ).textTheme.bodyMedium?.copyWith(color: const Color(0xFF607482)),
+            ),
+            const SizedBox(height: 18),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(18),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(22),
+                gradient: const LinearGradient(
+                  colors: [Color(0xFFF6FAFC), Color(0xFFEEF4F7)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                border: Border.all(color: const Color(0xFFDCE5EB)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildGuideStep(
+                    context,
+                    index: '01',
+                    title: 'Left side stays visual',
+                    body:
+                        'Joint summary and source shape remain visible while the form changes on the right.',
+                  ),
+                  const SizedBox(height: 14),
+                  _buildGuideStep(
+                    context,
+                    index: '02',
+                    title: 'Right side stays operational',
+                    body:
+                        'Inputs, presets, rates, and action controls move independently without losing the section sketch.',
+                  ),
+                  const SizedBox(height: 14),
+                  _buildGuideStep(
+                    context,
+                    index: '03',
+                    title: hasResults
+                        ? 'Results are ready below'
+                        : 'Results appear below on calculate',
+                    body: hasResults
+                        ? 'Use the left results card to verify weld metal, filler consumption, arc-on time, and the engineering basis.'
+                        : 'The page scrolls down to the results card so the transition from input to review feels direct and controlled.',
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildGuideStep(
+    BuildContext context, {
+    required String index,
+    required String title,
+    required String body,
+  }) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          width: 42,
+          height: 42,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(14),
+            color: const Color(0xFF0F4C5C),
+          ),
+          alignment: Alignment.center,
+          child: Text(
+            index,
+            style: const TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.w800,
+              fontSize: 12,
+            ),
+          ),
+        ),
+        const SizedBox(width: 14),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: Theme.of(
+                  context,
+                ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                body,
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: const Color(0xFF607482),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 
@@ -1664,10 +1954,7 @@ class _CalculatorPageState extends State<CalculatorPage> {
       FieldKey.gtawTransitionMm,
       'GTAW transition depth',
     ),
-    wireDiameterMm: _parsePresetValue(
-      FieldKey.wireDiameterMm,
-      'Wire diameter',
-    ),
+    wireDiameterMm: _parsePresetValue(FieldKey.wireDiameterMm, 'Wire diameter'),
     electrodeDiameterMm: _parsePresetValue(
       FieldKey.electrodeDiameterMm,
       'Electrode diameter',
@@ -1803,9 +2090,7 @@ class _CalculatorPageState extends State<CalculatorPage> {
     rootGapMm: _parsePreviewValue(FieldKey.rootGapMm),
     rootFaceMm: _parsePreviewValue(FieldKey.rootFaceMm),
     bevelAngleDeg: _parsePreviewValue(FieldKey.bevelAngleDeg),
-    secondaryBevelAngleDeg: _parsePreviewValue(
-      FieldKey.secondaryBevelAngleDeg,
-    ),
+    secondaryBevelAngleDeg: _parsePreviewValue(FieldKey.secondaryBevelAngleDeg),
     breakHeightMm: _parsePreviewValue(FieldKey.breakHeightMm),
     legSizeMm: _parsePreviewValue(FieldKey.legSizeMm),
     pipeOdMm: _governingPipeOdPreview,
@@ -1821,6 +2106,7 @@ class _CalculatorPageState extends State<CalculatorPage> {
 
     return TextField(
       controller: _controllers[field.key],
+      focusNode: _fieldFocusNodes[field.key],
       keyboardType: const TextInputType.numberWithOptions(decimal: true),
       inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]'))],
       decoration: InputDecoration(
@@ -2021,9 +2307,7 @@ class _CalculatorPageState extends State<CalculatorPage> {
         rootGapMm: _parseOptional(FieldKey.rootGapMm),
         rootFaceMm: _parseOptional(FieldKey.rootFaceMm),
         bevelAngleDeg: _parseOptional(FieldKey.bevelAngleDeg),
-        secondaryBevelAngleDeg: _parseOptional(
-          FieldKey.secondaryBevelAngleDeg,
-        ),
+        secondaryBevelAngleDeg: _parseOptional(FieldKey.secondaryBevelAngleDeg),
         breakHeightMm: _parseOptional(FieldKey.breakHeightMm),
         legSizeMm: _parseOptional(FieldKey.legSizeMm),
         gtawTransitionMm: _parseOptional(FieldKey.gtawTransitionMm),
@@ -2046,6 +2330,7 @@ class _CalculatorPageState extends State<CalculatorPage> {
 
       final result = _calculator.calculate(input);
       setState(() => _result = result);
+      _scrollToResults();
     } on InputValidationException catch (error) {
       setState(() => _result = null);
       _showMessage(error.message);
@@ -2056,6 +2341,27 @@ class _CalculatorPageState extends State<CalculatorPage> {
       setState(() => _result = null);
       _showMessage('Calculation failed. Please review the inputs.');
     }
+  }
+
+  /// Jumps to and focuses the input field for the dimension the user tapped
+  /// on the technical drawing, scrolling it into view if needed.
+  void _handleDrawingFieldTap(FieldKey fieldKey) {
+    final isVisible = _visibleFieldSpecs.any((field) => field.key == fieldKey);
+    if (!isVisible) return;
+    _fieldFocusNodes[fieldKey]?.requestFocus();
+  }
+
+  void _scrollToResults() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final context = _resultsSectionKey.currentContext;
+      if (context == null) return;
+      Scrollable.ensureVisible(
+        context,
+        duration: const Duration(milliseconds: 450),
+        curve: Curves.easeOutCubic,
+        alignment: 0.06,
+      );
+    });
   }
 
   double? _resolveThicknessForCalculation() {
@@ -2432,4 +2738,3 @@ class _CalculatorPageState extends State<CalculatorPage> {
     return items;
   }
 }
-
