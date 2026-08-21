@@ -19,7 +19,7 @@ void main() {
 
   testWidgets('intro screen leads into the calculator shell', (tester) async {
     await tester.pumpWidget(const WeldConsumableCalculatorApp());
-    expect(find.text('Weld Consumable Calculator'), findsAtLeastNWidgets(1));
+    expect(find.text('Varyos Weld'), findsAtLeastNWidgets(1));
 
     await tester.ensureVisible(find.text('Get Started'));
     await tester.tap(find.text('Get Started'));

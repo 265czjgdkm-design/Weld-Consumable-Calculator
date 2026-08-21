@@ -9,8 +9,8 @@ import 'pdf_report_exporter.dart';
 class WeldPdfReportService {
   const WeldPdfReportService();
 
-  static const _brandTeal = PdfColor.fromInt(0xFF0F4C5C);
-  static const _brandTeal2 = PdfColor.fromInt(0xFF1C6B74);
+  static const _brandTeal = PdfColor.fromInt(0xFF12191B);
+  static const _brandTeal2 = PdfColor.fromInt(0xFF2A3438);
   static const _brandTealSoft = PdfColor.fromInt(0xFFEAF2F4);
   static const _brandOrange = PdfColor.fromInt(0xFFEF8354);
   static const _brandOrangeSoft = PdfColor.fromInt(0xFFFBE7DE);
@@ -30,13 +30,13 @@ class WeldPdfReportService {
     final generatedAt = DateTime.now();
     final document = pw.Document(
       title: 'Weld Estimation Report',
-      author: 'Weld Consumable Calculator',
-      creator: 'Codex',
+      author: 'Varyos Weld',
+      creator: 'Varyos Weld',
       subject: 'Weld consumable estimation report',
     );
 
     final reportId =
-        'WCC-${generatedAt.year}${_two(generatedAt.month)}${_two(generatedAt.day)}-${_two(generatedAt.hour)}${_two(generatedAt.minute)}${_two(generatedAt.second)}';
+        'VW-${generatedAt.year}${_two(generatedAt.month)}${_two(generatedAt.day)}-${_two(generatedAt.hour)}${_two(generatedAt.minute)}${_two(generatedAt.second)}';
     final indicators = _buildIndicators(result, basisEntries);
     final basisSections = _groupBasisEntries(basisEntries);
 
@@ -72,7 +72,7 @@ class WeldPdfReportService {
             mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
             children: [
               pw.Text(
-                'Weld Consumable Calculator',
+                'Varyos Weld',
                 style: pw.TextStyle(
                   color: _muted,
                   fontSize: 9,
@@ -323,12 +323,11 @@ class WeldPdfReportService {
       ),
       child: pw.Center(
         child: pw.Text(
-          'WCC',
+          'V',
           style: pw.TextStyle(
             color: _brandTeal,
-            fontSize: 13,
+            fontSize: 22,
             fontWeight: pw.FontWeight.bold,
-            letterSpacing: 0.4,
           ),
         ),
       ),

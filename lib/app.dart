@@ -7,11 +7,11 @@ class WeldConsumableCalculatorApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const seedColor = Color(0xFF0F4C5C);
+    const seedColor = Color(0xFF12191B);
 
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      title: 'Weld Consumable Calculator',
+      title: 'Varyos Weld',
       theme: ThemeData(
         useMaterial3: true,
         colorScheme: ColorScheme.fromSeed(
@@ -92,8 +92,8 @@ class WeldConsumableCalculatorApp extends StatelessWidget {
         chipTheme: ChipThemeData(
           backgroundColor: const Color(0xFFF1F5F7),
           disabledColor: const Color(0xFFE7EDF1),
-          selectedColor: const Color(0xFF0F4C5C),
-          secondarySelectedColor: const Color(0xFF0F4C5C),
+          selectedColor: const Color(0xFF12191B),
+          secondarySelectedColor: const Color(0xFF12191B),
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
           labelStyle: const TextStyle(
             color: Color(0xFF29414D),

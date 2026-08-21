@@ -358,7 +358,7 @@ class _WeldDrawingPainter extends CustomPainter {
       ..style = PaintingStyle.stroke
       ..strokeWidth = 1;
     final framePaint = Paint()
-      ..color = const Color(0x220F4C5C)
+      ..color = const Color(0x2212191B)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 1.2;
     final frame = RRect.fromRectAndRadius(

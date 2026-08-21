@@ -4,6 +4,60 @@ import '../../models/weld_models.dart';
 import '../widgets/result_card.dart';
 import 'calculator_page_models.dart';
 
+/// The Varyos brand mark: two struck blades meeting at one point of
+/// impact. Drawn as vector shapes (not a raster asset) so it stays crisp
+/// at any size, from a 22px nav icon up to a full hero mark.
+class VaryosMark extends StatelessWidget {
+  const VaryosMark({super.key, this.size = 22});
+
+  final double size;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: size,
+      height: size,
+      child: CustomPaint(painter: _VaryosMarkPainter()),
+    );
+  }
+}
+
+class _VaryosMarkPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final scale = size.width / 200;
+    Offset p(double x, double y) => Offset(x * scale, y * scale);
+
+    final bladePaint = Paint()..color = Colors.white;
+    final leftBlade = Path()
+      ..moveTo(p(40, 25).dx, p(40, 25).dy)
+      ..lineTo(p(65, 25).dx, p(65, 25).dy)
+      ..lineTo(p(108, 168).dx, p(108, 168).dy)
+      ..lineTo(p(83, 168).dx, p(83, 168).dy)
+      ..close();
+    final rightBlade = Path()
+      ..moveTo(p(160, 25).dx, p(160, 25).dy)
+      ..lineTo(p(135, 25).dx, p(135, 25).dy)
+      ..lineTo(p(92, 168).dx, p(92, 168).dy)
+      ..lineTo(p(117, 168).dx, p(117, 168).dy)
+      ..close();
+    canvas.drawPath(leftBlade, bladePaint);
+    canvas.drawPath(rightBlade, bladePaint);
+
+    final sparkPaint = Paint()..color = const Color(0xFFFF6A35);
+    final spark = Path()
+      ..moveTo(p(100, 136).dx, p(100, 136).dy)
+      ..lineTo(p(112, 158).dx, p(112, 158).dy)
+      ..lineTo(p(100, 180).dx, p(100, 180).dy)
+      ..lineTo(p(88, 158).dx, p(88, 158).dy)
+      ..close();
+    canvas.drawPath(spark, sparkPaint);
+  }
+
+  @override
+  bool shouldRepaint(covariant _VaryosMarkPainter oldDelegate) => false;
+}
+
 class TopNavigationBar extends StatelessWidget {
   const TopNavigationBar({super.key});
 
@@ -40,16 +94,12 @@ class TopNavigationBar extends StatelessWidget {
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(14),
                       gradient: const LinearGradient(
-                        colors: [Color(0xFF0F4C5C), Color(0xFF2E7B85)],
+                        colors: [Color(0xFF1B2326), Color(0xFF0B0F10)],
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
                       ),
                     ),
-                    child: const Icon(
-                      Icons.precision_manufacturing_outlined,
-                      color: Colors.white,
-                      size: 22,
-                    ),
+                    child: const Center(child: VaryosMark(size: 20)),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
@@ -57,7 +107,7 @@ class TopNavigationBar extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Weld Consumable Calculator',
+                          'Varyos Weld',
                           style: Theme.of(context).textTheme.titleMedium
                               ?.copyWith(fontWeight: FontWeight.w800),
                         ),
@@ -82,7 +132,7 @@ class TopNavigationBar extends StatelessWidget {
               const StatusPill(
                 label: 'BUTT & FILLET ESTIMATOR',
                 color: Color(0xFFE8F2F5),
-                textColor: Color(0xFF0F4C5C),
+                textColor: Color(0xFF12191B),
               ),
               const StatusPill(
                 label: 'PDF READY',
@@ -155,7 +205,7 @@ class ExperienceHero extends StatelessWidget {
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(30),
         gradient: const LinearGradient(
-          colors: [Color(0xFF0E3D4A), Color(0xFF205E66), Color(0xFF6C9085)],
+          colors: [Color(0xFF232D30), Color(0xFF14191A), Color(0xFF0B0F10)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
@@ -363,7 +413,7 @@ class CapabilityCard extends StatelessWidget {
               borderRadius: BorderRadius.circular(14),
               color: const Color(0xFFE8F1F5),
             ),
-            child: Icon(icon, color: const Color(0xFF0F4C5C)),
+            child: Icon(icon, color: const Color(0xFF12191B)),
           ),
           const SizedBox(height: 14),
           Text(
@@ -483,7 +533,7 @@ class QuickMetricTile extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, size: 18, color: const Color(0xFF0F4C5C)),
+          Icon(icon, size: 18, color: const Color(0xFF12191B)),
           const SizedBox(height: 10),
           Text(
             label,
@@ -548,7 +598,7 @@ class WebsiteReadyFooter extends StatelessWidget {
       padding: const EdgeInsets.all(22),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(28),
-        color: const Color(0xFF102B36),
+        color: const Color(0xFF0B0F10),
         boxShadow: const [
           BoxShadow(
             color: Color(0x160F3040),
@@ -684,7 +734,7 @@ class InputPanelSection extends StatelessWidget {
                   color: const Color(0xFFE8F1F5),
                   border: Border.all(color: const Color(0xFFD6E2E8)),
                 ),
-                child: Icon(icon, size: 20, color: const Color(0xFF0F4C5C)),
+                child: Icon(icon, size: 20, color: const Color(0xFF12191B)),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -1308,7 +1358,7 @@ class ResultsHighlightBanner extends StatelessWidget {
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(22),
         gradient: const LinearGradient(
-          colors: [Color(0xFF0F4C5C), Color(0xFF1A6670)],
+          colors: [Color(0xFF1B2326), Color(0xFF0B0F10)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
@@ -1531,7 +1581,7 @@ class ReportMethodPanel extends StatelessWidget {
                     height: 8,
                     margin: const EdgeInsets.only(top: 6),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF0F4C5C),
+                      color: const Color(0xFF12191B),
                       borderRadius: BorderRadius.circular(99),
                     ),
                   ),

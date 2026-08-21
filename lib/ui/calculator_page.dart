@@ -98,7 +98,7 @@ class _CalculatorPageState extends State<CalculatorPage> {
                   decoration: const BoxDecoration(
                     shape: BoxShape.circle,
                     gradient: RadialGradient(
-                      colors: [Color(0x2B4EA1B7), Color(0x004EA1B7)],
+                      colors: [Color(0x22FF6A35), Color(0x00FF6A35)],
                     ),
                   ),
                 ),
@@ -114,7 +114,7 @@ class _CalculatorPageState extends State<CalculatorPage> {
                   decoration: const BoxDecoration(
                     shape: BoxShape.circle,
                     gradient: RadialGradient(
-                      colors: [Color(0x22538A95), Color(0x00538A95)],
+                      colors: [Color(0x221B2326), Color(0x001B2326)],
                     ),
                   ),
                 ),
@@ -426,7 +426,7 @@ class _CalculatorPageState extends State<CalculatorPage> {
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(20),
                 gradient: const LinearGradient(
-                  colors: [Color(0xFF0F4C5C), Color(0xFF1C6671)],
+                  colors: [Color(0xFF1B2326), Color(0xFF0B0F10)],
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                 ),
@@ -2138,10 +2138,10 @@ class _CalculatorPageState extends State<CalculatorPage> {
       label: Text(label),
       selected: selected,
       showCheckmark: false,
-      selectedColor: const Color(0xFF0F4C5C),
+      selectedColor: const Color(0xFF12191B),
       backgroundColor: const Color(0xFFF1F5F7),
       side: BorderSide(
-        color: selected ? const Color(0xFF0F4C5C) : const Color(0xFFD6E0E6),
+        color: selected ? const Color(0xFF12191B) : const Color(0xFFD6E0E6),
       ),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
@@ -2337,7 +2337,7 @@ class _CalculatorPageState extends State<CalculatorPage> {
                   child: FilledButton(
                     onPressed: () => Navigator.of(sheetContext).pop(),
                     style: FilledButton.styleFrom(
-                      backgroundColor: const Color(0xFF0F4C5C),
+                      backgroundColor: const Color(0xFF12191B),
                       padding: const EdgeInsets.symmetric(vertical: 16),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(16),
@@ -2400,7 +2400,7 @@ class _CalculatorPageState extends State<CalculatorPage> {
                       height: 46,
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(14),
-                        color: const Color(0xFF0F4C5C),
+                        color: const Color(0xFFFF6A35),
                       ),
                       alignment: Alignment.center,
                       child: const Icon(
@@ -2443,7 +2443,7 @@ class _CalculatorPageState extends State<CalculatorPage> {
                       _showMessage('Premium unlocked for this session.');
                     },
                     style: FilledButton.styleFrom(
-                      backgroundColor: const Color(0xFF0F4C5C),
+                      backgroundColor: const Color(0xFF12191B),
                       padding: const EdgeInsets.symmetric(vertical: 16),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(16),
@@ -2481,7 +2481,7 @@ class _CalculatorPageState extends State<CalculatorPage> {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Icon(icon, size: 20, color: const Color(0xFF0F4C5C)),
+        Icon(icon, size: 20, color: const Color(0xFF12191B)),
         const SizedBox(width: 12),
         Expanded(
           child: Text(
