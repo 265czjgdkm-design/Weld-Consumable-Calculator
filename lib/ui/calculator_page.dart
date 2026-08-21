@@ -2102,7 +2102,7 @@ class _CalculatorPageState extends State<CalculatorPage> {
     gtawTransitionMm: _parsePreviewValue(FieldKey.gtawTransitionMm),
   );
 
-  Widget _buildFieldInput(InputFieldSpec field) {
+  Widget _buildFieldInput(InputFieldSpec field, {bool autofocus = false}) {
     if (field.diameterOptions != null) {
       return _buildDiameterField(field);
     }
@@ -2110,6 +2110,7 @@ class _CalculatorPageState extends State<CalculatorPage> {
     return TextField(
       controller: _controllers[field.key],
       focusNode: _fieldFocusNodes[field.key],
+      autofocus: autofocus,
       keyboardType: const TextInputType.numberWithOptions(decimal: true),
       inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]'))],
       decoration: InputDecoration(
@@ -2346,12 +2347,81 @@ class _CalculatorPageState extends State<CalculatorPage> {
     }
   }
 
-  /// Jumps to and focuses the input field for the dimension the user tapped
-  /// on the technical drawing, scrolling it into view if needed.
+  /// Opens a quick-edit sheet for the dimension the user tapped on the
+  /// technical drawing, so the value can be entered right there without
+  /// hunting for the matching field further down the page.
   void _handleDrawingFieldTap(FieldKey fieldKey) {
-    final isVisible = _visibleFieldSpecs.any((field) => field.key == fieldKey);
-    if (!isVisible) return;
-    _fieldFocusNodes[fieldKey]?.requestFocus();
+    InputFieldSpec? field;
+    for (final candidate in _visibleFieldSpecs) {
+      if (candidate.key == fieldKey) {
+        field = candidate;
+        break;
+      }
+    }
+    if (field == null) return;
+    _showQuickEditSheet(field);
+  }
+
+  Future<void> _showQuickEditSheet(InputFieldSpec field) {
+    return showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (sheetContext) {
+        return Padding(
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.of(sheetContext).viewInsets.bottom,
+          ),
+          child: Container(
+            padding: const EdgeInsets.fromLTRB(22, 14, 22, 22),
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.vertical(top: Radius.circular(26)),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Container(
+                    width: 40,
+                    height: 4,
+                    margin: const EdgeInsets.only(bottom: 18),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFD2DCE3),
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                  ),
+                ),
+                Text(
+                  field.label,
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
+                ),
+                const SizedBox(height: 14),
+                _buildFieldInput(field, autofocus: true),
+                const SizedBox(height: 18),
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton(
+                    onPressed: () => Navigator.of(sheetContext).pop(),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: const Color(0xFF0F4C5C),
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                    ),
+                    child: const Text('Done'),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
   }
 
   void _scrollToResults() {
