@@ -93,7 +93,7 @@ void main() {
     await tester.tap(find.text('Unlock PDF'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Weld Calc Premium'), findsOneWidget);
+    expect(find.text('Varyos Weld Premium'), findsOneWidget);
 
     await tester.tap(find.textContaining('Subscribe'));
     await tester.pumpAndSettle();

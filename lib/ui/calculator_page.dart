@@ -2411,7 +2411,7 @@ class _CalculatorPageState extends State<CalculatorPage> {
                     const SizedBox(width: 14),
                     Expanded(
                       child: Text(
-                        'Weld Calc Premium',
+                        'Varyos Weld Premium',
                         style: Theme.of(context).textTheme.titleLarge
                             ?.copyWith(fontWeight: FontWeight.w800),
                       ),
