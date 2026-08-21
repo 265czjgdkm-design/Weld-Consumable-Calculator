@@ -219,7 +219,7 @@ class _CalculatorPageState extends State<CalculatorPage> {
     return Column(
       children: [
         Padding(
-          padding: const EdgeInsets.fromLTRB(14, 12, 14, 0),
+          padding: const EdgeInsets.fromLTRB(8, 10, 8, 0),
           child: SizedBox(
             height: _narrowDrawingHeight(context),
             child: _buildTechnicalDrawingCard(context, compact: true),
@@ -255,7 +255,7 @@ class _CalculatorPageState extends State<CalculatorPage> {
   double _narrowDrawingHeight(BuildContext context) {
     final mediaQuery = MediaQuery.of(context);
     final safeHeight = mediaQuery.size.height - mediaQuery.padding.vertical;
-    return (safeHeight * 0.44).clamp(280.0, 440.0);
+    return (safeHeight * 0.40).clamp(300.0, 360.0);
   }
 
   Widget _buildEstimatorWorkspace(BuildContext context) {
@@ -635,7 +635,7 @@ class _CalculatorPageState extends State<CalculatorPage> {
             end: Alignment.bottomRight,
           ),
         ),
-        padding: EdgeInsets.all(compact ? 8 : 12),
+        padding: EdgeInsets.all(compact ? 4 : 12),
         child: Center(
           child: FittedBox(
             fit: BoxFit.contain,
@@ -656,7 +656,7 @@ class _CalculatorPageState extends State<CalculatorPage> {
 
     return Card(
       child: Padding(
-        padding: EdgeInsets.all(compact ? 10 : 22),
+        padding: EdgeInsets.all(compact ? 6 : 22),
         child: LayoutBuilder(
           builder: (context, constraints) {
             final hasBoundedHeight = constraints.maxHeight.isFinite;
