@@ -90,7 +90,7 @@ class TopNavigationBar extends StatelessWidget {
                 textColor: Color(0xFF395361),
               ),
               const StatusPill(
-                label: 'RESPONSIVE WEB',
+                label: 'AWS CONSUMABLE DATA',
                 color: Color(0xFFF1F5F8),
                 textColor: Color(0xFF395361),
               ),
@@ -140,7 +140,7 @@ class ExperienceHero extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     const title =
-        'A web-ready welding estimator that feels technical, polished, and easy to trust.';
+        'A welding estimator that feels technical, polished, and easy to trust.';
     const body =
         'Build estimates from real joint geometry, AWS consumable selection, and a report-grade result layer that can be shown to clients or production teams.';
     final heroSignals = [
