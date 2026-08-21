@@ -5,15 +5,26 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:weld_consumable_calculator/app.dart';
 import 'package:weld_consumable_calculator/models/weld_models.dart';
 
+Future<void> _pumpPastIntro(WidgetTester tester) async {
+  await tester.pumpWidget(const WeldConsumableCalculatorApp());
+  await tester.ensureVisible(find.text('Get Started'));
+  await tester.tap(find.text('Get Started'));
+  await tester.pumpAndSettle();
+}
+
 void main() {
   setUp(() {
     SharedPreferences.setMockInitialValues({});
   });
 
-  testWidgets('calculator shell renders expected sections', (tester) async {
+  testWidgets('intro screen leads into the calculator shell', (tester) async {
     await tester.pumpWidget(const WeldConsumableCalculatorApp());
-
     expect(find.text('Weld Consumable Calculator'), findsAtLeastNWidgets(1));
+
+    await tester.ensureVisible(find.text('Get Started'));
+    await tester.tap(find.text('Get Started'));
+    await tester.pumpAndSettle();
+
     expect(find.text('Joint Type'), findsOneWidget);
     expect(find.text('Technical Drawing'), findsOneWidget);
     expect(find.text('Visual'), findsAtLeastNWidgets(1));
@@ -26,7 +37,7 @@ void main() {
   });
 
   testWidgets('input preset applies pipe joint starter values', (tester) async {
-    await tester.pumpWidget(const WeldConsumableCalculatorApp());
+    await _pumpPastIntro(tester);
 
     await tester.ensureVisible(find.text('Input Preset'));
     await tester.tap(
@@ -47,7 +58,7 @@ void main() {
   testWidgets('manual deposition basis reveals user-defined rate field', (
     tester,
   ) async {
-    await tester.pumpWidget(const WeldConsumableCalculatorApp());
+    await _pumpPastIntro(tester);
 
     await tester.ensureVisible(find.text('Manual'));
     await tester.tap(find.text('Manual'));
@@ -57,7 +68,7 @@ void main() {
   });
 
   testWidgets('unequal geometry reveals A/B member fields', (tester) async {
-    await tester.pumpWidget(const WeldConsumableCalculatorApp());
+    await _pumpPastIntro(tester);
 
     await tester.ensureVisible(find.text('Unequal'));
     await tester.tap(find.text('Unequal'));
@@ -68,13 +79,23 @@ void main() {
     expect(find.text('Alignment Reference'), findsOneWidget);
   });
 
-  testWidgets('results section exposes premium pdf export button', (
+  testWidgets('pdf export is locked behind the premium paywall until unlocked', (
     tester,
   ) async {
-    await tester.pumpWidget(const WeldConsumableCalculatorApp());
+    await _pumpPastIntro(tester);
 
     await tester.ensureVisible(find.text('Calculate'));
     await tester.tap(find.text('Calculate'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Unlock PDF'), findsOneWidget);
+
+    await tester.tap(find.text('Unlock PDF'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Weld Calc Premium'), findsOneWidget);
+
+    await tester.tap(find.textContaining('Subscribe'));
     await tester.pumpAndSettle();
 
     expect(find.text('Export PDF'), findsOneWidget);

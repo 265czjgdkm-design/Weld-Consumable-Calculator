@@ -46,6 +46,12 @@ class _CalculatorPageState extends State<CalculatorPage> {
   String? _selectedUserPresetId;
   WeldCalculationResult? _result;
   bool _showResultsScreen = false;
+  bool _showIntro = true;
+  // TODO: replace with a real StoreKit/RevenueCat entitlement check once
+  // the Apple Developer account and App Store Connect subscription product
+  // exist. This flag is a local-only stand-in so the paywall UX can be
+  // built and demoed before that infrastructure is in place.
+  bool _isPremium = false;
   bool _isExportingPdf = false;
   bool _isUserPresetBusy = false;
 
@@ -117,6 +123,9 @@ class _CalculatorPageState extends State<CalculatorPage> {
             SafeArea(
               child: LayoutBuilder(
                 builder: (context, constraints) {
+                  if (_showIntro) {
+                    return _buildIntroScreen(context);
+                  }
                   if (_showResultsScreen) {
                     return _buildResultsScreen(context);
                   }
@@ -134,9 +143,11 @@ class _CalculatorPageState extends State<CalculatorPage> {
     );
   }
 
-  Widget _buildWidePage(BuildContext context) {
+  /// Landing screen: the product pitch, capability highlights, and branding
+  /// live here instead of above the input form, so the calculator itself
+  /// opens straight into Joint Type once the user taps through.
+  Widget _buildIntroScreen(BuildContext context) {
     return SingleChildScrollView(
-      controller: _pageScrollController,
       padding: const EdgeInsets.fromLTRB(18, 18, 18, 40),
       child: Center(
         child: ConstrainedBox(
@@ -157,12 +168,39 @@ class _CalculatorPageState extends State<CalculatorPage> {
               ),
               const SizedBox(height: 18),
               const CapabilityStrip(),
-              const SizedBox(height: 18),
-              _buildEstimatorWorkspace(context),
-              const SizedBox(height: 18),
+              const SizedBox(height: 22),
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton.icon(
+                  onPressed: () => setState(() => _showIntro = false),
+                  icon: const Icon(Icons.arrow_forward),
+                  label: const Text('Get Started'),
+                  style: FilledButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 18),
+                    textStyle: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 22),
               const WebsiteReadyFooter(),
             ],
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildWidePage(BuildContext context) {
+    return SingleChildScrollView(
+      controller: _pageScrollController,
+      padding: const EdgeInsets.fromLTRB(18, 18, 18, 40),
+      child: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 1320),
+          child: _buildEstimatorWorkspace(context),
         ),
       ),
     );
@@ -194,20 +232,6 @@ class _CalculatorPageState extends State<CalculatorPage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const TopNavigationBar(),
-                const SizedBox(height: 18),
-                ExperienceHero(
-                  jointTypeLabel: _jointType.label,
-                  grooveLabel: _grooveType.label,
-                  processLabel: _weldingProcess.label,
-                  drawingModeLabel: _drawingMode.label,
-                  consumableLabel: _consumablePreset.label,
-                  savedPresetCount: _userPresets.length,
-                  hasResults: _result != null,
-                ),
-                const SizedBox(height: 18),
-                const CapabilityStrip(),
-                const SizedBox(height: 18),
                 _buildEstimatorControlCard(context),
                 const SizedBox(height: 18),
                 _buildJointConfigurationCard(context),
@@ -220,8 +244,6 @@ class _CalculatorPageState extends State<CalculatorPage> {
                 ),
                 const SizedBox(height: 18),
                 _buildActionPanel(context),
-                const SizedBox(height: 18),
-                const WebsiteReadyFooter(),
               ],
             ),
           ),
@@ -1082,8 +1104,11 @@ class _CalculatorPageState extends State<CalculatorPage> {
                 result: _result!,
                 basis: _buildCalculationBasis(),
                 consumablePreset: _consumablePreset,
-                onPdfPressed: _isExportingPdf ? null : _exportPdf,
+                onPdfPressed: _isExportingPdf
+                    ? null
+                    : (_isPremium ? _exportPdf : _showPaywall),
                 pdfBusy: _isExportingPdf,
+                pdfLocked: !_isPremium,
               ),
       ),
     );
@@ -2326,6 +2351,147 @@ class _CalculatorPageState extends State<CalculatorPage> {
           ),
         );
       },
+    );
+  }
+
+  /// Premium paywall shown when a free user taps a gated feature (PDF
+  /// export). "Subscribe" here only flips the local [_isPremium] flag so
+  /// the unlocked experience can be previewed -- it does not charge
+  /// anyone. Swap this for a real StoreKit/RevenueCat purchase flow once
+  /// the Apple Developer account and an App Store Connect subscription
+  /// product exist, and wire "Restore Purchases" to the real entitlement
+  /// check at the same time.
+  Future<void> _showPaywall() {
+    return showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (sheetContext) {
+        return Padding(
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.of(sheetContext).viewInsets.bottom,
+          ),
+          child: Container(
+            width: double.infinity,
+            padding: const EdgeInsets.fromLTRB(24, 16, 24, 26),
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Container(
+                    width: 40,
+                    height: 4,
+                    margin: const EdgeInsets.only(bottom: 18),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFD2DCE3),
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                  ),
+                ),
+                Row(
+                  children: [
+                    Container(
+                      width: 46,
+                      height: 46,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(14),
+                        color: const Color(0xFF0F4C5C),
+                      ),
+                      alignment: Alignment.center,
+                      child: const Icon(
+                        Icons.workspace_premium_outlined,
+                        color: Colors.white,
+                      ),
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Text(
+                        'Weld Calc Premium',
+                        style: Theme.of(context).textTheme.titleLarge
+                            ?.copyWith(fontWeight: FontWeight.w800),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 18),
+                _buildPaywallBenefit(
+                  icon: Icons.picture_as_pdf_outlined,
+                  text: 'Client-ready PDF export for every estimate',
+                ),
+                const SizedBox(height: 10),
+                _buildPaywallBenefit(
+                  icon: Icons.badge_outlined,
+                  text: 'Report-grade layout with engineering basis included',
+                ),
+                const SizedBox(height: 10),
+                _buildPaywallBenefit(
+                  icon: Icons.event_repeat_outlined,
+                  text: 'Cancel anytime from Settings',
+                ),
+                const SizedBox(height: 22),
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton(
+                    onPressed: () {
+                      setState(() => _isPremium = true);
+                      Navigator.of(sheetContext).pop();
+                      _showMessage('Premium unlocked for this session.');
+                    },
+                    style: FilledButton.styleFrom(
+                      backgroundColor: const Color(0xFF0F4C5C),
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                    ),
+                    child: const Text('Subscribe -- \$4.99/month'),
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Center(
+                  child: TextButton(
+                    onPressed: () => _showMessage(
+                      'Restore Purchases will be available once payments are live.',
+                    ),
+                    child: const Text('Restore Purchases'),
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Auto-renewing subscription. Price shown is a placeholder until the App Store listing is finalized.',
+                  textAlign: TextAlign.center,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: const Color(0xFF8398A5),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildPaywallBenefit({required IconData icon, required String text}) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(icon, size: 20, color: const Color(0xFF0F4C5C)),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Text(
+            text,
+            style: Theme.of(
+              context,
+            ).textTheme.bodyMedium?.copyWith(color: const Color(0xFF33474F)),
+          ),
+        ),
+      ],
     );
   }
 

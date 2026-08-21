@@ -886,6 +886,7 @@ class ResultsSection extends StatelessWidget {
     required this.consumablePreset,
     required this.onPdfPressed,
     required this.pdfBusy,
+    this.pdfLocked = false,
   });
 
   final WeldCalculationResult result;
@@ -893,6 +894,7 @@ class ResultsSection extends StatelessWidget {
   final ConsumablePreset consumablePreset;
   final VoidCallback? onPdfPressed;
   final bool pdfBusy;
+  final bool pdfLocked;
 
   @override
   Widget build(BuildContext context) {
@@ -988,8 +990,17 @@ class ResultsSection extends StatelessWidget {
                       height: 18,
                       child: CircularProgressIndicator(strokeWidth: 2.2),
                     )
-                  : const Icon(Icons.picture_as_pdf_outlined, size: 18),
-              label: Text(pdfBusy ? 'Preparing PDF...' : 'Export PDF'),
+                  : Icon(
+                      pdfLocked
+                          ? Icons.lock_outline
+                          : Icons.picture_as_pdf_outlined,
+                      size: 18,
+                    ),
+              label: Text(
+                pdfBusy
+                    ? 'Preparing PDF...'
+                    : (pdfLocked ? 'Unlock PDF' : 'Export PDF'),
+              ),
             ),
           ],
         ),
