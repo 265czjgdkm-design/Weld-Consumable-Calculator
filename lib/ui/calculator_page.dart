@@ -23,7 +23,6 @@ class _CalculatorPageState extends State<CalculatorPage> {
   final UserPresetStore _userPresetStore = const UserPresetStore();
   final ScrollController _pageScrollController = ScrollController();
   final ScrollController _inputColumnScrollController = ScrollController();
-  final GlobalKey _resultsSectionKey = GlobalKey();
   static const _customDiameterValue = 'custom';
 
   final Map<FieldKey, TextEditingController> _controllers = {
@@ -46,6 +45,7 @@ class _CalculatorPageState extends State<CalculatorPage> {
   List<UserWeldPreset> _userPresets = const [];
   String? _selectedUserPresetId;
   WeldCalculationResult? _result;
+  bool _showResultsScreen = false;
   bool _isExportingPdf = false;
   bool _isUserPresetBusy = false;
 
@@ -117,6 +117,9 @@ class _CalculatorPageState extends State<CalculatorPage> {
             SafeArea(
               child: LayoutBuilder(
                 builder: (context, constraints) {
+                  if (_showResultsScreen) {
+                    return _buildResultsScreen(context);
+                  }
                   final wide = constraints.maxWidth >= 1120;
                   if (!wide) {
                     return _buildNarrowPage(context);
@@ -218,11 +221,6 @@ class _CalculatorPageState extends State<CalculatorPage> {
                 const SizedBox(height: 18),
                 _buildActionPanel(context),
                 const SizedBox(height: 18),
-                KeyedSubtree(
-                  key: _resultsSectionKey,
-                  child: _buildResultsCard(),
-                ),
-                const SizedBox(height: 18),
                 const WebsiteReadyFooter(),
               ],
             ),
@@ -267,8 +265,6 @@ class _CalculatorPageState extends State<CalculatorPage> {
               ),
               const SizedBox(height: 18),
               _buildActionPanel(context),
-              const SizedBox(height: 18),
-              KeyedSubtree(key: _resultsSectionKey, child: _buildResultsCard()),
             ],
           );
         }
@@ -327,21 +323,6 @@ class _CalculatorPageState extends State<CalculatorPage> {
                   ),
                 ],
               ),
-            ),
-            const SizedBox(height: 18),
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  flex: 6,
-                  child: KeyedSubtree(
-                    key: _resultsSectionKey,
-                    child: _buildResultsCard(),
-                  ),
-                ),
-                const SizedBox(width: 18),
-                Expanded(flex: 6, child: _buildResultsGuideCard(context)),
-              ],
             ),
           ],
         );
@@ -1108,129 +1089,51 @@ class _CalculatorPageState extends State<CalculatorPage> {
     );
   }
 
-  Widget _buildResultsGuideCard(BuildContext context) {
-    final hasResults = _result != null;
-
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(22),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              hasResults ? 'Next Step' : 'How This Workspace Flows',
-              style: Theme.of(
-                context,
-              ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              hasResults
-                  ? 'The calculation has been placed in the left results panel below the fixed drawing workspace. You can review it there, then scroll back up on the right to refine inputs.'
-                  : 'Keep the drawing fixed on the left while you move through the input stack on the right. When you press Calculate, the page brings you down to the results panel on the left automatically.',
-              style: Theme.of(
-                context,
-              ).textTheme.bodyMedium?.copyWith(color: const Color(0xFF607482)),
-            ),
-            const SizedBox(height: 18),
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(18),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(22),
-                gradient: const LinearGradient(
-                  colors: [Color(0xFFF6FAFC), Color(0xFFEEF4F7)],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                border: Border.all(color: const Color(0xFFDCE5EB)),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _buildGuideStep(
-                    context,
-                    index: '01',
-                    title: 'Left side stays visual',
-                    body:
-                        'Joint summary and source shape remain visible while the form changes on the right.',
-                  ),
-                  const SizedBox(height: 14),
-                  _buildGuideStep(
-                    context,
-                    index: '02',
-                    title: 'Right side stays operational',
-                    body:
-                        'Inputs, presets, rates, and action controls move independently without losing the section sketch.',
-                  ),
-                  const SizedBox(height: 14),
-                  _buildGuideStep(
-                    context,
-                    index: '03',
-                    title: hasResults
-                        ? 'Results are ready below'
-                        : 'Results appear below on calculate',
-                    body: hasResults
-                        ? 'Use the left results card to verify weld metal, filler consumption, arc-on time, and the engineering basis.'
-                        : 'The page scrolls down to the results card so the transition from input to review feels direct and controlled.',
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildGuideStep(
-    BuildContext context, {
-    required String index,
-    required String title,
-    required String body,
-  }) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Container(
-          width: 42,
-          height: 42,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(14),
-            color: const Color(0xFF0F4C5C),
-          ),
-          alignment: Alignment.center,
-          child: Text(
-            index,
-            style: const TextStyle(
-              color: Colors.white,
-              fontWeight: FontWeight.w800,
-              fontSize: 12,
-            ),
-          ),
-        ),
-        const SizedBox(width: 14),
-        Expanded(
+  /// A dedicated results screen the Calculate button transitions to, kept
+  /// separate from the input flow so the numbers read as a clear final
+  /// step rather than another card in the same long scroll.
+  Widget _buildResultsScreen(BuildContext context) {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.fromLTRB(18, 18, 18, 40),
+      child: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 720),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                title,
-                style: Theme.of(
-                  context,
-                ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800),
+              Row(
+                children: [
+                  IconButton.filledTonal(
+                    onPressed: () =>
+                        setState(() => _showResultsScreen = false),
+                    icon: const Icon(Icons.arrow_back),
+                    tooltip: 'Edit inputs',
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Text(
+                      'Results',
+                      style: Theme.of(context).textTheme.headlineMedium
+                          ?.copyWith(fontWeight: FontWeight.w800),
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(height: 4),
-              Text(
-                body,
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: const Color(0xFF607482),
+              const SizedBox(height: 18),
+              _buildResultsCard(),
+              const SizedBox(height: 18),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: () => setState(() => _showResultsScreen = false),
+                  icon: const Icon(Icons.tune_outlined),
+                  label: const Text('Edit Inputs'),
                 ),
               ),
             ],
           ),
         ),
-      ],
+      ),
     );
   }
 
@@ -2333,8 +2236,10 @@ class _CalculatorPageState extends State<CalculatorPage> {
       );
 
       final result = _calculator.calculate(input);
-      setState(() => _result = result);
-      _scrollToResults();
+      setState(() {
+        _result = result;
+        _showResultsScreen = true;
+      });
     } on InputValidationException catch (error) {
       setState(() => _result = null);
       _showMessage(error.message);
@@ -2422,19 +2327,6 @@ class _CalculatorPageState extends State<CalculatorPage> {
         );
       },
     );
-  }
-
-  void _scrollToResults() {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      final context = _resultsSectionKey.currentContext;
-      if (context == null) return;
-      Scrollable.ensureVisible(
-        context,
-        duration: const Duration(milliseconds: 450),
-        curve: Curves.easeOutCubic,
-        alignment: 0.06,
-      );
-    });
   }
 
   double? _resolveThicknessForCalculation() {
