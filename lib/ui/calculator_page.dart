@@ -255,7 +255,7 @@ class _CalculatorPageState extends State<CalculatorPage> {
   double _narrowDrawingHeight(BuildContext context) {
     final mediaQuery = MediaQuery.of(context);
     final safeHeight = mediaQuery.size.height - mediaQuery.padding.vertical;
-    return (safeHeight * 0.40).clamp(300.0, 360.0);
+    return (safeHeight * 0.34).clamp(280.0, 320.0);
   }
 
   Widget _buildEstimatorWorkspace(BuildContext context) {
@@ -664,22 +664,46 @@ class _CalculatorPageState extends State<CalculatorPage> {
             return Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Technical Drawing',
-                            style:
-                                (compact
-                                        ? Theme.of(context).textTheme.titleMedium
-                                        : Theme.of(context).textTheme.titleLarge)
-                                    ?.copyWith(fontWeight: FontWeight.w800),
+                if (compact) ...[
+                  Text(
+                    'Technical Drawing',
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      for (final mode in DrawingMode.values) ...[
+                        if (mode != DrawingMode.values.first)
+                          const SizedBox(width: 8),
+                        Expanded(
+                          child: _buildCompactModeSegment(
+                            label: mode.label,
+                            selected: _drawingMode == mode,
+                            onSelected: () {
+                              setState(() {
+                                _drawingMode = mode;
+                              });
+                            },
                           ),
-                          if (!compact) ...[
+                        ),
+                      ],
+                    ],
+                  ),
+                ] else
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Technical Drawing',
+                              style: Theme.of(context).textTheme.titleLarge
+                                  ?.copyWith(fontWeight: FontWeight.w800),
+                            ),
                             const SizedBox(height: 8),
                             Text(
                               _drawingMode == DrawingMode.technical
@@ -689,31 +713,30 @@ class _CalculatorPageState extends State<CalculatorPage> {
                                   ?.copyWith(color: const Color(0xFF607482)),
                             ),
                           ],
-                        ],
+                        ),
                       ),
-                    ),
-                    const SizedBox(width: 12),
-                    Flexible(
-                      child: Wrap(
-                        spacing: 8,
-                        runSpacing: 8,
-                        alignment: WrapAlignment.end,
-                        children: [
-                          for (final mode in DrawingMode.values)
-                            _buildSelectionChip(
-                              label: mode.label,
-                              selected: _drawingMode == mode,
-                              onSelected: () {
-                                setState(() {
-                                  _drawingMode = mode;
-                                });
-                              },
-                            ),
-                        ],
+                      const SizedBox(width: 12),
+                      Flexible(
+                        child: Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          alignment: WrapAlignment.end,
+                          children: [
+                            for (final mode in DrawingMode.values)
+                              _buildSelectionChip(
+                                label: mode.label,
+                                selected: _drawingMode == mode,
+                                onSelected: () {
+                                  setState(() {
+                                    _drawingMode = mode;
+                                  });
+                                },
+                              ),
+                          ],
+                        ),
                       ),
-                    ),
-                  ],
-                ),
+                    ],
+                  ),
                 SizedBox(height: compact ? 6 : 16),
                 if (hasBoundedHeight)
                   Expanded(child: buildDrawingPreviewPanel())
@@ -2099,6 +2122,41 @@ class _CalculatorPageState extends State<CalculatorPage> {
         fontWeight: selected ? FontWeight.w700 : FontWeight.w600,
       ),
       onSelected: (_) => onSelected(),
+    );
+  }
+
+  Widget _buildCompactModeSegment({
+    required String label,
+    required bool selected,
+    required VoidCallback onSelected,
+  }) {
+    return Material(
+      color: selected ? const Color(0xFF12191B) : const Color(0xFFF1F5F7),
+      borderRadius: BorderRadius.circular(12),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: onSelected,
+        child: Container(
+          alignment: Alignment.center,
+          padding: const EdgeInsets.symmetric(vertical: 9),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: selected
+                  ? const Color(0xFF12191B)
+                  : const Color(0xFFD6E0E6),
+            ),
+          ),
+          child: Text(
+            label,
+            style: TextStyle(
+              color: selected ? Colors.white : const Color(0xFF29414D),
+              fontWeight: selected ? FontWeight.w700 : FontWeight.w600,
+              fontSize: 13,
+            ),
+          ),
+        ),
+      ),
     );
   }
 
