@@ -175,7 +175,13 @@ class _WeldDrawingPainter extends CustomPainter {
 
   final List<DrawingHotspot> _hotspots = [];
 
-  void _hotspot(FieldKey? fieldKey, Offset center, {double radius = 26}) {
+  // The painter always draws at a fixed 760x400 canvas size (see the
+  // SizedBox in calculator_page.dart); an outer FittedBox scales that down
+  // to fit the pinned mobile drawing card, which can shrink to ~45% of the
+  // canvas. A canvas-space radius has to be generous enough that the
+  // on-screen tap target still clears a comfortable finger-sized target
+  // once that shrink is applied.
+  void _hotspot(FieldKey? fieldKey, Offset center, {double radius = 52}) {
     if (fieldKey == null) return;
     _hotspots.add(DrawingHotspot(fieldKey, center, radius));
   }
