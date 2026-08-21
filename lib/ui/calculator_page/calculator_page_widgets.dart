@@ -564,7 +564,7 @@ class WebsiteReadyFooter extends StatelessWidget {
             spacing: 10,
             runSpacing: 10,
             children: const [
-              HeroSignalCard(label: 'UX', value: 'Website-grade shell'),
+              HeroSignalCard(label: 'Workflow', value: 'Guided, step by step'),
               HeroSignalCard(label: 'Drawing', value: 'Live technical view'),
               HeroSignalCard(label: 'Reports', value: 'PDF export path'),
               HeroSignalCard(label: 'Data', value: 'Reusable presets'),
@@ -575,7 +575,7 @@ class WebsiteReadyFooter extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Morning-ready product shell',
+                'Built for real job planning',
                 style: Theme.of(context).textTheme.titleLarge?.copyWith(
                   color: Colors.white,
                   fontWeight: FontWeight.w800,
@@ -583,7 +583,7 @@ class WebsiteReadyFooter extends StatelessWidget {
               ),
               const SizedBox(height: 8),
               Text(
-                'This interface now reads more like a technical product website instead of a raw prototype: stronger hierarchy, clearer control zones, and a better client-facing presentation.',
+                'Estimate a joint, check the drawing against the print, and hand a client-ready PDF straight from the same session.',
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                   color: const Color(0xFFD3E4E8),
                 ),

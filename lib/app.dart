@@ -127,6 +127,7 @@ class WeldConsumableCalculatorApp extends StatelessWidget {
             color: Color(0xFF6C8190),
             fontSize: 12.5,
           ),
+          helperMaxLines: 3,
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(20),
             borderSide: const BorderSide(color: Color(0xFFD2DCE3)),
