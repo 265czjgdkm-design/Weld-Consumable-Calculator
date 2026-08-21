@@ -255,7 +255,7 @@ class _CalculatorPageState extends State<CalculatorPage> {
   double _narrowDrawingHeight(BuildContext context) {
     final mediaQuery = MediaQuery.of(context);
     final safeHeight = mediaQuery.size.height - mediaQuery.padding.vertical;
-    return (safeHeight * 0.34).clamp(230.0, 340.0);
+    return (safeHeight * 0.44).clamp(280.0, 440.0);
   }
 
   Widget _buildEstimatorWorkspace(BuildContext context) {
@@ -707,7 +707,7 @@ class _CalculatorPageState extends State<CalculatorPage> {
 
     return Card(
       child: Padding(
-        padding: EdgeInsets.all(compact ? 12 : 22),
+        padding: EdgeInsets.all(compact ? 10 : 22),
         child: LayoutBuilder(
           builder: (context, constraints) {
             final hasBoundedHeight = constraints.maxHeight.isFinite;
@@ -765,7 +765,7 @@ class _CalculatorPageState extends State<CalculatorPage> {
                     ),
                   ],
                 ),
-                SizedBox(height: compact ? 10 : 16),
+                SizedBox(height: compact ? 6 : 16),
                 if (hasBoundedHeight)
                   Expanded(child: buildDrawingPreviewPanel())
                 else
