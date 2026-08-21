@@ -508,53 +508,6 @@ class SnapshotRow extends StatelessWidget {
   }
 }
 
-class QuickMetricTile extends StatelessWidget {
-  const QuickMetricTile({
-    super.key,
-    required this.label,
-    required this.value,
-    required this.icon,
-  });
-
-  final String label;
-  final String value;
-  final IconData icon;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 148,
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(18),
-        color: const Color(0xFFF7FBFD),
-        border: Border.all(color: const Color(0xFFDCE5EB)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(icon, size: 18, color: const Color(0xFF12191B)),
-          const SizedBox(height: 10),
-          Text(
-            label,
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: const Color(0xFF607482),
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            value,
-            style: Theme.of(
-              context,
-            ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
 class StatusPill extends StatelessWidget {
   const StatusPill({
     super.key,

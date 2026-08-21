@@ -369,57 +369,6 @@ class _CalculatorPageState extends State<CalculatorPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              'Estimator Control Tower',
-              style: Theme.of(
-                context,
-              ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'A compact summary layer for engineers, planners, and customers reviewing the active calculation basis.',
-              style: Theme.of(
-                context,
-              ).textTheme.bodyMedium?.copyWith(color: const Color(0xFF607482)),
-            ),
-            const SizedBox(height: 16),
-            Wrap(
-              spacing: 12,
-              runSpacing: 12,
-              children: [
-                QuickMetricTile(
-                  label: 'Joint',
-                  value: _jointType.label,
-                  icon: Icons.alt_route_outlined,
-                ),
-                QuickMetricTile(
-                  label: 'Groove',
-                  value: _grooveType.label,
-                  icon: Icons.change_history_outlined,
-                ),
-                QuickMetricTile(
-                  label: 'Process',
-                  value: _weldingProcess.label,
-                  icon: Icons.bolt_outlined,
-                ),
-                QuickMetricTile(
-                  label: 'Drawing',
-                  value: _drawingMode.label,
-                  icon: Icons.draw_outlined,
-                ),
-                QuickMetricTile(
-                  label: 'Efficiency',
-                  value: _formatPercent(processEfficiency),
-                  icon: Icons.speed_outlined,
-                ),
-                QuickMetricTile(
-                  label: 'Rate',
-                  value: '${_formatNumber(depositionRate, 2)} kg/h',
-                  icon: Icons.tips_and_updates_outlined,
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(16),
