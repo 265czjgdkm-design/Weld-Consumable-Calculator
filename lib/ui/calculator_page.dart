@@ -22,6 +22,7 @@ class _CalculatorPageState extends State<CalculatorPage> {
   final WeldPdfReportService _pdfReportService = const WeldPdfReportService();
   final UserPresetStore _userPresetStore = const UserPresetStore();
   final ScrollController _pageScrollController = ScrollController();
+  final ScrollController _inputColumnScrollController = ScrollController();
   final GlobalKey _resultsSectionKey = GlobalKey();
   static const _customDiameterValue = 'custom';
 
@@ -58,6 +59,7 @@ class _CalculatorPageState extends State<CalculatorPage> {
   @override
   void dispose() {
     _pageScrollController.dispose();
+    _inputColumnScrollController.dispose();
     for (final controller in _controllers.values) {
       controller.dispose();
     }
@@ -301,9 +303,10 @@ class _CalculatorPageState extends State<CalculatorPage> {
                   Expanded(
                     flex: 6,
                     child: Scrollbar(
+                      controller: _inputColumnScrollController,
                       thumbVisibility: true,
                       child: SingleChildScrollView(
-                        primary: false,
+                        controller: _inputColumnScrollController,
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
