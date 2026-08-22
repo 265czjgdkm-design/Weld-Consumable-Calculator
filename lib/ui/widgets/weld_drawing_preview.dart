@@ -1004,16 +1004,17 @@ class _WeldDrawingPainter extends CustomPainter {
       thicknessLabelX: -halfBody - 6,
       rightThicknessLabelX: halfBody + 6,
     );
-    // Break height "h": inner-left lane, close to the joint - clearly
-    // separate from the thickness label's far-left lane above.
+    // Break height "h": inner-left lane, kept close to the joint. The label
+    // is nudged down toward groove depth's height, well clear of the
+    // thickness label's fixed mid-height position on the far-left lane.
     _drawDimensionLine(
       canvas,
       guidePaint,
-      start: p(-halfGap - 18, breakY),
-      end: p(-halfGap - 18, grooveY),
+      start: p(-halfGap - 12, breakY),
+      end: p(-halfGap - 12, grooveY),
       label: 'h ${_formatValue(breakHeight)} mm',
       labelSize: size,
-      labelOffset: const Offset(-20, 0),
+      labelOffset: const Offset(-14, 16),
       extensionStart: p(-halfBreak, breakY),
       extensionEnd: p(-halfGap, grooveY),
       fieldKey: FieldKey.breakHeightMm,
@@ -1026,15 +1027,14 @@ class _WeldDrawingPainter extends CustomPainter {
       end: p(halfGap + 5, thickness),
       label: '${_formatValue(rootFace)} mm root face',
       labelSize: size,
-      labelOffset: const Offset(20, 0),
+      labelOffset: const Offset(20, 6),
       extensionStart: p(halfGap, grooveY),
       extensionEnd: p(halfGap, thickness),
       fieldKey: FieldKey.rootFaceMm,
     );
-    // Primary angle (alpha): pushed down into the lower-middle of the
-    // section and out to its own lane, clear of both the inner root-face
-    // lane below and groove depth's lane (drawn by the shared measurements
-    // call above, which always lands near mid-height).
+    // Primary angle (alpha): a short reach on the inner-right, tucked near
+    // the top of the section - clear of groove depth's lane (mid-height)
+    // and root face's lane (bottom) below it.
     _drawAngleTag(
       canvas,
       guidePaint,
@@ -1043,18 +1043,20 @@ class _WeldDrawingPainter extends CustomPainter {
         halfGap + ((halfBreak - halfGap) * 0.52),
         grooveY - ((grooveY - breakY) * 0.42),
       ),
-      labelCenter: p(halfBreak + 40.0, thickness * 0.62),
+      labelCenter: p(halfGap + 6, breakY * 0.35),
       text: 'α ${_formatValue(primaryAngle)}°',
       fieldKey: FieldKey.bevelAngleDeg,
     );
-    // Secondary angle (beta): pushed up near the top of the section and
-    // out to the outermost lane, clear of groove depth's mid-height lane.
+    // Secondary angle (beta): inner-right, between alpha's lane above and
+    // root face's lane below - a touch further out than both so none of
+    // the three share a column, and nowhere near the top chips or the
+    // left-side thickness/h lanes.
     _drawAngleTag(
       canvas,
       guidePaint,
       size,
       start: p(halfBreak + ((halfTop - halfBreak) * 0.48), breakY * 0.48),
-      labelCenter: p(halfTop + 10.0, thickness * 0.12),
+      labelCenter: p(halfGap + 14, (breakY + grooveY) / 2),
       text: 'β ${_formatValue(secondaryAngle)}°',
       fieldKey: FieldKey.secondaryBevelAngleDeg,
     );
