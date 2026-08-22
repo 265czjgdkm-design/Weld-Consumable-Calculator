@@ -72,6 +72,7 @@ class WeldDrawingPreview extends StatefulWidget {
     required this.drawingMode,
     required this.data,
     this.onFieldTap,
+    this.fillAvailableSpace = false,
   });
 
   final GrooveType grooveType;
@@ -83,6 +84,15 @@ class WeldDrawingPreview extends StatefulWidget {
   /// drawing, so the caller can scroll to and focus that input field.
   final ValueChanged<FieldKey>? onFieldTap;
 
+  /// When true, the painter renders directly at whatever box its parent
+  /// gives it (which must have bounded width AND height) instead of being
+  /// drawn on a fixed 760x400 virtual canvas that then gets shrunk by an
+  /// outer FittedBox. On a small pinned mobile card that outer shrink was
+  /// crushing dimension label font sizes to the point of illegibility;
+  /// rendering at the real box size keeps every font/stroke constant in
+  /// this file at its intended, legible on-screen pixel size.
+  final bool fillAvailableSpace;
+
   @override
   State<WeldDrawingPreview> createState() => _WeldDrawingPreviewState();
 }
@@ -92,23 +102,27 @@ class _WeldDrawingPreviewState extends State<WeldDrawingPreview> {
 
   @override
   Widget build(BuildContext context) {
-    return AspectRatio(
-      aspectRatio: 1.9,
-      child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTapUp: widget.onFieldTap == null ? null : _handleTapUp,
-        child: CustomPaint(
-          painter: _WeldDrawingPainter(
-            grooveType: widget.grooveType,
-            jointType: widget.jointType,
-            drawingMode: widget.drawingMode,
-            data: widget.data,
-            onHotspots: (hotspots) => _hotspots = hotspots,
-          ),
-          child: const SizedBox.expand(),
+    final gestureDetector = GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTapUp: widget.onFieldTap == null ? null : _handleTapUp,
+      child: CustomPaint(
+        painter: _WeldDrawingPainter(
+          grooveType: widget.grooveType,
+          jointType: widget.jointType,
+          drawingMode: widget.drawingMode,
+          data: widget.data,
+          onHotspots: (hotspots) => _hotspots = hotspots,
+          fillAvailableSpace: widget.fillAvailableSpace,
         ),
+        child: const SizedBox.expand(),
       ),
     );
+
+    if (widget.fillAvailableSpace) {
+      return SizedBox.expand(child: gestureDetector);
+    }
+
+    return AspectRatio(aspectRatio: 1.9, child: gestureDetector);
   }
 
   void _handleTapUp(TapUpDetails details) {
@@ -165,6 +179,7 @@ class _WeldDrawingPainter extends CustomPainter {
     required this.drawingMode,
     required this.data,
     this.onHotspots,
+    this.fillAvailableSpace = false,
   });
 
   final GrooveType grooveType;
@@ -172,18 +187,23 @@ class _WeldDrawingPainter extends CustomPainter {
   final DrawingMode drawingMode;
   final WeldDrawingData data;
   final ValueChanged<List<DrawingHotspot>>? onHotspots;
+  final bool fillAvailableSpace;
 
   final List<DrawingHotspot> _hotspots = [];
 
-  // The painter always draws at a fixed 760x400 canvas size (see the
-  // SizedBox in calculator_page.dart); an outer FittedBox scales that down
-  // to fit the pinned mobile drawing card, which can shrink to ~45% of the
-  // canvas. A canvas-space radius has to be generous enough that the
-  // on-screen tap target still clears a comfortable finger-sized target
-  // once that shrink is applied.
+  // Radius constants below are tuned for the default mode, where the
+  // painter always draws at a fixed 760x400 canvas size (see the SizedBox
+  // in calculator_page.dart) that an outer FittedBox then shrinks to ~45%
+  // to fit the pinned mobile drawing card — so a canvas-space radius has to
+  // be generous to still clear a comfortable finger-sized target once that
+  // shrink is applied. In [fillAvailableSpace] mode there is no such
+  // shrink (the canvas IS the real on-screen box), so the same constants
+  // would be wildly oversized; scale them down to roughly what they
+  // resolve to on screen in the default mode.
   void _hotspot(FieldKey? fieldKey, Offset center, {double radius = 52}) {
     if (fieldKey == null) return;
-    _hotspots.add(DrawingHotspot(fieldKey, center, radius));
+    final effectiveRadius = fillAvailableSpace ? radius * 0.46 : radius;
+    _hotspots.add(DrawingHotspot(fieldKey, center, effectiveRadius));
   }
 
   bool get _isPipeButt => jointType == JointType.pipeButt;
@@ -1400,6 +1420,7 @@ class _WeldDrawingPainter extends CustomPainter {
         labelOffset: const Offset(46, 0),
         extensionStart: p(halfGap, 0),
         extensionEnd: p(halfGap, grooveY),
+        fieldKey: FieldKey.rootFaceMm,
       );
     }
   }
@@ -1450,7 +1471,19 @@ class _WeldDrawingPainter extends CustomPainter {
     required double maxHalfWidthMm,
     required double heightMm,
   }) {
-    final frame = Rect.fromLTWH(50, 42, size.width - 100, size.height - 92);
+    // Margins as a fraction of canvas size (matching the original fixed
+    // 50/42/100/92 px margins against the 760x400 reference canvas) so the
+    // layout looks identical whether painted on that virtual canvas or
+    // directly at a real, smaller box (see [WeldDrawingPreview.fillAvailableSpace]).
+    final marginX = size.width * 0.0658;
+    final marginTop = size.height * 0.105;
+    final marginBottom = size.height * 0.125;
+    final frame = Rect.fromLTWH(
+      marginX,
+      marginTop,
+      size.width - (marginX * 2),
+      size.height - marginTop - marginBottom,
+    );
     final scale = math.min(
       frame.width / (maxHalfWidthMm * 2),
       frame.height / heightMm,
