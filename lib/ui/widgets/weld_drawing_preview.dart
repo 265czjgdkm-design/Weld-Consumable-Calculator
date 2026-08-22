@@ -987,14 +987,12 @@ class _WeldDrawingPainter extends CustomPainter {
       topLabelCenter: p(halfTop * 0.48, thickness * 0.16),
       rootLabelCenter: p(halfGap + 6, thickness - 0.8),
     );
-    // Compound V already carries six callouts (thickness, root gap, break
-    // height, root face, alpha, beta) plus the type/pipe chips - the busiest
-    // drawing in the app. Two things keep that from turning into a pile of
-    // overlapping pills: the redundant "groove depth" readout (it's just
-    // thickness minus root face, both already shown) is dropped entirely,
-    // and every remaining label sits in its own horizontal lane - far
-    // outside, middle, or close to the joint - so labels never share a
-    // column even when their vertical positions land close together.
+    // Compound V carries six callouts (thickness, root gap, groove depth,
+    // break height, root face, alpha, beta) plus the type/pipe chips - the
+    // busiest drawing in the app. Every one of them stays, but each gets its
+    // own lane - a distinct horizontal distance from the joint, not just a
+    // distinct vertical position - so nothing stacks into an unreadable
+    // pile even when two labels' natural heights land close together.
     _drawButtCommonMeasurements(
       canvas,
       size,
@@ -1005,7 +1003,6 @@ class _WeldDrawingPainter extends CustomPainter {
       grooveY: grooveY,
       thicknessLabelX: -halfBody - 6,
       rightThicknessLabelX: halfBody + 6,
-      showGrooveDepth: false,
     );
     // Break height "h": inner-left lane, close to the joint - clearly
     // separate from the thickness label's far-left lane above.
@@ -1021,7 +1018,7 @@ class _WeldDrawingPainter extends CustomPainter {
       extensionEnd: p(-halfGap, grooveY),
       fieldKey: FieldKey.breakHeightMm,
     );
-    // Root face: inner-right lane, close to the joint.
+    // Root face: bottom, inner-right lane, close to the joint.
     _drawDimensionLine(
       canvas,
       guidePaint,
@@ -1034,8 +1031,10 @@ class _WeldDrawingPainter extends CustomPainter {
       extensionEnd: p(halfGap, thickness),
       fieldKey: FieldKey.rootFaceMm,
     );
-    // Primary angle (alpha): middle-right lane, well clear of both the
-    // inner root-face lane and the outer beta lane below.
+    // Primary angle (alpha): pushed down into the lower-middle of the
+    // section and out to its own lane, clear of both the inner root-face
+    // lane below and groove depth's lane (drawn by the shared measurements
+    // call above, which always lands near mid-height).
     _drawAngleTag(
       canvas,
       guidePaint,
@@ -1044,18 +1043,18 @@ class _WeldDrawingPainter extends CustomPainter {
         halfGap + ((halfBreak - halfGap) * 0.52),
         grooveY - ((grooveY - breakY) * 0.42),
       ),
-      labelCenter: p(halfBreak + 34.0, breakY + ((grooveY - breakY) * 0.5)),
+      labelCenter: p(halfBreak + 40.0, thickness * 0.62),
       text: 'α ${_formatValue(primaryAngle)}°',
       fieldKey: FieldKey.bevelAngleDeg,
     );
-    // Secondary angle (beta): outer-right lane, up near the wide top
-    // opening where nothing else is competing for space.
+    // Secondary angle (beta): pushed up near the top of the section and
+    // out to the outermost lane, clear of groove depth's mid-height lane.
     _drawAngleTag(
       canvas,
       guidePaint,
       size,
       start: p(halfBreak + ((halfTop - halfBreak) * 0.48), breakY * 0.48),
-      labelCenter: p(halfTop + 10.0, breakY * 0.22),
+      labelCenter: p(halfTop + 10.0, thickness * 0.12),
       text: 'β ${_formatValue(secondaryAngle)}°',
       fieldKey: FieldKey.secondaryBevelAngleDeg,
     );
@@ -1379,7 +1378,6 @@ class _WeldDrawingPainter extends CustomPainter {
     required double thicknessLabelX,
     double? rightThicknessLabelX,
     double? rootGapLabelY,
-    bool showGrooveDepth = true,
   }) {
     final p = layout.point;
     final memberExtents = _memberExtents(thickness);
@@ -1426,7 +1424,7 @@ class _WeldDrawingPainter extends CustomPainter {
       extensionEnd: p(halfGap, rootGapLabelY ?? thickness),
       fieldKey: FieldKey.rootGapMm,
     );
-    if (showGrooveDepth && grooveY > 0) {
+    if (grooveY > 0) {
       _drawDimensionLine(
         canvas,
         guidePaint,
