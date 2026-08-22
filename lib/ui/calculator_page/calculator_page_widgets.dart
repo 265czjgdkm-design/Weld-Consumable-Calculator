@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../l10n/app_language.dart';
+import '../../l10n/app_locale_scope.dart';
 import '../../models/weld_models.dart';
 import '../widgets/result_card.dart';
 import 'calculator_page_models.dart';
@@ -63,6 +65,8 @@ class TopNavigationBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final strings = AppLocaleScope.stringsOf(context);
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
@@ -82,44 +86,40 @@ class TopNavigationBar extends StatelessWidget {
         builder: (context, constraints) {
           final stacked = constraints.maxWidth < 900;
 
-          final identity = Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+          final identity = Row(
+            mainAxisSize: MainAxisSize.min,
             children: [
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Container(
-                    width: 42,
-                    height: 42,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(14),
-                      gradient: const LinearGradient(
-                        colors: [Color(0xFF1B2326), Color(0xFF0B0F10)],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
+              Container(
+                width: 42,
+                height: 42,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(14),
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFF1B2326), Color(0xFF0B0F10)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                ),
+                child: const Center(child: VaryosMark(size: 20)),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      strings.navBrand,
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w800,
                       ),
                     ),
-                    child: const Center(child: VaryosMark(size: 20)),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Varyos Weld',
-                          style: Theme.of(context).textTheme.titleMedium
-                              ?.copyWith(fontWeight: FontWeight.w800),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          'Professional estimating workspace for weld engineers and client-facing planning.',
-                          style: Theme.of(context).textTheme.bodySmall,
-                        ),
-                      ],
+                    const SizedBox(height: 2),
+                    Text(
+                      strings.navSubtitle,
+                      style: Theme.of(context).textTheme.bodySmall,
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ],
           );
@@ -128,22 +128,24 @@ class TopNavigationBar extends StatelessWidget {
             spacing: 8,
             runSpacing: 8,
             alignment: WrapAlignment.end,
+            crossAxisAlignment: WrapCrossAlignment.center,
             children: [
-              const StatusPill(
-                label: 'BUTT & FILLET ESTIMATOR',
-                color: Color(0xFFE8F2F5),
-                textColor: Color(0xFF12191B),
+              StatusPill(
+                label: strings.navPillEstimator,
+                color: const Color(0xFFE8F2F5),
+                textColor: const Color(0xFF12191B),
               ),
-              const StatusPill(
-                label: 'PDF READY',
-                color: Color(0xFFF1F5F8),
-                textColor: Color(0xFF395361),
+              StatusPill(
+                label: strings.navPillPdf,
+                color: const Color(0xFFF1F5F8),
+                textColor: const Color(0xFF395361),
               ),
-              const StatusPill(
-                label: 'AWS CONSUMABLE DATA',
-                color: Color(0xFFF1F5F8),
-                textColor: Color(0xFF395361),
+              StatusPill(
+                label: strings.navPillAws,
+                color: const Color(0xFFF1F5F8),
+                textColor: const Color(0xFF395361),
               ),
+              const LanguagePickerButton(),
             ],
           );
 
@@ -189,14 +191,11 @@ class ExperienceHero extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const title =
-        'A welding estimator that feels technical, polished, and easy to trust.';
-    const body =
-        'Build estimates from real joint geometry, AWS consumable selection, and a report-grade result layer that can be shown to clients or production teams.';
+    final strings = AppLocaleScope.stringsOf(context);
     final heroSignals = [
-      ('Live joint', jointTypeLabel),
-      ('Groove', grooveLabel),
-      ('Process', processLabel),
+      (strings.heroSignalLiveJoint, jointTypeLabel),
+      (strings.heroSignalGroove, grooveLabel),
+      (strings.heroSignalProcess, processLabel),
     ];
 
     return Container(
@@ -233,9 +232,9 @@ class ExperienceHero extends StatelessWidget {
                   borderRadius: BorderRadius.circular(999),
                   border: Border.all(color: const Color(0x32FFFFFF)),
                 ),
-                child: const Text(
-                  'ENGINEERING PRODUCT / ESTIMATING WORKSPACE',
-                  style: TextStyle(
+                child: Text(
+                  strings.heroTag,
+                  style: const TextStyle(
                     color: Colors.white,
                     fontWeight: FontWeight.w800,
                     fontSize: 12,
@@ -247,7 +246,7 @@ class ExperienceHero extends StatelessWidget {
               ConstrainedBox(
                 constraints: const BoxConstraints(maxWidth: 660),
                 child: Text(
-                  title,
+                  strings.heroTitle,
                   style: Theme.of(context).textTheme.headlineMedium?.copyWith(
                     color: Colors.white,
                     fontWeight: FontWeight.w800,
@@ -258,7 +257,7 @@ class ExperienceHero extends StatelessWidget {
               ConstrainedBox(
                 constraints: const BoxConstraints(maxWidth: 680),
                 child: Text(
-                  body,
+                  strings.heroBody,
                   style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                     color: const Color(0xFFD9EBEF),
                   ),
@@ -287,9 +286,9 @@ class ExperienceHero extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  'Session Snapshot',
-                  style: TextStyle(
+                Text(
+                  strings.snapshotTitle,
+                  style: const TextStyle(
                     color: Colors.white,
                     fontWeight: FontWeight.w800,
                     fontSize: 13,
@@ -297,15 +296,23 @@ class ExperienceHero extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 14),
-                SnapshotRow(label: 'Drawing mode', value: drawingModeLabel),
-                SnapshotRow(label: 'Consumable', value: consumableLabel),
                 SnapshotRow(
-                  label: 'Saved presets',
+                  label: strings.snapshotDrawingMode,
+                  value: drawingModeLabel,
+                ),
+                SnapshotRow(
+                  label: strings.snapshotConsumable,
+                  value: consumableLabel,
+                ),
+                SnapshotRow(
+                  label: strings.snapshotSavedPresets,
                   value: savedPresetCount.toString(),
                 ),
                 SnapshotRow(
-                  label: 'Estimate state',
-                  value: hasResults ? 'Calculated' : 'Awaiting run',
+                  label: strings.snapshotEstimateState,
+                  value: hasResults
+                      ? strings.snapshotCalculated
+                      : strings.snapshotAwaitingRun,
                 ),
               ],
             ),
@@ -337,21 +344,22 @@ class CapabilityStrip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const items = [
+    final strings = AppLocaleScope.stringsOf(context);
+    final items = [
       (
         Icons.calculate_outlined,
-        'Daily estimating',
-        'Compute weld area, length, volume, weld metal, filler demand, arc-on time, and deposition assumptions in one flow.',
+        strings.capabilityDailyTitle,
+        strings.capabilityDailyDesc,
       ),
       (
         Icons.draw_outlined,
-        'Technical drawing',
-        'Show live groove geometry with visual and engineering modes so the section sketch reinforces the estimate.',
+        strings.capabilityDrawingTitle,
+        strings.capabilityDrawingDesc,
       ),
       (
         Icons.picture_as_pdf_outlined,
-        'Report workflow',
-        'Turn the live estimate into a PDF-ready result summary with a clear engineering basis and reusable presets.',
+        strings.capabilityReportTitle,
+        strings.capabilityReportDesc,
       ),
     ];
 
@@ -541,11 +549,79 @@ class StatusPill extends StatelessWidget {
   }
 }
 
+/// A small pill showing the current language's flag + code that opens a
+/// menu of every supported language. Reused wherever the app needs a
+/// language switcher (currently the top nav bar).
+class LanguagePickerButton extends StatelessWidget {
+  const LanguagePickerButton({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final locale = AppLocaleScope.of(context);
+    final strings = AppLocaleScope.stringsOf(context);
+
+    return PopupMenuButton<AppLanguage>(
+      tooltip: strings.languagePickerTitle,
+      initialValue: locale.language,
+      onSelected: locale.setLanguage,
+      itemBuilder: (context) => [
+        for (final language in AppLanguage.values)
+          PopupMenuItem<AppLanguage>(
+            value: language,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(language.flagEmoji, style: const TextStyle(fontSize: 16)),
+                const SizedBox(width: 10),
+                Text(language.nativeName),
+                if (language == locale.language) ...[
+                  const SizedBox(width: 10),
+                  const Icon(Icons.check, size: 16),
+                ],
+              ],
+            ),
+          ),
+      ],
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: const Color(0xFFF1F5F8),
+          borderRadius: BorderRadius.circular(999),
+          border: Border.all(color: const Color(0xFFD6E0E6)),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              locale.language.flagEmoji,
+              style: const TextStyle(fontSize: 13),
+            ),
+            const SizedBox(width: 6),
+            Text(
+              locale.language.code.toUpperCase(),
+              style: const TextStyle(
+                color: Color(0xFF395361),
+                fontSize: 12,
+                fontWeight: FontWeight.w800,
+                letterSpacing: 0.5,
+              ),
+            ),
+            const SizedBox(width: 2),
+            const Icon(Icons.expand_more, size: 14, color: Color(0xFF395361)),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class WebsiteReadyFooter extends StatelessWidget {
   const WebsiteReadyFooter({super.key});
 
   @override
   Widget build(BuildContext context) {
+    final strings = AppLocaleScope.stringsOf(context);
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(22),
@@ -566,11 +642,23 @@ class WebsiteReadyFooter extends StatelessWidget {
           final checklist = Wrap(
             spacing: 10,
             runSpacing: 10,
-            children: const [
-              HeroSignalCard(label: 'Workflow', value: 'Guided, step by step'),
-              HeroSignalCard(label: 'Drawing', value: 'Live technical view'),
-              HeroSignalCard(label: 'Reports', value: 'PDF export path'),
-              HeroSignalCard(label: 'Data', value: 'Reusable presets'),
+            children: [
+              HeroSignalCard(
+                label: strings.footerWorkflowLabel,
+                value: strings.footerWorkflowValue,
+              ),
+              HeroSignalCard(
+                label: strings.footerDrawingLabel,
+                value: strings.footerDrawingValue,
+              ),
+              HeroSignalCard(
+                label: strings.footerReportsLabel,
+                value: strings.footerReportsValue,
+              ),
+              HeroSignalCard(
+                label: strings.footerDataLabel,
+                value: strings.footerDataValue,
+              ),
             ],
           );
 
@@ -578,7 +666,7 @@ class WebsiteReadyFooter extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Built for real job planning',
+                strings.footerTitle,
                 style: Theme.of(context).textTheme.titleLarge?.copyWith(
                   color: Colors.white,
                   fontWeight: FontWeight.w800,
@@ -586,7 +674,7 @@ class WebsiteReadyFooter extends StatelessWidget {
               ),
               const SizedBox(height: 8),
               Text(
-                'Estimate a joint, check the drawing against the print, and hand a client-ready PDF straight from the same session.',
+                strings.footerBody,
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                   color: const Color(0xFFD3E4E8),
                 ),
@@ -1361,8 +1449,7 @@ class ResultsHighlightBanner extends StatelessWidget {
               ),
               HighlightChip(
                 label: 'Arc-On per Meter',
-                value:
-                    '${ResultsSection._number(arcMinutesPerMeter, 2)} min/m',
+                value: '${ResultsSection._number(arcMinutesPerMeter, 2)} min/m',
               ),
             ],
           ),
@@ -1556,4 +1643,3 @@ class ReportMethodPanel extends StatelessWidget {
     );
   }
 }
-

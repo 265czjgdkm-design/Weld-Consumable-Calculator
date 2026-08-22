@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 
 import '../core/weld_calculator.dart';
 import '../core/welding_defaults.dart';
+import '../l10n/app_locale_scope.dart';
 import '../models/weld_models.dart';
 import '../services/user_preset_store.dart';
 import '../services/weld_pdf_report_service.dart';
@@ -147,6 +148,7 @@ class _CalculatorPageState extends State<CalculatorPage> {
   /// live here instead of above the input form, so the calculator itself
   /// opens straight into Joint Type once the user taps through.
   Widget _buildIntroScreen(BuildContext context) {
+    final strings = AppLocaleScope.stringsOf(context);
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(18, 18, 18, 40),
       child: Center(
@@ -167,14 +169,12 @@ class _CalculatorPageState extends State<CalculatorPage> {
                 hasResults: _result != null,
               ),
               const SizedBox(height: 18),
-              const CapabilityStrip(),
-              const SizedBox(height: 22),
               SizedBox(
                 width: double.infinity,
                 child: FilledButton.icon(
                   onPressed: () => setState(() => _showIntro = false),
                   icon: const Icon(Icons.arrow_forward),
-                  label: const Text('Get Started'),
+                  label: Text(strings.getStarted),
                   style: FilledButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 18),
                     textStyle: const TextStyle(
@@ -184,6 +184,8 @@ class _CalculatorPageState extends State<CalculatorPage> {
                   ),
                 ),
               ),
+              const SizedBox(height: 22),
+              const CapabilityStrip(),
               const SizedBox(height: 22),
               const WebsiteReadyFooter(),
             ],
@@ -636,21 +638,30 @@ class _CalculatorPageState extends State<CalculatorPage> {
           ),
         ),
         padding: EdgeInsets.all(compact ? 4 : 12),
-        child: Center(
-          child: FittedBox(
-            fit: BoxFit.contain,
-            child: SizedBox(
-              width: 760,
-              child: WeldDrawingPreview(
+        child: compact
+            ? WeldDrawingPreview(
                 grooveType: _grooveType,
                 jointType: _jointType,
                 drawingMode: _drawingMode,
                 data: _drawingData,
                 onFieldTap: _handleDrawingFieldTap,
+                fillAvailableSpace: true,
+              )
+            : Center(
+                child: FittedBox(
+                  fit: BoxFit.contain,
+                  child: SizedBox(
+                    width: 760,
+                    child: WeldDrawingPreview(
+                      grooveType: _grooveType,
+                      jointType: _jointType,
+                      drawingMode: _drawingMode,
+                      data: _drawingData,
+                      onFieldTap: _handleDrawingFieldTap,
+                    ),
+                  ),
+                ),
               ),
-            ),
-          ),
-        ),
       );
     }
 
@@ -1101,8 +1112,7 @@ class _CalculatorPageState extends State<CalculatorPage> {
               Row(
                 children: [
                   IconButton.filledTonal(
-                    onPressed: () =>
-                        setState(() => _showResultsScreen = false),
+                    onPressed: () => setState(() => _showResultsScreen = false),
                     icon: const Icon(Icons.arrow_back),
                     tooltip: 'Edit inputs',
                   ),
@@ -2419,8 +2429,9 @@ class _CalculatorPageState extends State<CalculatorPage> {
                     Expanded(
                       child: Text(
                         'Varyos Weld Premium',
-                        style: Theme.of(context).textTheme.titleLarge
-                            ?.copyWith(fontWeight: FontWeight.w800),
+                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.w800,
+                        ),
                       ),
                     ),
                   ],

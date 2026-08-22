@@ -5,8 +5,14 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:weld_consumable_calculator/app.dart';
 import 'package:weld_consumable_calculator/models/weld_models.dart';
 
-Future<void> _pumpPastIntro(WidgetTester tester) async {
+Future<void> _pumpPastSplash(WidgetTester tester) async {
   await tester.pumpWidget(const WeldConsumableCalculatorApp());
+  await tester.tap(find.byType(GestureDetector).first);
+  await tester.pumpAndSettle();
+}
+
+Future<void> _pumpPastIntro(WidgetTester tester) async {
+  await _pumpPastSplash(tester);
   await tester.ensureVisible(find.text('Get Started'));
   await tester.tap(find.text('Get Started'));
   await tester.pumpAndSettle();
@@ -18,7 +24,7 @@ void main() {
   });
 
   testWidgets('intro screen leads into the calculator shell', (tester) async {
-    await tester.pumpWidget(const WeldConsumableCalculatorApp());
+    await _pumpPastSplash(tester);
     expect(find.text('Varyos Weld'), findsAtLeastNWidgets(1));
 
     await tester.ensureVisible(find.text('Get Started'));
