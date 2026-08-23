@@ -42,6 +42,14 @@ class L10nStrings {
     required this.footerDataLabel,
     required this.footerDataValue,
     required this.languagePickerTitle,
+    required this.emailGateTitle,
+    required this.emailGateBody,
+    required this.emailGateHint,
+    required this.emailGateContinue,
+    required this.emailGateGuest,
+    required this.emailGateInvalidEmail,
+    required this.emailGateError,
+    required this.emailGateWelcomeToast,
   });
 
   final String navBrand;
@@ -80,6 +88,14 @@ class L10nStrings {
   final String footerDataLabel;
   final String footerDataValue;
   final String languagePickerTitle;
+  final String emailGateTitle;
+  final String emailGateBody;
+  final String emailGateHint;
+  final String emailGateContinue;
+  final String emailGateGuest;
+  final String emailGateInvalidEmail;
+  final String emailGateError;
+  final String emailGateWelcomeToast;
 }
 
 const Map<AppLanguage, L10nStrings> _strings = {
@@ -127,6 +143,16 @@ const Map<AppLanguage, L10nStrings> _strings = {
     footerDataLabel: 'Data',
     footerDataValue: 'Reusable presets',
     languagePickerTitle: 'Language',
+    emailGateTitle: 'Stay in the loop',
+    emailGateBody:
+        'Leave your email for product updates and a welcome note — or skip and jump straight in.',
+    emailGateHint: 'you@example.com',
+    emailGateContinue: 'Continue',
+    emailGateGuest: 'Continue as guest',
+    emailGateInvalidEmail: 'Enter a valid email address',
+    emailGateError:
+        "Couldn't save that right now — you can still continue as a guest.",
+    emailGateWelcomeToast: "You're in — check your inbox for a welcome note.",
   ),
   AppLanguage.tr: L10nStrings(
     navBrand: 'Varyos Weld',
@@ -171,6 +197,17 @@ const Map<AppLanguage, L10nStrings> _strings = {
     footerDataLabel: 'Veri',
     footerDataValue: 'Tekrar kullanılabilir şablonlar',
     languagePickerTitle: 'Dil',
+    emailGateTitle: 'Haberdar ol',
+    emailGateBody:
+        'Ürün güncellemeleri ve hoş geldin notu için mailini bırak — ya da atlayıp direkt devam et.',
+    emailGateHint: 'sen@ornek.com',
+    emailGateContinue: 'Devam Et',
+    emailGateGuest: 'Misafir olarak devam et',
+    emailGateInvalidEmail: 'Geçerli bir mail adresi gir',
+    emailGateError:
+        'Şu an kaydedemedik — yine de misafir olarak devam edebilirsin.',
+    emailGateWelcomeToast:
+        'Kaydın alındı — hoş geldin notu için gelen kutunu kontrol et.',
   ),
   AppLanguage.ru: L10nStrings(
     navBrand: 'Varyos Weld',
@@ -216,6 +253,16 @@ const Map<AppLanguage, L10nStrings> _strings = {
     footerDataLabel: 'Данные',
     footerDataValue: 'Повторно используемые шаблоны',
     languagePickerTitle: 'Язык',
+    emailGateTitle: 'Будьте в курсе',
+    emailGateBody:
+        'Оставьте почту для обновлений и приветственного письма — или пропустите этот шаг.',
+    emailGateHint: 'you@example.com',
+    emailGateContinue: 'Продолжить',
+    emailGateGuest: 'Продолжить как гость',
+    emailGateInvalidEmail: 'Введите корректный адрес электронной почты',
+    emailGateError:
+        'Не удалось сохранить сейчас — вы можете продолжить как гость.',
+    emailGateWelcomeToast: 'Готово — проверьте почту, там приветственное письмо.',
   ),
   AppLanguage.de: L10nStrings(
     navBrand: 'Varyos Weld',
@@ -261,6 +308,17 @@ const Map<AppLanguage, L10nStrings> _strings = {
     footerDataLabel: 'Daten',
     footerDataValue: 'Wiederverwendbare Vorlagen',
     languagePickerTitle: 'Sprache',
+    emailGateTitle: 'Bleiben Sie informiert',
+    emailGateBody:
+        'Hinterlassen Sie Ihre E-Mail für Produkt-Updates und eine Willkommensnachricht — oder überspringen Sie diesen Schritt.',
+    emailGateHint: 'sie@beispiel.com',
+    emailGateContinue: 'Weiter',
+    emailGateGuest: 'Als Gast fortfahren',
+    emailGateInvalidEmail: 'Geben Sie eine gültige E-Mail-Adresse ein',
+    emailGateError:
+        'Konnte gerade nicht gespeichert werden — Sie können trotzdem als Gast fortfahren.',
+    emailGateWelcomeToast:
+        'Fertig — prüfen Sie Ihr Postfach für die Willkommensnachricht.',
   ),
   AppLanguage.hi: L10nStrings(
     navBrand: 'Varyos Weld',
@@ -305,6 +363,16 @@ const Map<AppLanguage, L10nStrings> _strings = {
     footerDataLabel: 'डेटा',
     footerDataValue: 'पुन: उपयोग योग्य प्रीसेट',
     languagePickerTitle: 'भाषा',
+    emailGateTitle: 'अपडेट रहें',
+    emailGateBody:
+        'प्रोडक्ट अपडेट और वेलकम नोट के लिए अपना मेल छोड़ें — या इसे छोड़कर सीधे आगे बढ़ें।',
+    emailGateHint: 'aap@example.com',
+    emailGateContinue: 'जारी रखें',
+    emailGateGuest: 'गेस्ट के रूप में जारी रखें',
+    emailGateInvalidEmail: 'एक मान्य मेल पता दर्ज करें',
+    emailGateError:
+        'अभी सेव नहीं हो सका — आप फिर भी गेस्ट के रूप में जारी रख सकते हैं।',
+    emailGateWelcomeToast: 'हो गया — वेलकम नोट के लिए अपना इनबॉक्स देखें।',
   ),
 };
 

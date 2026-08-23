@@ -5,8 +5,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:rive/rive.dart' as rive;
 
+import '../services/signup_gate_store.dart';
 import 'calculator_page.dart';
 import 'calculator_page/calculator_page_widgets.dart';
+import 'email_gate_screen.dart';
 
 /// Path a designer can drop a Rive-authored splash animation into. When it's
 /// present (and loads successfully) it replaces [_FallbackSplashAnimation]
@@ -49,13 +51,17 @@ class _SplashScreenState extends State<SplashScreen> {
     }
   }
 
-  void _goToApp() {
+  Future<void> _goToApp() async {
     if (!mounted) return;
+    final gateResolved = await const SignupGateStore().isResolved();
+    if (!mounted) return;
+
     Navigator.of(context).pushReplacement(
       PageRouteBuilder(
         transitionDuration: const Duration(milliseconds: 420),
-        pageBuilder: (context, animation, secondaryAnimation) =>
-            const CalculatorPage(),
+        pageBuilder: (context, animation, secondaryAnimation) => gateResolved
+            ? const CalculatorPage()
+            : const EmailGateScreen(),
         transitionsBuilder: (context, animation, secondaryAnimation, child) {
           return FadeTransition(opacity: animation, child: child);
         },

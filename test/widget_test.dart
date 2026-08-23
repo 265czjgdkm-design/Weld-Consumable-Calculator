@@ -9,6 +9,13 @@ Future<void> _pumpPastSplash(WidgetTester tester) async {
   await tester.pumpWidget(const WeldConsumableCalculatorApp());
   await tester.tap(find.byType(GestureDetector).first);
   await tester.pumpAndSettle();
+
+  // First launch also shows the one-time, skippable email gate.
+  final guestButton = find.text('Continue as guest');
+  if (guestButton.evaluate().isNotEmpty) {
+    await tester.tap(guestButton);
+    await tester.pumpAndSettle();
+  }
 }
 
 Future<void> _pumpPastIntro(WidgetTester tester) async {
