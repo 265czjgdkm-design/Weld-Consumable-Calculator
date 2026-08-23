@@ -852,6 +852,11 @@ class _WeldDrawingPainter extends CustomPainter {
       fieldKey: FieldKey.bevelAngleDeg,
     );
     if (data.geometryMode == JointGeometryMode.equal) {
+      // These two half-thickness brackets share the thickness label's outer
+      // lane (there's no room to push them further out without risking the
+      // canvas edge), so they're pushed up/down in screen space instead -
+      // clear of the shared thickness label, which always sits pinned at
+      // the exact midpoint between them.
       _drawDimensionLine(
         canvas,
         guidePaint,
@@ -859,7 +864,7 @@ class _WeldDrawingPainter extends CustomPainter {
         end: p(-halfBody - 1, halfThickness),
         label: '${_formatValue(halfThickness)} mm',
         labelSize: size,
-        labelOffset: const Offset(-38, 0),
+        labelOffset: const Offset(-30, -16),
       );
       _drawDimensionLine(
         canvas,
@@ -868,7 +873,7 @@ class _WeldDrawingPainter extends CustomPainter {
         end: p(-halfBody - 1, thickness),
         label: '${_formatValue(halfThickness)} mm',
         labelSize: size,
-        labelOffset: const Offset(-38, 0),
+        labelOffset: const Offset(-30, 16),
       );
     }
     _drawTypeChip(canvas, size, 'Double V');
