@@ -9,10 +9,10 @@ import 'pdf_report_exporter.dart';
 class WeldPdfReportService {
   const WeldPdfReportService();
 
-  static const _brandTeal = PdfColor.fromInt(0xFF12191B);
-  static const _brandTeal2 = PdfColor.fromInt(0xFF2A3438);
+  static const _brandTeal = PdfColor.fromInt(0xFF0B0F10);
+  static const _brandTeal2 = PdfColor.fromInt(0xFF2B3538);
   static const _brandTealSoft = PdfColor.fromInt(0xFFEAF2F4);
-  static const _brandOrange = PdfColor.fromInt(0xFFEF8354);
+  static const _brandOrange = PdfColor.fromInt(0xFFFF6A35);
   static const _brandOrangeSoft = PdfColor.fromInt(0xFFFBE7DE);
   static const _ink = PdfColor.fromInt(0xFF15232D);
   static const _muted = PdfColor.fromInt(0xFF5E7380);
@@ -127,7 +127,7 @@ class WeldPdfReportService {
           ),
           pw.SizedBox(height: 10),
           for (final section in basisSections) ...[
-            _buildBasisSectionCard(section),
+            ..._buildBasisSectionWidgets(section),
             pw.SizedBox(height: 12),
           ],
           pw.NewPage(),
@@ -203,17 +203,33 @@ class WeldPdfReportService {
           crossAxisAlignment: pw.CrossAxisAlignment.start,
           children: [
             pw.Row(
+              crossAxisAlignment: pw.CrossAxisAlignment.center,
               children: [
                 _buildCoverLogo(),
                 pw.SizedBox(width: 14),
-                pw.Text(
-                  'WELD CONSUMABLE CALCULATOR',
-                  style: pw.TextStyle(
-                    color: PdfColors.white,
-                    fontSize: 12,
-                    fontWeight: pw.FontWeight.bold,
-                    letterSpacing: 1.4,
-                  ),
+                pw.Row(
+                  crossAxisAlignment: pw.CrossAxisAlignment.end,
+                  children: [
+                    pw.Text(
+                      'VARYOS',
+                      style: pw.TextStyle(
+                        color: PdfColors.white,
+                        fontSize: 14,
+                        fontWeight: pw.FontWeight.bold,
+                        letterSpacing: 1.6,
+                      ),
+                    ),
+                    pw.SizedBox(width: 6),
+                    pw.Text(
+                      'WELD',
+                      style: pw.TextStyle(
+                        color: _brandOrange,
+                        fontSize: 9,
+                        fontWeight: pw.FontWeight.bold,
+                        letterSpacing: 2,
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -312,24 +328,52 @@ class WeldPdfReportService {
     );
   }
 
-  pw.Widget _buildCoverLogo() {
+  pw.Widget _buildCoverLogo({double size = 56}) => _buildVaryosMark(size);
+
+  /// The Varyos brand mark rendered for PDF output: two struck blades
+  /// meeting at one point of impact, on a dark rounded-square field. Vector
+  /// coordinates mirror lib/ui/calculator_page/calculator_page_widgets.dart's
+  /// VaryosMark (a 200x200 viewBox) so the report matches the app exactly.
+  pw.Widget _buildVaryosMark(double size) {
     return pw.Container(
-      width: 56,
-      height: 56,
+      width: size,
+      height: size,
       decoration: pw.BoxDecoration(
-        shape: pw.BoxShape.circle,
-        color: PdfColors.white,
-        border: pw.Border.all(color: _brandOrange, width: 2.6),
-      ),
-      child: pw.Center(
-        child: pw.Text(
-          'V',
-          style: pw.TextStyle(
-            color: _brandTeal,
-            fontSize: 22,
-            fontWeight: pw.FontWeight.bold,
-          ),
+        borderRadius: pw.BorderRadius.circular(size * 0.28),
+        gradient: const pw.LinearGradient(
+          colors: [_brandTeal2, _brandTeal],
+          begin: pw.Alignment.topLeft,
+          end: pw.Alignment.bottomRight,
         ),
+      ),
+      child: pw.CustomPaint(
+        size: PdfPoint(size, size),
+        painter: (canvas, paintSize) {
+          final scale = paintSize.x / 200;
+          // PDF canvas y-axis points up; the source viewBox's y points down
+          // (like Flutter's), so flip: y' = paintSize.y - y * scale.
+          PdfPoint p(double x, double y) =>
+              PdfPoint(x * scale, paintSize.y - y * scale);
+
+          void blade(PdfPoint a, PdfPoint b, PdfPoint c, PdfPoint d) {
+            canvas
+              ..moveTo(a.x, a.y)
+              ..lineTo(b.x, b.y)
+              ..lineTo(c.x, c.y)
+              ..lineTo(d.x, d.y)
+              ..closePath();
+          }
+
+          canvas.setFillColor(PdfColors.white);
+          blade(p(40, 25), p(65, 25), p(108, 168), p(83, 168));
+          canvas.fillPath();
+          blade(p(160, 25), p(135, 25), p(92, 168), p(117, 168));
+          canvas.fillPath();
+
+          canvas.setFillColor(_brandOrange);
+          blade(p(100, 136), p(112, 158), p(100, 180), p(88, 158));
+          canvas.fillPath();
+        },
       ),
     );
   }
@@ -388,24 +432,36 @@ class WeldPdfReportService {
                 child: pw.Column(
                   crossAxisAlignment: pw.CrossAxisAlignment.start,
                   children: [
-                    pw.Container(
-                      padding: const pw.EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 5,
-                      ),
-                      decoration: pw.BoxDecoration(
-                        color: PdfColors.white,
-                        borderRadius: pw.BorderRadius.circular(8),
-                      ),
-                      child: pw.Text(
-                        'WELD CONSUMABLE CALCULATOR',
-                        style: pw.TextStyle(
-                          color: _brandTeal,
-                          fontSize: 9,
-                          fontWeight: pw.FontWeight.bold,
-                          letterSpacing: 1.0,
+                    pw.Row(
+                      crossAxisAlignment: pw.CrossAxisAlignment.center,
+                      children: [
+                        _buildVaryosMark(26),
+                        pw.SizedBox(width: 10),
+                        pw.Row(
+                          crossAxisAlignment: pw.CrossAxisAlignment.end,
+                          children: [
+                            pw.Text(
+                              'VARYOS',
+                              style: pw.TextStyle(
+                                color: PdfColors.white,
+                                fontSize: 11,
+                                fontWeight: pw.FontWeight.bold,
+                                letterSpacing: 1.2,
+                              ),
+                            ),
+                            pw.SizedBox(width: 5),
+                            pw.Text(
+                              'WELD',
+                              style: pw.TextStyle(
+                                color: _brandOrange,
+                                fontSize: 7.5,
+                                fontWeight: pw.FontWeight.bold,
+                                letterSpacing: 1.6,
+                              ),
+                            ),
+                          ],
                         ),
-                      ),
+                      ],
                     ),
                     pw.SizedBox(height: 14),
                     pw.Text(
@@ -709,48 +765,60 @@ class WeldPdfReportService {
     );
   }
 
-  pw.Widget _buildBasisSectionCard(_BasisSection section) {
-    return pw.Container(
-      width: double.infinity,
-      padding: const pw.EdgeInsets.all(14),
-      decoration: pw.BoxDecoration(
-        color: section.accentBackground,
-        borderRadius: pw.BorderRadius.circular(14),
-        border: pw.Border.all(color: _line, width: 0.8),
+  /// Renders a basis section as two flat, top-level widgets (title strip +
+  /// table) rather than one Container wrapping both. A decorated Container
+  /// can't be split across a page break in this PDF widgets library — if the
+  /// table inside it overflows the page, the whole container (background,
+  /// border, and all) gets pushed as one unit, leaving an empty decorated
+  /// box behind and the table orphaned on the next page. Two independent
+  /// top-level widgets, by contrast, each break cleanly on their own.
+  List<pw.Widget> _buildBasisSectionWidgets(_BasisSection section) {
+    return [
+      pw.Container(
+        width: double.infinity,
+        padding: const pw.EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        decoration: pw.BoxDecoration(
+          color: section.accentBackground,
+          borderRadius: const pw.BorderRadius.vertical(
+            top: pw.Radius.circular(14),
+          ),
+          border: pw.Border.all(color: _line, width: 0.8),
+        ),
+        child: pw.Text(
+          section.title,
+          style: pw.TextStyle(
+            color: section.accentColor,
+            fontSize: 12.5,
+            fontWeight: pw.FontWeight.bold,
+          ),
+        ),
       ),
-      child: pw.Column(
-        crossAxisAlignment: pw.CrossAxisAlignment.start,
-        children: [
-          pw.Text(
-            section.title,
-            style: pw.TextStyle(
-              color: section.accentColor,
-              fontSize: 12.5,
-              fontWeight: pw.FontWeight.bold,
-            ),
-          ),
-          pw.SizedBox(height: 8),
-          pw.TableHelper.fromTextArray(
-            border: pw.TableBorder.all(color: _line, width: 0.7),
-            headerDecoration: const pw.BoxDecoration(color: PdfColors.white),
-            headerStyle: pw.TextStyle(
-              color: _muted,
-              fontWeight: pw.FontWeight.bold,
-              fontSize: 8.8,
-            ),
-            cellStyle: const pw.TextStyle(color: _ink, fontSize: 9.4),
-            cellPadding: const pw.EdgeInsets.symmetric(
-              horizontal: 8,
-              vertical: 7,
-            ),
-            headers: const ['Parameter', 'Value'],
-            data: [
-              for (final entry in section.entries) [entry.key, entry.value],
-            ],
-          ),
+      pw.TableHelper.fromTextArray(
+        border: pw.TableBorder(
+          left: const pw.BorderSide(color: _line, width: 0.8),
+          right: const pw.BorderSide(color: _line, width: 0.8),
+          bottom: const pw.BorderSide(color: _line, width: 0.8),
+          horizontalInside: const pw.BorderSide(color: _line, width: 0.7),
+          verticalInside: const pw.BorderSide(color: _line, width: 0.7),
+        ),
+        headerDecoration: const pw.BoxDecoration(color: PdfColors.white),
+        headerStyle: pw.TextStyle(
+          color: _muted,
+          fontWeight: pw.FontWeight.bold,
+          fontSize: 8.8,
+        ),
+        rowDecoration: pw.BoxDecoration(color: section.accentBackground),
+        cellStyle: const pw.TextStyle(color: _ink, fontSize: 9.4),
+        cellPadding: const pw.EdgeInsets.symmetric(
+          horizontal: 8,
+          vertical: 7,
+        ),
+        headers: const ['Parameter', 'Value'],
+        data: [
+          for (final entry in section.entries) [entry.key, entry.value],
         ],
       ),
-    );
+    ];
   }
 
   pw.Widget _buildMethodologyPanel() {
