@@ -168,6 +168,16 @@ class WeldFormulas {
   static double filletAreaMm2({required double legSizeMm}) =>
       0.5 * math.pow(legSizeMm, 2);
 
+  /// Fillet cross-sectional area is exactly quadratic in leg size
+  /// (`filletAreaMm2`), so the weld-metal increase from stepping up to a
+  /// larger leg size is a pure derived ratio - no new estimate assumptions.
+  /// Returns the fractional increase (e.g. `0.778` for +77.8%), not a
+  /// value already scaled to 100.
+  static double filletOversizeDeltaPercent({
+    required double currentLegMm,
+    required double nextLegMm,
+  }) => math.pow(nextLegMm / currentLegMm, 2) - 1;
+
   static double filletPartialAreaFromRootMm2({
     required double legSizeMm,
     required double fillHeightMm,

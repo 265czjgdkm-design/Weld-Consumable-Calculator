@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../core/weld_formulas.dart';
 import '../../l10n/app_language.dart';
 import '../../l10n/app_locale_scope.dart';
 import '../../models/weld_models.dart';
@@ -1027,6 +1028,15 @@ class ResultsSection extends StatelessWidget {
         : result.weldMetalKg / result.depositionEfficiency;
     final wasteAllowanceKg = result.fillerKg - theoreticalWithoutWaste;
     final efficiencyLossKg = theoreticalWithoutWaste - result.weldMetalKg;
+    const nextLegStepMm = 1.5;
+    final currentLegSizeMm = _basisNumber('Fillet Leg Size');
+    final oversizeDeltaPercent = currentLegSizeMm != null && currentLegSizeMm > 0
+        ? WeldFormulas.filletOversizeDeltaPercent(
+                currentLegMm: currentLegSizeMm,
+                nextLegMm: currentLegSizeMm + nextLegStepMm,
+              ) *
+              100
+        : null;
     final metrics = [
       (
         'Weld Area',
@@ -1150,6 +1160,16 @@ class ResultsSection extends StatelessWidget {
               ),
           ],
         ),
+        if (oversizeDeltaPercent != null) ...[
+          const SizedBox(height: 10),
+          Text(
+            'Next standard leg size up (+${_number(nextLegStepMm, 1)}mm) '
+            'costs ~${_number(oversizeDeltaPercent, 1)}% more filler.',
+            style: Theme.of(
+              context,
+            ).textTheme.bodySmall?.copyWith(color: const Color(0xFF607482)),
+          ),
+        ],
         const SizedBox(height: 22),
         PlanningInsightsPanel(
           items: [
