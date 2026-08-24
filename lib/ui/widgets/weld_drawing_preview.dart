@@ -428,6 +428,7 @@ class _WeldDrawingPainter extends CustomPainter {
       size,
       maxHalfWidthMm: halfBody + 10,
       heightMm: thickness + 7,
+      topPaddingMm: 4,
     );
     final p = layout.point;
     final member = _memberExtents(thickness);
@@ -586,6 +587,7 @@ class _WeldDrawingPainter extends CustomPainter {
       size,
       maxHalfWidthMm: math.max(leftBody, rightBody) + 10.0,
       heightMm: thickness + 7,
+      topPaddingMm: 4,
     );
     final p = layout.point;
     final grooveY = thickness - rootFace;
@@ -713,6 +715,7 @@ class _WeldDrawingPainter extends CustomPainter {
       size,
       maxHalfWidthMm: halfBody + 10,
       heightMm: thickness + 7,
+      topPaddingMm: 4,
     );
     final p = layout.point;
     final member = _memberExtents(thickness);
@@ -928,6 +931,7 @@ class _WeldDrawingPainter extends CustomPainter {
       size,
       maxHalfWidthMm: halfBody + 10,
       heightMm: thickness + 7,
+      topPaddingMm: 4,
     );
     final p = layout.point;
     final breakY = upperHeight;
@@ -1085,6 +1089,7 @@ class _WeldDrawingPainter extends CustomPainter {
       size,
       maxHalfWidthMm: halfBody + 10,
       heightMm: thickness + 7,
+      topPaddingMm: 4,
     );
     final p = layout.point;
     final member = _memberExtents(thickness);
@@ -1269,7 +1274,13 @@ class _WeldDrawingPainter extends CustomPainter {
       end: p(toeX + 4, baseTopY),
       label: '${_formatValue(leg)} mm leg',
       labelSize: size,
-      labelOffset: const Offset(42, 0),
+      // `labelOffset` is a raw screen-pixel nudge (unlike the geometry
+      // itself, it is not scaled by the drawing's mm-to-px scale), so the
+      // old +42px-right push landed this label's center only ~40px from
+      // the "fillet weld face" leader label above it - close enough for
+      // their bubbles to overlap. Push down instead of right so it clears
+      // that leader vertically regardless of canvas size.
+      labelOffset: const Offset(10, 30),
       extensionStart: p(webHalfThickness, topToeY),
       extensionEnd: p(webHalfThickness, baseTopY),
       fieldKey: FieldKey.legSizeMm,
@@ -1432,6 +1443,16 @@ class _WeldDrawingPainter extends CustomPainter {
       fieldKey: FieldKey.rootGapMm,
     );
     if (grooveY > 0) {
+      // In unequal-geometry mode the "B ... mm" thickness label (right
+      // lane, below) shares almost the same horizontal reach as this one
+      // and sits at a nearly identical vertical center (thickness/2 vs.
+      // grooveY/2), so a horizontal-only offset isn't enough to keep them
+      // apart once the canvas is small enough to shrink that gap below
+      // both bubbles' widths. Nudge this one up so it keeps its own lane
+      // near the top of the member regardless of canvas size.
+      final grooveDepthOffset = unequal
+          ? const Offset(46, -22)
+          : const Offset(46, 0);
       _drawDimensionLine(
         canvas,
         guidePaint,
@@ -1439,7 +1460,7 @@ class _WeldDrawingPainter extends CustomPainter {
         end: p(halfGap + 20, grooveY),
         label: '${_formatValue(grooveY)} mm groove depth',
         labelSize: size,
-        labelOffset: const Offset(46, 0),
+        labelOffset: grooveDepthOffset,
         extensionStart: p(halfGap, 0),
         extensionEnd: p(halfGap, grooveY),
         fieldKey: FieldKey.rootFaceMm,
@@ -1492,14 +1513,27 @@ class _WeldDrawingPainter extends CustomPainter {
     Size size, {
     required double maxHalfWidthMm,
     required double heightMm,
+    double topPaddingMm = 3.5,
   }) {
     // Margins as a fraction of canvas size (matching the original fixed
     // 50/42/100/92 px margins against the 760x400 reference canvas) so the
     // layout looks identical whether painted on that virtual canvas or
     // directly at a real, smaller box (see [WeldDrawingPreview.fillAvailableSpace]).
     final marginX = size.width * 0.0658;
-    final marginTop = size.height * 0.105;
+    var marginTop = size.height * 0.105;
     final marginBottom = size.height * 0.125;
+    if (fillAvailableSpace) {
+      // In this mode `size` is the *real* on-screen box - there's no outer
+      // FittedBox uniformly re-scaling everything back up - and it can be
+      // much shorter than the 760x400 reference canvas, e.g. the pinned
+      // mobile drawing card. The top-center groove-type chip is drawn at a
+      // constant on-screen pixel size for legibility (see the
+      // [WeldDrawingPreview.fillAvailableSpace] doc), so unlike this
+      // proportional margin it does not shrink along with a short canvas.
+      // Floor the margin so there is always real room above the drawing
+      // for that fixed-size chip, even on a very short canvas.
+      marginTop = math.max(marginTop, 48.0);
+    }
     final frame = Rect.fromLTWH(
       marginX,
       marginTop,
@@ -1511,7 +1545,19 @@ class _WeldDrawingPainter extends CustomPainter {
       frame.height / heightMm,
     );
     final actualHeight = heightMm * scale;
-    final topY = frame.top + ((frame.height - actualHeight) / 2);
+    final slack = math.max(frame.height - actualHeight, 0.0);
+    // `heightMm` already budgets `topPaddingMm` of extra room above the
+    // plate's top surface (y=0) for the weld-cap crown to rise into - see
+    // each call site. Reserve that as guaranteed space instead of letting
+    // it collapse into pure centering slack, which is zero whenever the
+    // drawing is height-constrained (the common case on a short canvas).
+    // Without this, y=0 sits flush with the frame's top edge and the
+    // crown, which renders above y=0, pokes straight up into the margin
+    // where the top labels live. Only apply it in [fillAvailableSpace]
+    // mode so the always-760x400 desktop/FittedBox rendering (which never
+    // hit this collision) is unaffected.
+    final topPadding = fillAvailableSpace ? topPaddingMm * scale : 0.0;
+    final topY = frame.top + topPadding + (slack / 2);
     return _SectionLayout(scale: scale, centerX: size.width / 2, topY: topY);
   }
 
