@@ -32,7 +32,8 @@ void main() {
 
   testWidgets('intro screen leads into the calculator shell', (tester) async {
     await _pumpPastSplash(tester);
-    expect(find.text('Varyos Weld'), findsAtLeastNWidgets(1));
+    expect(find.text('VARYOS'), findsAtLeastNWidgets(1));
+    expect(find.text('WELD'), findsAtLeastNWidgets(1));
 
     await tester.ensureVisible(find.text('Get Started'));
     await tester.tap(find.text('Get Started'));
