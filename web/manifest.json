@@ -1,11 +1,11 @@
 {
-    "name": "weld_consumable_calculator",
-    "short_name": "weld_consumable_calculator",
+    "name": "Varyos Weld",
+    "short_name": "Varyos Weld",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "background_color": "#0B0F10",
+    "theme_color": "#0B0F10",
+    "description": "Professional weld consumable estimation for butt and fillet welds, with technical drawing, planning metrics, and PDF reporting.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [
