@@ -1120,6 +1120,13 @@ class ResultsSection extends StatelessWidget {
             context,
           ).textTheme.bodyMedium?.copyWith(color: const Color(0xFF607482)),
         ),
+        const SizedBox(height: 6),
+        Text(
+          'This is a first-pass planning estimate — confirm against your qualified WPS and a test coupon before production use.',
+          style: Theme.of(
+            context,
+          ).textTheme.bodySmall?.copyWith(color: const Color(0xFF607482)),
+        ),
         const SizedBox(height: 16),
         ResultsHighlightBanner(
           result: result,

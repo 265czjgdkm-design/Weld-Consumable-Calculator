@@ -876,6 +876,7 @@ class WeldPdfReportService {
       'Combined GTAW + SMAW output distributes weld metal and time by calculated process share using the entered transition depth.',
       'Deposition efficiency factors used above (SMAW ~65%, FCAW ~85%, GMAW ~90%, GTAW/SAW ~95-98%) follow typical industry ranges as documented in Omer Blodgett\'s Procedure Handbook of Arc Welding (Lincoln Electric) and consistent with AWS D1.1 Annex L filler-metal guidance.',
       'This report is intended for estimating and engineering planning. Approved project documentation, client specifications, and production controls must always take precedence.',
+      'This is a first-pass planning estimate - confirm against your qualified WPS and a test coupon before production use.',
     ];
 
     return pw.Container(
