@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../l10n/app_locale_scope.dart';
 import '../services/signup_gate_store.dart';
 import '../services/signup_submitter.dart';
+import '../services/user_account_store.dart';
 import 'calculator_page.dart';
 import 'calculator_page/calculator_page_widgets.dart';
 
@@ -21,6 +22,7 @@ class EmailGateScreen extends StatefulWidget {
 class _EmailGateScreenState extends State<EmailGateScreen> {
   static final _emailPattern = RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$');
   static const _gateStore = SignupGateStore();
+  static const _accountStore = UserAccountStore();
 
   final _controller = TextEditingController();
   String? _errorText;
@@ -68,6 +70,7 @@ class _EmailGateScreenState extends State<EmailGateScreen> {
     // not, the user has made their choice and shouldn't be blocked or
     // asked again -- the welcome email itself is the real confirmation.
     await submitSignupEmail(email);
+    await _accountStore.setEmail(email);
     await _gateStore.markResolved();
     if (!mounted) return;
     _goToCalculator();

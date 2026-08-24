@@ -11,4 +11,11 @@ class SignupConfig {
       'https://docs.google.com/forms/d/e/1FAIpQLSdxzjxWewO-7ncfq0S2pgwWvnzllVKYEygO2vhjcxqw5acubw/formResponse';
 
   static const String emailEntryField = 'entry.708179914';
+
+  /// Apps Script Web App URL backing the account-based preset sync API
+  /// (doGet/doPost in the same project as the welcome-email trigger, backed
+  /// by a lazily-created "Varyos Weld - Presets" Google Sheet keyed by
+  /// email). See lib/services/preset_sync_service.dart.
+  static const String presetApiUrl =
+      'https://script.google.com/macros/s/AKfycbzRk_P38l3vtj6RaPMDD-0Z0-gzvoFmK4gArfYGKg2vPFOUzdIk2rfDe7zx9TrbiexiKg/exec';
 }

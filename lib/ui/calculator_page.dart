@@ -5,6 +5,8 @@ import '../core/weld_calculator.dart';
 import '../core/welding_defaults.dart';
 import '../l10n/app_locale_scope.dart';
 import '../models/weld_models.dart';
+import '../services/preset_sync_service.dart';
+import '../services/user_account_store.dart';
 import '../services/user_preset_store.dart';
 import '../services/weld_pdf_report_service.dart';
 import 'widgets/weld_drawing_preview.dart';
@@ -22,6 +24,8 @@ class _CalculatorPageState extends State<CalculatorPage> {
   final WeldCalculator _calculator = const WeldCalculator();
   final WeldPdfReportService _pdfReportService = const WeldPdfReportService();
   final UserPresetStore _userPresetStore = const UserPresetStore();
+  final UserAccountStore _accountStore = const UserAccountStore();
+  final PresetSyncService _presetSyncService = const PresetSyncService();
   final ScrollController _pageScrollController = ScrollController();
   final ScrollController _inputColumnScrollController = ScrollController();
   static const _customDiameterValue = 'custom';
@@ -45,6 +49,7 @@ class _CalculatorPageState extends State<CalculatorPage> {
   InputPreset _inputPreset = InputPreset.custom;
   List<UserWeldPreset> _userPresets = const [];
   String? _selectedUserPresetId;
+  String? _accountEmail;
   WeldCalculationResult? _result;
   bool _showResultsScreen = false;
   bool _showIntro = true;
@@ -60,7 +65,12 @@ class _CalculatorPageState extends State<CalculatorPage> {
   void initState() {
     super.initState();
     _resetFields();
-    _loadUserPresets();
+    _initUserPresets();
+  }
+
+  Future<void> _initUserPresets() async {
+    _accountEmail = await _accountStore.getEmail();
+    await _loadUserPresets();
   }
 
   @override
@@ -1635,7 +1645,26 @@ class _CalculatorPageState extends State<CalculatorPage> {
   }
 
   Future<void> _loadUserPresets() async {
-    final presets = await _userPresetStore.load();
+    final email = _accountEmail;
+    if (email == null) {
+      // Guests don't get a preset list -- saving prompts for an email and
+      // that turns them into an account (see _saveCurrentAsUserPreset).
+      if (!mounted) return;
+      setState(() {
+        _userPresets = const [];
+        _selectedUserPresetId = null;
+      });
+      return;
+    }
+
+    List<UserWeldPreset> presets;
+    try {
+      presets = await _presetSyncService.list(email);
+      await _userPresetStore.save(presets);
+    } catch (_) {
+      presets = await _userPresetStore.load();
+    }
+
     if (!mounted) return;
     setState(() {
       _userPresets = presets;
@@ -1741,17 +1770,37 @@ class _CalculatorPageState extends State<CalculatorPage> {
   }
 
   Future<void> _saveCurrentAsUserPreset() async {
-    final name = await _promptPresetName();
-    if (name == null || name.trim().isEmpty) return;
+    var email = _accountEmail;
+    String name;
+
+    // A guest gets asked for both the account email and the preset name in
+    // one dialog rather than two showDialog calls back to back -- chaining
+    // separate dialogs here raced with Flutter's dialog-close transition
+    // and left a disposed TextEditingController attached to the tree.
+    if (email == null) {
+      final result = await _promptAccountEmailAndPresetName();
+      if (result == null) return;
+      email = result.email;
+      name = result.name;
+      await _accountStore.setEmail(email);
+      _accountEmail = email;
+      await _migrateLocalPresetsToAccount(email);
+      await _loadUserPresets();
+    } else {
+      final promptedName = await _promptPresetName();
+      if (promptedName == null || promptedName.trim().isEmpty) return;
+      name = promptedName.trim();
+    }
 
     try {
       setState(() => _isUserPresetBusy = true);
       final preset = UserWeldPreset(
         id: DateTime.now().microsecondsSinceEpoch.toString(),
-        name: name.trim(),
+        name: name,
         updatedAtEpochMs: DateTime.now().millisecondsSinceEpoch,
         data: _captureCurrentPresetData(),
       );
+      await _presetSyncService.save(email, preset);
       final presets = [..._userPresets, preset]
         ..sort((a, b) => b.updatedAtEpochMs.compareTo(a.updatedAtEpochMs));
       await _userPresetStore.save(presets);
@@ -1773,7 +1822,8 @@ class _CalculatorPageState extends State<CalculatorPage> {
 
   Future<void> _updateSelectedUserPreset() async {
     final current = _selectedUserPreset;
-    if (current == null) return;
+    final email = _accountEmail;
+    if (current == null || email == null) return;
 
     final name = await _promptPresetName(initialValue: current.name);
     if (name == null || name.trim().isEmpty) return;
@@ -1785,6 +1835,7 @@ class _CalculatorPageState extends State<CalculatorPage> {
         data: _captureCurrentPresetData(),
         updatedAtEpochMs: DateTime.now().millisecondsSinceEpoch,
       );
+      await _presetSyncService.save(email, updated);
       final presets =
           _userPresets
               .map((preset) => preset.id == updated.id ? updated : preset)
@@ -1808,13 +1859,15 @@ class _CalculatorPageState extends State<CalculatorPage> {
 
   Future<void> _deleteSelectedUserPreset() async {
     final current = _selectedUserPreset;
-    if (current == null) return;
+    final email = _accountEmail;
+    if (current == null || email == null) return;
 
     final confirmed = await _confirmDeleteUserPreset(current.name);
     if (confirmed != true) return;
 
     try {
       setState(() => _isUserPresetBusy = true);
+      await _presetSyncService.delete(email, current.id);
       final presets = _userPresets
           .where((preset) => preset.id != current.id)
           .toList();
@@ -1832,6 +1885,30 @@ class _CalculatorPageState extends State<CalculatorPage> {
         setState(() => _isUserPresetBusy = false);
       }
     }
+  }
+
+  /// A device that already had local-only presets before accounts existed
+  /// shouldn't lose them the first time it logs in -- upload each one
+  /// under the new account so they show up alongside (or merge with)
+  /// whatever that email already has saved in the cloud.
+  Future<void> _migrateLocalPresetsToAccount(String email) async {
+    final localPresets = await _userPresetStore.load();
+    for (final preset in localPresets) {
+      try {
+        await _presetSyncService.save(email, preset);
+      } catch (_) {
+        // Best-effort: a failed upload just leaves that preset local-only
+        // until the next successful sync.
+      }
+    }
+  }
+
+  Future<({String email, String name})?>
+  _promptAccountEmailAndPresetName() {
+    return showDialog<({String email, String name})>(
+      context: context,
+      builder: (context) => const _AccountEmailAndPresetNameDialog(),
+    );
   }
 
   WeldInputPresetData _captureCurrentPresetData() => WeldInputPresetData(
@@ -1904,37 +1981,17 @@ class _CalculatorPageState extends State<CalculatorPage> {
     return parsed;
   }
 
-  Future<String?> _promptPresetName({String? initialValue}) async {
-    final controller = TextEditingController(text: initialValue ?? '');
-    final result = await showDialog<String>(
+  Future<String?> _promptPresetName({String? initialValue}) {
+    // The dialog owns its TextEditingController as a StatefulWidget field
+    // rather than one disposed here right after showDialog returns --
+    // disposing it in the caller races with the dialog's own exit
+    // animation, which is still rebuilding that TextField for a frame or
+    // two after the awaited Future completes, and crashes the framework
+    // with a "used after being disposed" assertion.
+    return showDialog<String>(
       context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: Text(initialValue == null ? 'Save Preset' : 'Update Preset'),
-          content: TextField(
-            controller: controller,
-            autofocus: true,
-            decoration: const InputDecoration(
-              labelText: 'Preset Name',
-              helperText: 'Use a short technical reference name.',
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Cancel'),
-            ),
-            FilledButton(
-              onPressed: () =>
-                  Navigator.of(context).pop(controller.text.trim()),
-              child: Text(initialValue == null ? 'Save' : 'Update'),
-            ),
-          ],
-        );
-      },
+      builder: (context) => _PresetNameDialog(initialValue: initialValue),
     );
-    controller.dispose();
-    return result;
   }
 
   Future<bool?> _confirmDeleteUserPreset(String name) {
@@ -1944,7 +2001,7 @@ class _CalculatorPageState extends State<CalculatorPage> {
         return AlertDialog(
           title: const Text('Delete Preset'),
           content: Text(
-            'Delete "$name" from local saved presets? This cannot be undone.',
+            'Delete "$name" from your saved presets? This cannot be undone.',
           ),
           actions: [
             TextButton(
@@ -2885,5 +2942,146 @@ class _CalculatorPageState extends State<CalculatorPage> {
     }
 
     return items;
+  }
+}
+
+/// Asks for a preset name (and, for updates, pre-fills the current one).
+/// A dedicated StatefulWidget so its TextEditingController is disposed by
+/// the framework itself at the right point in the dialog route's own
+/// teardown, rather than by the caller immediately after `showDialog`
+/// returns -- disposing it that early races with the dialog's still-running
+/// exit transition and crashes with a "used after being disposed" assertion.
+class _PresetNameDialog extends StatefulWidget {
+  const _PresetNameDialog({this.initialValue});
+
+  final String? initialValue;
+
+  @override
+  State<_PresetNameDialog> createState() => _PresetNameDialogState();
+}
+
+class _PresetNameDialogState extends State<_PresetNameDialog> {
+  late final TextEditingController _controller = TextEditingController(
+    text: widget.initialValue ?? '',
+  );
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _submit() {
+    Navigator.of(context).pop(_controller.text.trim());
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isUpdate = widget.initialValue != null;
+    return AlertDialog(
+      title: Text(isUpdate ? 'Update Preset' : 'Save Preset'),
+      content: TextField(
+        controller: _controller,
+        autofocus: true,
+        textInputAction: TextInputAction.done,
+        onSubmitted: (_) => _submit(),
+        decoration: const InputDecoration(
+          labelText: 'Preset Name',
+          helperText: 'Use a short technical reference name.',
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Cancel'),
+        ),
+        FilledButton(
+          onPressed: _submit,
+          child: Text(isUpdate ? 'Update' : 'Save'),
+        ),
+      ],
+    );
+  }
+}
+
+/// Asks a guest for both an account email and a preset name in one dialog
+/// (rather than two `showDialog` calls back to back) -- see the note on
+/// [_PresetNameDialog] for why controller disposal has to be owned by the
+/// dialog's own State.
+class _AccountEmailAndPresetNameDialog extends StatefulWidget {
+  const _AccountEmailAndPresetNameDialog();
+
+  @override
+  State<_AccountEmailAndPresetNameDialog> createState() =>
+      _AccountEmailAndPresetNameDialogState();
+}
+
+class _AccountEmailAndPresetNameDialogState
+    extends State<_AccountEmailAndPresetNameDialog> {
+  static final _emailPattern = RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$');
+  final _emailController = TextEditingController();
+  final _nameController = TextEditingController();
+  String? _emailError;
+
+  @override
+  void dispose() {
+    _emailController.dispose();
+    _nameController.dispose();
+    super.dispose();
+  }
+
+  void _submit() {
+    final email = _emailController.text.trim();
+    if (!_emailPattern.hasMatch(email)) {
+      setState(() => _emailError = 'Enter a valid email.');
+      return;
+    }
+    final name = _nameController.text.trim();
+    if (name.isEmpty) return;
+    Navigator.of(context).pop((email: email.toLowerCase(), name: name));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Save with an Account'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Enter your email to save this preset. Use the same '
+            'email on any device to get it back later.',
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: _emailController,
+            autofocus: true,
+            keyboardType: TextInputType.emailAddress,
+            decoration: InputDecoration(
+              labelText: 'Email',
+              errorText: _emailError,
+            ),
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: _nameController,
+            textInputAction: TextInputAction.done,
+            onSubmitted: (_) => _submit(),
+            decoration: const InputDecoration(
+              labelText: 'Preset Name',
+              helperText: 'Use a short technical reference name.',
+            ),
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Cancel'),
+        ),
+        FilledButton(onPressed: _submit, child: const Text('Save')),
+      ],
+    );
   }
 }
