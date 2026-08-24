@@ -207,6 +207,20 @@ class _WeldDrawingPainter extends CustomPainter {
   }
 
   bool get _isPipeButt => jointType == JointType.pipeButt;
+
+  // Below this canvas width the top-center groove-type chip (worst case:
+  // "Compound V") and the top-right pipe-OD chip (worst case: a 3-digit OD)
+  // sit close enough together to overlap when drawn side by side - measured
+  // via their actual TextPainter-based chip widths, the two collide up to
+  // ~406px of canvas width, so this breakpoint keeps a safety margin above
+  // that rather than cutting it exactly at the collision point.
+  static const double _chipStackBreakpoint = 430.0;
+
+  bool _stackTopChips(Size size) =>
+      _isPipeButt &&
+      data.pipeOdMm != null &&
+      data.pipeOdMm! > 0 &&
+      size.width < _chipStackBreakpoint;
   bool get _isCombinedProcess =>
       data.weldingProcess == WeldingProcess.gtawSmaw &&
       (data.gtawTransitionMm ?? 0) > 0;
@@ -551,8 +565,7 @@ class _WeldDrawingPainter extends CustomPainter {
       text: '${_formatValue(bevelAngle)}°',
       fieldKey: FieldKey.bevelAngleDeg,
     );
-    _drawTypeChip(canvas, size, 'Single V');
-    _drawPipeChip(canvas, size);
+    _drawTopChips(canvas, size, 'Single V');
   }
 
   void _drawHalfV(
@@ -678,8 +691,7 @@ class _WeldDrawingPainter extends CustomPainter {
       text: '${_formatValue(bevelAngle)}°',
       fieldKey: FieldKey.bevelAngleDeg,
     );
-    _drawTypeChip(canvas, size, 'Half V');
-    _drawPipeChip(canvas, size);
+    _drawTopChips(canvas, size, 'Half V');
   }
 
   void _drawDoubleV(
@@ -879,8 +891,7 @@ class _WeldDrawingPainter extends CustomPainter {
         labelOffset: const Offset(-30, 16),
       );
     }
-    _drawTypeChip(canvas, size, 'Double V');
-    _drawPipeChip(canvas, size);
+    _drawTopChips(canvas, size, 'Double V');
   }
 
   void _drawCompoundV(
@@ -1069,8 +1080,7 @@ class _WeldDrawingPainter extends CustomPainter {
       text: 'β ${_formatValue(secondaryAngle)}°',
       fieldKey: FieldKey.secondaryBevelAngleDeg,
     );
-    _drawTypeChip(canvas, size, 'Compound V');
-    _drawPipeChip(canvas, size);
+    _drawTopChips(canvas, size, 'Compound V');
   }
 
   void _drawSquare(
@@ -1171,8 +1181,7 @@ class _WeldDrawingPainter extends CustomPainter {
       rightThicknessLabelX: halfBody + 6,
       rootGapLabelY: math.max(member.leftBottom, member.rightBottom),
     );
-    _drawTypeChip(canvas, size, 'Square');
-    _drawPipeChip(canvas, size);
+    _drawTopChips(canvas, size, 'Square');
   }
 
   void _drawFillet(
@@ -1531,8 +1540,11 @@ class _WeldDrawingPainter extends CustomPainter {
       // [WeldDrawingPreview.fillAvailableSpace] doc), so unlike this
       // proportional margin it does not shrink along with a short canvas.
       // Floor the margin so there is always real room above the drawing
-      // for that fixed-size chip, even on a very short canvas.
-      marginTop = math.max(marginTop, 48.0);
+      // for that fixed-size chip, even on a very short canvas. When the
+      // pipe-OD chip is stacked below the type chip instead of beside it
+      // (see [_stackTopChips]) that top-center column is two chips tall,
+      // so raise the floor to keep clearing it.
+      marginTop = math.max(marginTop, _stackTopChips(size) ? 80.0 : 48.0);
     }
     final frame = Rect.fromLTWH(
       marginX,
@@ -1587,6 +1599,23 @@ class _WeldDrawingPainter extends CustomPainter {
     return text.replaceFirst(RegExp(r'\.?0+$'), '');
   }
 
+  // Draws the top-center groove-type chip and, for pipe joints, the
+  // top-right OD chip. Below [_chipStackBreakpoint] the two chips can
+  // overlap if placed side by side (the OD chip's independent canvas-edge
+  // clamping pulls it left just as the type chip's clamping pulls it
+  // right), so on narrow canvases the OD chip stacks directly below the
+  // type chip instead - see [_stackTopChips].
+  void _drawTopChips(Canvas canvas, Size size, String typeLabel) {
+    _drawTypeChip(canvas, size, typeLabel);
+    _drawPipeChip(
+      canvas,
+      size,
+      center: _stackTopChips(size)
+          ? Offset(size.width * 0.5, 60)
+          : Offset(size.width - 82, 28),
+    );
+  }
+
   void _drawTypeChip(Canvas canvas, Size size, String label) {
     _drawAnnotationLabel(
       canvas,
@@ -1598,13 +1627,13 @@ class _WeldDrawingPainter extends CustomPainter {
     );
   }
 
-  void _drawPipeChip(Canvas canvas, Size size) {
+  void _drawPipeChip(Canvas canvas, Size size, {Offset? center}) {
     if (!_isPipeButt || data.pipeOdMm == null || data.pipeOdMm! <= 0) return;
     _drawAnnotationLabel(
       canvas,
       size,
       'OD ${_formatValue(data.pipeOdMm!)} mm',
-      Offset(size.width - 82, 28),
+      center ?? Offset(size.width - 82, 28),
       fontSize: 10.5,
     );
   }
