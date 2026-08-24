@@ -97,6 +97,37 @@ Procedure Handbook, AWS D1.1 Annex L) in the PDF's engineering-basis
 section — needs a codebase check before assuming it's actually missing.
 Handed to Product Lead/Engineer for planning; see next entry.
 
+### 2026-08-25 — [engineer] Human owner (overnight full-autonomy session, implementing planner's 4-item list)
+
+Landed 5 commits, pushed individually: (0) fixed a pre-existing
+`flutter test` failure found while verifying (widget_test.dart still
+asserted `find.text('Varyos Weld')`, stale since the two-tier
+VARYOS/WELD rebrand in `5e1856a` — this was breaking the test gate for
+every commit tonight, so fixed the root cause instead of working around
+it); (1) fixed a real chip-vs-chip label collision in
+`weld_drawing_preview.dart` (top-center groove-type chip vs top-right
+pipe-OD chip, distinct from the chip-vs-drawing collision `6c0cdac`
+already fixed) via a combined `_drawTopChips()` helper that stacks the
+OD chip below the type chip under a 430px canvas-width breakpoint
+(computed by hand from real `TextPainter` widths — the pure collision
+point is ~406px, 430 gives margin), coupled with raising `_createLayout`'s
+`marginTop` floor to 80px only when stacked; (2) added a hedged citation
+(Blodgett's Procedure Handbook, AWS D1.1 Annex L) to the PDF's
+engineering notes for the deposition-efficiency factors, unchanged
+numbers, citation text only; (3) added a "verify against your WPS and a
+test coupon" disclaimer to both the PDF and the in-app results view;
+(4) added `WeldFormulas.filletOversizeDeltaPercent()` (pure quadratic
+derived calc, +1.5mm fixed increment) plus a results-view hint, fillet
+joints only. Verified each with `dart analyze lib/ test/`, `flutter
+test`, `flutter build web`, plus throwaway tests (deleted before
+commit, per this repo's established pattern) that actually rendered the
+PDF via `pdftoppm` and pumped the real widget tree through Calculate to
+confirm exact on-screen strings — not just reading the diff. Open: item
+1's fix is verified by box-model math and a rendered widget test, not a
+real device/browser screenshot (no golden-image tooling in this repo) —
+worth a manual resize check on Pipe Butt + Compound V. Item 4's PDF
+version is a deliberate follow-up, not implemented tonight.
+
 ## Archive
 
 (nothing yet)
