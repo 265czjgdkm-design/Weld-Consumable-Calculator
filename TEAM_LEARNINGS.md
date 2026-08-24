@@ -83,6 +83,20 @@ project root recurses into `work/flutter` (the vendored SDK) and produces
 ~189k irrelevant issues — always scope it, e.g. `flutter analyze lib/
 test/`.
 
+### 2026-08-25 — [growth] Human owner (overnight full-autonomy session)
+
+Ran a full research pass (competitor apps, ASO/SEO, industry credibility
+requirements, practitioner pain points) — see `docs/GROWTH_RESEARCH_2026-08-25.md`.
+Headline findings: competitors have almost no review volume (low bar to
+become "most trusted"), the audience is inherently skeptical of calculator
+tools as authoritative (position as "first-pass estimate, verify against
+your WPS," not a bidding/costing authority), and the single biggest
+credibility gap is not citing deposition-efficiency factors (SMAW ~65% /
+FCAW ~85% / GMAW ~95% / SAW ~98%) or a named reference (Blodgett's
+Procedure Handbook, AWS D1.1 Annex L) in the PDF's engineering-basis
+section — needs a codebase check before assuming it's actually missing.
+Handed to Product Lead/Engineer for planning; see next entry.
+
 ## Archive
 
 (nothing yet)
