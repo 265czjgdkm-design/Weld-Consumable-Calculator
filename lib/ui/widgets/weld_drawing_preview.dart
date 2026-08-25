@@ -1152,7 +1152,14 @@ class _WeldDrawingPainter extends CustomPainter {
         halfGap + ((halfBreak - halfGap) * 0.52),
         grooveY - ((grooveY - breakY) * 0.42),
       ),
-      labelCenter: p(halfGap + 6, breakY * 0.35),
+      // `halfBreak + 6`, not a fixed offset from the centerline - the bevel
+      // is `halfBreak` wide at this height, so the label needs to clear
+      // that actual width (which grows with a wider root gap or steeper
+      // bevel angle) rather than a constant that only happened to clear a
+      // narrower bevel. A fixed `halfGap + 6` sat visibly on top of the
+      // weld metal once the compact canvas's scale was increased to make
+      // the drawing itself bigger (see TEAM_LEARNINGS.md).
+      labelCenter: p(halfBreak + 6, breakY * 0.35),
       text: 'α ${_formatValue(primaryAngle)}°',
       fieldKey: FieldKey.bevelAngleDeg,
     );
@@ -1216,7 +1223,13 @@ class _WeldDrawingPainter extends CustomPainter {
       guidePaint,
       size,
       start: p(halfBreak + ((halfTop - halfBreak) * 0.48), breakY * 0.48),
-      labelCenter: p(halfGap + 14, (breakY + grooveY) / 2),
+      // `halfBreak + 6`, same reasoning as alpha above - this label's
+      // natural height sits between the root's `halfGap` width and the
+      // break's wider `halfBreak` width, so anchoring off the narrower
+      // `halfGap` (as this did before) risks sitting on the wider part of
+      // the bevel; `halfBreak` is the safe (wider) bound to clear at
+      // either height.
+      labelCenter: p(halfBreak + 6, (breakY + grooveY) / 2),
       text: 'β ${_formatValue(secondaryAngle)}°',
       fieldKey: FieldKey.secondaryBevelAngleDeg,
       avoidRects: [
@@ -1961,18 +1974,48 @@ class _WeldDrawingPainter extends CustomPainter {
         avoidRects,
       );
     }
-    final dx = resolvedCenter.dx - start.dx;
-    final dy = resolvedCenter.dy - start.dy;
-    final length = math.sqrt((dx * dx) + (dy * dy));
-    final ux = length == 0 ? 0.0 : dx / length;
-    final uy = length == 0 ? 0.0 : dy / length;
-    final lineEnd = Offset(
-      resolvedCenter.dx - (ux * 20),
-      resolvedCenter.dy - (uy * 20),
-    );
-
-    canvas.drawLine(start, lineEnd, paint);
     canvas.drawCircle(start, 2.6, Paint()..color = paint.color);
+    // A busy drawing (Compound V especially) can push a label far enough
+    // from its natural spot that one straight line from `start` reads as
+    // pointing somewhere else entirely, and can visually cut across other
+    // labels or the geometry itself on its way there. Past a small
+    // vertical threshold, route it as an elbow instead: a short stub in
+    // the label's natural direction (so it still clearly marks the right
+    // spot on the drawing), then a clean vertical-then-horizontal run to
+    // wherever collision-avoidance actually placed it - the same "routed
+    // leader" convention real engineering drawings use, not a single long
+    // diagonal.
+    final pushedFar = (resolvedCenter.dy - labelCenter.dy).abs() > 6;
+    if (!pushedFar) {
+      final dx = resolvedCenter.dx - start.dx;
+      final dy = resolvedCenter.dy - start.dy;
+      final length = math.sqrt((dx * dx) + (dy * dy));
+      final ux = length == 0 ? 0.0 : dx / length;
+      final uy = length == 0 ? 0.0 : dy / length;
+      final lineEnd = Offset(
+        resolvedCenter.dx - (ux * 20),
+        resolvedCenter.dy - (uy * 20),
+      );
+      canvas.drawLine(start, lineEnd, paint);
+    } else {
+      final naturalDx = labelCenter.dx - start.dx;
+      final naturalDy = labelCenter.dy - start.dy;
+      final naturalLength = math.sqrt(
+        (naturalDx * naturalDx) + (naturalDy * naturalDy),
+      );
+      final ux = naturalLength == 0 ? 0.0 : naturalDx / naturalLength;
+      final uy = naturalLength == 0 ? 0.0 : naturalDy / naturalLength;
+      final stub = Offset(start.dx + (ux * 16), start.dy + (uy * 16));
+      final elbow = Offset(stub.dx, resolvedCenter.dy);
+      final horizontalDir = resolvedCenter.dx >= elbow.dx ? 1.0 : -1.0;
+      final lineEnd = Offset(
+        resolvedCenter.dx - (horizontalDir * 20),
+        resolvedCenter.dy,
+      );
+      canvas.drawLine(start, stub, paint);
+      canvas.drawLine(stub, elbow, paint);
+      canvas.drawLine(elbow, lineEnd, paint);
+    }
     _drawAnnotationLabel(
       canvas,
       size,

@@ -385,6 +385,52 @@ specifically to confirm the *proportions* (not just the absence of
 overlap) actually look right to a human, since that's not something a
 geometric assertion can verify.**
 
+### 2026-08-25 — [engineer] Human owner (a live browser finally worked - found real bugs the pill-overlap test structurally could not)
+
+Got a stable Chrome connection this round and looked at Compound V for
+real for the first time since the margin/scale change above. Found two
+real problems `weld_drawing_label_overlap_test.dart` was never going to
+catch, because it only asserts label-pill-vs-label-pill overlap:
+
+1. **Alpha's pill sat visibly on top of the weld metal itself.** Its mm
+   offset from the joint centerline (`halfGap + 6`) was a fixed constant
+   that happened to clear the bevel at the old (smaller) scale, but the
+   bevel is `halfBreak` wide at that height (not `halfGap`), and once the
+   margin fix above made the geometry bigger, `halfGap + 6` no longer
+   reached past the bevel's real edge. Fixed by anchoring off `halfBreak`
+   (the actual geometry width at that height) instead of `halfGap` (the
+   root width) - grows with the geometry instead of a magic number that
+   only happened to work at one scale. Applied the same fix to Compound
+   V's beta, which had the identical bug (anchored off `halfGap`, same
+   fixed-constant risk).
+2. **Beta's leader line, once pushed far down to clear five other labels,
+   drew as one long diagonal cutting across the drawing and other labels**
+   - technically zero pill-vs-pill overlap (the only thing the test
+   checks), but genuinely unreadable, reading as if it pointed somewhere
+   else entirely. `_drawAngleTag` now checks how far a label actually got
+   pushed vertically; past a small threshold it routes the leader as an
+   elbow (short stub in the label's natural direction off the geometry,
+   then a clean vertical-then-horizontal run to wherever it landed)
+   instead of one raw diagonal - the same "routed leader" convention real
+   engineering drawings use. Below the threshold, behavior is unchanged
+   (still the original short direct line).
+
+**Lesson for next time:** a geometric assertion that only checks
+label-vs-label overlap has a real, structural blind spot - it can't catch
+a label sitting on the *drawing* itself, or a leader line crossing through
+unrelated content. Both of those need an actual look. This is exactly why
+this session flagged (repeatedly) that the automated test is strong
+evidence but not a full substitute for a real visual pass - this round is
+the proof.
+
+Re-verified all 66 `weld_drawing_label_overlap_test.dart` cases still pass
+after both position changes (they could have shifted alpha/beta's natural
+collision profile). `dart analyze`, `flutter test` (85/85), `flutter build
+web` all clean. **This time also got a real live-browser visual
+confirmation** (Compound V and Fillet, real 390px viewport) - alpha no
+longer overlaps the geometry, beta's leader is a clean elbow, both
+drawings read as intentional and well-spaced rather than crowded.
+
 ## Archive
 
 (nothing yet)
