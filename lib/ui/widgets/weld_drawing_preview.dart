@@ -148,14 +148,19 @@ class _SectionLayout {
     required this.scale,
     required this.centerX,
     required this.topY,
-  });
+    double? scaleY,
+  }) : scaleY = scaleY ?? scale;
 
   final double scale;
+  // Independent vertical scale, only ever >= [scale] - see _createLayout's
+  // comment on why the joint cross-section (inherently wide/short) is
+  // allowed a bounded vertical stretch beyond its true-to-width scale.
+  final double scaleY;
   final double centerX;
   final double topY;
 
   Offset point(double x, double y) =>
-      Offset(centerX + (x * scale), topY + (y * scale));
+      Offset(centerX + (x * scale), topY + (y * scaleY));
 }
 
 class _MemberExtents {
@@ -1759,7 +1764,25 @@ class _WeldDrawingPainter extends CustomPainter {
       frame.width / (maxHalfWidthMm * 2),
       frame.height / heightMm,
     );
-    final actualHeight = heightMm * scale;
+    // The joint cross-section is inherently wide/short (a plate seen from
+    // the side), so on a narrow phone canvas `scale` above is width-bound
+    // by a wide margin - the true-to-width scale leaves most of the
+    // compact card's generous vertical room (added for label spacing, see
+    // _narrowDrawingHeight in calculator_page.dart) completely unused by
+    // the drawing itself, reading as "a tiny picture in a big empty box."
+    // Per explicit product decision, allow the vertical scale to stretch
+    // further than the width-bound scale, capped at a bounded multiple of
+    // it, so the drawing visibly fills more of the card's height - bevel
+    // angles read a little steeper than their literal value as a result,
+    // an accepted, deliberately-bounded tradeoff (this is a schematic, not
+    // a to-scale CAD reproduction - the app already takes similar
+    // liberties with fixed-size chips/pills). Only in fillAvailableSpace
+    // mode; the desktop/FittedBox path keeps true proportions since it has
+    // no vertical-space problem to solve.
+    final scaleY = fillAvailableSpace
+        ? math.min(frame.height / heightMm, scale * 1.35)
+        : scale;
+    final actualHeight = heightMm * scaleY;
     final slack = math.max(frame.height - actualHeight, 0.0);
     // `heightMm` already budgets `topPaddingMm` of extra room above the
     // plate's top surface (y=0) for the weld-cap crown to rise into - see
@@ -1771,9 +1794,14 @@ class _WeldDrawingPainter extends CustomPainter {
     // where the top labels live. Only apply it in [fillAvailableSpace]
     // mode so the always-760x400 desktop/FittedBox rendering (which never
     // hit this collision) is unaffected.
-    final topPadding = fillAvailableSpace ? topPaddingMm * scale : 0.0;
+    final topPadding = fillAvailableSpace ? topPaddingMm * scaleY : 0.0;
     final topY = frame.top + topPadding + (slack / 2);
-    return _SectionLayout(scale: scale, centerX: size.width / 2, topY: topY);
+    return _SectionLayout(
+      scale: scale,
+      scaleY: scaleY,
+      centerX: size.width / 2,
+      topY: topY,
+    );
   }
 
   double _positiveOr(double? value, double fallback, {double min = 0.2}) {

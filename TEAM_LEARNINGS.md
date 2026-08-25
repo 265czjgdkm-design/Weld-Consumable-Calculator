@@ -431,6 +431,47 @@ confirmation** (Compound V and Fillet, real 390px viewport) - alpha no
 longer overlaps the geometry, beta's leader is a clean elbow, both
 drawings read as intentional and well-spaced rather than crowded.
 
+### 2026-08-25 — [engineer] Human owner (deliberate, bounded vertical stretch - explicit product decision)
+
+Even bigger and better-spaced, the drawing still read as small vertically:
+`scale` in `_createLayout` is `min(width-based, height-based)`, and the
+joint cross-section is inherently wide/short, so it's width-bound by a
+wide margin (checked the real numbers for Compound V: height-based scale
+came out over 3x the width-based one) - meaning most of the compact
+card's generous vertical room (added for label spacing) was never touched
+by the geometry itself, just centered around it as slack. Raising it
+further isn't possible without either widening the canvas (capped by the
+phone) or accepting non-uniform scale (angles read a little steeper than
+their literal value). **Asked the user directly rather than deciding
+silently, since this trades off against this repo's own stated "geometry
+credibility" priority** (`TEAM_OPERATING_SYSTEM.md`) - they explicitly
+chose visual size over literal-angle accuracy.
+
+Implemented: `_SectionLayout` now carries an independent `scaleY` (defaults
+to `scale` when not given, so nothing else in the file changes behavior).
+`_createLayout`, in `fillAvailableSpace` mode only, lets `scaleY` stretch
+up to `1.35x` the width-bound `scale` (still capped by
+`frame.height/heightMm`, so it never overflows the box) - desktop/
+FittedBox path is untouched, still perfectly to-scale. `layout.point`
+applies `scale` to x and `scaleY` to y, so geometry AND every label
+(computed through the same function) grow together in the vertical
+direction, not just the plates/weld.
+
+Re-verified all 66 `weld_drawing_label_overlap_test.dart` cases still pass
+(both geometry and label Y-positions shifted, could have changed the
+collision profile - didn't). `dart analyze`, `flutter test` (85/85),
+`flutter build web` clean. Live-browser confirmed on both Half V and
+Compound V, real 390px viewport - the plate/weld cross-section is visibly
+taller and reads as intentional, not a tiny icon in a big empty card; 30°/
+10° bevels still read as acute angles, not obviously distorted.
+
+**If this file's layout code is touched again: `scale` (x-axis) is still
+the width-bound "true" scale everything's mm dimensions are defined
+against - only `scaleY` is deliberately inflated. Don't let the two drift
+apart further than the 1.35x cap without re-confirming with the user; this
+was an explicit, bounded product tradeoff, not a default to lean on
+further by default.**
+
 ## Archive
 
 (nothing yet)
