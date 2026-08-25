@@ -167,6 +167,23 @@ measurement approach (what we landed on) or an explicit
 `FontLoader`-loaded real font in the test, never a bare canvas-width
 constant derived from default test-font metrics.
 
+### 2026-08-25 — [engineer] Human owner (final verification finding, same overnight session)
+
+A second reviewer pass re-checking the 3 fixes above confirmed all 3 hold
+(independently re-derived the ~335-344px stacking threshold, confirmed the
+PDF citation is now clean, confirmed the 8mm->10mm/+56.3% fillet hint), but
+surfaced one more real, **pre-existing** (not from tonight) bug in the same
+area: the in-canvas title (`'${jointType.label} / ${grooveType.label}'`,
+drawn last at a fixed `Offset(14, 12)`) sits directly under the top-center
+groove-type chip and prints over it on compact/mobile canvases - present
+since before this session, but more visible than the chip-vs-chip case
+`2acdb84`/`3bca03b` fixed. Fixed by only drawing that title in the
+non-`fillAvailableSpace` (760px desktop) layout - in compact mode the
+groove type is already shown by the top-center chip and the joint type by
+the Joint Type dropdown above the card, so the title was redundant there,
+not just colliding. `dart analyze`/`flutter test` (19/19)/`flutter build
+web` all clean.
+
 ## Archive
 
 (nothing yet)

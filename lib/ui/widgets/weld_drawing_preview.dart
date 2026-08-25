@@ -410,14 +410,23 @@ class _WeldDrawingPainter extends CustomPainter {
       Offset(size.width * 0.5, size.height * 0.13),
       Offset(size.width * 0.5, size.height * 0.88),
     );
-    _drawLabel(
-      canvas,
-      size,
-      '${jointType.label} / ${grooveType.label}',
-      const Offset(14, 12),
-      fontSize: 14,
-      weight: FontWeight.w700,
-    );
+    // In fillAvailableSpace (compact/mobile) mode this fixed-position title
+    // sits directly under the top-center groove-type chip and prints over
+    // it on real phone widths — the groove type is already shown by that
+    // chip and the joint type is already visible via the Joint Type
+    // dropdown above the card, so the title is redundant there. Only draw
+    // it in the roomier desktop 760px layout, where there's no chip to
+    // collide with at this position.
+    if (!fillAvailableSpace) {
+      _drawLabel(
+        canvas,
+        size,
+        '${jointType.label} / ${grooveType.label}',
+        const Offset(14, 12),
+        fontSize: 14,
+        weight: FontWeight.w700,
+      );
+    }
 
     onHotspots?.call(_hotspots);
   }
