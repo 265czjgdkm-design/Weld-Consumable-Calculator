@@ -1028,12 +1028,14 @@ class ResultsSection extends StatelessWidget {
         : result.weldMetalKg / result.depositionEfficiency;
     final wasteAllowanceKg = result.fillerKg - theoreticalWithoutWaste;
     final efficiencyLossKg = theoreticalWithoutWaste - result.weldMetalKg;
-    const nextLegStepMm = 1.5;
     final currentLegSizeMm = _basisNumber('Fillet Leg Size');
-    final oversizeDeltaPercent = currentLegSizeMm != null && currentLegSizeMm > 0
-        ? WeldFormulas.filletOversizeDeltaPercent(
-                currentLegMm: currentLegSizeMm,
-                nextLegMm: currentLegSizeMm + nextLegStepMm,
+    final nextStandardLegSizeMm = currentLegSizeMm != null && currentLegSizeMm > 0
+        ? WeldFormulas.nextStandardFilletLegMm(currentLegSizeMm)
+        : null;
+    final oversizeDeltaPercent = nextStandardLegSizeMm != null
+        ? WeldFormulas.filletOversizeDeltaFraction(
+                currentLegMm: currentLegSizeMm!,
+                nextLegMm: nextStandardLegSizeMm,
               ) *
               100
         : null;
@@ -1160,10 +1162,10 @@ class ResultsSection extends StatelessWidget {
               ),
           ],
         ),
-        if (oversizeDeltaPercent != null) ...[
+        if (oversizeDeltaPercent != null && nextStandardLegSizeMm != null) ...[
           const SizedBox(height: 10),
           Text(
-            'Next standard leg size up (+${_number(nextLegStepMm, 1)}mm) '
+            'Next standard leg size up (${_number(nextStandardLegSizeMm, 0)}mm) '
             'costs ~${_number(oversizeDeltaPercent, 1)}% more filler.',
             style: Theme.of(
               context,

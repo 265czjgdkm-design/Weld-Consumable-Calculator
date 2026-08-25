@@ -168,12 +168,26 @@ class WeldFormulas {
   static double filletAreaMm2({required double legSizeMm}) =>
       0.5 * math.pow(legSizeMm, 2);
 
+  /// Standard metric fillet-weld leg sizes (mm), ascending.
+  static const List<double> standardFilletLegSizesMm = [3, 4, 5, 6, 8, 10, 12];
+
+  /// The next size up from [standardFilletLegSizesMm] above [currentLegMm],
+  /// or `null` if [currentLegMm] is already at or above the largest
+  /// standard size in the table.
+  static double? nextStandardFilletLegMm(double currentLegMm) {
+    for (final size in standardFilletLegSizesMm) {
+      if (size > currentLegMm) return size;
+    }
+    return null;
+  }
+
   /// Fillet cross-sectional area is exactly quadratic in leg size
   /// (`filletAreaMm2`), so the weld-metal increase from stepping up to a
   /// larger leg size is a pure derived ratio - no new estimate assumptions.
   /// Returns the fractional increase (e.g. `0.778` for +77.8%), not a
-  /// value already scaled to 100.
-  static double filletOversizeDeltaPercent({
+  /// value already scaled to 100 - see [nextStandardFilletLegMm] for a real
+  /// next-standard-size lookup to pass as [nextLegMm].
+  static double filletOversizeDeltaFraction({
     required double currentLegMm,
     required double nextLegMm,
   }) => math.pow(nextLegMm / currentLegMm, 2) - 1;
