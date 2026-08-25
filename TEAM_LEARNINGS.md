@@ -128,6 +128,45 @@ real device/browser screenshot (no golden-image tooling in this repo) —
 worth a manual resize check on Pipe Butt + Compound V. Item 4's PDF
 version is a deliberate follow-up, not implemented tonight.
 
+### 2026-08-25 — [engineer] Human owner (post-reviewer fix pass, same overnight session)
+
+Fixed the 3 problems tonight's reviewer pass found in the above entry's
+work, one commit each: (1) `2acdb84`'s chip-stacking fix used a fixed
+430px canvas-width breakpoint derived from `TextPainter` widths measured
+under `flutter_test`'s Ahem font (~1.6-1.9x wider than real proportional
+fonts, confirmed empirically: "Compound V" measured 115.0px under Ahem
+vs 71.5px under a real Arial `FontLoader` override at the same size) -
+replaced it with a font-independent intersection check that builds both
+chip rects with the same `TextPainter`/`TextStyle` the painter already
+draws them with and stacks only when the real rects (plus a 3px gap)
+overlap; verified against real Arial metrics at canvas widths
+324-460px, confirming stacking now only triggers at the real ~335-340px
+collision threshold instead of force-stacking on every real phone
+width; (2) fixed a misattributed/inaccurate PDF citation (`9365d79`) -
+Blodgett doesn't author Lincoln Electric's Procedure Handbook, AWS D1.1
+Annex L doesn't cover deposition efficiency, and the app has no SAW
+support - rewrote to cite only the app's real live efficiency values
+(SMAW 65/FCAW 85/GMAW 90/GTAW 95, from `welding_defaults.dart`) with a
+hedged, defensible citation; (3) fixed `filletOversizeDeltaPercent`
+(`8034e4e`) using a fake +1.5mm "standard" step - added
+`nextStandardFilletLegMm()` against the real metric table
+(3/4/5/6/8/10/12mm), renamed the fraction-returning function to
+`filletOversizeDeltaFraction` to match its own doc comment, and fixed
+the test to exercise the real shipped 8mm->10mm path (+56.25%, not the
+old 3/16"->1/4" imperial case the UI never produces). All 3 verified
+with `dart analyze`/`flutter test`/`flutter build web` plus throwaway
+tests (deleted before each commit) that actually rendered output -
+real-font geometry probe for (1), `pdftotext` on a rendered PDF for
+(2), a full widget-tree pump through the shipped fillet preset for (3),
+confirming the on-screen hint reads "Next standard leg size up (10mm)
+costs ~56.3% more filler." Lesson for next time: `flutter test`'s
+default font renders as if every glyph were exactly `fontSize` wide
+(Ahem-equivalent) - any collision/layout math tuned by eyeballing
+`TextPainter` widths inside a widget test needs either a font-blind
+measurement approach (what we landed on) or an explicit
+`FontLoader`-loaded real font in the test, never a bare canvas-width
+constant derived from default test-font metrics.
+
 ## Archive
 
 (nothing yet)
