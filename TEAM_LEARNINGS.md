@@ -244,6 +244,56 @@ outright stalled under concurrent multi-agent memory pressure (freeing
 so treat a blank screenshot after a generous wait as "try again after
 checking `vm_stat`", not as a code problem.
 
+### 2026-08-25 — [engineer] Human owner (Compound V / Half V overlap, sixth and actually-final attempt)
+
+An independent reviewer pass on the commit above (`97d8096`) found it did
+NOT actually hold: `_clearLabelPosition`'s single pass through `avoidRects`
+could push a label clear of one rect and straight back into it while
+clearing a second one on the opposite side (Half V's groove-depth label,
+sandwiched between the angle tag above and root face below, netted ~0.1px
+of real movement), and Compound V's avoid lists were incomplete (groove
+depth only avoided alpha, not root face; beta didn't avoid root gap) so the
+fix's own pushes created two *new* overlaps instead of resolving the
+original ones. Root-fixed properly this time, verified with a real,
+permanent test (`test/widgets/weld_drawing_label_overlap_test.dart` -
+kept in the suite, not deleted, given this exact bug class's five-attempt
+history):
+
+1. `_clearLabelPosition` now always pushes **down** (never picks a
+   direction per-rect) and **re-scans the full avoid list in a loop** until
+   a full pass moves nothing - monotonic, so it can't oscillate.
+2. Found and fixed a second real bug while verifying: the push loop was
+   checking overlap against the **edge-clamped** rect
+   (`_measurementLabelRect`), so once a push would carry a label past the
+   canvas edge, the clamped rect's position froze and further pushes
+   silently did nothing while the label kept "overlapping" - added
+   `_unclampedMeasurementRect` and made the resolution loop iterate on
+   that instead, only clamping at final draw time.
+3. Made every label in Compound V avoid **every** label already placed
+   before it (alpha → root face → thickness → root gap → groove depth → h
+   → beta, each avoiding the full chain so far), not a hand-picked subset -
+   `_drawButtCommonMeasurements` now returns thickness's rect too
+   (`({Rect thickness, Rect rootGap, Rect? grooveDepth})`, a record) so
+   every caller can wire it in.
+4. Even fully correct, the algorithm alone couldn't close the last few
+   pixels for Compound V's busiest (pipe + narrow-width) cases - there is
+   genuinely not enough vertical room in the default compact card height
+   for six callouts. Verified via the same real-font test: 345px of
+   drawing-canvas height clears every combination at 316-390px canvas
+   widths; the existing compact card was only giving these two groove
+   types the same ~186-226px as every other (much less busy) groove type.
+   `_narrowDrawingHeight` in `calculator_page.dart` now gives Half V and
+   Compound V specifically a taller card (`.clamp(440.0, 500.0)` vs. the
+   default `.clamp(280.0, 320.0)`) - **lesson for next time a "narrow
+   canvas" bug in this file resists a pure label-placement fix: check
+   whether the canvas is actually tall enough for the content before
+   assuming it's purely an algorithm problem.**
+
+All verified via `weld_drawing_label_overlap_test.dart`'s 24 real-font
+cases (Half V + Compound V × plate/pipe × visual/technical × 316/346/390px
+canvas width) - 0 overlaps in every case, plus the existing 19-test suite
+still green. `dart analyze`, `flutter test`, `flutter build web` all clean.
+
 ## Archive
 
 (nothing yet)

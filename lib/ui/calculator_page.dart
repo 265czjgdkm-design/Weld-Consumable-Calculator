@@ -267,6 +267,22 @@ class _CalculatorPageState extends State<CalculatorPage> {
   double _narrowDrawingHeight(BuildContext context) {
     final mediaQuery = MediaQuery.of(context);
     final safeHeight = mediaQuery.size.height - mediaQuery.padding.vertical;
+    // Half V and Compound V carry more dimension/angle callouts than any
+    // other groove type - even with every label properly avoiding every
+    // other one (see weld_drawing_preview.dart's _clearLabelPosition), that
+    // many pills genuinely do not fit inside the default compact height at
+    // real phone widths without some of them clamping into each other at
+    // the bottom edge. Verified via a real-font label-overlap check
+    // (test/widgets/_scratch_label_overlap_check.dart during development):
+    // a 345px drawing canvas is enough to clear every pair at 316-390px
+    // canvas widths; this card height feeds a canvas roughly 100px shorter
+    // than itself (title + mode toggle + padding), so give these two
+    // groove types real headroom instead of just nudging the multiplier.
+    final busy =
+        _grooveType == GrooveType.halfV || _grooveType == GrooveType.compoundV;
+    if (busy) {
+      return (safeHeight * 0.50).clamp(440.0, 500.0);
+    }
     return (safeHeight * 0.34).clamp(280.0, 320.0);
   }
 
