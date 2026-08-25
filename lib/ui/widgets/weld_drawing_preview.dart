@@ -208,19 +208,77 @@ class _WeldDrawingPainter extends CustomPainter {
 
   bool get _isPipeButt => jointType == JointType.pipeButt;
 
-  // Below this canvas width the top-center groove-type chip (worst case:
-  // "Compound V") and the top-right pipe-OD chip (worst case: a 3-digit OD)
-  // sit close enough together to overlap when drawn side by side - measured
-  // via their actual TextPainter-based chip widths, the two collide up to
-  // ~406px of canvas width, so this breakpoint keeps a safety margin above
-  // that rather than cutting it exactly at the collision point.
-  static const double _chipStackBreakpoint = 430.0;
+  // The top-center groove-type chip and the top-right pipe-OD chip sit close
+  // enough together to overlap when drawn side by side on a narrow canvas.
+  // Rather than guessing a fixed canvas-width breakpoint (fragile: it has to
+  // assume a specific font's glyph metrics, and a prior attempt at this used
+  // widths measured under flutter_test's Ahem font, which is ~1.9x wider
+  // than real device fonts and made the breakpoint fire far too early), lay
+  // both chips out with the same TextPainter-based sizing the painter
+  // actually draws them with and stack only when their real rects would
+  // intersect - see [_chipSize] / [_chipRect].
+  bool _stackTopChips(Size size, String typeLabel) {
+    if (!_isPipeButt || data.pipeOdMm == null || data.pipeOdMm! <= 0) {
+      return false;
+    }
+    final typeRect = _chipRect(
+      size,
+      Offset(size.width * 0.5, 28),
+      _chipSize(size, typeLabel, 11.5, FontWeight.w700),
+    );
+    final pipeLabel = 'OD ${_formatValue(data.pipeOdMm!)} mm';
+    final pipeRect = _chipRect(
+      size,
+      Offset(size.width - 82, 28),
+      _chipSize(size, pipeLabel, 10.5, FontWeight.w600),
+    );
+    // Small halo beyond bare pixel contact so stacked/unstacked chips keep a
+    // hairline gap rather than just touching.
+    const gap = 3.0;
+    return typeRect.inflate(gap).overlaps(pipeRect.inflate(gap));
+  }
 
-  bool _stackTopChips(Size size) =>
-      _isPipeButt &&
-      data.pipeOdMm != null &&
-      data.pipeOdMm! > 0 &&
-      size.width < _chipStackBreakpoint;
+  // Mirrors the pill sizing in [_drawTechnicalLabel] / [_drawSoftLabel] (the
+  // two only differ in padding/minWidth, not in how they measure text) so
+  // collision checks use the exact size the chip will actually be drawn at.
+  Size _chipSize(Size size, String text, double fontSize, FontWeight weight) {
+    final painter = TextPainter(
+      text: TextSpan(
+        text: text,
+        style: TextStyle(
+          fontSize: _annotationFontSize(size, fontSize),
+          fontWeight: weight,
+          letterSpacing: _isTechnical ? 0.04 : 0.06,
+        ),
+      ),
+      textDirection: TextDirection.ltr,
+    )..layout();
+    final horizontalPadding = _isTechnical ? 20.0 : 18.0;
+    final verticalPadding = _isTechnical ? 11.0 : 11.0;
+    final minWidth = _isTechnical ? 66.0 : 62.0;
+    const minHeight = 28.0;
+    return Size(
+      math.max(painter.width + horizontalPadding, minWidth),
+      math.max(painter.height + verticalPadding, minHeight),
+    );
+  }
+
+  // Mirrors the edge-clamping in [_drawTechnicalLabel] / [_drawSoftLabel] so
+  // the collision check sees the chip's actual on-canvas position, including
+  // the clamp that pulls the two chips toward each other on narrow canvases.
+  Rect _chipRect(Size size, Offset center, Size chipSize) {
+    final rect = Rect.fromCenter(
+      center: center,
+      width: chipSize.width,
+      height: chipSize.height,
+    );
+    return Rect.fromLTWH(
+      _safeClamp(rect.left, 10, size.width - rect.width - 10),
+      _safeClamp(rect.top, 10, size.height - rect.height - 10),
+      rect.width,
+      rect.height,
+    );
+  }
   bool get _isCombinedProcess =>
       data.weldingProcess == WeldingProcess.gtawSmaw &&
       (data.gtawTransitionMm ?? 0) > 0;
@@ -443,6 +501,7 @@ class _WeldDrawingPainter extends CustomPainter {
       maxHalfWidthMm: halfBody + 10,
       heightMm: thickness + 7,
       topPaddingMm: 4,
+      topChipLabel: 'Single V',
     );
     final p = layout.point;
     final member = _memberExtents(thickness);
@@ -601,6 +660,7 @@ class _WeldDrawingPainter extends CustomPainter {
       maxHalfWidthMm: math.max(leftBody, rightBody) + 10.0,
       heightMm: thickness + 7,
       topPaddingMm: 4,
+      topChipLabel: 'Half V',
     );
     final p = layout.point;
     final grooveY = thickness - rootFace;
@@ -728,6 +788,7 @@ class _WeldDrawingPainter extends CustomPainter {
       maxHalfWidthMm: halfBody + 10,
       heightMm: thickness + 7,
       topPaddingMm: 4,
+      topChipLabel: 'Double V',
     );
     final p = layout.point;
     final member = _memberExtents(thickness);
@@ -943,6 +1004,7 @@ class _WeldDrawingPainter extends CustomPainter {
       maxHalfWidthMm: halfBody + 10,
       heightMm: thickness + 7,
       topPaddingMm: 4,
+      topChipLabel: 'Compound V',
     );
     final p = layout.point;
     final breakY = upperHeight;
@@ -1100,6 +1162,7 @@ class _WeldDrawingPainter extends CustomPainter {
       maxHalfWidthMm: halfBody + 10,
       heightMm: thickness + 7,
       topPaddingMm: 4,
+      topChipLabel: 'Square',
     );
     final p = layout.point;
     final member = _memberExtents(thickness);
@@ -1523,6 +1586,7 @@ class _WeldDrawingPainter extends CustomPainter {
     required double maxHalfWidthMm,
     required double heightMm,
     double topPaddingMm = 3.5,
+    String topChipLabel = '',
   }) {
     // Margins as a fraction of canvas size (matching the original fixed
     // 50/42/100/92 px margins against the 760x400 reference canvas) so the
@@ -1544,7 +1608,10 @@ class _WeldDrawingPainter extends CustomPainter {
       // pipe-OD chip is stacked below the type chip instead of beside it
       // (see [_stackTopChips]) that top-center column is two chips tall,
       // so raise the floor to keep clearing it.
-      marginTop = math.max(marginTop, _stackTopChips(size) ? 80.0 : 48.0);
+      marginTop = math.max(
+        marginTop,
+        _stackTopChips(size, topChipLabel) ? 80.0 : 48.0,
+      );
     }
     final frame = Rect.fromLTWH(
       marginX,
@@ -1600,17 +1667,17 @@ class _WeldDrawingPainter extends CustomPainter {
   }
 
   // Draws the top-center groove-type chip and, for pipe joints, the
-  // top-right OD chip. Below [_chipStackBreakpoint] the two chips can
-  // overlap if placed side by side (the OD chip's independent canvas-edge
-  // clamping pulls it left just as the type chip's clamping pulls it
-  // right), so on narrow canvases the OD chip stacks directly below the
-  // type chip instead - see [_stackTopChips].
+  // top-right OD chip. When placed side by side the two chips can overlap
+  // (the OD chip's independent canvas-edge clamping pulls it left just as
+  // the type chip's clamping pulls it right), so on canvases where the two
+  // chips' real measured rects would actually collide the OD chip stacks
+  // directly below the type chip instead - see [_stackTopChips].
   void _drawTopChips(Canvas canvas, Size size, String typeLabel) {
     _drawTypeChip(canvas, size, typeLabel);
     _drawPipeChip(
       canvas,
       size,
-      center: _stackTopChips(size)
+      center: _stackTopChips(size, typeLabel)
           ? Offset(size.width * 0.5, 60)
           : Offset(size.width - 82, 28),
     );
