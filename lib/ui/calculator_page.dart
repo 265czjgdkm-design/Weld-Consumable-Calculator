@@ -287,10 +287,10 @@ class _CalculatorPageState extends State<CalculatorPage> {
         _grooveType == GrooveType.compoundV ||
         _grooveType == GrooveType.doubleV;
     if (busy) {
-      return (safeHeight * 0.60).clamp(500.0, 560.0);
+      return (safeHeight * 0.58).clamp(490.0, 550.0);
     }
     if (_grooveType == GrooveType.fillet) {
-      return (safeHeight * 0.50).clamp(420.0, 480.0);
+      return (safeHeight * 0.44).clamp(390.0, 440.0);
     }
     return (safeHeight * 0.52).clamp(440.0, 500.0);
   }

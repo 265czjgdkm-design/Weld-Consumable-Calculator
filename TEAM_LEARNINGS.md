@@ -348,6 +348,43 @@ of truth here and is strictly stronger evidence than an eyeballed
 screenshot (it proves zero pixel overlap, not "looks fine to me"), but a
 real device/browser spot-check is still worth doing when convenient.
 
+### 2026-08-25 — [engineer] Human owner (make the drawing itself bigger, not just non-overlapping)
+
+User feedback after the overlap fix: the card was taller, but the joint
+drawing didn't actually look bigger - correct. `_createLayout`'s scale is
+`min(frame.width/(maxHalfWidthMm*2), frame.height/heightMm)`, and for
+every groove type at real phone canvas widths this is **width-bound**, not
+height-bound (checked the numbers: the width term comes out smaller by
+roughly 2-3x for every groove type at 316-390px) - so the taller compact
+card from the earlier fix bought label breathing room (more `frame.height`
+→ more slack) but never touched the binding width term, so the geometry
+itself stayed exactly the same size. Fixed by shrinking `marginX` in
+`fillAvailableSpace` mode only (`0.0658 → 0.045` of canvas width; desktop/
+FittedBox path unchanged) - since geometry and every label share the same
+mm-to-px scale via `layout.point`, a bigger `frame.width` grows the drawing
+*and* every label's pixel offset from it together, which also widens the
+natural gaps between mm-separated labels (confirmed empirically: re-running
+`weld_drawing_label_overlap_test.dart` at the old canvas heights still
+passed, and the actual minimum canvas height needed dropped for every tier
+- Fillet's dropped from 312px to 280px). Re-tuned
+`_narrowDrawingHeight`'s three tiers down to match the new, smaller real
+minimums instead of leaving the previous (now unnecessarily generous)
+values in place: busy `.clamp(490, 550)` (was 500-560), default unchanged
+at `.clamp(440, 500)`, Fillet `.clamp(390, 440)` (was 420-480).
+
+All 66 `weld_drawing_label_overlap_test.dart` cases still pass at the new
+minimum heights (388/334/280px canvas for busy/default/Fillet
+respectively, both with a small safety margin baked in already). `dart
+analyze`, `flutter test` (85/85), `flutter build web` clean. Live-browser
+visual confirmation still not possible this session (same memory-pressure
+issue as the prior two entries) - **this is now the third fix in this
+file's history landing on real-font-render + geometric-assertion evidence
+without a live screenshot; if a future session has a stable browser
+available, a real visual pass over all six groove types is worth doing
+specifically to confirm the *proportions* (not just the absence of
+overlap) actually look right to a human, since that's not something a
+geometric assertion can verify.**
+
 ## Archive
 
 (nothing yet)

@@ -1699,7 +1699,23 @@ class _WeldDrawingPainter extends CustomPainter {
     // 50/42/100/92 px margins against the 760x400 reference canvas) so the
     // layout looks identical whether painted on that virtual canvas or
     // directly at a real, smaller box (see [WeldDrawingPreview.fillAvailableSpace]).
-    final marginX = size.width * 0.0658;
+    //
+    // In fillAvailableSpace mode the joint geometry's scale is width-bound,
+    // not height-bound, on essentially every real phone width (verified:
+    // frame.width/(maxHalfWidthMm*2) comes out smaller than
+    // frame.height/heightMm for every groove type at 316-390px canvas
+    // width) - so the taller compact card added above (see
+    // _narrowDrawingHeight in calculator_page.dart) bought label breathing
+    // room but did not make the drawing itself any bigger. A slimmer side
+    // margin directly raises that width-bound scale instead, since both
+    // the geometry and every label position share the same mm-to-px scale
+    // (see [_SectionLayout]/`layout.point`) - everything grows together,
+    // labels included, which also widens the natural pixel gaps between
+    // mm-separated labels and makes the collision-avoidance system's job
+    // easier, not harder. Left at the original, more generous fraction for
+    // the desktop/FittedBox path, which already renders at a verified-good
+    // size and has no width pressure to relieve.
+    final marginX = size.width * (fillAvailableSpace ? 0.045 : 0.0658);
     var marginTop = size.height * 0.105;
     final marginBottom = size.height * 0.125;
     if (fillAvailableSpace) {

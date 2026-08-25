@@ -164,9 +164,9 @@ void main() {
   // Single V/Square, ~180px for Fillet - each derived from that function's
   // outer-card clamp minus its ~94-100px of title/toggle/padding chrome.
   const widths = [316.0, 346.0, 390.0];
-  const busyHeight = 392.0;
+  const busyHeight = 388.0;
   const normalHeight = 334.0;
-  const filletHeight = 312.0;
+  const filletHeight = 280.0;
   final joints = [JointType.plateButt, JointType.pipeButt];
 
   final busyGrooves = [
