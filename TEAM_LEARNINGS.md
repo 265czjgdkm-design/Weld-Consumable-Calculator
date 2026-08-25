@@ -472,6 +472,63 @@ apart further than the 1.35x cap without re-confirming with the user; this
 was an explicit, bounded product tradeoff, not a default to lean on
 further by default.**
 
+### 2026-08-25 — [engineer] Further enlargement round (cap raised to 1.6x) + a new bug class: labels can collide with their OWN dimension line
+
+User asked again to enlarge the drawing further, both sideways and
+vertically, and explicitly asked every groove type be checked afterward.
+Raised the `scaleY` cap in `_createLayout` from `1.35x` to `1.6x` and
+shrank the compact-mode side margin (`marginX`) from `0.045` to `0.038` of
+canvas width, both in `fillAvailableSpace` mode only. (A more aggressive
+pass through `1.8x`/`0.032` was tried first and reverted after the bug
+below was found at those settings - not worth re-attempting without a
+working live-browser check, see below.)
+
+**New bug class found via live-browser inspection (Double V, Pipe Butt,
+Technical mode) at the aggressive settings**: the thickness dimension
+label ("12 mm t") had its own dimension line crossing directly through its
+text. Root cause: `_drawButtCommonMeasurements` draws the thickness label
+first, with no `avoidRects` (nothing has been placed yet to avoid) - so it
+never runs through `_clearLabelPosition`, only the unconditional final
+`_safeClamp` in `_drawTechnicalLabel` at draw time. That clamp only
+protects against the *canvas* edge (fixed 10px), not against the label's
+*own* dimension line - so a label whose natural (unclamped) X position
+runs off the left edge as `scale` grows gets pulled back rightward, right
+onto the line it's describing. This is a distinct failure mode from every
+previous label-collision bug this file has hit (all of those were
+label-vs-label); the permanent regression test
+(`weld_drawing_label_overlap_test.dart`) structurally cannot catch it
+either, since it only ever compares label pills against each other, never
+against the drawn geometry or dimension lines - consistent with the
+test's documented, known blind spot.
+
+Considered routing the thickness label through `_clearLabelPosition`
+against a thin rect built from its own dimension line, but that function
+only ever pushes DOWN (see its own doc comment) - for a label sitting
+beside the vertical thickness line at mid-height, a down-push would shove
+it well below the member entirely, a worse result than the bug. Went with
+the simpler, already-proven lever instead: dialed both settings back to
+`scaleY` cap `1.6x` / `marginX 0.038` (still bigger than the previous
+round's `1.35x`/`0.045`, so this round is still a net enlargement per the
+request, just less aggressive than the first attempt). Re-verified all 66
+`weld_drawing_label_overlap_test.dart` cases pass, `flutter test` 85/85,
+`dart analyze` and `flutter build web` clean.
+
+**Live-browser visual re-verification of this fix, and the "check every
+bevel" pass the user explicitly asked for, could NOT be completed this
+round** - the Chrome extension disconnected mid-session (the recurring
+memory-pressure freeze this machine hits, documented earlier in this
+file) and did not reconnect after a retry. Flagged to the user rather than
+reported as done; if this file's layout code is touched again before a
+real visual pass happens, treat Double V's thickness label specifically as
+unverified at these settings, not confirmed-clean.
+
+**If this file's layout code is touched again: the `scaleY` cap is now
+`1.6x`, `marginX` is `0.038` in compact mode. Same caution as above -
+these are product tradeoffs already pushed once at the user's explicit
+request; don't push further without both re-confirming with the user AND
+getting a working live-browser check, given this round's bug was only
+visible that way.**
+
 ## Archive
 
 (nothing yet)

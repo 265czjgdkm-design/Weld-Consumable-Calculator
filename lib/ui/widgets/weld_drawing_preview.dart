@@ -1733,7 +1733,7 @@ class _WeldDrawingPainter extends CustomPainter {
     // easier, not harder. Left at the original, more generous fraction for
     // the desktop/FittedBox path, which already renders at a verified-good
     // size and has no width pressure to relieve.
-    final marginX = size.width * (fillAvailableSpace ? 0.045 : 0.0658);
+    final marginX = size.width * (fillAvailableSpace ? 0.038 : 0.0658);
     var marginTop = size.height * 0.105;
     final marginBottom = size.height * 0.125;
     if (fillAvailableSpace) {
@@ -1780,7 +1780,7 @@ class _WeldDrawingPainter extends CustomPainter {
     // mode; the desktop/FittedBox path keeps true proportions since it has
     // no vertical-space problem to solve.
     final scaleY = fillAvailableSpace
-        ? math.min(frame.height / heightMm, scale * 1.35)
+        ? math.min(frame.height / heightMm, scale * 1.6)
         : scale;
     final actualHeight = heightMm * scaleY;
     final slack = math.max(frame.height - actualHeight, 0.0);
