@@ -184,6 +184,66 @@ the Joint Type dropdown above the card, so the title was redundant there,
 not just colliding. `dart analyze`/`flutter test` (19/19)/`flutter build
 web` all clean.
 
+### 2026-08-25 — [engineer] Human owner (Compound V / Half V angle-tag vs
+groove-depth overlap, real narrow-viewport render found)
+
+The Compound V "α" label overlapping "10 mm groove depth" at real phone
+widths (390px) had already had four prior "fix overlap" commits
+(`970d112`, `2bfe8aa`, `fb5a8c9`, `4fc949b`) that didn't hold, because every
+one of them was verified with either `TextPainter` math or `flutter_test`'s
+default font, never a genuine narrow real-browser render. Confirmed this
+time with a real Chrome (via `playwright-core` pointed at the system
+Chrome.app - no network download needed, so it works even when
+`playwright install` can't reach the CDN) driving a live
+`flutter run -d web-server` session at a real 360-394px viewport: the root
+cause is that the file's mm-space "lane" system assumes a fixed mm gap
+between labels translates to enough pixel separation, but the drawing's
+mm-to-pixel scale shrinks on a narrow canvas while each label bubble's
+rendered size stays ~fixed in pixels, so lanes that clear each other on the
+760px desktop canvas collapse into overlapping bubbles on a real phone
+canvas. Fixed with a general, reusable mechanism instead of another
+magic-number nudge: `_drawDimensionLine`/`_drawAngleTag` now return the
+label's real measured `Rect` (mirroring the same TextPainter-based sizing
+`_chipSize`/`_chipRect` already used for the top-chip collision fix), and
+accept an optional `avoidRects` list; a new `_clearLabelPosition` pushes a
+candidate label straight down/up in real pixel space by exactly the amount
+needed to clear each avoid-rect. Compound V's α is now drawn first and its
+rect fed into groove depth's placement, and both feed into β's; Half V's
+angle tag and root-face label are drawn first and fed into groove depth's
+placement (Half V's angle tag shares the same right-hand side as groove
+depth, unlike Single V/Double V whose single angle tag sits on the
+*opposite* side - which is why only Half V and Compound V had this bug,
+confirmed via real render across all six groove types). Because the fix
+measures whatever font is actually live at paint time rather than baking in
+a threshold from one measurement environment, it holds regardless of which
+font is rendering.
+
+**Process note for whoever touches this file next**: verifying this class
+of bug purely with `flutter_test` is a trap even beyond the already-known
+Ahem-glyph-width issue - `flutter test` always forces the Ahem-equivalent
+font via `--use-test-fonts --disable-asset-fonts`, and unlike the
+`_chipSize`/`_chipRect` collision-count case, a `FontLoader`-registered real
+font does **not** override this for any `TextStyle` that doesn't specify an
+explicit `fontFamily` (confirmed empirically: registering under family `''`
+and asserting real-vs-Ahem width in a widget test still measured the
+Ahem-equivalent width). Also, real async I/O (`File.readAsBytes`, `toImage`
++ file writes) inside a plain `testWidgets` body hangs forever with no
+error - `flutter_test`'s fake-async test zone never drives real `dart:io`
+futures to completion; wrap any such I/O in `await tester.runAsync(() async
+{...})`. Given that constraint, real-font verification for this fix used a
+live `flutter run -d web-server` + `playwright-core` (pointed at the local
+Google Chrome.app, since `playwright install`'s browser download was
+network-blocked in this environment) driving a genuine narrow viewport -
+this is the technique that actually caught a **second**, previously-unknown
+real overlap (β vs. root face at 360px, only visible after the α fix)
+that neither `TextPainter` math nor an Ahem-font render would have
+distinguished from a false positive. Budget real time for this: this
+environment's flutter_tester/DDC/Chrome startup was frequently slow or
+outright stalled under concurrent multi-agent memory pressure (freeing
+~400MB by killing stray flutter_tester/Chrome processes measurably helped),
+so treat a blank screenshot after a generous wait as "try again after
+checking `vm_stat`", not as a code problem.
+
 ## Archive
 
 (nothing yet)

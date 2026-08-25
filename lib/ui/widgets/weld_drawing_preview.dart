@@ -728,18 +728,24 @@ class _WeldDrawingPainter extends CustomPainter {
       topLabelCenter: p(topRight * 0.72, thickness * 0.18),
       rootLabelCenter: p(halfGap + 6, thickness - 0.8),
     );
-    _drawButtCommonMeasurements(
+    // Unlike Single V/Double V (whose single angle tag sits on the opposite
+    // side from the groove-depth label), Half V's bevel angle and groove
+    // depth both live on the right-hand side, close enough together that
+    // their mm-space lanes collapse into overlapping pixel-space bubbles on
+    // a real narrow phone canvas (same root cause as the Compound V fix
+    // above - see the comment on that block, and TEAM_LEARNINGS.md). Draw
+    // the angle tag and root-face label first (both at fixed positions),
+    // then let groove depth nudge clear of their real measured rects.
+    final angleRect = _drawAngleTag(
       canvas,
-      size,
       guidePaint,
-      layout: layout,
-      thickness: thickness,
-      halfGap: halfGap,
-      grooveY: grooveY,
-      thicknessLabelX: -leftBody - 6,
-      rightThicknessLabelX: rightBody + 6,
+      size,
+      start: p(halfGap + ((topRight - halfGap) * 0.44), grooveY * 0.34),
+      labelCenter: p(topRight + 7.0, grooveY * 0.20),
+      text: '${_formatValue(bevelAngle)}°',
+      fieldKey: FieldKey.bevelAngleDeg,
     );
-    _drawDimensionLine(
+    final rootFaceRect = _drawDimensionLine(
       canvas,
       guidePaint,
       start: p(halfGap + 5, grooveY),
@@ -751,14 +757,17 @@ class _WeldDrawingPainter extends CustomPainter {
       extensionEnd: p(halfGap, thickness),
       fieldKey: FieldKey.rootFaceMm,
     );
-    _drawAngleTag(
+    _drawButtCommonMeasurements(
       canvas,
-      guidePaint,
       size,
-      start: p(halfGap + ((topRight - halfGap) * 0.44), grooveY * 0.34),
-      labelCenter: p(topRight + 7.0, grooveY * 0.20),
-      text: '${_formatValue(bevelAngle)}°',
-      fieldKey: FieldKey.bevelAngleDeg,
+      guidePaint,
+      layout: layout,
+      thickness: thickness,
+      halfGap: halfGap,
+      grooveY: grooveY,
+      thicknessLabelX: -leftBody - 6,
+      rightThicknessLabelX: rightBody + 6,
+      avoidRects: [angleRect, rootFaceRect],
     );
     _drawTopChips(canvas, size, 'Half V');
   }
@@ -1080,11 +1089,32 @@ class _WeldDrawingPainter extends CustomPainter {
     );
     // Compound V carries six callouts (thickness, root gap, groove depth,
     // break height, root face, alpha, beta) plus the type/pipe chips - the
-    // busiest drawing in the app. Every one of them stays, but each gets its
-    // own lane - a distinct horizontal distance from the joint, not just a
-    // distinct vertical position - so nothing stacks into an unreadable
-    // pile even when two labels' natural heights land close together.
-    _drawButtCommonMeasurements(
+    // busiest drawing in the app. Each label starts in its own mm-space
+    // lane - a distinct horizontal distance from the joint - but an
+    // mm-space lane alone isn't enough: the drawing's mm-to-pixel scale
+    // shrinks on a narrow canvas while each label bubble's own rendered
+    // size stays roughly fixed in pixels, so lanes that are comfortably
+    // separated on the desktop canvas can collapse into overlapping
+    // pixel-space bubbles on a real phone canvas (this is exactly what
+    // happened between alpha and groove depth - see TEAM_LEARNINGS.md).
+    // So alpha is measured and drawn first at its normal lane position,
+    // then groove depth and beta are each nudged straight down/up in real
+    // pixel space (see [_clearLabelPosition]), using their actual rendered
+    // bubble sizes, just far enough to clear whichever already-placed
+    // bubble they'd otherwise overlap.
+    final alphaRect = _drawAngleTag(
+      canvas,
+      guidePaint,
+      size,
+      start: p(
+        halfGap + ((halfBreak - halfGap) * 0.52),
+        grooveY - ((grooveY - breakY) * 0.42),
+      ),
+      labelCenter: p(halfGap + 6, breakY * 0.35),
+      text: 'α ${_formatValue(primaryAngle)}°',
+      fieldKey: FieldKey.bevelAngleDeg,
+    );
+    final grooveDepthRect = _drawButtCommonMeasurements(
       canvas,
       size,
       guidePaint,
@@ -1094,6 +1124,7 @@ class _WeldDrawingPainter extends CustomPainter {
       grooveY: grooveY,
       thicknessLabelX: -halfBody - 6,
       rightThicknessLabelX: halfBody + 6,
+      avoidRects: [alphaRect],
     );
     // Break height "h": inner-left lane, kept close to the joint. The label
     // is nudged down toward groove depth's height, well clear of the
@@ -1111,7 +1142,7 @@ class _WeldDrawingPainter extends CustomPainter {
       fieldKey: FieldKey.breakHeightMm,
     );
     // Root face: bottom, inner-right lane, close to the joint.
-    _drawDimensionLine(
+    final rootFaceRect = _drawDimensionLine(
       canvas,
       guidePaint,
       start: p(halfGap + 5, grooveY),
@@ -1123,25 +1154,10 @@ class _WeldDrawingPainter extends CustomPainter {
       extensionEnd: p(halfGap, thickness),
       fieldKey: FieldKey.rootFaceMm,
     );
-    // Primary angle (alpha): a short reach on the inner-right, tucked near
-    // the top of the section - clear of groove depth's lane (mid-height)
-    // and root face's lane (bottom) below it.
-    _drawAngleTag(
-      canvas,
-      guidePaint,
-      size,
-      start: p(
-        halfGap + ((halfBreak - halfGap) * 0.52),
-        grooveY - ((grooveY - breakY) * 0.42),
-      ),
-      labelCenter: p(halfGap + 6, breakY * 0.35),
-      text: 'α ${_formatValue(primaryAngle)}°',
-      fieldKey: FieldKey.bevelAngleDeg,
-    );
     // Secondary angle (beta): inner-right, between alpha's lane above and
-    // root face's lane below - a touch further out than both so none of
-    // the three share a column, and nowhere near the top chips or the
-    // left-side thickness/h lanes.
+    // root face's lane below - nudged clear of alpha, of groove depth's
+    // real (possibly already-nudged) rect, and of root face if they'd
+    // otherwise collide.
     _drawAngleTag(
       canvas,
       guidePaint,
@@ -1150,6 +1166,7 @@ class _WeldDrawingPainter extends CustomPainter {
       labelCenter: p(halfGap + 14, (breakY + grooveY) / 2),
       text: 'β ${_formatValue(secondaryAngle)}°',
       fieldKey: FieldKey.secondaryBevelAngleDeg,
+      avoidRects: [alphaRect, ?grooveDepthRect, rootFaceRect],
     );
     _drawTopChips(canvas, size, 'Compound V');
   }
@@ -1466,7 +1483,7 @@ class _WeldDrawingPainter extends CustomPainter {
     _hotspot(FieldKey.gtawTransitionMm, rootLabelCenter, radius: 22);
   }
 
-  void _drawButtCommonMeasurements(
+  Rect? _drawButtCommonMeasurements(
     Canvas canvas,
     Size size,
     Paint guidePaint, {
@@ -1477,6 +1494,7 @@ class _WeldDrawingPainter extends CustomPainter {
     required double thicknessLabelX,
     double? rightThicknessLabelX,
     double? rootGapLabelY,
+    List<Rect> avoidRects = const [],
   }) {
     final p = layout.point;
     final memberExtents = _memberExtents(thickness);
@@ -1534,7 +1552,7 @@ class _WeldDrawingPainter extends CustomPainter {
       final grooveDepthOffset = unequal
           ? const Offset(46, -22)
           : const Offset(46, 0);
-      _drawDimensionLine(
+      return _drawDimensionLine(
         canvas,
         guidePaint,
         start: p(halfGap + 20, 0),
@@ -1545,8 +1563,10 @@ class _WeldDrawingPainter extends CustomPainter {
         extensionStart: p(halfGap, 0),
         extensionEnd: p(halfGap, grooveY),
         fieldKey: FieldKey.rootFaceMm,
+        avoidRects: avoidRects,
       );
     }
+    return null;
   }
 
   _MemberExtents _memberExtents(double governingThickness) {
@@ -1749,7 +1769,7 @@ class _WeldDrawingPainter extends CustomPainter {
     }
   }
 
-  void _drawDimensionLine(
+  Rect _drawDimensionLine(
     Canvas canvas,
     Paint paint, {
     required Offset start,
@@ -1760,6 +1780,7 @@ class _WeldDrawingPainter extends CustomPainter {
     Offset? extensionStart,
     Offset? extensionEnd,
     FieldKey? fieldKey,
+    List<Rect> avoidRects = const [],
   }) {
     if (extensionStart != null) {
       canvas.drawLine(extensionStart, start, paint);
@@ -1771,19 +1792,30 @@ class _WeldDrawingPainter extends CustomPainter {
     _drawArrowHead(canvas, paint, start, end);
     _drawArrowHead(canvas, paint, end, start);
     final midpoint = Offset((start.dx + end.dx) / 2, (start.dy + end.dy) / 2);
-    final labelCenter = Offset(
+    var labelCenter = Offset(
       midpoint.dx + labelOffset.dx,
       midpoint.dy + labelOffset.dy,
     );
+    final fontSize = _measurementFontSize(labelSize);
+    if (avoidRects.isNotEmpty) {
+      labelCenter = _clearLabelPosition(
+        labelSize,
+        label,
+        labelCenter,
+        fontSize,
+        avoidRects,
+      );
+    }
     _drawAnnotationLabel(
       canvas,
       labelSize,
       label,
       labelCenter,
-      fontSize: _measurementFontSize(labelSize),
+      fontSize: fontSize,
       technicalDimension: true,
     );
     _hotspot(fieldKey, labelCenter);
+    return _measurementLabelRect(labelSize, label, labelCenter, fontSize);
   }
 
   void _drawLeader(
@@ -1807,7 +1839,7 @@ class _WeldDrawingPainter extends CustomPainter {
     );
   }
 
-  void _drawAngleTag(
+  Rect _drawAngleTag(
     Canvas canvas,
     Paint paint,
     Size size, {
@@ -1815,15 +1847,27 @@ class _WeldDrawingPainter extends CustomPainter {
     required Offset labelCenter,
     required String text,
     FieldKey? fieldKey,
+    List<Rect> avoidRects = const [],
   }) {
-    final dx = labelCenter.dx - start.dx;
-    final dy = labelCenter.dy - start.dy;
+    final fontSize = _measurementFontSize(size);
+    var resolvedCenter = labelCenter;
+    if (avoidRects.isNotEmpty) {
+      resolvedCenter = _clearLabelPosition(
+        size,
+        text,
+        labelCenter,
+        fontSize,
+        avoidRects,
+      );
+    }
+    final dx = resolvedCenter.dx - start.dx;
+    final dy = resolvedCenter.dy - start.dy;
     final length = math.sqrt((dx * dx) + (dy * dy));
     final ux = length == 0 ? 0.0 : dx / length;
     final uy = length == 0 ? 0.0 : dy / length;
     final lineEnd = Offset(
-      labelCenter.dx - (ux * 20),
-      labelCenter.dy - (uy * 20),
+      resolvedCenter.dx - (ux * 20),
+      resolvedCenter.dy - (uy * 20),
     );
 
     canvas.drawLine(start, lineEnd, paint);
@@ -1832,11 +1876,81 @@ class _WeldDrawingPainter extends CustomPainter {
       canvas,
       size,
       text,
-      labelCenter,
-      fontSize: _measurementFontSize(size),
+      resolvedCenter,
+      fontSize: fontSize,
       technicalDimension: true,
     );
-    _hotspot(fieldKey, labelCenter);
+    _hotspot(fieldKey, resolvedCenter);
+    return _measurementLabelRect(size, text, resolvedCenter, fontSize);
+  }
+
+  // Mirrors the pill sizing/clamping in [_drawTechnicalLabel] / [_drawSoftLabel]
+  // for a `technicalDimension: true` label - what every dimension line and
+  // angle tag draws - the same measure-before-you-collide approach
+  // [_chipSize]/[_chipRect] already use for the top chips, generalized to
+  // any measurement label so [_clearLabelPosition] sees each label's real
+  // on-canvas rect instead of an mm-space guess.
+  Rect _measurementLabelRect(
+    Size size,
+    String text,
+    Offset center,
+    double fontSize,
+  ) {
+    final painter = TextPainter(
+      text: TextSpan(
+        text: text,
+        style: TextStyle(
+          fontSize: _annotationFontSize(size, fontSize),
+          fontWeight: _isTechnical ? FontWeight.w500 : FontWeight.w600,
+          letterSpacing: _isTechnical ? 0.04 : 0.06,
+        ),
+      ),
+      textDirection: TextDirection.ltr,
+    )..layout();
+    final verticalPadding = _isTechnical ? 10.0 : 11.0;
+    final minWidth = _isTechnical ? 56.0 : 62.0;
+    final minHeight = _isTechnical ? 26.0 : 28.0;
+    final rect = Rect.fromCenter(
+      center: center,
+      width: math.max(painter.width + 18.0, minWidth),
+      height: math.max(painter.height + verticalPadding, minHeight),
+    );
+    return Rect.fromLTWH(
+      _safeClamp(rect.left, 10, size.width - rect.width - 10),
+      _safeClamp(rect.top, 10, size.height - rect.height - 10),
+      rect.width,
+      rect.height,
+    );
+  }
+
+  // Pushes [candidateCenter] straight down (or up, whichever direction it's
+  // already on) by exactly the real pixel amount needed to clear each rect
+  // in [avoidRects] - not a fixed mm-space or pixel nudge - so the fix holds
+  // regardless of canvas scale or which font is actually rendering. This is
+  // the general mechanism behind the alpha/groove-depth/beta fix on the
+  // Compound V drawing (see the comment above that callout block) and is
+  // reusable by any future dimension line or angle tag that needs to stay
+  // clear of another label already placed nearby.
+  Offset _clearLabelPosition(
+    Size size,
+    String text,
+    Offset candidateCenter,
+    double fontSize,
+    List<Rect> avoidRects, {
+    double gap = 4.0,
+  }) {
+    var center = candidateCenter;
+    for (final raw in avoidRects) {
+      final avoid = raw.inflate(gap);
+      final rect = _measurementLabelRect(size, text, center, fontSize);
+      if (!rect.overlaps(avoid)) continue;
+      final pushDown = rect.center.dy >= avoid.center.dy;
+      final delta = pushDown
+          ? avoid.bottom - rect.top
+          : avoid.top - rect.bottom;
+      center = Offset(center.dx, center.dy + delta);
+    }
+    return center;
   }
 
   void _drawAnnotationLabel(
