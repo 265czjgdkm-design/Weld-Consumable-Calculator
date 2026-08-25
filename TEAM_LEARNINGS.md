@@ -529,6 +529,53 @@ request; don't push further without both re-confirming with the user AND
 getting a working live-browser check, given this round's bug was only
 visible that way.**
 
+### 2026-08-25 — [engineer] Same session, continued: the margin dial-back above did NOT fix Double V; found and fixed the real cause
+
+The Chrome extension reconnected later in this same session, so the
+"check every bevel" pass above finally ran for real. The `marginX`
+dial-back (0.032 -> 0.038) did **not** actually fix the Double V thickness
+label - "12 mm t" still had a mark crossing its text at 0.038/1.6x. The
+diagnosis in the entry above (label pushed off-canvas, edge-clamped back
+onto its own line) was **wrong** - margin/scale tuning was never going to
+fix it, because that wasn't the mechanism.
+
+Real cause, found by zooming into a live render: `_drawDoubleV` draws two
+separate vertical dimension "lanes" close together on the left side - the
+main thickness line (`thicknessLabelX = -halfBody - 6`) that "12 mm t"
+belongs to, and a second line 5mm away (`-halfBody - 1`) that the two
+`equal`-mode half-thickness brackets ("6 mm" / "6 mm") share. Those two
+half-bracket dimension lines meet at `y = halfThickness` - which is
+exactly the vertical center the main "12 mm t" label is positioned at -
+so the arrowheads from both bracket lines converge right there, reading
+as a stray X/diagonal mark through the main label. Only 5mm of mm-space
+separation between the two lanes wasn't enough real pixel clearance once
+the drawing got this much bigger. Fixed by moving the half-bracket lane
+from `-halfBody - 1` to `-halfBody + 4` (closer to the plate, further from
+the main lane - roughly doubles the gap between the two lanes without
+pushing either off canvas). This is a geometry fix, not a margin/scale
+one - the earlier settings (`marginX 0.038`, `scaleY` cap `1.6x`) were
+fine and are unchanged.
+
+Re-verified: `dart analyze`, `flutter test` (85/85, full 66-case overlap
+matrix included), `flutter build web` all clean. **Completed the full
+live-browser "every bevel" visual pass this time** (390px viewport,
+zoomed screenshots) - Single V, Half V, Double V (both Plate and Pipe
+Butt), Compound V (Pipe Butt - Compound V isn't offered for Plate Butt in
+this app's own UI, a pre-existing product choice unrelated to this work),
+Square, and Fillet all confirmed clean: no label-vs-label overlap,
+no label-vs-line crossings, drawing fills the compact card noticeably
+more than before this round. Double V's "12 mm t" specifically reads
+clean now, both Plate and Pipe Butt.
+
+**Takeaway for next time this file's dimension-line code is touched: two
+separate dimension lines that share an endpoint y-coordinate (like the
+two half-thickness brackets meeting at `halfThickness` here) need enough
+lane separation that their arrowheads can't land inside a third label
+centered on that same y - this is a distinct failure mode from both
+label-vs-label overlap and label-vs-own-line, and the regression test
+can't catch it either (same blind spot: it only compares label pills to
+each other).**
+
 ## Archive
 
 (nothing yet)

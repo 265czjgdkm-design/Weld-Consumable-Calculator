@@ -978,14 +978,16 @@ class _WeldDrawingPainter extends CustomPainter {
       ],
     );
     if (data.geometryMode == JointGeometryMode.equal) {
-      // These two half-thickness brackets share the thickness label's outer
-      // lane and sit at a nearly identical vertical center (thickness/4 vs.
-      // 3*thickness/4) - close enough at a narrow canvas that they collapse
-      // into both the shared thickness label and each other. Both push
-      // clear in real pixel space, not just their nominal mm split - and
-      // both avoid every label drawn before them (not just thickness),
-      // since total root face can be pushed wide enough at a narrow canvas
-      // to reach this far-left lane too.
+      // These two half-thickness brackets sit in their own lane, closer to
+      // the plate than the main thickness line (`thicknessLabelX`, above).
+      // They used to sit only 5mm outside the plate edge - just 5mm from
+      // the main thickness line's own lane - so the arrowheads where the
+      // two half-bracket lines meet (at y=halfThickness, the exact same
+      // height the main "<t> mm t" label is centered on) landed inside that
+      // label's pill, reading as a stray diagonal mark crossing the text
+      // (see TEAM_LEARNINGS.md, 2026-08-25). Pulled in closer to the plate
+      // instead of further out, widening the gap from the main line's lane
+      // without pushing this lane past the canvas edge.
       final beforeHalves = [
         commonRects.thickness,
         commonRects.rootGap,
@@ -995,8 +997,8 @@ class _WeldDrawingPainter extends CustomPainter {
       final upperHalfRect = _drawDimensionLine(
         canvas,
         guidePaint,
-        start: p(-halfBody - 1, 0),
-        end: p(-halfBody - 1, halfThickness),
+        start: p(-halfBody + 4, 0),
+        end: p(-halfBody + 4, halfThickness),
         label: '${_formatValue(halfThickness)} mm',
         labelSize: size,
         labelOffset: const Offset(-30, -16),
@@ -1005,8 +1007,8 @@ class _WeldDrawingPainter extends CustomPainter {
       _drawDimensionLine(
         canvas,
         guidePaint,
-        start: p(-halfBody - 1, halfThickness),
-        end: p(-halfBody - 1, thickness),
+        start: p(-halfBody + 4, halfThickness),
+        end: p(-halfBody + 4, thickness),
         label: '${_formatValue(halfThickness)} mm',
         labelSize: size,
         labelOffset: const Offset(-30, 16),
