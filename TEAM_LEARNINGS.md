@@ -294,6 +294,60 @@ cases (Half V + Compound V × plate/pipe × visual/technical × 316/346/390px
 canvas width) - 0 overlaps in every case, plus the existing 19-test suite
 still green. `dart analyze`, `flutter test`, `flutter build web` all clean.
 
+### 2026-08-25 — [engineer] Human owner (extended the overlap fix to every groove type)
+
+User pointed out the drawing was still crowded "for every bevel" - correct:
+`weld_drawing_label_overlap_test.dart` only covered Half V/Compound V, and
+Single V, Double V, and Fillet all had real, un-fixed overlaps (the earlier
+reviewer had flagged these as "pre-existing, separate ticket" and they'd
+never actually been addressed). Applied the same exhaustive-avoidance
+pattern to all of them: **every label now avoids every label already
+placed before it in its drawing function**, not a hand-picked subset -
+`_drawButtCommonMeasurements` (shared by Single V/Double V/Compound V/
+Square) now threads `thickness`/`rootGap`/`grooveDepth` rects through
+consistently, and `_drawSingleV`/`_drawDoubleV`/`_drawFillet` each wire
+root-face/angle-tag/half-thickness-bracket/leader labels into the full
+chain. `_drawLeader` (used only by Fillet's two leader-line callouts) now
+supports `avoidRects` too, reusing the same `_clearLabelPosition` machinery
+angle tags and dimension lines already use.
+
+**Found a second, subtler bug while verifying** (not just "not enough
+room" this time): `_clearLabelPosition`'s resolution loop measured against
+`_unclampedMeasurementRect` (X *and* Y both unclamped, from the earlier
+Compound V/Half V fix) - correct for Y since Y can grow as the label gets
+pushed down, but wrong for X since a label never moves horizontally during
+resolution, so if its natural X position would overflow the canvas edge,
+the REAL draw call clamps X back at render time - after resolution had
+already used the wrong (off-canvas) X to decide the Y push was clear of
+some other label. Fixed by adding `_resolutionMeasurementRect` (X clamped,
+Y left unclamped) and using that instead - X is static so clamping it up
+front is always safe; Y still needs to stay unclamped during the push loop
+itself (see the fix above this one) or it "freezes" instead of converging.
+This exact bug hit Double V's "total root face" label overlapping the
+thickness label at narrow widths - worth remembering as its own distinct
+failure mode from the vertical-freeze bug, should either recur.
+
+**Every groove type genuinely needs more compact-card height than the old
+default gave it**, not just Half V/Compound V/Double V (already fixed
+above) - Single V, Square, and Fillet also needed real headroom once their
+labels started correctly avoiding each other. `_narrowDrawingHeight` now
+has three tiers instead of two: busy (Half V/Compound V/Double V,
+`.clamp(500, 560)`), default (Single V/Square, `.clamp(440, 500)`), and
+Fillet (`.clamp(420, 480)`) - all derived from
+`weld_drawing_label_overlap_test.dart`'s per-groove-type minimum canvas
+height plus the card's own ~100px of title/toggle/padding chrome, with a
+small safety margin added on top of the test's exact minimums.
+
+`weld_drawing_label_overlap_test.dart` now covers all six groove types ×
+both joint types (plate/pipe, where applicable) × both drawing modes ×
+316/346/390px canvas width - 66 cases total, all passing. `dart analyze`,
+`flutter test` (85/85), `flutter build web` all clean. Live-browser visual
+re-confirmation wasn't possible this round (Chrome tab became unresponsive
+under memory pressure again) - the automated geometric test is the source
+of truth here and is strictly stronger evidence than an eyeballed
+screenshot (it proves zero pixel overlap, not "looks fine to me"), but a
+real device/browser spot-check is still worth doing when convenient.
+
 ## Archive
 
 (nothing yet)

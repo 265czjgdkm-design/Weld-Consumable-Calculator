@@ -1,13 +1,13 @@
-// Regression coverage for a label-collision bug that has recurred five
-// times in this file's history (see TEAM_LEARNINGS.md, 2026-08-25 entries):
-// Compound V and Half V pack more dimension/angle callouts into the compact
-// mobile drawing card than fit without care, and every previous "fix" was
-// verified with either mm-space math or flutter_test's default Ahem font
-// (every glyph exactly `fontSize` wide, ~1.6-1.9x too wide vs real fonts),
-// which let broken layouts read as fixed. This test renders the real
-// painter, with a real Roboto font loaded from the Flutter SDK cache, and
-// asserts none of the drawn label pills actually overlap - the same check
-// a human would make by looking at a real device.
+// Regression coverage for a label-collision bug that has recurred across
+// this file's history (see TEAM_LEARNINGS.md, 2026-08-25 entries): several
+// groove types pack more dimension/angle callouts into the compact mobile
+// drawing card than fit without care, and every previous "fix" was verified
+// with either mm-space math or flutter_test's default Ahem font (every
+// glyph exactly `fontSize` wide, ~1.6-1.9x too wide vs real fonts), which
+// let broken layouts read as fixed. This test renders the real painter,
+// with a real Roboto font loaded from the Flutter SDK cache, and asserts
+// none of the drawn label pills actually overlap - the same check a human
+// would make by looking at a real device. Covers every groove type.
 import 'dart:io';
 import 'dart:typed_data';
 
@@ -71,6 +71,7 @@ Future<List<Rect>> _renderLabelRects(
     bevelAngleDeg: 30,
     secondaryBevelAngleDeg: 10,
     breakHeightMm: 4,
+    legSizeMm: 6,
     pipeOdMm: 168.3,
   );
 
@@ -109,6 +110,30 @@ Future<List<Rect>> _renderLabelRects(
   return recorder.fillRects;
 }
 
+void _expectNoOverlap(
+  String description, {
+  required JointType jointType,
+  required GrooveType grooveType,
+  required DrawingMode drawingMode,
+  required Size canvasSize,
+}) {
+  testWidgets('no label overlap: $description', (tester) async {
+    final rects = await _renderLabelRects(
+      tester,
+      jointType: jointType,
+      grooveType: grooveType,
+      drawingMode: drawingMode,
+      canvasSize: canvasSize,
+    );
+    final overlaps = _overlapDescriptions(rects);
+    expect(
+      overlaps,
+      isEmpty,
+      reason: 'Label rects overlap: ${overlaps.join(' | ')}',
+    );
+  });
+}
+
 void main() {
   setUpAll(() async {
     // Ships with every standard Flutter SDK install (used for the engine's
@@ -133,40 +158,57 @@ void main() {
 
   // 316-390px covers the real compact-canvas width range for common
   // iPhone/Samsung device widths (canvas is roughly device width minus
-  // ~36-44px of card/container chrome). 345px is the drawing-canvas height
-  // _narrowDrawingHeight now reserves for these two groove types.
-  final canvasSizes = [
-    const Size(316, 345),
-    const Size(346, 345),
-    const Size(390, 345),
-  ];
+  // ~36-44px of card/container chrome). Height matches what
+  // _narrowDrawingHeight (calculator_page.dart) actually reserves: 345px
+  // for the busiest groove types (Half V, Compound V, Double V), ~220px for
+  // Single V/Square, ~180px for Fillet - each derived from that function's
+  // outer-card clamp minus its ~94-100px of title/toggle/padding chrome.
+  const widths = [316.0, 346.0, 390.0];
+  const busyHeight = 392.0;
+  const normalHeight = 334.0;
+  const filletHeight = 312.0;
   final joints = [JointType.plateButt, JointType.pipeButt];
-  final busyGrooves = [GrooveType.halfV, GrooveType.compoundV];
 
-  for (final canvasSize in canvasSizes) {
+  final busyGrooves = [
+    GrooveType.halfV,
+    GrooveType.compoundV,
+    GrooveType.doubleV,
+  ];
+  final normalButtGrooves = [GrooveType.singleV, GrooveType.square];
+
+  for (final width in widths) {
     for (final joint in joints) {
       for (final groove in busyGrooves) {
         for (final mode in DrawingMode.values) {
-          testWidgets(
-            'no label overlap: $groove/$joint/$mode @${canvasSize.width.toInt()}',
-            (tester) async {
-              final rects = await _renderLabelRects(
-                tester,
-                jointType: joint,
-                grooveType: groove,
-                drawingMode: mode,
-                canvasSize: canvasSize,
-              );
-              final overlaps = _overlapDescriptions(rects);
-              expect(
-                overlaps,
-                isEmpty,
-                reason: 'Label rects overlap: ${overlaps.join(' | ')}',
-              );
-            },
+          _expectNoOverlap(
+            '$groove/$joint/$mode @${width.toInt()}',
+            jointType: joint,
+            grooveType: groove,
+            drawingMode: mode,
+            canvasSize: Size(width, busyHeight),
           );
         }
       }
+      for (final groove in normalButtGrooves) {
+        for (final mode in DrawingMode.values) {
+          _expectNoOverlap(
+            '$groove/$joint/$mode @${width.toInt()}',
+            jointType: joint,
+            grooveType: groove,
+            drawingMode: mode,
+            canvasSize: Size(width, normalHeight),
+          );
+        }
+      }
+    }
+    for (final mode in DrawingMode.values) {
+      _expectNoOverlap(
+        'fillet/$mode @${width.toInt()}',
+        jointType: JointType.fillet,
+        grooveType: GrooveType.fillet,
+        drawingMode: mode,
+        canvasSize: Size(width, filletHeight),
+      );
     }
   }
 }

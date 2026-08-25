@@ -267,23 +267,32 @@ class _CalculatorPageState extends State<CalculatorPage> {
   double _narrowDrawingHeight(BuildContext context) {
     final mediaQuery = MediaQuery.of(context);
     final safeHeight = mediaQuery.size.height - mediaQuery.padding.vertical;
-    // Half V and Compound V carry more dimension/angle callouts than any
-    // other groove type - even with every label properly avoiding every
-    // other one (see weld_drawing_preview.dart's _clearLabelPosition), that
-    // many pills genuinely do not fit inside the default compact height at
-    // real phone widths without some of them clamping into each other at
-    // the bottom edge. Verified via a real-font label-overlap check
-    // (test/widgets/_scratch_label_overlap_check.dart during development):
-    // a 345px drawing canvas is enough to clear every pair at 316-390px
-    // canvas widths; this card height feeds a canvas roughly 100px shorter
-    // than itself (title + mode toggle + padding), so give these two
-    // groove types real headroom instead of just nudging the multiplier.
+    // Every groove type's dimension/angle callouts need more vertical room
+    // than the old flat 280-320 default gave them - even with every label
+    // properly avoiding every other one already placed (see
+    // weld_drawing_preview.dart's _clearLabelPosition), that many real
+    // pills at real phone widths (316-390px canvas) genuinely do not fit in
+    // that little height without some of them clamping into each other at
+    // the bottom edge. Verified per-groove-type via a real-font
+    // label-overlap check (test/widgets/weld_drawing_label_overlap_test.dart)
+    // and translated to a card height via that card's own ~100px of
+    // title/toggle/padding chrome above the drawing canvas itself:
+    // - Half V, Compound V, and (equal-geometry) Double V are the busiest
+    //   (6+ callouts) and need the most room.
+    // - Single V and Square need less, but still more than the old default.
+    // - Fillet (a different joint entirely, fewer callouts) needs the
+    //   least extra room of the three tiers, but still more than default.
     final busy =
-        _grooveType == GrooveType.halfV || _grooveType == GrooveType.compoundV;
+        _grooveType == GrooveType.halfV ||
+        _grooveType == GrooveType.compoundV ||
+        _grooveType == GrooveType.doubleV;
     if (busy) {
-      return (safeHeight * 0.50).clamp(440.0, 500.0);
+      return (safeHeight * 0.60).clamp(500.0, 560.0);
     }
-    return (safeHeight * 0.34).clamp(280.0, 320.0);
+    if (_grooveType == GrooveType.fillet) {
+      return (safeHeight * 0.50).clamp(420.0, 480.0);
+    }
+    return (safeHeight * 0.52).clamp(440.0, 500.0);
   }
 
   Widget _buildEstimatorWorkspace(BuildContext context) {

@@ -594,7 +594,7 @@ class _WeldDrawingPainter extends CustomPainter {
       topLabelCenter: p(halfTop * 0.48, thickness * 0.18),
       rootLabelCenter: p(halfGap + 6, thickness - 0.8),
     );
-    _drawButtCommonMeasurements(
+    final commonRects = _drawButtCommonMeasurements(
       canvas,
       size,
       guidePaint,
@@ -606,7 +606,12 @@ class _WeldDrawingPainter extends CustomPainter {
       rightThicknessLabelX: halfBody + 6,
       rootGapLabelY: math.max(member.leftBottom, member.rightBottom),
     );
-    _drawDimensionLine(
+    // Every label below avoids every label already placed before it - the
+    // angle tag sits on the opposite (left) side from root face/groove
+    // depth, so it rarely collides with them, but root face shares the
+    // same right-hand lane as thickness/root gap/groove depth and can
+    // still collapse into them at narrow canvas widths.
+    final rootFaceRect = _drawDimensionLine(
       canvas,
       guidePaint,
       start: p(halfGap + 5, rightGrooveY),
@@ -617,6 +622,11 @@ class _WeldDrawingPainter extends CustomPainter {
       extensionStart: p(halfGap, rightGrooveY),
       extensionEnd: p(halfGap, member.rightBottom),
       fieldKey: FieldKey.rootFaceMm,
+      avoidRects: [
+        commonRects.thickness,
+        commonRects.rootGap,
+        ?commonRects.grooveDepth,
+      ],
     );
     _drawAngleTag(
       canvas,
@@ -632,6 +642,12 @@ class _WeldDrawingPainter extends CustomPainter {
       ),
       text: '${_formatValue(bevelAngle)}°',
       fieldKey: FieldKey.bevelAngleDeg,
+      avoidRects: [
+        commonRects.thickness,
+        commonRects.rootGap,
+        ?commonRects.grooveDepth,
+        rootFaceRect,
+      ],
     );
     _drawTopChips(canvas, size, 'Single V');
   }
@@ -906,7 +922,7 @@ class _WeldDrawingPainter extends CustomPainter {
       topLabelCenter: p(halfTop * 0.45, thickness * 0.16),
       rootLabelCenter: p(halfGap + 6, thickness - 1.0),
     );
-    _drawButtCommonMeasurements(
+    final commonRects = _drawButtCommonMeasurements(
       canvas,
       size,
       guidePaint,
@@ -918,7 +934,7 @@ class _WeldDrawingPainter extends CustomPainter {
       rightThicknessLabelX: halfBody + 6,
       rootGapLabelY: (leftMid + rightMid) / 2,
     );
-    _drawDimensionLine(
+    final totalRootFaceRect = _drawDimensionLine(
       canvas,
       guidePaint,
       start: p(halfGap + 5, rightUpperRootY),
@@ -929,6 +945,11 @@ class _WeldDrawingPainter extends CustomPainter {
       extensionStart: p(halfGap, rightUpperRootY),
       extensionEnd: p(halfGap, rightLowerRootY),
       fieldKey: FieldKey.rootFaceMm,
+      avoidRects: [
+        commonRects.thickness,
+        commonRects.rootGap,
+        ?commonRects.grooveDepth,
+      ],
     );
     _drawAngleTag(
       canvas,
@@ -944,14 +965,29 @@ class _WeldDrawingPainter extends CustomPainter {
       ),
       text: '${_formatValue(bevelAngle)}°',
       fieldKey: FieldKey.bevelAngleDeg,
+      avoidRects: [
+        commonRects.thickness,
+        commonRects.rootGap,
+        ?commonRects.grooveDepth,
+        totalRootFaceRect,
+      ],
     );
     if (data.geometryMode == JointGeometryMode.equal) {
       // These two half-thickness brackets share the thickness label's outer
-      // lane (there's no room to push them further out without risking the
-      // canvas edge), so they're pushed up/down in screen space instead -
-      // clear of the shared thickness label, which always sits pinned at
-      // the exact midpoint between them.
-      _drawDimensionLine(
+      // lane and sit at a nearly identical vertical center (thickness/4 vs.
+      // 3*thickness/4) - close enough at a narrow canvas that they collapse
+      // into both the shared thickness label and each other. Both push
+      // clear in real pixel space, not just their nominal mm split - and
+      // both avoid every label drawn before them (not just thickness),
+      // since total root face can be pushed wide enough at a narrow canvas
+      // to reach this far-left lane too.
+      final beforeHalves = [
+        commonRects.thickness,
+        commonRects.rootGap,
+        ?commonRects.grooveDepth,
+        totalRootFaceRect,
+      ];
+      final upperHalfRect = _drawDimensionLine(
         canvas,
         guidePaint,
         start: p(-halfBody - 1, 0),
@@ -959,6 +995,7 @@ class _WeldDrawingPainter extends CustomPainter {
         label: '${_formatValue(halfThickness)} mm',
         labelSize: size,
         labelOffset: const Offset(-30, -16),
+        avoidRects: beforeHalves,
       );
       _drawDimensionLine(
         canvas,
@@ -968,6 +1005,7 @@ class _WeldDrawingPainter extends CustomPainter {
         label: '${_formatValue(halfThickness)} mm',
         labelSize: size,
         labelOffset: const Offset(-30, 16),
+        avoidRects: [...beforeHalves, upperHalfRect],
       );
     }
     _drawTopChips(canvas, size, 'Double V');
@@ -1376,7 +1414,7 @@ class _WeldDrawingPainter extends CustomPainter {
       weldPaint,
       outlinePaint,
     );
-    _drawDimensionLine(
+    final leg1Rect = _drawDimensionLine(
       canvas,
       guidePaint,
       start: p(webHalfThickness, baseBottomY + 3),
@@ -1387,7 +1425,7 @@ class _WeldDrawingPainter extends CustomPainter {
       extensionEnd: p(toeX, baseTopY),
       fieldKey: FieldKey.legSizeMm,
     );
-    _drawDimensionLine(
+    final leg2Rect = _drawDimensionLine(
       canvas,
       guidePaint,
       start: p(toeX + 4, topToeY),
@@ -1404,8 +1442,12 @@ class _WeldDrawingPainter extends CustomPainter {
       extensionStart: p(webHalfThickness, topToeY),
       extensionEnd: p(webHalfThickness, baseTopY),
       fieldKey: FieldKey.legSizeMm,
+      avoidRects: [leg1Rect],
     );
-    _drawLeader(
+    // Leaders are drawn last, so they nudge clear of the leg labels rather
+    // than the other way around - reordering the leg labels after the
+    // leaders would just move which pair needs the avoid list.
+    final filletFaceRect = _drawLeader(
       canvas,
       guidePaint,
       start: p(webHalfThickness + (leg * 0.48), baseTopY - (leg * 0.34)),
@@ -1413,6 +1455,7 @@ class _WeldDrawingPainter extends CustomPainter {
       end: p(flangeHalfWidth + 3, baseTopY - (leg * 0.72)),
       text: 'fillet weld face',
       size: size,
+      avoidRects: [leg1Rect, leg2Rect],
     );
     _drawLeader(
       canvas,
@@ -1422,6 +1465,7 @@ class _WeldDrawingPainter extends CustomPainter {
       end: p(-flangeHalfWidth - 4, webTopY + 2),
       text: 'T-joint',
       size: size,
+      avoidRects: [leg1Rect, leg2Rect, filletFaceRect],
     );
     _drawTypeChip(canvas, size, 'Fillet');
   }
@@ -1852,7 +1896,7 @@ class _WeldDrawingPainter extends CustomPainter {
     return _measurementLabelRect(labelSize, label, labelCenter, fontSize);
   }
 
-  void _drawLeader(
+  Rect _drawLeader(
     Canvas canvas,
     Paint paint, {
     required Offset start,
@@ -1860,17 +1904,24 @@ class _WeldDrawingPainter extends CustomPainter {
     required Offset end,
     required String text,
     required Size size,
+    List<Rect> avoidRects = const [],
   }) {
     canvas.drawLine(start, mid, paint);
     canvas.drawLine(mid, end, paint);
     _drawArrowHead(canvas, paint, start, mid);
-    _drawAnnotationLabel(
-      canvas,
-      size,
-      text,
-      Offset(end.dx + 4, end.dy - 4),
-      fontSize: _annotationFontSize(size, 11.2),
-    );
+    final fontSize = _annotationFontSize(size, 11.2);
+    var labelCenter = Offset(end.dx + 4, end.dy - 4);
+    if (avoidRects.isNotEmpty) {
+      labelCenter = _clearLabelPosition(
+        size,
+        text,
+        labelCenter,
+        fontSize,
+        avoidRects,
+      );
+    }
+    _drawAnnotationLabel(canvas, size, text, labelCenter, fontSize: fontSize);
+    return _measurementLabelRect(size, text, labelCenter, fontSize);
   }
 
   Rect _drawAngleTag(
@@ -1957,15 +2008,44 @@ class _WeldDrawingPainter extends CustomPainter {
     );
   }
 
+  // Same as [_unclampedMeasurementRect] but with X clamped to the canvas
+  // edge (never Y). [_clearLabelPosition] only ever pushes a label
+  // vertically, so the X the label finally draws at is fixed and known
+  // from the very first check - clamping it up front means the collision
+  // checks a label runs during resolution see the same X its neighbors'
+  // already-finalized rects were measured at (also X-clamped, since they
+  // came from [_measurementLabelRect]). Using the fully unclamped X here
+  // instead let a label whose natural position ran off the canvas edge
+  // get pushed clear of another label at an X position it would never
+  // actually render at, then silently drawn back into it once the real
+  // draw call clamped X afterwards - a real bug this exact mechanism hit
+  // on Double V's "total root face" label (see TEAM_LEARNINGS.md). Y stays
+  // unclamped here on purpose - see [_unclampedMeasurementRect].
+  Rect _resolutionMeasurementRect(
+    Size size,
+    String text,
+    Offset center,
+    double fontSize,
+  ) {
+    final rect = _unclampedMeasurementRect(size, text, center, fontSize);
+    return Rect.fromLTWH(
+      _safeClamp(rect.left, 10, size.width - rect.width - 10),
+      rect.top,
+      rect.width,
+      rect.height,
+    );
+  }
+
   // Mirrors the pill sizing/clamping in [_drawTechnicalLabel] / [_drawSoftLabel]
   // for a `technicalDimension: true` label - what every dimension line and
   // angle tag draws - the same measure-before-you-collide approach
   // [_chipSize]/[_chipRect] already use for the top chips, generalized to
   // any measurement label so [_clearLabelPosition] sees each label's real
-  // on-canvas rect instead of an mm-space guess. This is the CLAMPED rect -
-  // what actually gets drawn, and what other labels should treat as the
-  // real thing to avoid - see [_unclampedMeasurementRect] for why the
-  // resolution loop itself uses the unclamped version instead.
+  // on-canvas rect instead of an mm-space guess. This is the fully CLAMPED
+  // rect - what actually gets drawn, and what other labels should treat as
+  // the real thing to avoid - see [_unclampedMeasurementRect] and
+  // [_resolutionMeasurementRect] for why the resolution loop itself uses a
+  // partially-clamped version instead.
   Rect _measurementLabelRect(
     Size size,
     String text,
@@ -2015,7 +2095,7 @@ class _WeldDrawingPainter extends CustomPainter {
       var moved = false;
       for (final raw in avoidRects) {
         final avoid = raw.inflate(gap);
-        final rect = _unclampedMeasurementRect(size, text, center, fontSize);
+        final rect = _resolutionMeasurementRect(size, text, center, fontSize);
         if (!rect.overlaps(avoid)) continue;
         final delta = avoid.bottom - rect.top;
         center = Offset(center.dx, center.dy + delta);
