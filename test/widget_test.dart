@@ -3,7 +3,10 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:weld_consumable_calculator/app.dart';
+import 'package:weld_consumable_calculator/l10n/app_locale.dart';
+import 'package:weld_consumable_calculator/l10n/app_locale_scope.dart';
 import 'package:weld_consumable_calculator/models/weld_models.dart';
+import 'package:weld_consumable_calculator/ui/calculator_page.dart';
 import 'package:weld_consumable_calculator/ui/calculator_page/wizard/process_icons.dart';
 
 Future<void> _pumpPastSplash(WidgetTester tester) async {
@@ -11,10 +14,18 @@ Future<void> _pumpPastSplash(WidgetTester tester) async {
   await tester.tap(find.byType(GestureDetector).first);
   await tester.pumpAndSettle();
 
-  // First launch also shows the one-time, skippable email gate.
+  // First launch also shows the one-time, skippable registration choice.
   final guestButton = find.text('Continue as guest');
   if (guestButton.evaluate().isNotEmpty) {
     await tester.tap(guestButton);
+    await tester.pumpAndSettle();
+  }
+
+  // Lands on the home dashboard now; enter the calculator through its
+  // first button, same as a user tapping "Filler Material Consumption".
+  final fillerConsumptionButton = find.text('Filler Material Consumption');
+  if (fillerConsumptionButton.evaluate().isNotEmpty) {
+    await tester.tap(fillerConsumptionButton);
     await tester.pumpAndSettle();
   }
 }
@@ -42,6 +53,19 @@ Future<void> _pumpToWizardSummary(WidgetTester tester) async {
   await _continueWizardStep(tester); // consumable -> summary
 }
 
+Future<void> _pumpCalculatorWithPreset(
+  WidgetTester tester,
+  UserWeldPreset preset,
+) async {
+  await tester.pumpWidget(
+    AppLocaleScope(
+      locale: AppLocale(),
+      child: MaterialApp(home: CalculatorPage(presetToLoad: preset)),
+    ),
+  );
+  await tester.pumpAndSettle();
+}
+
 void main() {
   setUp(() {
     SharedPreferences.setMockInitialValues({});
@@ -57,9 +81,8 @@ void main() {
     for (final process in WeldingProcess.values) {
       expect(find.text(process.label), findsOneWidget);
     }
-    expect(find.text('Input Preset'), findsOneWidget);
-    expect(find.text('My Saved Presets'), findsOneWidget);
     expect(find.text('Step 1 of 4'), findsOneWidget);
+    expect(find.text('Input Preset'), findsNothing);
 
     await _continueWizardStep(tester);
 
@@ -69,6 +92,7 @@ void main() {
     expect(find.text('Visual'), findsAtLeastNWidgets(1));
     expect(find.text('Technical'), findsAtLeastNWidgets(1));
     expect(find.text('Joint Type'), findsOneWidget);
+    expect(find.text('Input Preset'), findsOneWidget);
 
     await _continueWizardStep(tester);
 
@@ -88,6 +112,7 @@ void main() {
     tester,
   ) async {
     await _pumpPastIntro(tester);
+    await _continueWizardStep(tester); // process -> dimensions
 
     await tester.ensureVisible(find.text('Input Preset'));
     await tester.tap(
@@ -100,7 +125,11 @@ void main() {
     await tester.tap(find.text('CS Pipe Double V / GTAW + SMAW').last);
     await tester.pumpAndSettle();
 
-    await _continueWizardStep(tester); // process -> dimensions
+    // Default process is GTAW; this preset uses GTAW + SMAW, so switching
+    // processes needs confirming first.
+    expect(find.text('Switch Welding Process?'), findsOneWidget);
+    await tester.tap(find.text('Switch to GTAW + SMAW'));
+    await tester.pumpAndSettle();
 
     expect(find.text('Pipe OD (mm)'), findsOneWidget);
     expect(find.text('Root Face per Side (mm)'), findsOneWidget);
@@ -108,6 +137,92 @@ void main() {
     await _continueWizardStep(tester); // dimensions -> consumable
 
     expect(find.text('GTAW Transition Depth (mm)'), findsOneWidget);
+  });
+
+  testWidgets(
+    'starter preset with a different process asks for confirmation before switching',
+    (tester) async {
+      await _pumpPastIntro(tester);
+
+      await tester.ensureVisible(find.text('GMAW'));
+      await tester.tap(find.text('GMAW'));
+      await tester.pumpAndSettle();
+
+      await _continueWizardStep(tester); // process -> dimensions
+
+      await tester.ensureVisible(find.text('Input Preset'));
+      await tester.tap(
+        find.byWidgetPredicate(
+          (widget) => widget is DropdownButtonFormField<InputPreset>,
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('SS Pipe Single V / GTAW').last);
+      await tester.pumpAndSettle();
+
+      expect(find.text('Switch Welding Process?'), findsOneWidget);
+
+      // Cancel: keep GMAW, don't apply the preset at all.
+      await tester.tap(find.text('Keep GMAW'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Switch Welding Process?'), findsNothing);
+      expect(
+        find.text('Manual setup with no preset assumptions applied.'),
+        findsOneWidget,
+      );
+
+      await tester.ensureVisible(find.text('Back'));
+      await tester.tap(find.text('Back'));
+      await tester.pumpAndSettle();
+
+      final gmawIcon = tester.widget<ProcessIcon>(
+        find.byWidgetPredicate(
+          (widget) =>
+              widget is ProcessIcon && widget.process == WeldingProcess.gmaw,
+        ),
+      );
+      expect(gmawIcon.color, Colors.white);
+    },
+  );
+
+  testWidgets(
+    'starter preset with the same process applies directly without confirmation',
+    (tester) async {
+      await _pumpPastIntro(tester);
+      await _continueWizardStep(tester); // process -> dimensions (default GTAW)
+
+      await tester.ensureVisible(find.text('Input Preset'));
+      await tester.tap(
+        find.byWidgetPredicate(
+          (widget) => widget is DropdownButtonFormField<InputPreset>,
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('SS Pipe Single V / GTAW').last);
+      await tester.pumpAndSettle();
+
+      expect(find.text('Switch Welding Process?'), findsNothing);
+      expect(find.text('Pipe OD (mm)'), findsOneWidget);
+    },
+  );
+
+  testWidgets('loading a saved preset lands on the summary step directly', (
+    tester,
+  ) async {
+    final preset = UserWeldPreset(
+      id: 'test-preset',
+      name: 'Test Preset',
+      updatedAtEpochMs: 0,
+      data: InputPreset.csPlateSingleVGmaw.data!,
+    );
+
+    await _pumpCalculatorWithPreset(tester, preset);
+
+    expect(find.text('Step 4 of 4'), findsOneWidget);
+    expect(find.text('Calculate'), findsOneWidget);
   });
 
   testWidgets('manual deposition basis reveals user-defined rate field', (
@@ -192,6 +307,7 @@ void main() {
     'continuing to the next wizard step resets scroll to the top',
     (tester) async {
       await _pumpPastIntro(tester);
+      await _continueWizardStep(tester); // process -> dimensions
 
       await tester.drag(
         find.byType(SingleChildScrollView),
@@ -204,7 +320,7 @@ void main() {
       );
       expect(scrolledView.controller!.position.pixels, greaterThan(0));
 
-      await _continueWizardStep(tester); // process -> dimensions
+      await _continueWizardStep(tester); // dimensions -> consumable
 
       final resetView = tester.widget<SingleChildScrollView>(
         find.byType(SingleChildScrollView),

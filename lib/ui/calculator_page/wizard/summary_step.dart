@@ -15,6 +15,8 @@ class WizardSummaryStep extends StatelessWidget {
     required this.onEditConsumable,
     required this.onCalculate,
     required this.onReset,
+    required this.onSaveAsPreset,
+    required this.saveAsPresetBusy,
   });
 
   final Widget engineeringBasisBanner;
@@ -26,6 +28,8 @@ class WizardSummaryStep extends StatelessWidget {
   final VoidCallback onEditConsumable;
   final VoidCallback onCalculate;
   final VoidCallback onReset;
+  final VoidCallback? onSaveAsPreset;
+  final bool saveAsPresetBusy;
 
   @override
   Widget build(BuildContext context) {
@@ -64,6 +68,24 @@ class WizardSummaryStep extends StatelessWidget {
           title: 'Consumable',
           onEdit: onEditConsumable,
           child: consumableSection,
+        ),
+        const SizedBox(height: 14),
+        SizedBox(
+          width: double.infinity,
+          child: OutlinedButton.icon(
+            onPressed: onSaveAsPreset,
+            icon: saveAsPresetBusy
+                ? const SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.bookmark_add_outlined),
+            label: const Text('Save as Preset'),
+            style: OutlinedButton.styleFrom(
+              padding: const EdgeInsets.symmetric(vertical: 16),
+            ),
+          ),
         ),
         const SizedBox(height: 22),
         Row(

@@ -4,7 +4,6 @@ import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 
 import '../models/weld_models.dart';
-import 'pdf_report_exporter.dart';
 
 class WeldPdfReportService {
   const WeldPdfReportService();
@@ -151,7 +150,10 @@ class WeldPdfReportService {
     return document.save();
   }
 
-  Future<void> export({
+  /// Report bytes + file name, exposed separately from [buildReportBytes] so
+  /// callers that also need to persist the report (e.g. Saved Reports) don't
+  /// have to regenerate it before handing it to [exportPdfReport].
+  Future<({Uint8List bytes, String fileName})> buildReport({
     required JointType jointType,
     required GrooveType grooveType,
     required WeldingProcess weldingProcess,
@@ -175,7 +177,7 @@ class WeldPdfReportService {
       generatedAt: generatedAt,
     );
 
-    await exportPdfReport(bytes, fileName);
+    return (bytes: bytes, fileName: fileName);
   }
 
   pw.Widget _buildCoverPage({

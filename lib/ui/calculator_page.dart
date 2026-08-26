@@ -1,11 +1,16 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../core/weld_calculator.dart';
 import '../core/welding_defaults.dart';
 import '../l10n/app_locale_scope.dart';
+import '../models/saved_report.dart';
 import '../models/weld_models.dart';
+import '../services/pdf_report_exporter.dart';
 import '../services/preset_sync_service.dart';
+import '../services/saved_report_store.dart';
 import '../services/user_account_store.dart';
 import '../services/user_preset_store.dart';
 import '../services/weld_pdf_report_service.dart';
@@ -30,7 +35,13 @@ class _RequiredFieldMissingException implements Exception {
 }
 
 class CalculatorPage extends StatefulWidget {
-  const CalculatorPage({super.key});
+  const CalculatorPage({super.key, this.presetToLoad});
+
+  /// When set, skips the intro screen, applies this preset's data the same
+  /// way picking it from the (now-removed) inline preset dropdown used to,
+  /// and opens straight on the Process wizard step / desktop workspace.
+  /// Set by [SavedCalculationsScreen]'s "Load" action.
+  final UserWeldPreset? presetToLoad;
 
   @override
   State<CalculatorPage> createState() => _CalculatorPageState();
@@ -40,6 +51,7 @@ class _CalculatorPageState extends State<CalculatorPage> {
   final WeldCalculator _calculator = const WeldCalculator();
   final WeldPdfReportService _pdfReportService = const WeldPdfReportService();
   final UserPresetStore _userPresetStore = const UserPresetStore();
+  final SavedReportStore _savedReportStore = const SavedReportStore();
   final UserAccountStore _accountStore = const UserAccountStore();
   final PresetSyncService _presetSyncService = const PresetSyncService();
   final ScrollController _pageScrollController = ScrollController();
@@ -64,6 +76,11 @@ class _CalculatorPageState extends State<CalculatorPage> {
   JointAlignment _jointAlignment = JointAlignment.centerline;
   ConsumablePreset _consumablePreset = ConsumablePreset.er70s2;
   InputPreset _inputPreset = InputPreset.custom;
+  // Bumped whenever a starter-preset process-switch confirmation is
+  // cancelled, so the dropdown (keyed on `_inputPreset` + this) remounts
+  // back to the unchanged `_inputPreset` instead of keeping the internal
+  // FormField state showing the tapped-but-not-applied item.
+  int _starterPresetDropdownResetToken = 0;
   List<UserWeldPreset> _userPresets = const [];
   String? _selectedUserPresetId;
   String? _accountEmail;
@@ -88,6 +105,19 @@ class _CalculatorPageState extends State<CalculatorPage> {
     super.initState();
     _resetFields();
     _initUserPresets();
+    final presetToLoad = widget.presetToLoad;
+    if (presetToLoad != null) {
+      _showIntro = false;
+      // All data is already filled in from the loaded preset, so land on
+      // Summary/Review directly instead of making the user tap Continue
+      // through steps they don't need to touch -- the per-section Edit
+      // buttons there still let them jump back into any step.
+      _wizardStep = WizardStep.summary;
+      // Mutated directly rather than via setState: initState runs before
+      // this element's first build, so these values are already picked up
+      // without needing to schedule a rebuild.
+      _applyUserPreset(presetToLoad);
+    }
   }
 
   Future<void> _initUserPresets() async {
@@ -190,6 +220,23 @@ class _CalculatorPageState extends State<CalculatorPage> {
     );
   }
 
+  // CalculatorPage is only ever reached via Navigator.push from
+  // HomeDashboardScreen, so system/browser back already works, but none of
+  // this page's own layouts (intro, mobile wizard, desktop wide page) had a
+  // visible affordance back to the dashboard. `canPop()` still guards this
+  // in case CalculatorPage is ever reached some other way in the future.
+  Widget _buildBackToDashboardButton(BuildContext context) {
+    if (!Navigator.of(context).canPop()) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: IconButton.filledTonal(
+        onPressed: () => Navigator.of(context).pop(),
+        icon: const Icon(Icons.arrow_back),
+        tooltip: 'Back to Dashboard',
+      ),
+    );
+  }
+
   /// Landing screen: the product pitch, capability highlights, and branding
   /// live here instead of above the input form, so the calculator itself
   /// opens straight into Joint Type once the user taps through.
@@ -203,6 +250,7 @@ class _CalculatorPageState extends State<CalculatorPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              _buildBackToDashboardButton(context),
               const TopNavigationBar(),
               const SizedBox(height: 18),
               ExperienceHero(
@@ -254,7 +302,13 @@ class _CalculatorPageState extends State<CalculatorPage> {
       child: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 1320),
-          child: _buildEstimatorWorkspace(context),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildBackToDashboardButton(context),
+              _buildEstimatorWorkspace(context),
+            ],
+          ),
         ),
       ),
     );
@@ -267,7 +321,6 @@ class _CalculatorPageState extends State<CalculatorPage> {
     final availableConsumables = WeldingDefaults.consumablesFor(
       _weldingProcess,
     );
-    final selectedUserPreset = _selectedUserPreset;
 
     final Widget stepContent = switch (_wizardStep) {
       WizardStep.process => WizardProcessStep(
@@ -284,10 +337,6 @@ class _CalculatorPageState extends State<CalculatorPage> {
           setState(() => _wizardStep = WizardStep.dimensions);
           _resetWizardScroll();
         },
-        presetShortcut: _buildPresetWorkspaceSection(
-          context,
-          selectedUserPreset,
-        ),
       ),
       WizardStep.dimensions => WizardDimensionsStep(
         drawingHeader: Padding(
@@ -297,6 +346,7 @@ class _CalculatorPageState extends State<CalculatorPage> {
             child: _buildTechnicalDrawingCard(context, compact: true),
           ),
         ),
+        starterPresetSection: _buildStarterPresetSection(context),
         jointTypeSection: _buildJointTypeSection(context),
         memberGeometrySection: _buildMemberGeometrySection(context),
         grooveTypeDropdown: _buildGrooveTypeDropdown(context),
@@ -360,6 +410,8 @@ class _CalculatorPageState extends State<CalculatorPage> {
         },
         onCalculate: _calculate,
         onReset: _resetFields,
+        onSaveAsPreset: _isUserPresetBusy ? null : _saveCurrentAsUserPreset,
+        saveAsPresetBusy: _isUserPresetBusy,
       ),
     };
 
@@ -367,9 +419,25 @@ class _CalculatorPageState extends State<CalculatorPage> {
       children: [
         Padding(
           padding: const EdgeInsets.fromLTRB(18, 14, 18, 0),
-          child: WizardStepIndicator(
-            currentIndex: WizardStep.values.indexOf(_wizardStep),
-            totalSteps: WizardStep.values.length,
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              if (Navigator.of(context).canPop())
+                Padding(
+                  padding: const EdgeInsets.only(right: 10),
+                  child: IconButton.filledTonal(
+                    onPressed: () => Navigator.of(context).pop(),
+                    icon: const Icon(Icons.arrow_back),
+                    tooltip: 'Back to Dashboard',
+                  ),
+                ),
+              Expanded(
+                child: WizardStepIndicator(
+                  currentIndex: WizardStep.values.indexOf(_wizardStep),
+                  totalSteps: WizardStep.values.length,
+                ),
+              ),
+            ],
           ),
         ),
         Expanded(
@@ -419,7 +487,6 @@ class _CalculatorPageState extends State<CalculatorPage> {
     final availableConsumables = WeldingDefaults.consumablesFor(
       _weldingProcess,
     );
-    final selectedUserPreset = _selectedUserPreset;
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -439,7 +506,6 @@ class _CalculatorPageState extends State<CalculatorPage> {
                 context,
                 visibleFields,
                 availableConsumables,
-                selectedUserPreset,
               ),
               const SizedBox(height: 18),
               _buildActionPanel(context),
@@ -511,7 +577,6 @@ class _CalculatorPageState extends State<CalculatorPage> {
                               context,
                               visibleFields,
                               availableConsumables,
-                              selectedUserPreset,
                             ),
                             const SizedBox(height: 18),
                             _buildActionPanel(context),
@@ -962,22 +1027,27 @@ class _CalculatorPageState extends State<CalculatorPage> {
     );
   }
 
-  /// Extracted so the mobile wizard's process step can reuse the exact same
-  /// preset-loading UI as the desktop [_buildInputParametersCard], just
-  /// rendered as its `presetShortcut` slot instead.
-  Widget _buildPresetWorkspaceSection(
-    BuildContext context,
-    UserWeldPreset? selectedUserPreset,
-  ) {
+  /// Extracted so the mobile wizard's dimensions step can reuse the exact
+  /// same built-in starter-setup dropdown as the desktop
+  /// [_buildInputParametersCard]. The user's own saved presets used to live
+  /// in this same section too, but browsing/loading/deleting those now
+  /// happens entirely on the dashboard's Saved Calculations screen instead.
+  Widget _buildStarterPresetSection(BuildContext context) {
     return InputPanelSection(
       icon: Icons.auto_awesome_outlined,
-      title: 'Preset Workspace',
-      subtitle: 'Load built-in setups or manage your own reusable presets.',
+      title: 'Starter Setup',
+      subtitle: 'Load a practical built-in starting point, then fine-tune it.',
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _buildDropdownFrame(
             DropdownButtonFormField<InputPreset>(
+              // Keyed on the applied value so a cancelled process-switch
+              // confirmation (which leaves `_inputPreset` unchanged) forces
+              // the dropdown to remount back to it, instead of keeping the
+              // tapped-but-not-applied item selected via its own internal
+              // FormField state.
+              key: ValueKey('$_inputPreset-$_starterPresetDropdownResetToken'),
               initialValue: _inputPreset,
               isExpanded: true,
               decoration: const InputDecoration(
@@ -1009,7 +1079,7 @@ class _CalculatorPageState extends State<CalculatorPage> {
                   });
                   return;
                 }
-                _applyInputPreset(value);
+                _applyInputPreset(context, value);
               },
             ),
           ),
@@ -1017,27 +1087,6 @@ class _CalculatorPageState extends State<CalculatorPage> {
           PanelNote(
             icon: Icons.auto_fix_high_outlined,
             text: _inputPreset.description,
-          ),
-          const SizedBox(height: 14),
-          UserPresetSection(
-            presets: _userPresets,
-            selectedPresetId: _selectedUserPresetId,
-            selectedPresetName: selectedUserPreset?.name,
-            busy: _isUserPresetBusy,
-            onChanged: (presetId) {
-              if (presetId == null) return;
-              final preset = _userPresets.firstWhere(
-                (item) => item.id == presetId,
-              );
-              _applyUserPreset(preset);
-            },
-            onSavePressed: _isUserPresetBusy ? null : _saveCurrentAsUserPreset,
-            onUpdatePressed: selectedUserPreset == null || _isUserPresetBusy
-                ? null
-                : _updateSelectedUserPreset,
-            onDeletePressed: selectedUserPreset == null || _isUserPresetBusy
-                ? null
-                : _deleteSelectedUserPreset,
           ),
         ],
       ),
@@ -1151,7 +1200,6 @@ class _CalculatorPageState extends State<CalculatorPage> {
     BuildContext context,
     List<InputFieldSpec> visibleFields,
     List<ConsumablePreset> availableConsumables,
-    UserWeldPreset? selectedUserPreset,
   ) {
     return Card(
       child: Padding(
@@ -1173,7 +1221,7 @@ class _CalculatorPageState extends State<CalculatorPage> {
               ).textTheme.bodyMedium?.copyWith(color: const Color(0xFF5E7380)),
             ),
             const SizedBox(height: 16),
-            _buildPresetWorkspaceSection(context, selectedUserPreset),
+            _buildStarterPresetSection(context),
             const SizedBox(height: 14),
             _buildConsumableClassificationSection(context, availableConsumables),
             const SizedBox(height: 14),
@@ -1258,6 +1306,21 @@ class _CalculatorPageState extends State<CalculatorPage> {
                   ),
                 ),
               ],
+            ),
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: _isUserPresetBusy ? null : _saveCurrentAsUserPreset,
+                icon: _isUserPresetBusy
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.bookmark_add_outlined),
+                label: const Text('Save as Preset'),
+              ),
             ),
             const SizedBox(height: 14),
             Container(
@@ -2005,9 +2068,22 @@ class _CalculatorPageState extends State<CalculatorPage> {
     });
   }
 
-  void _applyInputPreset(InputPreset preset) {
+  Future<void> _applyInputPreset(BuildContext context, InputPreset preset) async {
     final data = preset.data;
     if (data == null) return;
+
+    if (data.weldingProcess != _weldingProcess) {
+      final confirmed = await _confirmPresetProcessSwitch(
+        context,
+        presetProcess: data.weldingProcess,
+        currentProcess: _weldingProcess,
+      );
+      if (!mounted) return;
+      if (confirmed != true) {
+        setState(() => _starterPresetDropdownResetToken++);
+        return;
+      }
+    }
 
     setState(() {
       _inputPreset = preset;
@@ -2017,13 +2093,58 @@ class _CalculatorPageState extends State<CalculatorPage> {
     });
   }
 
+  /// Shown when a starter preset picked from the Dimensions-step dropdown
+  /// would silently switch away from the welding process the user already
+  /// chose on step 1. Only asked when the preset's process actually
+  /// conflicts with the current selection -- see call site.
+  Future<bool?> _confirmPresetProcessSwitch(
+    BuildContext context, {
+    required WeldingProcess presetProcess,
+    required WeldingProcess currentProcess,
+  }) {
+    final strings = AppLocaleScope.stringsOf(context);
+    return showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(strings.presetProcessSwitchConfirmTitle),
+        content: Text(
+          strings.presetProcessSwitchConfirmBody
+              .replaceFirst('{presetProcess}', presetProcess.label)
+              .replaceFirst('{currentProcess}', currentProcess.label),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: Text(
+              strings.presetProcessSwitchConfirmKeepButton.replaceFirst(
+                '{currentProcess}',
+                currentProcess.label,
+              ),
+            ),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: Text(
+              strings.presetProcessSwitchConfirmSwitchButton.replaceFirst(
+                '{presetProcess}',
+                presetProcess.label,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Only called from initState now that the inline "My Saved Presets"
+  // dropdown is gone -- deliberately not wrapped in setState, since
+  // initState runs before this element's first build and calling setState
+  // there is unsafe (see the call site in initState).
   void _applyUserPreset(UserWeldPreset preset) {
-    setState(() {
-      _inputPreset = InputPreset.custom;
-      _selectedUserPresetId = preset.id;
-      _applyPresetData(preset.data, usePresetDiameters: false);
-      _result = null;
-    });
+    _inputPreset = InputPreset.custom;
+    _selectedUserPresetId = preset.id;
+    _applyPresetData(preset.data, usePresetDiameters: false);
+    _result = null;
   }
 
   void _applyPresetData(
@@ -2130,9 +2251,21 @@ class _CalculatorPageState extends State<CalculatorPage> {
         updatedAtEpochMs: DateTime.now().millisecondsSinceEpoch,
         data: _captureCurrentPresetData(),
       );
-      await _presetSyncService.save(email, preset);
       final presets = [..._userPresets, preset]
         ..sort((a, b) => b.updatedAtEpochMs.compareTo(a.updatedAtEpochMs));
+      // Sync failures fall back to a local-only save (mirrors
+      // SavedCalculationsScreen._load's local-fallback convention) instead
+      // of skipping the local write and losing the preset entirely. A
+      // future successful `list()` call overwrites the local cache with
+      // the cloud's copy, so a preset saved here without syncing must be
+      // flagged to the user -- otherwise it can vanish silently the next
+      // time presets are reloaded from the cloud.
+      var syncSucceeded = true;
+      try {
+        await _presetSyncService.save(email, preset);
+      } catch (_) {
+        syncSucceeded = false;
+      }
       await _userPresetStore.save(presets);
       if (!mounted) return;
       setState(() {
@@ -2140,76 +2273,13 @@ class _CalculatorPageState extends State<CalculatorPage> {
         _selectedUserPresetId = preset.id;
         _inputPreset = InputPreset.custom;
       });
-      _showMessage('Preset saved.');
-    } catch (error) {
-      _showMessage(error.toString().replaceFirst('Exception: ', ''));
-    } finally {
-      if (mounted) {
-        setState(() => _isUserPresetBusy = false);
-      }
-    }
-  }
-
-  Future<void> _updateSelectedUserPreset() async {
-    final current = _selectedUserPreset;
-    final email = _accountEmail;
-    if (current == null || email == null) return;
-
-    final name = await _promptPresetName(initialValue: current.name);
-    if (name == null || name.trim().isEmpty) return;
-
-    try {
-      setState(() => _isUserPresetBusy = true);
-      final updated = current.copyWith(
-        name: name.trim(),
-        data: _captureCurrentPresetData(),
-        updatedAtEpochMs: DateTime.now().millisecondsSinceEpoch,
+      final strings = AppLocaleScope.stringsOf(context);
+      _showMessage(
+        syncSucceeded ? strings.presetSaved : strings.presetSavedOffline,
       );
-      await _presetSyncService.save(email, updated);
-      final presets =
-          _userPresets
-              .map((preset) => preset.id == updated.id ? updated : preset)
-              .toList()
-            ..sort((a, b) => b.updatedAtEpochMs.compareTo(a.updatedAtEpochMs));
-      await _userPresetStore.save(presets);
-      if (!mounted) return;
-      setState(() {
-        _userPresets = presets;
-        _selectedUserPresetId = updated.id;
-      });
-      _showMessage('Preset updated.');
-    } catch (error) {
-      _showMessage(error.toString().replaceFirst('Exception: ', ''));
-    } finally {
-      if (mounted) {
-        setState(() => _isUserPresetBusy = false);
-      }
-    }
-  }
-
-  Future<void> _deleteSelectedUserPreset() async {
-    final current = _selectedUserPreset;
-    final email = _accountEmail;
-    if (current == null || email == null) return;
-
-    final confirmed = await _confirmDeleteUserPreset(current.name);
-    if (confirmed != true) return;
-
-    try {
-      setState(() => _isUserPresetBusy = true);
-      await _presetSyncService.delete(email, current.id);
-      final presets = _userPresets
-          .where((preset) => preset.id != current.id)
-          .toList();
-      await _userPresetStore.save(presets);
-      if (!mounted) return;
-      setState(() {
-        _userPresets = presets;
-        _selectedUserPresetId = null;
-      });
-      _showMessage('Preset deleted.');
     } catch (_) {
-      _showMessage('Preset delete failed.');
+      if (!mounted) return;
+      _showMessage(AppLocaleScope.stringsOf(context).presetSaveError);
     } finally {
       if (mounted) {
         setState(() => _isUserPresetBusy = false);
@@ -2321,30 +2391,6 @@ class _CalculatorPageState extends State<CalculatorPage> {
     return showDialog<String>(
       context: context,
       builder: (context) => _PresetNameDialog(initialValue: initialValue),
-    );
-  }
-
-  Future<bool?> _confirmDeleteUserPreset(String name) {
-    return showDialog<bool>(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text('Delete Preset'),
-          content: Text(
-            'Delete "$name" from your saved presets? This cannot be undone.',
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(false),
-              child: const Text('Cancel'),
-            ),
-            FilledButton(
-              onPressed: () => Navigator.of(context).pop(true),
-              child: const Text('Delete'),
-            ),
-          ],
-        );
-      },
     );
   }
 
@@ -3030,7 +3076,7 @@ class _CalculatorPageState extends State<CalculatorPage> {
 
     setState(() => _isExportingPdf = true);
     try {
-      await _pdfReportService.export(
+      final report = await _pdfReportService.buildReport(
         jointType: _jointType,
         grooveType: _grooveType,
         weldingProcess: _weldingProcess,
@@ -3038,6 +3084,21 @@ class _CalculatorPageState extends State<CalculatorPage> {
         result: result,
         basisEntries: basisEntries,
       );
+      await exportPdfReport(report.bytes, report.fileName);
+      // Persisting the report to local history is best-effort and must
+      // never turn a successful export into a user-visible failure.
+      try {
+        await _savedReportStore.add(
+          SavedReport(
+            id: DateTime.now().microsecondsSinceEpoch.toString(),
+            fileName: report.fileName,
+            generatedAtEpochMs: DateTime.now().millisecondsSinceEpoch,
+            pdfBytesBase64: base64Encode(report.bytes),
+          ),
+        );
+      } catch (error) {
+        debugPrint('Failed to save PDF report to history: $error');
+      }
       if (!mounted) return;
       _showMessage('PDF report exported successfully.');
     } catch (_) {

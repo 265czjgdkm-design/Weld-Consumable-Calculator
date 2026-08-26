@@ -10,7 +10,16 @@ enum JointGeometryMode { equal, unequal }
 
 enum JointAlignment { centerline, odMatch, idMatch }
 
-enum ConsumableFamily { carbonSteel, stainlessSteel, dissimilar, aluminium }
+enum ConsumableFamily {
+  carbonSteel,
+  stainlessSteel,
+  dissimilar,
+  aluminium,
+  lowAlloySteel,
+  nickelAlloy,
+  copperAlloy,
+  castIron,
+}
 
 enum ConsumablePreset {
   er70s6,
@@ -25,6 +34,23 @@ enum ConsumablePreset {
   e309l16,
   er5356,
   gtawRootSmawFill,
+  e6013,
+  e7024,
+  er70s3,
+  e7018a1,
+  e8018c3,
+  er80sNi1,
+  er80sB2,
+  e316l16,
+  er347,
+  er4043,
+  er5183,
+  eniCi,
+  enifeCi,
+  ernicr3,
+  enicrfe3,
+  ercusiA,
+  ecualA2,
 }
 
 enum InputPreset {
@@ -120,6 +146,10 @@ extension ConsumableFamilyX on ConsumableFamily {
     ConsumableFamily.stainlessSteel => 'Stainless Steel',
     ConsumableFamily.dissimilar => 'Dissimilar',
     ConsumableFamily.aluminium => 'Aluminium',
+    ConsumableFamily.lowAlloySteel => 'Low Alloy Steel',
+    ConsumableFamily.nickelAlloy => 'Nickel Alloy',
+    ConsumableFamily.copperAlloy => 'Copper Alloy',
+    ConsumableFamily.castIron => 'Cast Iron',
   };
 }
 
@@ -137,6 +167,23 @@ extension ConsumablePresetX on ConsumablePreset {
     ConsumablePreset.e309l16 => 'E309L-16',
     ConsumablePreset.er5356 => 'ER5356',
     ConsumablePreset.gtawRootSmawFill => 'ER70S-2 + E7018',
+    ConsumablePreset.e6013 => 'E6013',
+    ConsumablePreset.e7024 => 'E7024',
+    ConsumablePreset.er70s3 => 'ER70S-3',
+    ConsumablePreset.e7018a1 => 'E7018-A1',
+    ConsumablePreset.e8018c3 => 'E8018-C3',
+    ConsumablePreset.er80sNi1 => 'ER80S-Ni1',
+    ConsumablePreset.er80sB2 => 'ER80S-B2',
+    ConsumablePreset.e316l16 => 'E316L-16',
+    ConsumablePreset.er347 => 'ER347',
+    ConsumablePreset.er4043 => 'ER4043',
+    ConsumablePreset.er5183 => 'ER5183',
+    ConsumablePreset.eniCi => 'ENi-CI',
+    ConsumablePreset.enifeCi => 'ENiFe-CI',
+    ConsumablePreset.ernicr3 => 'ERNiCr-3',
+    ConsumablePreset.enicrfe3 => 'ENiCrFe-3',
+    ConsumablePreset.ercusiA => 'ERCuSi-A',
+    ConsumablePreset.ecualA2 => 'ECuAl-A2',
   };
 
   ConsumableFamily get family => switch (this) {
@@ -152,6 +199,23 @@ extension ConsumablePresetX on ConsumablePreset {
     ConsumablePreset.e309l16 => ConsumableFamily.dissimilar,
     ConsumablePreset.er5356 => ConsumableFamily.aluminium,
     ConsumablePreset.gtawRootSmawFill => ConsumableFamily.carbonSteel,
+    ConsumablePreset.e6013 => ConsumableFamily.carbonSteel,
+    ConsumablePreset.e7024 => ConsumableFamily.carbonSteel,
+    ConsumablePreset.er70s3 => ConsumableFamily.carbonSteel,
+    ConsumablePreset.e7018a1 => ConsumableFamily.lowAlloySteel,
+    ConsumablePreset.e8018c3 => ConsumableFamily.lowAlloySteel,
+    ConsumablePreset.er80sNi1 => ConsumableFamily.lowAlloySteel,
+    ConsumablePreset.er80sB2 => ConsumableFamily.lowAlloySteel,
+    ConsumablePreset.e316l16 => ConsumableFamily.stainlessSteel,
+    ConsumablePreset.er347 => ConsumableFamily.stainlessSteel,
+    ConsumablePreset.er4043 => ConsumableFamily.aluminium,
+    ConsumablePreset.er5183 => ConsumableFamily.aluminium,
+    ConsumablePreset.eniCi => ConsumableFamily.castIron,
+    ConsumablePreset.enifeCi => ConsumableFamily.castIron,
+    ConsumablePreset.ernicr3 => ConsumableFamily.nickelAlloy,
+    ConsumablePreset.enicrfe3 => ConsumableFamily.nickelAlloy,
+    ConsumablePreset.ercusiA => ConsumableFamily.copperAlloy,
+    ConsumablePreset.ecualA2 => ConsumableFamily.copperAlloy,
   };
 
   String get displayLabel => '$label (${family.label})';
@@ -169,6 +233,23 @@ extension ConsumablePresetX on ConsumablePreset {
     ConsumablePreset.e309l16 => 'AWS A5.4',
     ConsumablePreset.er5356 => 'AWS A5.10',
     ConsumablePreset.gtawRootSmawFill => 'AWS A5.18 + AWS A5.1',
+    ConsumablePreset.e6013 => 'AWS A5.1',
+    ConsumablePreset.e7024 => 'AWS A5.1',
+    ConsumablePreset.er70s3 => 'AWS A5.18',
+    ConsumablePreset.e7018a1 => 'AWS A5.5',
+    ConsumablePreset.e8018c3 => 'AWS A5.5',
+    ConsumablePreset.er80sNi1 => 'AWS A5.28',
+    ConsumablePreset.er80sB2 => 'AWS A5.28',
+    ConsumablePreset.e316l16 => 'AWS A5.4',
+    ConsumablePreset.er347 => 'AWS A5.9',
+    ConsumablePreset.er4043 => 'AWS A5.10',
+    ConsumablePreset.er5183 => 'AWS A5.10',
+    ConsumablePreset.eniCi => 'AWS A5.15',
+    ConsumablePreset.enifeCi => 'AWS A5.15',
+    ConsumablePreset.ernicr3 => 'AWS A5.14',
+    ConsumablePreset.enicrfe3 => 'AWS A5.11',
+    ConsumablePreset.ercusiA => 'AWS A5.7',
+    ConsumablePreset.ecualA2 => 'AWS A5.6',
   };
 
   String get awsDisplayLabel => '$awsSpecification $label (${family.label})';
@@ -203,6 +284,56 @@ extension ConsumablePresetX on ConsumablePreset {
       'Dissimilar transition joints, e.g. ASTM A106 carbon steel to ASTM A312 TP304L stainless',
     ],
     ConsumablePreset.er5356 => const ['5xxx-series aluminium alloys'],
+    ConsumablePreset.e6013 => const [
+      'ASTM A36',
+      'ASTM A53',
+      'EN S235JR',
+      'GB/T Q235',
+    ],
+    ConsumablePreset.e7024 => const ['ASTM A36', 'ASTM A53'],
+    ConsumablePreset.er70s3 => const ['ASTM A36', 'ASTM A53'],
+    ConsumablePreset.e7018a1 => const ['ASTM A335 P1', 'ASTM A106 Gr B'],
+    ConsumablePreset.e8018c3 => const ['ASTM A203', 'ASTM A537'],
+    ConsumablePreset.er80sNi1 => const ['ASTM A333 Gr 6', 'ASTM A420 WPL3'],
+    ConsumablePreset.er80sB2 => const ['ASTM A335 P11'],
+    ConsumablePreset.e316l16 => const [
+      'ASTM A312 TP316/316L',
+      'ASTM A240 316/316L',
+    ],
+    ConsumablePreset.er347 => const [
+      'ASTM A312 TP347',
+      'ASTM A240 347 (Nb-stabilized)',
+    ],
+    ConsumablePreset.er4043 => const [
+      '6061 aluminum',
+      '6063 aluminum',
+      '356 aluminum castings',
+    ],
+    ConsumablePreset.er5183 => const [
+      '5083 aluminum',
+      '5456 aluminum (marine/high-Mg alloys)',
+    ],
+    ConsumablePreset.eniCi => const [
+      'Gray cast iron',
+      'Ductile cast iron repair',
+    ],
+    ConsumablePreset.enifeCi => const ['Ductile (nodular) cast iron'],
+    ConsumablePreset.ernicr3 => const [
+      'Inconel 600/601',
+      'Dissimilar nickel-to-steel joints',
+    ],
+    ConsumablePreset.enicrfe3 => const [
+      'Inconel 600',
+      'Dissimilar nickel-to-steel joints',
+    ],
+    ConsumablePreset.ercusiA => const [
+      'Copper',
+      'Galvanized steel (braze-welding)',
+    ],
+    ConsumablePreset.ecualA2 => const [
+      'Aluminum bronze parts',
+      'Dissimilar copper-to-steel joints',
+    ],
   };
 
   String get description => switch (this) {
@@ -219,6 +350,39 @@ extension ConsumablePresetX on ConsumablePreset {
     ConsumablePreset.er5356 => '5356 aluminium filler metal',
     ConsumablePreset.gtawRootSmawFill =>
       'Typical carbon steel pipe root and fill combination',
+    ConsumablePreset.e6013 =>
+      'Rutile, easy-to-use general-purpose electrode, AC/DC',
+    ConsumablePreset.e7024 =>
+      'Iron-powder electrode, high deposition rate, flat/horizontal fillets',
+    ConsumablePreset.er70s3 =>
+      'General-purpose solid GMAW wire for carbon steel',
+    ConsumablePreset.e7018a1 =>
+      'Low-hydrogen electrode for 0.5% Mo alloy steel piping',
+    ConsumablePreset.e8018c3 =>
+      'Low-hydrogen electrode for nickel-bearing low-temperature steel (~1% Ni)',
+    ConsumablePreset.er80sNi1 =>
+      'Nickel-bearing low-alloy steel filler for low-temperature service',
+    ConsumablePreset.er80sB2 =>
+      'Chrome-moly filler for elevated-temperature piping',
+    ConsumablePreset.e316l16 => 'SMAW electrode counterpart to ER316L',
+    ConsumablePreset.er347 =>
+      'Niobium-stabilized stainless filler for high-temperature/carbide-precipitation-resistant service',
+    ConsumablePreset.er4043 =>
+      'General-purpose 5% silicon aluminum filler, good flow/crack resistance',
+    ConsumablePreset.er5183 =>
+      'High-magnesium filler for marine and high-strength aluminum structures',
+    ConsumablePreset.eniCi =>
+      'Near-pure-nickel electrode for cast iron repair welding',
+    ConsumablePreset.enifeCi =>
+      'Nickel-iron electrode for higher-strength cast iron repairs',
+    ConsumablePreset.ernicr3 =>
+      'Nickel-chromium bare filler wire for Inconel and dissimilar-metal welds',
+    ConsumablePreset.enicrfe3 =>
+      'Nickel-chromium-iron electrode, SMAW counterpart use-case to ERNiCr-3',
+    ConsumablePreset.ercusiA =>
+      'Silicon bronze filler for copper and braze-welding applications',
+    ConsumablePreset.ecualA2 =>
+      'Aluminum bronze electrode for wear-resistant overlays and dissimilar joints',
   };
 
   double get densityGPerCm3 => switch (this) {
@@ -234,6 +398,29 @@ extension ConsumablePresetX on ConsumablePreset {
     ConsumablePreset.e309l16 => 7.90,
     ConsumablePreset.er5356 => 2.66,
     ConsumablePreset.gtawRootSmawFill => 7.85,
+    ConsumablePreset.e6013 => 7.85,
+    ConsumablePreset.e7024 => 7.85,
+    ConsumablePreset.er70s3 => 7.85,
+    ConsumablePreset.e7018a1 => 7.85,
+    ConsumablePreset.e8018c3 => 7.85,
+    ConsumablePreset.er80sNi1 => 7.85,
+    ConsumablePreset.er80sB2 => 7.85,
+    ConsumablePreset.e316l16 => 7.98,
+    ConsumablePreset.er347 => 8.00,
+    ConsumablePreset.er4043 => 2.68,
+    ConsumablePreset.er5183 => 2.66,
+    // density estimated from alloy composition
+    ConsumablePreset.eniCi => 8.90,
+    // density estimated from alloy composition
+    ConsumablePreset.enifeCi => 8.20,
+    // density estimated from alloy composition
+    ConsumablePreset.ernicr3 => 8.30,
+    // density estimated from alloy composition
+    ConsumablePreset.enicrfe3 => 8.30,
+    // density estimated from alloy composition
+    ConsumablePreset.ercusiA => 8.50,
+    // density estimated from alloy composition
+    ConsumablePreset.ecualA2 => 7.70,
   };
 
   List<WeldingProcess> get supportedProcesses => switch (this) {
@@ -255,6 +442,32 @@ extension ConsumablePresetX on ConsumablePreset {
     ConsumablePreset.e309l16 => const [WeldingProcess.smaw],
     ConsumablePreset.er5356 => const [WeldingProcess.gtaw, WeldingProcess.gmaw],
     ConsumablePreset.gtawRootSmawFill => const [WeldingProcess.gtawSmaw],
+    ConsumablePreset.e6013 => const [WeldingProcess.smaw],
+    ConsumablePreset.e7024 => const [WeldingProcess.smaw],
+    ConsumablePreset.er70s3 => const [WeldingProcess.gmaw],
+    ConsumablePreset.e7018a1 => const [WeldingProcess.smaw],
+    ConsumablePreset.e8018c3 => const [WeldingProcess.smaw],
+    ConsumablePreset.er80sNi1 => const [
+      WeldingProcess.gtaw,
+      WeldingProcess.gmaw,
+    ],
+    ConsumablePreset.er80sB2 => const [
+      WeldingProcess.gtaw,
+      WeldingProcess.gmaw,
+    ],
+    ConsumablePreset.e316l16 => const [WeldingProcess.smaw],
+    ConsumablePreset.er347 => const [WeldingProcess.gtaw, WeldingProcess.gmaw],
+    ConsumablePreset.er4043 => const [WeldingProcess.gtaw, WeldingProcess.gmaw],
+    ConsumablePreset.er5183 => const [WeldingProcess.gtaw, WeldingProcess.gmaw],
+    ConsumablePreset.eniCi => const [WeldingProcess.smaw],
+    ConsumablePreset.enifeCi => const [WeldingProcess.smaw],
+    ConsumablePreset.ernicr3 => const [
+      WeldingProcess.gtaw,
+      WeldingProcess.gmaw,
+    ],
+    ConsumablePreset.enicrfe3 => const [WeldingProcess.smaw],
+    ConsumablePreset.ercusiA => const [WeldingProcess.gtaw, WeldingProcess.gmaw],
+    ConsumablePreset.ecualA2 => const [WeldingProcess.smaw],
   };
 }
 

@@ -8,6 +8,7 @@ class WizardDimensionsStep extends StatelessWidget {
   const WizardDimensionsStep({
     super.key,
     required this.drawingHeader,
+    required this.starterPresetSection,
     required this.jointTypeSection,
     required this.memberGeometrySection,
     required this.grooveTypeDropdown,
@@ -17,6 +18,7 @@ class WizardDimensionsStep extends StatelessWidget {
   });
 
   final Widget drawingHeader;
+  final Widget starterPresetSection;
   final Widget jointTypeSection;
   final Widget memberGeometrySection;
   final Widget grooveTypeDropdown;
@@ -44,6 +46,8 @@ class WizardDimensionsStep extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 14),
+                starterPresetSection,
+                const SizedBox(height: 18),
                 jointTypeSection,
                 memberGeometrySection,
                 const SizedBox(height: 18),

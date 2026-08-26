@@ -4,21 +4,20 @@ import '../../../models/weld_models.dart';
 import 'process_icons.dart';
 
 /// Step 1 of the mobile wizard: pick a welding process via a grid of
-/// pictorial choice cards, with an optional preset-shortcut widget slotted
-/// underneath, then continue.
+/// pictorial choice cards, then continue. Preset browsing/loading lives
+/// entirely on the dashboard's Saved Calculations screen now, so this step
+/// asks for nothing else.
 class WizardProcessStep extends StatelessWidget {
   const WizardProcessStep({
     super.key,
     required this.selectedProcess,
     required this.onSelected,
     required this.onContinue,
-    required this.presetShortcut,
   });
 
   final WeldingProcess selectedProcess;
   final ValueChanged<WeldingProcess> onSelected;
   final VoidCallback onContinue;
-  final Widget presetShortcut;
 
   @override
   Widget build(BuildContext context) {
@@ -54,8 +53,6 @@ class WizardProcessStep extends StatelessWidget {
               ),
           ],
         ),
-        const SizedBox(height: 18),
-        presetShortcut,
         const SizedBox(height: 22),
         SizedBox(
           width: double.infinity,
