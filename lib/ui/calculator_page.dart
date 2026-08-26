@@ -28,6 +28,7 @@ class _CalculatorPageState extends State<CalculatorPage> {
   final PresetSyncService _presetSyncService = const PresetSyncService();
   final ScrollController _pageScrollController = ScrollController();
   final ScrollController _inputColumnScrollController = ScrollController();
+  final ScrollController _drawingColumnScrollController = ScrollController();
   static const _customDiameterValue = 'custom';
 
   final Map<FieldKey, TextEditingController> _controllers = {
@@ -77,6 +78,7 @@ class _CalculatorPageState extends State<CalculatorPage> {
   void dispose() {
     _pageScrollController.dispose();
     _inputColumnScrollController.dispose();
+    _drawingColumnScrollController.dispose();
     for (final controller in _controllers.values) {
       controller.dispose();
     }
@@ -340,18 +342,39 @@ class _CalculatorPageState extends State<CalculatorPage> {
                 children: [
                   Expanded(
                     flex: 6,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        _buildJointConfigurationCard(context),
-                        const SizedBox(height: 18),
-                        Expanded(
-                          child: Align(
-                            alignment: Alignment.topCenter,
-                            child: _buildTechnicalDrawingCard(context),
-                          ),
+                    // Scrollable, like the input column, rather than
+                    // Expanded+Align: at some widths just above the 1120
+                    // wide-mode breakpoint, Joint Configuration's own
+                    // internal `narrow < 560` split stacks its two dropdowns
+                    // instead of placing them side by side, growing tall
+                    // enough that the fixed-height row above left the
+                    // drawing almost no room - Expanded silently squeezed it
+                    // to a near-zero-height sliver instead of overflowing
+                    // visibly. Fixed height + compact/fillAvailableSpace
+                    // reuses the same drawing rendering already tuned and
+                    // verified for the mobile narrow layout, rather than the
+                    // FittedBox(760x400) path, which was never exercised
+                    // inside an unbounded-height scroll parent.
+                    child: Scrollbar(
+                      controller: _drawingColumnScrollController,
+                      thumbVisibility: true,
+                      child: SingleChildScrollView(
+                        controller: _drawingColumnScrollController,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            _buildJointConfigurationCard(context),
+                            const SizedBox(height: 18),
+                            SizedBox(
+                              height: _narrowDrawingHeight(context),
+                              child: _buildTechnicalDrawingCard(
+                                context,
+                                compact: true,
+                              ),
+                            ),
+                          ],
                         ),
-                      ],
+                      ),
                     ),
                   ),
                   const SizedBox(width: 18),
