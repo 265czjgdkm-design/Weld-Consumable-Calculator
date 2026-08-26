@@ -37,6 +37,8 @@ enum FieldKey {
   wasteFactor,
 }
 
+enum WizardStep { process, dimensions, consumable, summary }
+
 class InputFieldSpec {
   const InputFieldSpec({
     required this.key,

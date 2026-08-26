@@ -173,6 +173,38 @@ extension ConsumablePresetX on ConsumablePreset {
 
   String get awsDisplayLabel => '$awsSpecification $label (${family.label})';
 
+  List<String> get typicalBaseMetals => switch (this) {
+    ConsumablePreset.er70s6 => const ['ASTM A36', 'ASTM A106', 'ASTM A53'],
+    ConsumablePreset.er70s2 => const ['ASTM A36', 'ASTM A106', 'ASTM A53'],
+    ConsumablePreset.e7018 => const ['ASTM A36', 'ASTM A106', 'ASTM A53'],
+    ConsumablePreset.e6010 => const ['ASTM A36', 'ASTM A106', 'ASTM A53'],
+    ConsumablePreset.e71t1 => const ['ASTM A36', 'ASTM A106', 'ASTM A53'],
+    ConsumablePreset.gtawRootSmawFill => const [
+      'ASTM A36',
+      'ASTM A106',
+      'ASTM A53',
+    ],
+    ConsumablePreset.er308l => const [
+      'ASTM A312 TP304/TP304L',
+      'ASTM A240 304/304L (UNS S30400/S30403)',
+    ],
+    ConsumablePreset.e308l16 => const [
+      'ASTM A312 TP304/TP304L',
+      'ASTM A240 304/304L (UNS S30400/S30403)',
+    ],
+    ConsumablePreset.er316l => const [
+      'ASTM A312 TP316/TP316L',
+      'ASTM A240 316/316L (UNS S31600/S31603)',
+    ],
+    ConsumablePreset.er309l => const [
+      'Dissimilar transition joints, e.g. ASTM A106 carbon steel to ASTM A312 TP304L stainless',
+    ],
+    ConsumablePreset.e309l16 => const [
+      'Dissimilar transition joints, e.g. ASTM A106 carbon steel to ASTM A312 TP304L stainless',
+    ],
+    ConsumablePreset.er5356 => const ['5xxx-series aluminium alloys'],
+  };
+
   String get description => switch (this) {
     ConsumablePreset.er70s6 => 'Carbon steel solid wire or filler metal',
     ConsumablePreset.er70s2 => 'Carbon steel GTAW filler metal',

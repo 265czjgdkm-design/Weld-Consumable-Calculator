@@ -12,6 +12,22 @@ import '../services/weld_pdf_report_service.dart';
 import 'widgets/weld_drawing_preview.dart';
 import 'calculator_page/calculator_page_models.dart';
 import 'calculator_page/calculator_page_widgets.dart';
+import 'calculator_page/wizard/consumable_step.dart';
+import 'calculator_page/wizard/dimensions_step.dart';
+import 'calculator_page/wizard/process_selection_step.dart';
+import 'calculator_page/wizard/summary_step.dart';
+import 'calculator_page/wizard/wizard_step_indicator.dart';
+
+/// Thrown by [_CalculatorPageState._parseRequired] instead of a plain
+/// [FormatException] so `_calculate()`'s validation-failure handler knows
+/// which [FieldKey] (and therefore which wizard step) to send the user
+/// back to, rather than stranding them on the summary step.
+class _RequiredFieldMissingException implements Exception {
+  const _RequiredFieldMissingException(this.fieldKey, this.message);
+
+  final FieldKey fieldKey;
+  final String message;
+}
 
 class CalculatorPage extends StatefulWidget {
   const CalculatorPage({super.key});
@@ -54,6 +70,11 @@ class _CalculatorPageState extends State<CalculatorPage> {
   WeldCalculationResult? _result;
   bool _showResultsScreen = false;
   bool _showIntro = true;
+  // Only the mobile wizard reads this; the results screen's own back path
+  // (`_showResultsScreen = false`) never needs to reset it, because
+  // Calculate is only reachable from WizardStep.summary, so falling back
+  // from results naturally re-lands on summary already.
+  WizardStep _wizardStep = WizardStep.process;
   // TODO: replace with a real StoreKit/RevenueCat entitlement check once
   // the Apple Developer account and App Store Connect subscription product
   // exist. This flag is a local-only stand-in so the paywall UX can be
@@ -72,6 +93,19 @@ class _CalculatorPageState extends State<CalculatorPage> {
   Future<void> _initUserPresets() async {
     _accountEmail = await _accountStore.getEmail();
     await _loadUserPresets();
+  }
+
+  // The wizard's step content swaps under the same `_pageScrollController`
+  // (only the child of the SingleChildScrollView changes), so without this
+  // a new step opens at whatever scroll offset the previous step was left
+  // at. Deferred to the next frame because the new step's content hasn't
+  // attached to the controller yet at the point `setState` returns.
+  void _resetWizardScroll() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_pageScrollController.hasClients) {
+        _pageScrollController.jumpTo(0);
+      }
+    });
   }
 
   @override
@@ -144,7 +178,7 @@ class _CalculatorPageState extends State<CalculatorPage> {
                   }
                   final wide = constraints.maxWidth >= 1120;
                   if (!wide) {
-                    return _buildNarrowPage(context);
+                    return _buildWizardFlow(context);
                   }
                   return _buildWidePage(context);
                 },
@@ -184,7 +218,13 @@ class _CalculatorPageState extends State<CalculatorPage> {
               SizedBox(
                 width: double.infinity,
                 child: FilledButton.icon(
-                  onPressed: () => setState(() => _showIntro = false),
+                  onPressed: () {
+                    setState(() {
+                      _showIntro = false;
+                      _wizardStep = WizardStep.process;
+                    });
+                    _resetWizardScroll();
+                  },
                   icon: const Icon(Icons.arrow_forward),
                   label: Text(strings.getStarted),
                   style: FilledButton.styleFrom(
@@ -220,46 +260,123 @@ class _CalculatorPageState extends State<CalculatorPage> {
     );
   }
 
-  /// Mobile layout: the technical drawing stays pinned at the top of the
-  /// screen (outside the scroll view) so the weld-groove sketch is always
-  /// visible while every other card scrolls underneath it.
-  Widget _buildNarrowPage(BuildContext context) {
-    final visibleFields = _visibleFieldSpecs;
+  /// Mobile layout: a Back/Continue wizard (Process -> Dimensions ->
+  /// Consumable -> Summary) instead of one long scroll, reusing the same
+  /// State methods/section builders as the desktop card layout below.
+  Widget _buildWizardFlow(BuildContext context) {
     final availableConsumables = WeldingDefaults.consumablesFor(
       _weldingProcess,
     );
     final selectedUserPreset = _selectedUserPreset;
 
-    return Column(
-      children: [
-        Padding(
+    final Widget stepContent = switch (_wizardStep) {
+      WizardStep.process => WizardProcessStep(
+        selectedProcess: _weldingProcess,
+        onSelected: (value) {
+          setState(() {
+            _weldingProcess = value;
+            _applyProcessFieldDefaults();
+            _syncConsumableForProcess();
+            _result = null;
+          });
+        },
+        onContinue: () {
+          setState(() => _wizardStep = WizardStep.dimensions);
+          _resetWizardScroll();
+        },
+        presetShortcut: _buildPresetWorkspaceSection(
+          context,
+          selectedUserPreset,
+        ),
+      ),
+      WizardStep.dimensions => WizardDimensionsStep(
+        drawingHeader: Padding(
           padding: const EdgeInsets.fromLTRB(8, 10, 8, 0),
           child: SizedBox(
             height: _narrowDrawingHeight(context),
             child: _buildTechnicalDrawingCard(context, compact: true),
           ),
         ),
+        jointTypeSection: _buildJointTypeSection(context),
+        memberGeometrySection: _buildMemberGeometrySection(context),
+        grooveTypeDropdown: _buildGrooveTypeDropdown(context),
+        dimensionFields: [
+          for (final field in _wizardDimensionFields) _buildFieldInput(field),
+        ],
+        onBack: () {
+          setState(() => _wizardStep = WizardStep.process);
+          _resetWizardScroll();
+        },
+        onContinue: () {
+          setState(() => _wizardStep = WizardStep.consumable);
+          _resetWizardScroll();
+        },
+      ),
+      WizardStep.consumable => WizardConsumableStep(
+        consumableClassificationDropdown: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildConsumableClassificationSection(
+              context,
+              availableConsumables,
+            ),
+            const SizedBox(height: 12),
+            PanelNote(
+              icon: Icons.science_outlined,
+              text:
+                  'Typical base metals: ${_consumablePreset.typicalBaseMetals.join(', ')}',
+            ),
+          ],
+        ),
+        rateBasisSection: _buildRateBasisSection(context),
+        consumableFields: [
+          for (final field in _wizardConsumableFields) _buildFieldInput(field),
+        ],
+        onBack: () {
+          setState(() => _wizardStep = WizardStep.dimensions);
+          _resetWizardScroll();
+        },
+        onContinue: () {
+          setState(() => _wizardStep = WizardStep.summary);
+          _resetWizardScroll();
+        },
+      ),
+      WizardStep.summary => WizardSummaryStep(
+        engineeringBasisBanner: _buildEstimatorControlCard(context),
+        processSection: _buildRecapChips(_wizardProcessRecapItems),
+        dimensionsSection: _buildRecapChips(_wizardDimensionsRecapItems),
+        consumableSection: _buildRecapChips(_wizardConsumableRecapItems),
+        onEditProcess: () {
+          setState(() => _wizardStep = WizardStep.process);
+          _resetWizardScroll();
+        },
+        onEditDimensions: () {
+          setState(() => _wizardStep = WizardStep.dimensions);
+          _resetWizardScroll();
+        },
+        onEditConsumable: () {
+          setState(() => _wizardStep = WizardStep.consumable);
+          _resetWizardScroll();
+        },
+        onCalculate: _calculate,
+        onReset: _resetFields,
+      ),
+    };
+
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(18, 14, 18, 0),
+          child: WizardStepIndicator(
+            currentIndex: WizardStep.values.indexOf(_wizardStep),
+            totalSteps: WizardStep.values.length,
+          ),
+        ),
         Expanded(
           child: SingleChildScrollView(
             controller: _pageScrollController,
             padding: const EdgeInsets.fromLTRB(18, 14, 18, 40),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _buildEstimatorControlCard(context),
-                const SizedBox(height: 18),
-                _buildJointConfigurationCard(context),
-                const SizedBox(height: 18),
-                _buildInputParametersCard(
-                  context,
-                  visibleFields,
-                  availableConsumables,
-                  selectedUserPreset,
-                ),
-                const SizedBox(height: 18),
-                _buildActionPanel(context),
-              ],
-            ),
+            child: stepContent,
           ),
         ),
       ],
@@ -470,6 +587,144 @@ class _CalculatorPageState extends State<CalculatorPage> {
     );
   }
 
+  /// Extracted so the mobile wizard's dimensions step can reuse the exact
+  /// same "Joint Type" chips as the desktop [_buildJointConfigurationCard].
+  Widget _buildJointTypeSection(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Joint Type',
+          style: Theme.of(
+            context,
+          ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
+        ),
+        const SizedBox(height: 14),
+        Wrap(
+          spacing: 10,
+          runSpacing: 10,
+          children: [
+            for (final joint in JointType.values)
+              _buildSelectionChip(
+                label: joint.label,
+                selected: _jointType == joint,
+                onSelected: () => _onJointTypeChanged(joint),
+              ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  /// Extracted so the mobile wizard's dimensions step can reuse the exact
+  /// same "Member Geometry" chips + alignment dropdown as the desktop
+  /// [_buildJointConfigurationCard]. Returns an empty widget when the
+  /// current joint type doesn't support unequal geometry, matching the
+  /// desktop card's conditional rendering.
+  Widget _buildMemberGeometrySection(BuildContext context) {
+    if (!_supportsUnequalGeometry) return const SizedBox.shrink();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const SizedBox(height: 18),
+        Text(
+          'Member Geometry',
+          style: Theme.of(
+            context,
+          ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
+        ),
+        const SizedBox(height: 10),
+        Wrap(
+          spacing: 10,
+          runSpacing: 10,
+          children: [
+            for (final mode in JointGeometryMode.values)
+              _buildSelectionChip(
+                label: mode.label,
+                selected: _jointGeometryMode == mode,
+                onSelected: () {
+                  setState(() {
+                    _jointGeometryMode = mode;
+                    _result = null;
+                  });
+                },
+              ),
+          ],
+        ),
+        if (_isUnequalGeometry) ...[
+          const SizedBox(height: 12),
+          _buildDropdownFrame(
+            DropdownButtonFormField<JointAlignment>(
+              initialValue: _jointAlignment,
+              isExpanded: true,
+              decoration: const InputDecoration(
+                labelText: 'Alignment Reference',
+                helperText:
+                    'Defines how unequal members are aligned in the section sketch.',
+              ),
+              selectedItemBuilder: (context) => JointAlignment.values
+                  .map(
+                    (alignment) => _buildDropdownSelectedText(alignment.label),
+                  )
+                  .toList(),
+              items: JointAlignment.values
+                  .map(
+                    (alignment) => DropdownMenuItem(
+                      value: alignment,
+                      child: Text(
+                        alignment.label,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  )
+                  .toList(),
+              onChanged: (value) {
+                if (value == null) return;
+                setState(() {
+                  _jointAlignment = value;
+                  _result = null;
+                });
+              },
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
+  /// Extracted so the mobile wizard's dimensions step can reuse the exact
+  /// same "Groove Type" dropdown as the desktop [_buildJointConfigurationCard]
+  /// (which pairs it with the process dropdown -- process now lives on the
+  /// wizard's own first step, so this dropdown stands alone there).
+  Widget _buildGrooveTypeDropdown(BuildContext context) {
+    return _buildDropdownFrame(
+      DropdownButtonFormField<GrooveType>(
+        initialValue: _grooveType,
+        isExpanded: true,
+        decoration: const InputDecoration(labelText: 'Groove Type'),
+        selectedItemBuilder: (context) => _jointType.supportedGrooves
+            .map((groove) => _buildDropdownSelectedText(groove.label))
+            .toList(),
+        items: _jointType.supportedGrooves
+            .map(
+              (groove) => DropdownMenuItem(
+                value: groove,
+                child: Text(groove.label, overflow: TextOverflow.ellipsis),
+              ),
+            )
+            .toList(),
+        onChanged: (value) {
+          if (value == null) return;
+          setState(() {
+            _grooveType = value;
+            _result = null;
+          });
+        },
+      ),
+    );
+  }
+
   Widget _buildJointConfigurationCard(BuildContext context) {
     final processEfficiency = _previewEfficiency;
     final depositionRate = _previewDepositionRate;
@@ -480,125 +735,13 @@ class _CalculatorPageState extends State<CalculatorPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              'Joint Type',
-              style: Theme.of(
-                context,
-              ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
-            ),
-            const SizedBox(height: 14),
-            Wrap(
-              spacing: 10,
-              runSpacing: 10,
-              children: [
-                for (final joint in JointType.values)
-                  _buildSelectionChip(
-                    label: joint.label,
-                    selected: _jointType == joint,
-                    onSelected: () => _onJointTypeChanged(joint),
-                  ),
-              ],
-            ),
-            if (_supportsUnequalGeometry) ...[
-              const SizedBox(height: 18),
-              Text(
-                'Member Geometry',
-                style: Theme.of(
-                  context,
-                ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
-              ),
-              const SizedBox(height: 10),
-              Wrap(
-                spacing: 10,
-                runSpacing: 10,
-                children: [
-                  for (final mode in JointGeometryMode.values)
-                    _buildSelectionChip(
-                      label: mode.label,
-                      selected: _jointGeometryMode == mode,
-                      onSelected: () {
-                        setState(() {
-                          _jointGeometryMode = mode;
-                          _result = null;
-                        });
-                      },
-                    ),
-                ],
-              ),
-              if (_isUnequalGeometry) ...[
-                const SizedBox(height: 12),
-                _buildDropdownFrame(
-                  DropdownButtonFormField<JointAlignment>(
-                    initialValue: _jointAlignment,
-                    isExpanded: true,
-                    decoration: const InputDecoration(
-                      labelText: 'Alignment Reference',
-                      helperText:
-                          'Defines how unequal members are aligned in the section sketch.',
-                    ),
-                    selectedItemBuilder: (context) => JointAlignment.values
-                        .map(
-                          (alignment) =>
-                              _buildDropdownSelectedText(alignment.label),
-                        )
-                        .toList(),
-                    items: JointAlignment.values
-                        .map(
-                          (alignment) => DropdownMenuItem(
-                            value: alignment,
-                            child: Text(
-                              alignment.label,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                        )
-                        .toList(),
-                    onChanged: (value) {
-                      if (value == null) return;
-                      setState(() {
-                        _jointAlignment = value;
-                        _result = null;
-                      });
-                    },
-                  ),
-                ),
-              ],
-            ],
+            _buildJointTypeSection(context),
+            _buildMemberGeometrySection(context),
             const SizedBox(height: 20),
             LayoutBuilder(
               builder: (context, constraints) {
                 final narrow = constraints.maxWidth < 560;
-                final grooveDropdown = _buildDropdownFrame(
-                  DropdownButtonFormField<GrooveType>(
-                    initialValue: _grooveType,
-                    isExpanded: true,
-                    decoration: const InputDecoration(labelText: 'Groove Type'),
-                    selectedItemBuilder: (context) => _jointType
-                        .supportedGrooves
-                        .map(
-                          (groove) => _buildDropdownSelectedText(groove.label),
-                        )
-                        .toList(),
-                    items: _jointType.supportedGrooves
-                        .map(
-                          (groove) => DropdownMenuItem(
-                            value: groove,
-                            child: Text(
-                              groove.label,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                        )
-                        .toList(),
-                    onChanged: (value) {
-                      if (value == null) return;
-                      setState(() {
-                        _grooveType = value;
-                        _result = null;
-                      });
-                    },
-                  ),
-                );
+                final grooveDropdown = _buildGrooveTypeDropdown(context);
                 final processDropdown = _buildDropdownFrame(
                   DropdownButtonFormField<WeldingProcess>(
                     initialValue: _weldingProcess,
@@ -819,6 +962,191 @@ class _CalculatorPageState extends State<CalculatorPage> {
     );
   }
 
+  /// Extracted so the mobile wizard's process step can reuse the exact same
+  /// preset-loading UI as the desktop [_buildInputParametersCard], just
+  /// rendered as its `presetShortcut` slot instead.
+  Widget _buildPresetWorkspaceSection(
+    BuildContext context,
+    UserWeldPreset? selectedUserPreset,
+  ) {
+    return InputPanelSection(
+      icon: Icons.auto_awesome_outlined,
+      title: 'Preset Workspace',
+      subtitle: 'Load built-in setups or manage your own reusable presets.',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildDropdownFrame(
+            DropdownButtonFormField<InputPreset>(
+              initialValue: _inputPreset,
+              isExpanded: true,
+              decoration: const InputDecoration(
+                labelText: 'Input Preset',
+                helperText:
+                    'Load a practical starting setup, then fine-tune dimensions as needed.',
+              ),
+              selectedItemBuilder: (context) => InputPreset.values
+                  .map((preset) => _buildDropdownSelectedText(preset.label))
+                  .toList(),
+              items: InputPreset.values
+                  .map(
+                    (preset) => DropdownMenuItem(
+                      value: preset,
+                      child: Text(
+                        preset.label,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  )
+                  .toList(),
+              onChanged: (value) {
+                if (value == null) return;
+                if (value == InputPreset.custom) {
+                  setState(() {
+                    _inputPreset = value;
+                    _selectedUserPresetId = null;
+                    _result = null;
+                  });
+                  return;
+                }
+                _applyInputPreset(value);
+              },
+            ),
+          ),
+          const SizedBox(height: 12),
+          PanelNote(
+            icon: Icons.auto_fix_high_outlined,
+            text: _inputPreset.description,
+          ),
+          const SizedBox(height: 14),
+          UserPresetSection(
+            presets: _userPresets,
+            selectedPresetId: _selectedUserPresetId,
+            selectedPresetName: selectedUserPreset?.name,
+            busy: _isUserPresetBusy,
+            onChanged: (presetId) {
+              if (presetId == null) return;
+              final preset = _userPresets.firstWhere(
+                (item) => item.id == presetId,
+              );
+              _applyUserPreset(preset);
+            },
+            onSavePressed: _isUserPresetBusy ? null : _saveCurrentAsUserPreset,
+            onUpdatePressed: selectedUserPreset == null || _isUserPresetBusy
+                ? null
+                : _updateSelectedUserPreset,
+            onDeletePressed: selectedUserPreset == null || _isUserPresetBusy
+                ? null
+                : _deleteSelectedUserPreset,
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Extracted so the mobile wizard's consumable step can reuse the exact
+  /// same dropdown as the desktop [_buildInputParametersCard].
+  Widget _buildConsumableClassificationSection(
+    BuildContext context,
+    List<ConsumablePreset> availableConsumables,
+  ) {
+    return InputPanelSection(
+      icon: Icons.inventory_2_outlined,
+      title: 'Consumable & Density',
+      subtitle:
+          'AWS filler selection, family information, and weld metal density basis.',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildDropdownFrame(
+            DropdownButtonFormField<ConsumablePreset>(
+              initialValue: _consumablePreset,
+              isExpanded: true,
+              decoration: const InputDecoration(
+                labelText: 'Consumable Classification',
+                helperText:
+                    'Select an AWS filler metal classification. Density is populated automatically and can still be adjusted.',
+              ),
+              selectedItemBuilder: (context) => availableConsumables
+                  .map(
+                    (preset) =>
+                        _buildDropdownSelectedText(preset.awsDisplayLabel),
+                  )
+                  .toList(),
+              items: availableConsumables
+                  .map(
+                    (preset) => DropdownMenuItem(
+                      value: preset,
+                      child: Text(
+                        preset.awsDisplayLabel,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  )
+                  .toList(),
+              onChanged: (value) {
+                if (value == null) return;
+                setState(() {
+                  _consumablePreset = value;
+                  _applyConsumablePreset(value);
+                  _result = null;
+                });
+              },
+            ),
+          ),
+          const SizedBox(height: 12),
+          PanelNote(
+            icon: Icons.verified_outlined,
+            text:
+                'Selected classification: ${_consumablePreset.awsSpecification} | ${_consumablePreset.label} | ${_consumablePreset.family.label} | Density ${_formatNumber(_consumablePreset.densityGPerCm3, 2)} g/cm3',
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Extracted so the mobile wizard's consumable step can reuse the exact
+  /// same section as the desktop [_buildInputParametersCard].
+  Widget _buildRateBasisSection(BuildContext context) {
+    return InputPanelSection(
+      icon: Icons.speed_outlined,
+      title: 'Rate Basis',
+      subtitle:
+          'Choose whether deposition rate comes from estimated process defaults or manual planning data.',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Wrap(
+            spacing: 10,
+            runSpacing: 10,
+            children: [
+              for (final mode in DepositionRateMode.values)
+                _buildSelectionChip(
+                  label: mode.label,
+                  selected: _depositionRateMode == mode,
+                  onSelected: () {
+                    setState(() {
+                      _depositionRateMode = mode;
+                      _result = null;
+                    });
+                  },
+                ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          PanelNote(
+            icon: _depositionRateMode == DepositionRateMode.manual
+                ? Icons.tune_outlined
+                : Icons.auto_awesome_motion_outlined,
+            text: _depositionRateMode == DepositionRateMode.manual
+                ? _manualRateHelperText
+                : _presetRateHelperText,
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildInputParametersCard(
     BuildContext context,
     List<InputFieldSpec> visibleFields,
@@ -845,180 +1173,11 @@ class _CalculatorPageState extends State<CalculatorPage> {
               ).textTheme.bodyMedium?.copyWith(color: const Color(0xFF5E7380)),
             ),
             const SizedBox(height: 16),
-            InputPanelSection(
-              icon: Icons.auto_awesome_outlined,
-              title: 'Preset Workspace',
-              subtitle:
-                  'Load built-in setups or manage your own reusable presets.',
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _buildDropdownFrame(
-                    DropdownButtonFormField<InputPreset>(
-                      initialValue: _inputPreset,
-                      isExpanded: true,
-                      decoration: const InputDecoration(
-                        labelText: 'Input Preset',
-                        helperText:
-                            'Load a practical starting setup, then fine-tune dimensions as needed.',
-                      ),
-                      selectedItemBuilder: (context) => InputPreset.values
-                          .map(
-                            (preset) =>
-                                _buildDropdownSelectedText(preset.label),
-                          )
-                          .toList(),
-                      items: InputPreset.values
-                          .map(
-                            (preset) => DropdownMenuItem(
-                              value: preset,
-                              child: Text(
-                                preset.label,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                          )
-                          .toList(),
-                      onChanged: (value) {
-                        if (value == null) return;
-                        if (value == InputPreset.custom) {
-                          setState(() {
-                            _inputPreset = value;
-                            _selectedUserPresetId = null;
-                            _result = null;
-                          });
-                          return;
-                        }
-                        _applyInputPreset(value);
-                      },
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  PanelNote(
-                    icon: Icons.auto_fix_high_outlined,
-                    text: _inputPreset.description,
-                  ),
-                  const SizedBox(height: 14),
-                  UserPresetSection(
-                    presets: _userPresets,
-                    selectedPresetId: _selectedUserPresetId,
-                    selectedPresetName: selectedUserPreset?.name,
-                    busy: _isUserPresetBusy,
-                    onChanged: (presetId) {
-                      if (presetId == null) return;
-                      final preset = _userPresets.firstWhere(
-                        (item) => item.id == presetId,
-                      );
-                      _applyUserPreset(preset);
-                    },
-                    onSavePressed: _isUserPresetBusy
-                        ? null
-                        : _saveCurrentAsUserPreset,
-                    onUpdatePressed:
-                        selectedUserPreset == null || _isUserPresetBusy
-                        ? null
-                        : _updateSelectedUserPreset,
-                    onDeletePressed:
-                        selectedUserPreset == null || _isUserPresetBusy
-                        ? null
-                        : _deleteSelectedUserPreset,
-                  ),
-                ],
-              ),
-            ),
+            _buildPresetWorkspaceSection(context, selectedUserPreset),
             const SizedBox(height: 14),
-            InputPanelSection(
-              icon: Icons.inventory_2_outlined,
-              title: 'Consumable & Density',
-              subtitle:
-                  'AWS filler selection, family information, and weld metal density basis.',
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _buildDropdownFrame(
-                    DropdownButtonFormField<ConsumablePreset>(
-                      initialValue: _consumablePreset,
-                      isExpanded: true,
-                      decoration: const InputDecoration(
-                        labelText: 'Consumable Classification',
-                        helperText:
-                            'Select an AWS filler metal classification. Density is populated automatically and can still be adjusted.',
-                      ),
-                      selectedItemBuilder: (context) => availableConsumables
-                          .map(
-                            (preset) => _buildDropdownSelectedText(
-                              preset.awsDisplayLabel,
-                            ),
-                          )
-                          .toList(),
-                      items: availableConsumables
-                          .map(
-                            (preset) => DropdownMenuItem(
-                              value: preset,
-                              child: Text(
-                                preset.awsDisplayLabel,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                          )
-                          .toList(),
-                      onChanged: (value) {
-                        if (value == null) return;
-                        setState(() {
-                          _consumablePreset = value;
-                          _applyConsumablePreset(value);
-                          _result = null;
-                        });
-                      },
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  PanelNote(
-                    icon: Icons.verified_outlined,
-                    text:
-                        'Selected classification: ${_consumablePreset.awsSpecification} | ${_consumablePreset.label} | ${_consumablePreset.family.label} | Density ${_formatNumber(_consumablePreset.densityGPerCm3, 2)} g/cm3',
-                  ),
-                ],
-              ),
-            ),
+            _buildConsumableClassificationSection(context, availableConsumables),
             const SizedBox(height: 14),
-            InputPanelSection(
-              icon: Icons.speed_outlined,
-              title: 'Rate Basis',
-              subtitle:
-                  'Choose whether deposition rate comes from estimated process defaults or manual planning data.',
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Wrap(
-                    spacing: 10,
-                    runSpacing: 10,
-                    children: [
-                      for (final mode in DepositionRateMode.values)
-                        _buildSelectionChip(
-                          label: mode.label,
-                          selected: _depositionRateMode == mode,
-                          onSelected: () {
-                            setState(() {
-                              _depositionRateMode = mode;
-                              _result = null;
-                            });
-                          },
-                        ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  PanelNote(
-                    icon: _depositionRateMode == DepositionRateMode.manual
-                        ? Icons.tune_outlined
-                        : Icons.auto_awesome_motion_outlined,
-                    text: _depositionRateMode == DepositionRateMode.manual
-                        ? _manualRateHelperText
-                        : _presetRateHelperText,
-                  ),
-                ],
-              ),
-            ),
+            _buildRateBasisSection(context),
             const SizedBox(height: 14),
             InputPanelSection(
               icon: Icons.straighten_outlined,
@@ -1243,6 +1402,129 @@ class _CalculatorPageState extends State<CalculatorPage> {
     if (a == null) return b;
     if (b == null) return a;
     return a >= b ? a : b;
+  }
+
+  // Which of _visibleFieldSpecs' keys belong on the wizard's Dimensions
+  // step vs. its Consumable step. Must stay in sync if _visibleFieldSpecs'
+  // branching changes -- fields not in this set default to the consumable
+  // step (see _wizardConsumableFields), so nothing silently disappears.
+  static const Set<FieldKey> _wizardDimensionFieldKeys = {
+    FieldKey.quantity,
+    FieldKey.lengthMm,
+    FieldKey.pipeOdMm,
+    FieldKey.pipeOdAMm,
+    FieldKey.pipeOdBMm,
+    FieldKey.thicknessMm,
+    FieldKey.thicknessAMm,
+    FieldKey.thicknessBMm,
+    FieldKey.rootGapMm,
+    FieldKey.rootFaceMm,
+    FieldKey.bevelAngleDeg,
+    FieldKey.secondaryBevelAngleDeg,
+    FieldKey.breakHeightMm,
+    FieldKey.legSizeMm,
+  };
+
+  List<InputFieldSpec> get _wizardDimensionFields => _visibleFieldSpecs
+      .where((spec) => _wizardDimensionFieldKeys.contains(spec.key))
+      .toList();
+
+  List<InputFieldSpec> get _wizardConsumableFields => _visibleFieldSpecs
+      .where((spec) => !_wizardDimensionFieldKeys.contains(spec.key))
+      .toList();
+
+  // Which _buildCalculationBasis() labels recap under the wizard's summary
+  // "Dimensions" card. Anything not in this set (besides 'Process', which
+  // gets its own card) falls through to the "Consumable" recap card -- see
+  // _wizardConsumableRecapItems -- so a future basis item is never silently
+  // dropped from the summary.
+  static const Set<String> _wizardDimensionBasisLabels = {
+    'Joint',
+    'Geometry',
+    'Alignment',
+    'Groove',
+    'Quantity',
+    'Weld Length per Piece',
+    'Pipe OD',
+    'Thickness',
+    'Thickness A',
+    'Thickness B',
+    'Controlling Thickness',
+    'OD A',
+    'OD B',
+    'Reference OD',
+    'Root Gap',
+    'Root Face',
+    'Root Face per Side',
+    'Bevel Angle',
+    'Primary Bevel Angle',
+    'Secondary Bevel Angle',
+    'Break Height',
+    'Fillet Leg Size',
+  };
+
+  // Labels that recap under the wizard's "Process" summary card -- these
+  // belong there rather than falling through to Consumable because the
+  // Preset Workspace UI they describe lives on the Process step.
+  static const Set<String> _wizardProcessBasisLabels = {
+    'Process',
+    'Input Preset',
+    'Saved Preset',
+  };
+
+  List<CalculationBasisItem> get _wizardProcessRecapItems =>
+      _buildCalculationBasis()
+          .where((item) => _wizardProcessBasisLabels.contains(item.label))
+          .toList();
+
+  List<CalculationBasisItem> get _wizardDimensionsRecapItems =>
+      _buildCalculationBasis()
+          .where((item) => _wizardDimensionBasisLabels.contains(item.label))
+          .toList();
+
+  List<CalculationBasisItem> get _wizardConsumableRecapItems =>
+      _buildCalculationBasis()
+          .where(
+            (item) =>
+                !_wizardProcessBasisLabels.contains(item.label) &&
+                !_wizardDimensionBasisLabels.contains(item.label),
+          )
+          .toList();
+
+  Widget _buildRecapChips(List<CalculationBasisItem> items) {
+    return Wrap(
+      spacing: 10,
+      runSpacing: 10,
+      children: [
+        for (final item in items)
+          Container(
+            padding: const EdgeInsets.symmetric(
+              horizontal: 12,
+              vertical: 10,
+            ),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF7FBFD),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: const Color(0xFFDCE5EB)),
+            ),
+            child: RichText(
+              text: TextSpan(
+                style: const TextStyle(
+                  color: Color(0xFF15232D),
+                  fontSize: 13,
+                ),
+                children: [
+                  TextSpan(
+                    text: '${item.label}: ',
+                    style: const TextStyle(fontWeight: FontWeight.w700),
+                  ),
+                  TextSpan(text: item.value),
+                ],
+              ),
+            ),
+          ),
+      ],
+    );
   }
 
   List<InputFieldSpec> get _visibleFieldSpecs {
@@ -2387,6 +2669,13 @@ class _CalculatorPageState extends State<CalculatorPage> {
         _result = result;
         _showResultsScreen = true;
       });
+    } on _RequiredFieldMissingException catch (error) {
+      setState(() {
+        _result = null;
+        _wizardStep = _wizardStepForFieldKey(error.fieldKey);
+      });
+      _resetWizardScroll();
+      _showMessage(error.message);
     } on InputValidationException catch (error) {
       setState(() => _result = null);
       _showMessage(error.message);
@@ -2683,17 +2972,31 @@ class _CalculatorPageState extends State<CalculatorPage> {
       _consumablePreset = WeldingDefaults.defaultConsumableFor(_weldingProcess);
       _applyConsumablePreset(_consumablePreset);
       _result = null;
+      _wizardStep = WizardStep.process;
     });
+    _resetWizardScroll();
   }
 
   double _parseRequired(FieldKey key, String label) {
     final value = _controllers[key]!.text.trim();
     final parsed = double.tryParse(value.replaceAll(',', '.'));
     if (parsed == null) {
-      throw FormatException('$label must be a valid number.');
+      throw _RequiredFieldMissingException(
+        key,
+        '$label must be a valid number.',
+      );
     }
     return parsed;
   }
+
+  // Same dimensions-vs-consumable split used to build the wizard's step
+  // field lists (_wizardDimensionFields / _wizardConsumableFields), reused
+  // here so a validation failure can send the user back to the step that
+  // actually owns the offending field.
+  WizardStep _wizardStepForFieldKey(FieldKey key) =>
+      _wizardDimensionFieldKeys.contains(key)
+      ? WizardStep.dimensions
+      : WizardStep.consumable;
 
   double? _parseOptional(FieldKey key) {
     final value = _controllers[key]!.text.trim();
