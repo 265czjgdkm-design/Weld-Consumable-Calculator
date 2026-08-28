@@ -145,6 +145,63 @@ class L10nStrings {
     required this.presetSaveError,
     required this.presetSaved,
     required this.presetSavedOffline,
+    required this.dashboardPreheatCalculator,
+    required this.dashboardCoolingTimeCalculator,
+    required this.materialFieldNickel,
+    required this.preheatScreenTitle,
+    required this.preheatScreenSubtitle,
+    required this.preheatCompositionCardTitle,
+    required this.preheatCompositionCardSubtitle,
+    required this.preheatLoadFromLibraryLabel,
+    required this.preheatBlankMeansZeroNote,
+    required this.preheatWeldMetalCetLabel,
+    required this.preheatJointCardTitle,
+    required this.preheatThicknessLabel,
+    required this.preheatHdLabel,
+    required this.preheatYieldStrengthLabel,
+    required this.preheatCalculateButton,
+    required this.preheatResultLabel,
+    required this.preheatSpecialRuleNote,
+    required this.preheatWarningCetOutOfRange,
+    required this.preheatWarningThicknessOutOfRange,
+    required this.preheatWarningHdOutOfRange,
+    required this.preheatWarningHeatInputOutOfRange,
+    required this.preheatWarningYieldOutOfRange,
+    required this.preheatIso15608Note,
+    required this.preheatOtherCarbonEquivalentsTitle,
+    required this.preheatOtherCarbonEquivalentsCaption,
+    required this.preheatUseInCoolingTimeButton,
+    required this.coolingScreenTitle,
+    required this.coolingScreenSubtitle,
+    required this.coolingTempCardTitle,
+    required this.coolingT0Label,
+    required this.coolingT0InvalidError,
+    required this.coolingHeatInputCardTitle,
+    required this.coolingJointCardTitle,
+    required this.coolingJointTypeLabel,
+    required this.coolingJointTypeRunOnPlate,
+    required this.coolingJointTypeButtBetweenRuns,
+    required this.coolingFilletNotSupportedNote,
+    required this.coolingThicknessLabel,
+    required this.coolingCalculateButton,
+    required this.coolingResultLabel,
+    required this.coolingRegimeTwoD,
+    required this.coolingRegimeThreeD,
+    required this.coolingRegimeExplanation,
+    required this.coolingWarningHeatInputOutOfRange,
+    required this.coolingWarningThicknessOutOfRange,
+    required this.heatInputDirectModeLabel,
+    required this.heatInputArcParamsModeLabel,
+    required this.heatInputQLabel,
+    required this.heatInputProcessLabel,
+    required this.heatInputProcessSaw,
+    required this.heatInputProcessSmaw,
+    required this.heatInputProcessGmawMag,
+    required this.heatInputVoltageLabel,
+    required this.heatInputCurrentLabel,
+    required this.heatInputTravelSpeedLabel,
+    required this.heatInputComputedLabel,
+    required this.heatInputVerifiedProcessesNote,
   });
 
   final String navBrand;
@@ -286,6 +343,63 @@ class L10nStrings {
   final String presetSaveError;
   final String presetSaved;
   final String presetSavedOffline;
+  final String dashboardPreheatCalculator;
+  final String dashboardCoolingTimeCalculator;
+  final String materialFieldNickel;
+  final String preheatScreenTitle;
+  final String preheatScreenSubtitle;
+  final String preheatCompositionCardTitle;
+  final String preheatCompositionCardSubtitle;
+  final String preheatLoadFromLibraryLabel;
+  final String preheatBlankMeansZeroNote;
+  final String preheatWeldMetalCetLabel;
+  final String preheatJointCardTitle;
+  final String preheatThicknessLabel;
+  final String preheatHdLabel;
+  final String preheatYieldStrengthLabel;
+  final String preheatCalculateButton;
+  final String preheatResultLabel;
+  final String preheatSpecialRuleNote;
+  final String preheatWarningCetOutOfRange;
+  final String preheatWarningThicknessOutOfRange;
+  final String preheatWarningHdOutOfRange;
+  final String preheatWarningHeatInputOutOfRange;
+  final String preheatWarningYieldOutOfRange;
+  final String preheatIso15608Note;
+  final String preheatOtherCarbonEquivalentsTitle;
+  final String preheatOtherCarbonEquivalentsCaption;
+  final String preheatUseInCoolingTimeButton;
+  final String coolingScreenTitle;
+  final String coolingScreenSubtitle;
+  final String coolingTempCardTitle;
+  final String coolingT0Label;
+  final String coolingT0InvalidError;
+  final String coolingHeatInputCardTitle;
+  final String coolingJointCardTitle;
+  final String coolingJointTypeLabel;
+  final String coolingJointTypeRunOnPlate;
+  final String coolingJointTypeButtBetweenRuns;
+  final String coolingFilletNotSupportedNote;
+  final String coolingThicknessLabel;
+  final String coolingCalculateButton;
+  final String coolingResultLabel;
+  final String coolingRegimeTwoD;
+  final String coolingRegimeThreeD;
+  final String coolingRegimeExplanation;
+  final String coolingWarningHeatInputOutOfRange;
+  final String coolingWarningThicknessOutOfRange;
+  final String heatInputDirectModeLabel;
+  final String heatInputArcParamsModeLabel;
+  final String heatInputQLabel;
+  final String heatInputProcessLabel;
+  final String heatInputProcessSaw;
+  final String heatInputProcessSmaw;
+  final String heatInputProcessGmawMag;
+  final String heatInputVoltageLabel;
+  final String heatInputCurrentLabel;
+  final String heatInputTravelSpeedLabel;
+  final String heatInputComputedLabel;
+  final String heatInputVerifiedProcessesNote;
 }
 
 const Map<AppLanguage, L10nStrings> _strings = {
@@ -449,6 +563,81 @@ const Map<AppLanguage, L10nStrings> _strings = {
     presetSaved: 'Preset saved.',
     presetSavedOffline:
         'Saved on this device only — will sync once you\'re back online.',
+    dashboardPreheatCalculator: 'Preheat Temperature',
+    dashboardCoolingTimeCalculator: 'Cooling Time (t8/5)',
+    materialFieldNickel: 'Nickel (Ni) %',
+    preheatScreenTitle: 'Preheat Temperature Calculator',
+    preheatScreenSubtitle: 'EN 1011-2 Method B (CET-based)',
+    preheatCompositionCardTitle: 'Parent metal composition',
+    preheatCompositionCardSubtitle: 'Enter percent by weight; blank = 0%',
+    preheatLoadFromLibraryLabel: 'Load from saved Base Material',
+    preheatBlankMeansZeroNote:
+        'Leave any element blank if not analyzed or not present — it is treated as 0% in the calculation.',
+    preheatWeldMetalCetLabel:
+        'Weld metal CET % (optional — for the special rule)',
+    preheatJointCardTitle: 'Joint & process',
+    preheatThicknessLabel: 'Plate thickness (mm)',
+    preheatHdLabel: 'Diffusible hydrogen HD (ml/100g, ISO 3690)',
+    preheatYieldStrengthLabel: 'Steel yield strength (N/mm², optional)',
+    preheatCalculateButton: 'Calculate preheat temperature',
+    preheatResultLabel: 'Recommended preheat temperature',
+    preheatSpecialRuleNote:
+        "Design CET adjusted to {value}% per EN 1011-2's special rule (weld metal CET + 0.03%).",
+    preheatWarningCetOutOfRange:
+        "CET is {value}% — outside the standard's validated range of 0.2–0.5%. Treat this result with extra caution.",
+    preheatWarningThicknessOutOfRange:
+        "Thickness is {value} mm — outside the standard's validated range of 10–90 mm.",
+    preheatWarningHdOutOfRange:
+        "Diffusible hydrogen is {value} ml/100g — outside the standard's validated range of 1–20 ml/100g.",
+    preheatWarningHeatInputOutOfRange:
+        "Heat input is {value} kJ/mm — outside the standard's validated range of 0.5–4.0 kJ/mm.",
+    preheatWarningYieldOutOfRange:
+        "Yield strength is {value} N/mm² — above the standard's validated limit of 1000 N/mm².",
+    preheatIso15608Note:
+        "This method (EN 1011-2 Annex C.3, Method B) is validated for steel groups 1–4 per ISO/TR 15608 (common structural and pressure-vessel steels). Verify your steel's group separately before relying on this result for high-alloy or exotic grades.",
+    preheatOtherCarbonEquivalentsTitle:
+        'Other carbon equivalents (reference only)',
+    preheatOtherCarbonEquivalentsCaption:
+        'Not part of EN 1011-2 — informational only.',
+    preheatUseInCoolingTimeButton:
+        'Use this preheat temp in the Cooling Time calculator',
+    coolingScreenTitle: 'Cooling Time (t8/5) Calculator',
+    coolingScreenSubtitle: 'EN 1011-2 Annex D.6',
+    coolingTempCardTitle: 'Preheat / interpass temperature',
+    coolingT0Label: 'Preheat or interpass temperature T0 (°C)',
+    coolingT0InvalidError:
+        'Must be below 500°C — the cooling formula is undefined at or above this value.',
+    coolingHeatInputCardTitle: 'Heat input',
+    coolingJointCardTitle: 'Joint & thickness',
+    coolingJointTypeLabel: 'Joint type',
+    coolingJointTypeRunOnPlate: 'Run-on-plate / bead-on-plate',
+    coolingJointTypeButtBetweenRuns: 'Butt weld — between runs',
+    coolingFilletNotSupportedNote:
+        'Fillet weld joints are not yet supported — EN 1011-2 gives only a range (F2 0.45–0.67) with no interpolation rule, so this app does not compute a value for them.',
+    coolingThicknessLabel: 'Plate thickness (mm)',
+    coolingCalculateButton: 'Calculate cooling time',
+    coolingResultLabel: 'Cooling time t8/5',
+    coolingRegimeTwoD: '2D thin-plate',
+    coolingRegimeThreeD: '3D thick-plate',
+    coolingRegimeExplanation:
+        'Calculated using the {regime} formula (transition thickness dt = {dt} mm for these inputs).',
+    coolingWarningHeatInputOutOfRange:
+        'Heat input is {value} kJ/mm — outside the typical 0.5–4.0 kJ/mm range seen in EN 1011-2 worked examples.',
+    coolingWarningThicknessOutOfRange:
+        'Thickness is {value} mm — outside the typical range for this calculation; double-check your inputs.',
+    heatInputDirectModeLabel: 'Enter directly',
+    heatInputArcParamsModeLabel: 'Calculate from arc parameters',
+    heatInputQLabel: 'Net heat input Q (kJ/mm)',
+    heatInputProcessLabel: 'Welding process',
+    heatInputProcessSaw: 'SAW',
+    heatInputProcessSmaw: 'SMAW',
+    heatInputProcessGmawMag: 'GMAW / MAG',
+    heatInputVoltageLabel: 'Voltage (V)',
+    heatInputCurrentLabel: 'Current (A)',
+    heatInputTravelSpeedLabel: 'Travel speed (mm/min)',
+    heatInputComputedLabel: 'Computed Q: {value} kJ/mm',
+    heatInputVerifiedProcessesNote:
+        "Arc thermal efficiency is only verified in EN 1011-2 for SAW, SMAW, and GMAW/MAG. For other processes, switch to 'Enter directly' and provide Q from another source.",
   ),
   AppLanguage.tr: L10nStrings(
     navBrand: 'Varyos Weld',
@@ -610,6 +799,81 @@ const Map<AppLanguage, L10nStrings> _strings = {
     presetSaved: 'Şablon kaydedildi.',
     presetSavedOffline:
         'Sadece bu cihazda kaydedildi — internete bağlanınca eşitlenecek.',
+    dashboardPreheatCalculator: 'Ön Isıtma Sıcaklığı',
+    dashboardCoolingTimeCalculator: 'Soğuma Süresi (t8/5)',
+    materialFieldNickel: 'Nikel (Ni) %',
+    preheatScreenTitle: 'Ön Isıtma Sıcaklığı Hesaplayıcı',
+    preheatScreenSubtitle: 'EN 1011-2 Yöntem B (CET tabanlı)',
+    preheatCompositionCardTitle: 'Ana malzeme kimyasal bileşimi',
+    preheatCompositionCardSubtitle: 'Ağırlıkça yüzde girin; boş = %0',
+    preheatLoadFromLibraryLabel: 'Kayıtlı Ana Malzemeden yükle',
+    preheatBlankMeansZeroNote:
+        'Analiz edilmemiş veya bulunmayan elementleri boş bırakın — hesaplamada %0 olarak kabul edilir.',
+    preheatWeldMetalCetLabel:
+        'Kaynak metali CET % (isteğe bağlı — özel kural için)',
+    preheatJointCardTitle: 'Bağlantı ve işlem',
+    preheatThicknessLabel: 'Sac kalınlığı (mm)',
+    preheatHdLabel: 'Difüzyona uğrayabilir hidrojen HD (ml/100g, ISO 3690)',
+    preheatYieldStrengthLabel: 'Çelik akma dayanımı (N/mm², isteğe bağlı)',
+    preheatCalculateButton: 'Ön ısıtma sıcaklığını hesapla',
+    preheatResultLabel: 'Önerilen ön ısıtma sıcaklığı',
+    preheatSpecialRuleNote:
+        "Tasarım CET değeri EN 1011-2'nin özel kuralına göre %{value} olarak ayarlandı (kaynak metali CET + %0.03).",
+    preheatWarningCetOutOfRange:
+        'CET %{value} — standardın doğrulanmış %0.2–0.5 aralığının dışında. Bu sonucu ekstra dikkatle değerlendirin.',
+    preheatWarningThicknessOutOfRange:
+        'Kalınlık {value} mm — standardın doğrulanmış 10–90 mm aralığının dışında.',
+    preheatWarningHdOutOfRange:
+        'Difüzyona uğrayabilir hidrojen {value} ml/100g — standardın doğrulanmış 1–20 ml/100g aralığının dışında.',
+    preheatWarningHeatInputOutOfRange:
+        'Isı girdisi {value} kJ/mm — standardın doğrulanmış 0.5–4.0 kJ/mm aralığının dışında.',
+    preheatWarningYieldOutOfRange:
+        'Akma dayanımı {value} N/mm² — standardın doğrulanmış 1000 N/mm² sınırının üzerinde.',
+    preheatIso15608Note:
+        "Bu yöntem (EN 1011-2 Ek C.3, Yöntem B) ISO/TR 15608'e göre çelik grupları 1-4 için (yaygın yapısal ve basınçlı kap çelikleri) doğrulanmıştır. Yüksek alaşımlı veya özel çelikler için bu sonuca güvenmeden önce çeliğinizin grubunu ayrıca doğrulayın.",
+    preheatOtherCarbonEquivalentsTitle:
+        'Diğer karbon eşdeğerleri (yalnızca referans)',
+    preheatOtherCarbonEquivalentsCaption:
+        "EN 1011-2'nin parçası değildir — yalnızca bilgilendirme amaçlıdır.",
+    preheatUseInCoolingTimeButton:
+        'Bu ön ısıtma sıcaklığını Soğuma Süresi hesaplayıcısında kullan',
+    coolingScreenTitle: 'Soğuma Süresi (t8/5) Hesaplayıcı',
+    coolingScreenSubtitle: 'EN 1011-2 Ek D.6',
+    coolingTempCardTitle: 'Ön ısıtma / pasolar arası sıcaklık',
+    coolingT0Label: 'Ön ısıtma veya pasolar arası sıcaklık T0 (°C)',
+    coolingT0InvalidError:
+        "500°C'nin altında olmalıdır — soğuma formülü bu değerde ve üzerinde tanımsızdır.",
+    coolingHeatInputCardTitle: 'Isı girdisi',
+    coolingJointCardTitle: 'Bağlantı ve kalınlık',
+    coolingJointTypeLabel: 'Bağlantı tipi',
+    coolingJointTypeRunOnPlate: 'Levha üzeri paso / plaka üzeri paso',
+    coolingJointTypeButtBetweenRuns: 'Alın kaynağı — pasolar arası',
+    coolingFilletNotSupportedNote:
+        'Köşe kaynağı bağlantıları henüz desteklenmiyor — EN 1011-2 yalnızca bir aralık verir (F2 0.45–0.67) ve enterpolasyon kuralı yoktur, bu yüzden uygulama bunlar için değer hesaplamaz.',
+    coolingThicknessLabel: 'Sac kalınlığı (mm)',
+    coolingCalculateButton: 'Soğuma süresini hesapla',
+    coolingResultLabel: 'Soğuma süresi t8/5',
+    coolingRegimeTwoD: '2D ince levha',
+    coolingRegimeThreeD: '3D kalın levha',
+    coolingRegimeExplanation:
+        '{regime} formülü kullanılarak hesaplandı (bu girdiler için geçiş kalınlığı dt = {dt} mm).',
+    coolingWarningHeatInputOutOfRange:
+        'Isı girdisi {value} kJ/mm — EN 1011-2 örnek hesaplarında görülen tipik 0.5–4.0 kJ/mm aralığının dışında.',
+    coolingWarningThicknessOutOfRange:
+        'Kalınlık {value} mm — bu hesaplama için tipik aralığın dışında; girdilerinizi kontrol edin.',
+    heatInputDirectModeLabel: 'Doğrudan gir',
+    heatInputArcParamsModeLabel: 'Ark parametrelerinden hesapla',
+    heatInputQLabel: 'Net ısı girdisi Q (kJ/mm)',
+    heatInputProcessLabel: 'Kaynak yöntemi',
+    heatInputProcessSaw: 'SAW',
+    heatInputProcessSmaw: 'SMAW',
+    heatInputProcessGmawMag: 'GMAW / MAG',
+    heatInputVoltageLabel: 'Gerilim (V)',
+    heatInputCurrentLabel: 'Akım (A)',
+    heatInputTravelSpeedLabel: 'İlerleme hızı (mm/dk)',
+    heatInputComputedLabel: 'Hesaplanan Q: {value} kJ/mm',
+    heatInputVerifiedProcessesNote:
+        "Ark ısıl verimi EN 1011-2'de yalnızca SAW, SMAW ve GMAW/MAG için doğrulanmıştır. Diğer yöntemler için 'Doğrudan gir' seçeneğine geçip Q değerini başka bir kaynaktan girin.",
   ),
   AppLanguage.ru: L10nStrings(
     navBrand: 'Varyos Weld',
@@ -771,6 +1035,81 @@ const Map<AppLanguage, L10nStrings> _strings = {
     presetSaved: 'Шаблон сохранён.',
     presetSavedOffline:
         'Сохранено только на этом устройстве — синхронизируется, когда появится подключение к интернету.',
+    dashboardPreheatCalculator: 'Температура предварительного подогрева',
+    dashboardCoolingTimeCalculator: 'Время охлаждения (t8/5)',
+    materialFieldNickel: 'Никель (Ni) %',
+    preheatScreenTitle: 'Калькулятор температуры предварительного подогрева',
+    preheatScreenSubtitle: 'EN 1011-2, метод B (на основе CET)',
+    preheatCompositionCardTitle: 'Химический состав основного металла',
+    preheatCompositionCardSubtitle: 'Введите процент по массе; пусто = 0%',
+    preheatLoadFromLibraryLabel: 'Загрузить из сохранённого основного металла',
+    preheatBlankMeansZeroNote:
+        'Оставьте элемент пустым, если он не анализировался или отсутствует — в расчёте он принимается за 0%.',
+    preheatWeldMetalCetLabel:
+        'CET наплавленного металла % (необязательно — для особого правила)',
+    preheatJointCardTitle: 'Соединение и процесс',
+    preheatThicknessLabel: 'Толщина пластины (мм)',
+    preheatHdLabel: 'Диффузионный водород HD (мл/100г, ISO 3690)',
+    preheatYieldStrengthLabel: 'Предел текучести стали (Н/мм², необязательно)',
+    preheatCalculateButton: 'Рассчитать температуру подогрева',
+    preheatResultLabel: 'Рекомендуемая температура предварительного подогрева',
+    preheatSpecialRuleNote:
+        'Расчётный CET скорректирован до {value}% согласно особому правилу EN 1011-2 (CET наплавленного металла + 0.03%).',
+    preheatWarningCetOutOfRange:
+        'CET составляет {value}% — вне проверенного диапазона стандарта 0.2–0.5%. Относитесь к этому результату с особой осторожностью.',
+    preheatWarningThicknessOutOfRange:
+        'Толщина {value} мм — вне проверенного диапазона стандарта 10–90 мм.',
+    preheatWarningHdOutOfRange:
+        'Диффузионный водород {value} мл/100г — вне проверенного диапазона стандарта 1–20 мл/100г.',
+    preheatWarningHeatInputOutOfRange:
+        'Погонная энергия {value} кДж/мм — вне проверенного диапазона стандарта 0.5–4.0 кДж/мм.',
+    preheatWarningYieldOutOfRange:
+        'Предел текучести {value} Н/мм² — выше проверенного предела стандарта 1000 Н/мм².',
+    preheatIso15608Note:
+        'Этот метод (EN 1011-2, Приложение C.3, метод B) проверен для групп сталей 1–4 по ISO/TR 15608 (обычные конструкционные стали и стали для сосудов под давлением). Отдельно проверьте группу вашей стали, прежде чем полагаться на этот результат для высоколегированных или нестандартных марок.',
+    preheatOtherCarbonEquivalentsTitle:
+        'Другие углеродные эквиваленты (только для справки)',
+    preheatOtherCarbonEquivalentsCaption:
+        'Не входит в EN 1011-2 — только информационно.',
+    preheatUseInCoolingTimeButton:
+        'Использовать эту температуру подогрева в калькуляторе времени охлаждения',
+    coolingScreenTitle: 'Калькулятор времени охлаждения (t8/5)',
+    coolingScreenSubtitle: 'EN 1011-2, Приложение D.6',
+    coolingTempCardTitle: 'Температура предварительного подогрева / между проходами',
+    coolingT0Label: 'Температура подогрева или между проходами T0 (°C)',
+    coolingT0InvalidError:
+        'Должна быть ниже 500°C — формула охлаждения не определена при этом значении и выше.',
+    coolingHeatInputCardTitle: 'Погонная энергия',
+    coolingJointCardTitle: 'Соединение и толщина',
+    coolingJointTypeLabel: 'Тип соединения',
+    coolingJointTypeRunOnPlate: 'Наплавка на пластину / валик на пластине',
+    coolingJointTypeButtBetweenRuns: 'Стыковой шов — между проходами',
+    coolingFilletNotSupportedNote:
+        'Угловые соединения пока не поддерживаются — EN 1011-2 задаёт только диапазон (F2 0.45–0.67) без правила интерполяции, поэтому приложение не рассчитывает для них значение.',
+    coolingThicknessLabel: 'Толщина пластины (мм)',
+    coolingCalculateButton: 'Рассчитать время охлаждения',
+    coolingResultLabel: 'Время охлаждения t8/5',
+    coolingRegimeTwoD: '2D тонкая пластина',
+    coolingRegimeThreeD: '3D толстая пластина',
+    coolingRegimeExplanation:
+        'Рассчитано по формуле {regime} (переходная толщина dt = {dt} мм для этих данных).',
+    coolingWarningHeatInputOutOfRange:
+        'Погонная энергия {value} кДж/мм — вне типичного диапазона 0.5–4.0 кДж/мм, встречающегося в примерах EN 1011-2.',
+    coolingWarningThicknessOutOfRange:
+        'Толщина {value} мм — вне типичного диапазона для этого расчёта; перепроверьте исходные данные.',
+    heatInputDirectModeLabel: 'Ввести напрямую',
+    heatInputArcParamsModeLabel: 'Рассчитать по параметрам дуги',
+    heatInputQLabel: 'Погонная энергия Q (кДж/мм)',
+    heatInputProcessLabel: 'Способ сварки',
+    heatInputProcessSaw: 'SAW',
+    heatInputProcessSmaw: 'SMAW',
+    heatInputProcessGmawMag: 'GMAW / MAG',
+    heatInputVoltageLabel: 'Напряжение (В)',
+    heatInputCurrentLabel: 'Сила тока (А)',
+    heatInputTravelSpeedLabel: 'Скорость сварки (мм/мин)',
+    heatInputComputedLabel: 'Расчётная Q: {value} кДж/мм',
+    heatInputVerifiedProcessesNote:
+        'Тепловой КПД дуги проверен в EN 1011-2 только для SAW, SMAW и GMAW/MAG. Для других процессов переключитесь на «Ввести напрямую» и укажите Q из другого источника.',
   ),
   AppLanguage.de: L10nStrings(
     navBrand: 'Varyos Weld',
@@ -936,6 +1275,82 @@ const Map<AppLanguage, L10nStrings> _strings = {
     presetSaved: 'Vorlage gespeichert.',
     presetSavedOffline:
         'Nur auf diesem Gerät gespeichert — wird synchronisiert, sobald Sie wieder online sind.',
+    dashboardPreheatCalculator: 'Vorwärmtemperatur',
+    dashboardCoolingTimeCalculator: 'Abkühlzeit (t8/5)',
+    materialFieldNickel: 'Nickel (Ni) %',
+    preheatScreenTitle: 'Vorwärmtemperatur-Rechner',
+    preheatScreenSubtitle: 'EN 1011-2 Methode B (CET-basiert)',
+    preheatCompositionCardTitle:
+        'Chemische Zusammensetzung des Grundwerkstoffs',
+    preheatCompositionCardSubtitle: 'Gewichtsprozent eingeben; leer = 0%',
+    preheatLoadFromLibraryLabel: 'Aus gespeichertem Grundwerkstoff laden',
+    preheatBlankMeansZeroNote:
+        'Lassen Sie ein Element leer, wenn es nicht analysiert wurde oder nicht vorhanden ist — es wird in der Berechnung als 0% behandelt.',
+    preheatWeldMetalCetLabel:
+        'Schweißgut-CET % (optional — für die Sonderregel)',
+    preheatJointCardTitle: 'Verbindung & Verfahren',
+    preheatThicknessLabel: 'Blechdicke (mm)',
+    preheatHdLabel: 'Diffusibler Wasserstoff HD (ml/100g, ISO 3690)',
+    preheatYieldStrengthLabel: 'Streckgrenze des Stahls (N/mm², optional)',
+    preheatCalculateButton: 'Vorwärmtemperatur berechnen',
+    preheatResultLabel: 'Empfohlene Vorwärmtemperatur',
+    preheatSpecialRuleNote:
+        'Design-CET auf {value}% angepasst gemäß der Sonderregel von EN 1011-2 (Schweißgut-CET + 0,03%).',
+    preheatWarningCetOutOfRange:
+        'CET beträgt {value}% — außerhalb des validierten Bereichs der Norm von 0,2–0,5%. Behandeln Sie dieses Ergebnis mit besonderer Vorsicht.',
+    preheatWarningThicknessOutOfRange:
+        'Dicke beträgt {value} mm — außerhalb des validierten Bereichs der Norm von 10–90 mm.',
+    preheatWarningHdOutOfRange:
+        'Diffusibler Wasserstoff beträgt {value} ml/100g — außerhalb des validierten Bereichs der Norm von 1–20 ml/100g.',
+    preheatWarningHeatInputOutOfRange:
+        'Streckenenergie beträgt {value} kJ/mm — außerhalb des validierten Bereichs der Norm von 0,5–4,0 kJ/mm.',
+    preheatWarningYieldOutOfRange:
+        'Streckgrenze beträgt {value} N/mm² — über dem validierten Grenzwert der Norm von 1000 N/mm².',
+    preheatIso15608Note:
+        'Diese Methode (EN 1011-2 Anhang C.3, Methode B) ist für Stahlgruppen 1–4 nach ISO/TR 15608 validiert (übliche Baustähle und Druckbehälterstähle). Überprüfen Sie die Gruppe Ihres Stahls separat, bevor Sie sich bei hochlegierten oder exotischen Güten auf dieses Ergebnis verlassen.',
+    preheatOtherCarbonEquivalentsTitle:
+        'Andere Kohlenstoffäquivalente (nur zur Referenz)',
+    preheatOtherCarbonEquivalentsCaption:
+        'Nicht Teil von EN 1011-2 — nur informativ.',
+    preheatUseInCoolingTimeButton:
+        'Diese Vorwärmtemperatur im Abkühlzeit-Rechner verwenden',
+    coolingScreenTitle: 'Abkühlzeit (t8/5)-Rechner',
+    coolingScreenSubtitle: 'EN 1011-2 Anhang D.6',
+    coolingTempCardTitle: 'Vorwärm-/Zwischenlagentemperatur',
+    coolingT0Label: 'Vorwärm- oder Zwischenlagentemperatur T0 (°C)',
+    coolingT0InvalidError:
+        'Muss unter 500°C liegen — die Abkühlformel ist bei diesem Wert oder darüber nicht definiert.',
+    coolingHeatInputCardTitle: 'Streckenenergie',
+    coolingJointCardTitle: 'Verbindung & Dicke',
+    coolingJointTypeLabel: 'Verbindungsart',
+    coolingJointTypeRunOnPlate: 'Auftragslage auf Blech / Raupe auf Blech',
+    coolingJointTypeButtBetweenRuns: 'Stumpfnaht — zwischen den Lagen',
+    coolingFilletNotSupportedNote:
+        'Kehlnahtverbindungen werden noch nicht unterstützt — EN 1011-2 gibt nur einen Bereich an (F2 0,45–0,67) ohne Interpolationsregel, daher berechnet diese App dafür keinen Wert.',
+    coolingThicknessLabel: 'Blechdicke (mm)',
+    coolingCalculateButton: 'Abkühlzeit berechnen',
+    coolingResultLabel: 'Abkühlzeit t8/5',
+    coolingRegimeTwoD: '2D dünnes Blech',
+    coolingRegimeThreeD: '3D dickes Blech',
+    coolingRegimeExplanation:
+        'Berechnet mit der {regime}-Formel (Übergangsdicke dt = {dt} mm für diese Eingaben).',
+    coolingWarningHeatInputOutOfRange:
+        'Streckenenergie beträgt {value} kJ/mm — außerhalb des typischen Bereichs von 0,5–4,0 kJ/mm aus den Rechenbeispielen von EN 1011-2.',
+    coolingWarningThicknessOutOfRange:
+        'Dicke beträgt {value} mm — außerhalb des typischen Bereichs für diese Berechnung; überprüfen Sie Ihre Eingaben.',
+    heatInputDirectModeLabel: 'Direkt eingeben',
+    heatInputArcParamsModeLabel: 'Aus Lichtbogenparametern berechnen',
+    heatInputQLabel: 'Streckenenergie Q (kJ/mm)',
+    heatInputProcessLabel: 'Schweißverfahren',
+    heatInputProcessSaw: 'SAW',
+    heatInputProcessSmaw: 'SMAW',
+    heatInputProcessGmawMag: 'GMAW / MAG',
+    heatInputVoltageLabel: 'Spannung (V)',
+    heatInputCurrentLabel: 'Strom (A)',
+    heatInputTravelSpeedLabel: 'Schweißgeschwindigkeit (mm/min)',
+    heatInputComputedLabel: 'Berechnete Q: {value} kJ/mm',
+    heatInputVerifiedProcessesNote:
+        'Der thermische Lichtbogenwirkungsgrad ist in EN 1011-2 nur für SAW, SMAW und GMAW/MAG verifiziert. Wechseln Sie für andere Verfahren zu "Direkt eingeben" und geben Sie Q aus einer anderen Quelle an.',
   ),
   AppLanguage.hi: L10nStrings(
     navBrand: 'Varyos Weld',
@@ -1096,6 +1511,78 @@ const Map<AppLanguage, L10nStrings> _strings = {
     presetSaved: 'प्रीसेट सेव हो गया।',
     presetSavedOffline:
         'सिर्फ इस डिवाइस पर सेव हुआ — इंटरनेट से जुड़ते ही सिंक हो जाएगा।',
+    dashboardPreheatCalculator: 'प्रीहीट तापमान',
+    dashboardCoolingTimeCalculator: 'कूलिंग टाइम (t8/5)',
+    materialFieldNickel: 'निकल (Ni) %',
+    preheatScreenTitle: 'प्रीहीट तापमान कैलकुलेटर',
+    preheatScreenSubtitle: 'EN 1011-2 मेथड B (CET आधारित)',
+    preheatCompositionCardTitle: 'मूल धातु संरचना',
+    preheatCompositionCardSubtitle: 'वज़न के अनुसार प्रतिशत दर्ज करें; खाली = 0%',
+    preheatLoadFromLibraryLabel: 'सेव किए गए मूल धातु से लोड करें',
+    preheatBlankMeansZeroNote:
+        'अगर कोई तत्व विश्लेषित नहीं हुआ या मौजूद नहीं है तो उसे खाली छोड़ दें — गणना में इसे 0% माना जाएगा।',
+    preheatWeldMetalCetLabel: 'वेल्ड मेटल CET % (वैकल्पिक — विशेष नियम के लिए)',
+    preheatJointCardTitle: 'जॉइंट और प्रोसेस',
+    preheatThicknessLabel: 'प्लेट मोटाई (mm)',
+    preheatHdLabel: 'डिफ्यूज़िबल हाइड्रोजन HD (ml/100g, ISO 3690)',
+    preheatYieldStrengthLabel: 'स्टील यील्ड स्ट्रेंथ (N/mm², वैकल्पिक)',
+    preheatCalculateButton: 'प्रीहीट तापमान की गणना करें',
+    preheatResultLabel: 'अनुशंसित प्रीहीट तापमान',
+    preheatSpecialRuleNote:
+        'EN 1011-2 के विशेष नियम (वेल्ड मेटल CET + 0.03%) के अनुसार डिज़ाइन CET को {value}% पर समायोजित किया गया।',
+    preheatWarningCetOutOfRange:
+        'CET {value}% है — मानक की मान्य सीमा 0.2–0.5% से बाहर। इस परिणाम को अतिरिक्त सावधानी से लें।',
+    preheatWarningThicknessOutOfRange:
+        'मोटाई {value} mm है — मानक की मान्य सीमा 10–90 mm से बाहर।',
+    preheatWarningHdOutOfRange:
+        'डिफ्यूज़िबल हाइड्रोजन {value} ml/100g है — मानक की मान्य सीमा 1–20 ml/100g से बाहर।',
+    preheatWarningHeatInputOutOfRange:
+        'हीट इनपुट {value} kJ/mm है — मानक की मान्य सीमा 0.5–4.0 kJ/mm से बाहर।',
+    preheatWarningYieldOutOfRange:
+        'यील्ड स्ट्रेंथ {value} N/mm² है — मानक की मान्य सीमा 1000 N/mm² से अधिक।',
+    preheatIso15608Note:
+        'यह विधि (EN 1011-2 परिशिष्ट C.3, मेथड B) ISO/TR 15608 के अनुसार स्टील ग्रुप 1–4 (सामान्य संरचनात्मक और प्रेशर-वेसल स्टील) के लिए मान्य है। हाई-अलॉय या असामान्य ग्रेड के लिए इस परिणाम पर भरोसा करने से पहले अपने स्टील का ग्रुप अलग से जांच लें।',
+    preheatOtherCarbonEquivalentsTitle: 'अन्य कार्बन इक्विवैलेंट (केवल संदर्भ हेतु)',
+    preheatOtherCarbonEquivalentsCaption: 'EN 1011-2 का हिस्सा नहीं है — केवल जानकारी हेतु।',
+    preheatUseInCoolingTimeButton:
+        'इस प्रीहीट तापमान को कूलिंग टाइम कैलकुलेटर में इस्तेमाल करें',
+    coolingScreenTitle: 'कूलिंग टाइम (t8/5) कैलकुलेटर',
+    coolingScreenSubtitle: 'EN 1011-2 परिशिष्ट D.6',
+    coolingTempCardTitle: 'प्रीहीट / इंटरपास तापमान',
+    coolingT0Label: 'प्रीहीट या इंटरपास तापमान T0 (°C)',
+    coolingT0InvalidError:
+        '500°C से कम होना चाहिए — इस मान पर या इससे ऊपर कूलिंग फॉर्मूला अपरिभाषित है।',
+    coolingHeatInputCardTitle: 'हीट इनपुट',
+    coolingJointCardTitle: 'जॉइंट और मोटाई',
+    coolingJointTypeLabel: 'जॉइंट टाइप',
+    coolingJointTypeRunOnPlate: 'रन-ऑन-प्लेट / बीड-ऑन-प्लेट',
+    coolingJointTypeButtBetweenRuns: 'बट वेल्ड — पासों के बीच',
+    coolingFilletNotSupportedNote:
+        'फिलेट वेल्ड जॉइंट अभी समर्थित नहीं हैं — EN 1011-2 केवल एक रेंज (F2 0.45–0.67) देता है, बिना किसी इंटरपोलेशन नियम के, इसलिए यह ऐप इनके लिए कोई मान नहीं निकालता।',
+    coolingThicknessLabel: 'प्लेट मोटाई (mm)',
+    coolingCalculateButton: 'कूलिंग टाइम की गणना करें',
+    coolingResultLabel: 'कूलिंग टाइम t8/5',
+    coolingRegimeTwoD: '2D पतली प्लेट',
+    coolingRegimeThreeD: '3D मोटी प्लेट',
+    coolingRegimeExplanation:
+        '{regime} फॉर्मूला का उपयोग करके गणना की गई (इन इनपुट के लिए ट्रांज़िशन मोटाई dt = {dt} mm)।',
+    coolingWarningHeatInputOutOfRange:
+        'हीट इनपुट {value} kJ/mm है — EN 1011-2 के उदाहरणों में देखी गई सामान्य 0.5–4.0 kJ/mm रेंज से बाहर।',
+    coolingWarningThicknessOutOfRange:
+        'मोटाई {value} mm है — इस गणना के लिए सामान्य सीमा से बाहर; अपने इनपुट दोबारा जांचें।',
+    heatInputDirectModeLabel: 'सीधे दर्ज करें',
+    heatInputArcParamsModeLabel: 'आर्क पैरामीटर से गणना करें',
+    heatInputQLabel: 'नेट हीट इनपुट Q (kJ/mm)',
+    heatInputProcessLabel: 'वेल्डिंग प्रोसेस',
+    heatInputProcessSaw: 'SAW',
+    heatInputProcessSmaw: 'SMAW',
+    heatInputProcessGmawMag: 'GMAW / MAG',
+    heatInputVoltageLabel: 'वोल्टेज (V)',
+    heatInputCurrentLabel: 'करंट (A)',
+    heatInputTravelSpeedLabel: 'ट्रैवल स्पीड (mm/min)',
+    heatInputComputedLabel: 'गणना की गई Q: {value} kJ/mm',
+    heatInputVerifiedProcessesNote:
+        "आर्क थर्मल एफिशिएंसी EN 1011-2 में केवल SAW, SMAW और GMAW/MAG के लिए वेरिफाई की गई है। अन्य प्रोसेस के लिए 'सीधे दर्ज करें' पर स्विच करें और Q किसी अन्य स्रोत से दर्ज करें।",
   ),
 };
 

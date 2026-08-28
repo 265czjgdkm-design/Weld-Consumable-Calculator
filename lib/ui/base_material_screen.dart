@@ -66,6 +66,7 @@ class _BaseMaterialScreenState extends State<BaseMaterialScreen> {
       manganesePercent: result.manganesePercent,
       chromiumPercent: result.chromiumPercent,
       molybdenumPercent: result.molybdenumPercent,
+      nickelPercent: result.nickelPercent,
       copperPercent: result.copperPercent,
       vanadiumPercent: result.vanadiumPercent,
       niobiumPercent: result.niobiumPercent,
@@ -107,6 +108,7 @@ class _BaseMaterialScreenState extends State<BaseMaterialScreen> {
       manganesePercent: result.manganesePercent,
       chromiumPercent: result.chromiumPercent,
       molybdenumPercent: result.molybdenumPercent,
+      nickelPercent: result.nickelPercent,
       copperPercent: result.copperPercent,
       vanadiumPercent: result.vanadiumPercent,
       niobiumPercent: result.niobiumPercent,
@@ -240,6 +242,7 @@ class _BaseMaterialFormResult {
     required this.manganesePercent,
     required this.chromiumPercent,
     required this.molybdenumPercent,
+    required this.nickelPercent,
     required this.copperPercent,
     required this.vanadiumPercent,
     required this.niobiumPercent,
@@ -263,6 +266,7 @@ class _BaseMaterialFormResult {
   final double? manganesePercent;
   final double? chromiumPercent;
   final double? molybdenumPercent;
+  final double? nickelPercent;
   final double? copperPercent;
   final double? vanadiumPercent;
   final double? niobiumPercent;
@@ -282,6 +286,7 @@ const _elementKeys = [
   'manganese',
   'chromium',
   'molybdenum',
+  'nickel',
   'copper',
   'vanadium',
   'niobium',
@@ -296,6 +301,7 @@ String _elementLabel(L10nStrings strings, String key) => switch (key) {
   'manganese' => strings.materialFieldManganese,
   'chromium' => strings.materialFieldChromium,
   'molybdenum' => strings.materialFieldMolybdenum,
+  'nickel' => strings.materialFieldNickel,
   'copper' => strings.materialFieldCopper,
   'vanadium' => strings.materialFieldVanadium,
   'niobium' => strings.materialFieldNiobium,
@@ -312,6 +318,7 @@ double? _elementValueOf(CustomBaseMaterial? material, String key) =>
       'manganese' => material?.manganesePercent,
       'chromium' => material?.chromiumPercent,
       'molybdenum' => material?.molybdenumPercent,
+      'nickel' => material?.nickelPercent,
       'copper' => material?.copperPercent,
       'vanadium' => material?.vanadiumPercent,
       'niobium' => material?.niobiumPercent,
@@ -505,6 +512,7 @@ class _BaseMaterialFormDialogState extends State<_BaseMaterialFormDialog> {
         manganesePercent: elementResults['manganese']!.value,
         chromiumPercent: elementResults['chromium']!.value,
         molybdenumPercent: elementResults['molybdenum']!.value,
+        nickelPercent: elementResults['nickel']!.value,
         copperPercent: elementResults['copper']!.value,
         vanadiumPercent: elementResults['vanadium']!.value,
         niobiumPercent: elementResults['niobium']!.value,

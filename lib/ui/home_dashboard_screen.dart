@@ -4,7 +4,9 @@ import '../l10n/app_locale_scope.dart';
 import 'base_material_screen.dart';
 import 'calculator_page.dart';
 import 'calculator_page/calculator_page_widgets.dart';
+import 'cooling_time_calculator_screen.dart';
 import 'filler_material_screen.dart';
+import 'preheat_calculator_screen.dart';
 import 'saved_calculations_screen.dart';
 import 'saved_reports_screen.dart';
 
@@ -55,6 +57,28 @@ class HomeDashboardScreen extends StatelessWidget {
                               onPressed: () => Navigator.of(context).push(
                                 MaterialPageRoute(
                                   builder: (context) => const CalculatorPage(),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 14),
+                            _DashboardButton(
+                              icon: Icons.device_thermostat_outlined,
+                              label: strings.dashboardPreheatCalculator,
+                              onPressed: () => Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (context) =>
+                                      const PreheatCalculatorScreen(),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 14),
+                            _DashboardButton(
+                              icon: Icons.ac_unit_outlined,
+                              label: strings.dashboardCoolingTimeCalculator,
+                              onPressed: () => Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (context) =>
+                                      const CoolingTimeCalculatorScreen(),
                                 ),
                               ),
                             ),

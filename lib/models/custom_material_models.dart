@@ -18,6 +18,7 @@ class CustomBaseMaterial {
     this.chromiumPercent,
     this.molybdenumPercent,
     this.copperPercent,
+    this.nickelPercent,
     this.vanadiumPercent,
     this.niobiumPercent,
     this.titaniumPercent,
@@ -43,6 +44,7 @@ class CustomBaseMaterial {
   final double? chromiumPercent;
   final double? molybdenumPercent;
   final double? copperPercent;
+  final double? nickelPercent;
   final double? vanadiumPercent;
   final double? niobiumPercent;
   final double? titaniumPercent;
@@ -70,6 +72,7 @@ class CustomBaseMaterial {
     if (chromiumPercent != null) 'chromiumPercent': chromiumPercent,
     if (molybdenumPercent != null) 'molybdenumPercent': molybdenumPercent,
     if (copperPercent != null) 'copperPercent': copperPercent,
+    if (nickelPercent != null) 'nickelPercent': nickelPercent,
     if (vanadiumPercent != null) 'vanadiumPercent': vanadiumPercent,
     if (niobiumPercent != null) 'niobiumPercent': niobiumPercent,
     if (titaniumPercent != null) 'titaniumPercent': titaniumPercent,
@@ -99,6 +102,7 @@ class CustomBaseMaterial {
         chromiumPercent: (json['chromiumPercent'] as num?)?.toDouble(),
         molybdenumPercent: (json['molybdenumPercent'] as num?)?.toDouble(),
         copperPercent: (json['copperPercent'] as num?)?.toDouble(),
+        nickelPercent: (json['nickelPercent'] as num?)?.toDouble(),
         vanadiumPercent: (json['vanadiumPercent'] as num?)?.toDouble(),
         niobiumPercent: (json['niobiumPercent'] as num?)?.toDouble(),
         titaniumPercent: (json['titaniumPercent'] as num?)?.toDouble(),
@@ -126,6 +130,7 @@ class CustomFillerMaterial {
     this.chromiumPercent,
     this.molybdenumPercent,
     this.copperPercent,
+    this.nickelPercent,
     this.vanadiumPercent,
     this.niobiumPercent,
     this.titaniumPercent,
@@ -150,6 +155,7 @@ class CustomFillerMaterial {
   final double? chromiumPercent;
   final double? molybdenumPercent;
   final double? copperPercent;
+  final double? nickelPercent;
   final double? vanadiumPercent;
   final double? niobiumPercent;
   final double? titaniumPercent;
@@ -174,6 +180,7 @@ class CustomFillerMaterial {
     if (chromiumPercent != null) 'chromiumPercent': chromiumPercent,
     if (molybdenumPercent != null) 'molybdenumPercent': molybdenumPercent,
     if (copperPercent != null) 'copperPercent': copperPercent,
+    if (nickelPercent != null) 'nickelPercent': nickelPercent,
     if (vanadiumPercent != null) 'vanadiumPercent': vanadiumPercent,
     if (niobiumPercent != null) 'niobiumPercent': niobiumPercent,
     if (titaniumPercent != null) 'titaniumPercent': titaniumPercent,
@@ -200,6 +207,7 @@ class CustomFillerMaterial {
         chromiumPercent: (json['chromiumPercent'] as num?)?.toDouble(),
         molybdenumPercent: (json['molybdenumPercent'] as num?)?.toDouble(),
         copperPercent: (json['copperPercent'] as num?)?.toDouble(),
+        nickelPercent: (json['nickelPercent'] as num?)?.toDouble(),
         vanadiumPercent: (json['vanadiumPercent'] as num?)?.toDouble(),
         niobiumPercent: (json['niobiumPercent'] as num?)?.toDouble(),
         titaniumPercent: (json['titaniumPercent'] as num?)?.toDouble(),
