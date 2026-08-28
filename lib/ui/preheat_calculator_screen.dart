@@ -75,7 +75,6 @@ class _PreheatResult {
   const _PreheatResult({
     required this.tp,
     required this.parentCet,
-    required this.cetIsOverride,
     required this.designCet,
     required this.specialRuleApplied,
     required this.flags,
@@ -93,7 +92,6 @@ class _PreheatResult {
 
   final double tp;
   final double parentCet;
-  final bool cetIsOverride;
   final double designCet;
   final bool specialRuleApplied;
   final List<PreheatRangeFlag> flags;
@@ -130,10 +128,15 @@ class _PreheatCalculatorScreenState extends State<PreheatCalculatorScreen> {
   // Set at load time from the picked material and kept around independently
   // of _selectedLibraryMaterial (which gets reset to null right after load
   // purely to reset the dropdown's visible selection -- see
-  // _libraryDropdownResetToken below) so the stored override values are
-  // still available to _calculate().
+  // _libraryDropdownResetToken below) so the stored override value is still
+  // available to _calculate(). CET is deliberately NOT overridden this way
+  // -- unlike Pcm (informational only, see en1011_formulas.dart), CET
+  // directly drives the safety-relevant Tp result and the library's CET
+  // field has no "measured/certified" semantics over the live composition,
+  // so it is always computed fresh from the current composition fields.
+  // Pcm's override is cleared on any composition edit via
+  // _invalidateLoadedPcmOverride below, so it never goes stale either.
   double? _loadedPcmPercent;
-  double? _loadedCetPercent;
 
   // Bumped on every load so the dropdown's key changes and it remounts
   // showing null again -- DropdownButtonFormField's `initialValue` is only
@@ -180,8 +183,16 @@ class _PreheatCalculatorScreenState extends State<PreheatCalculatorScreen> {
       _selectedLibraryMaterial = null;
       _libraryDropdownResetToken++;
       _loadedPcmPercent = material.pcmPercent;
-      _loadedCetPercent = material.cetPercent;
     });
+  }
+
+  /// Any edit to a composition field after a library load invalidates the
+  /// loaded Pcm override -- otherwise a changed composition (e.g. a higher-
+  /// carbon cast) would keep displaying the stale stored Pcm instead of a
+  /// value matching what's actually been entered.
+  void _invalidateLoadedPcmOverride(String _) {
+    if (_loadedPcmPercent == null) return;
+    setState(() => _loadedPcmPercent = null);
   }
 
   void _calculate() {
@@ -232,17 +243,14 @@ class _PreheatCalculatorScreenState extends State<PreheatCalculatorScreen> {
     if (invalid) return;
 
     double v(String key) => elementResults[key]!.value ?? 0.0;
-    final storedCet = _loadedCetPercent;
-    final parentCet =
-        storedCet ??
-        computeCet(
-          c: v('carbon'),
-          mn: v('manganese'),
-          mo: v('molybdenum'),
-          cr: v('chromium'),
-          cu: v('copper'),
-          ni: v('nickel'),
-        );
+    final parentCet = computeCet(
+      c: v('carbon'),
+      mn: v('manganese'),
+      mo: v('molybdenum'),
+      cr: v('chromium'),
+      cu: v('copper'),
+      ni: v('nickel'),
+    );
     final designCet = resolveDesignCet(
       parentMetalCet: parentCet,
       weldMetalCet: weldMetalCet.value,
@@ -291,7 +299,6 @@ class _PreheatCalculatorScreenState extends State<PreheatCalculatorScreen> {
       _result = _PreheatResult(
         tp: tp,
         parentCet: parentCet,
-        cetIsOverride: storedCet != null,
         designCet: designCet,
         specialRuleApplied: weldMetalCet.value != null && designCet != parentCet,
         flags: flags,
@@ -388,6 +395,7 @@ class _PreheatCalculatorScreenState extends State<PreheatCalculatorScreen> {
                                   label: _elementLabel(strings, key),
                                   errorText: _elementErrors[key],
                                   width: 130,
+                                  onChanged: _invalidateLoadedPcmOverride,
                                 ),
                             ],
                           ),
@@ -551,12 +559,7 @@ class _PreheatResultView extends StatelessWidget {
           title: 'EN 1011-2 Annex C.3 (Method B)',
           subtitle: 'Tp = 697·CET + 160·tanh(d/35) + 62·HD^0.35 + (53·CET−32)·Q − 328',
           items: [
-            (
-              label: result.cetIsOverride
-                  ? 'CET (parent, stored override)'
-                  : 'CET (parent)',
-              value: result.parentCet.toStringAsFixed(3),
-            ),
+            (label: 'CET (parent)', value: result.parentCet.toStringAsFixed(3)),
             if (result.specialRuleApplied)
               (label: 'Design CET', value: result.designCet.toStringAsFixed(3)),
             (

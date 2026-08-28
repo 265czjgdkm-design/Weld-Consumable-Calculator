@@ -8,16 +8,16 @@ import 'widgets/formula_breakdown_card.dart';
 import 'widgets/heat_input_field.dart';
 import 'widgets/optional_number_field.dart';
 
-/// EN 1011-2 Annex D.6 cooling time (t8/5) calculator. Lives standalone --
-/// no PDF export or saved-history in v1 (see the implementation plan's
-/// scope-cut note); results are shown in-app only. Fillet weld joints are
-/// deliberately not modeled -- see `shapeFactorsFor` in
-/// `en1011_formulas.dart`.
 /// Lower sanity bound for T0 (°C) -- well below any physically plausible
 /// preheat/interpass temperature for welding, mirroring the upper-bound
 /// guard from isPreheatOrInterpassTempValid (500 C).
 const _minT0C = -50.0;
 
+/// EN 1011-2 Annex D.6 cooling time (t8/5) calculator. Lives standalone --
+/// no PDF export or saved-history in v1 (see the implementation plan's
+/// scope-cut note); results are shown in-app only. Fillet weld joints are
+/// deliberately not modeled -- see `shapeFactorsFor` in
+/// `en1011_formulas.dart`.
 class CoolingTimeCalculatorScreen extends StatefulWidget {
   const CoolingTimeCalculatorScreen({super.key, this.initialPreheatTempC});
 

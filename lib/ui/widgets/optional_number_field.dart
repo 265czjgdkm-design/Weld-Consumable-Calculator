@@ -30,12 +30,14 @@ class OptionalNumberField extends StatelessWidget {
     required this.label,
     this.errorText,
     this.width,
+    this.onChanged,
   });
 
   final TextEditingController controller;
   final String label;
   final String? errorText;
   final double? width;
+  final ValueChanged<String>? onChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -43,6 +45,7 @@ class OptionalNumberField extends StatelessWidget {
       controller: controller,
       keyboardType: const TextInputType.numberWithOptions(decimal: true),
       decoration: InputDecoration(labelText: label, errorText: errorText),
+      onChanged: onChanged,
     );
     if (width == null) return field;
     return SizedBox(width: width, child: field);
