@@ -178,9 +178,12 @@ void main() {
       expect(expectedPcm, isNot(closeTo(0.30, 1e-9)));
 
       expect(
-        find.text('CET (parent, stored override)'),
-        findsNothing,
-        reason: 'CET must always be computed live, never a stored override',
+        find.text(
+          'CET (parent): ${expectedCet.toStringAsFixed(3)}',
+          findRichText: true,
+        ),
+        findsOneWidget,
+        reason: 'CET must always be computed live, never a stale stored value',
       );
       expect(
         find.textContaining('Pcm (stored override)'),
