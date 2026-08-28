@@ -161,6 +161,8 @@ class L10nStrings {
     required this.preheatYieldStrengthLabel,
     required this.preheatCalculateButton,
     required this.preheatResultLabel,
+    required this.preheatNoPreheatRequiredLabel,
+    required this.preheatComputedValueBelowAmbientNote,
     required this.preheatSpecialRuleNote,
     required this.preheatWarningCetOutOfRange,
     required this.preheatWarningThicknessOutOfRange,
@@ -176,6 +178,7 @@ class L10nStrings {
     required this.coolingTempCardTitle,
     required this.coolingT0Label,
     required this.coolingT0InvalidError,
+    required this.coolingT0BelowMinError,
     required this.coolingHeatInputCardTitle,
     required this.coolingJointCardTitle,
     required this.coolingJointTypeLabel,
@@ -359,6 +362,8 @@ class L10nStrings {
   final String preheatYieldStrengthLabel;
   final String preheatCalculateButton;
   final String preheatResultLabel;
+  final String preheatNoPreheatRequiredLabel;
+  final String preheatComputedValueBelowAmbientNote;
   final String preheatSpecialRuleNote;
   final String preheatWarningCetOutOfRange;
   final String preheatWarningThicknessOutOfRange;
@@ -374,6 +379,7 @@ class L10nStrings {
   final String coolingTempCardTitle;
   final String coolingT0Label;
   final String coolingT0InvalidError;
+  final String coolingT0BelowMinError;
   final String coolingHeatInputCardTitle;
   final String coolingJointCardTitle;
   final String coolingJointTypeLabel;
@@ -581,6 +587,9 @@ const Map<AppLanguage, L10nStrings> _strings = {
     preheatYieldStrengthLabel: 'Steel yield strength (N/mm², optional)',
     preheatCalculateButton: 'Calculate preheat temperature',
     preheatResultLabel: 'Recommended preheat temperature',
+    preheatNoPreheatRequiredLabel: 'No preheat required',
+    preheatComputedValueBelowAmbientNote:
+        'Computed Method B value: {value} °C (below the 20 °C ambient reference).',
     preheatSpecialRuleNote:
         "Design CET adjusted to {value}% per EN 1011-2's special rule (weld metal CET + 0.03%).",
     preheatWarningCetOutOfRange:
@@ -607,6 +616,8 @@ const Map<AppLanguage, L10nStrings> _strings = {
     coolingT0Label: 'Preheat or interpass temperature T0 (°C)',
     coolingT0InvalidError:
         'Must be below 500°C — the cooling formula is undefined at or above this value.',
+    coolingT0BelowMinError:
+        'Must be -50°C or above — that is well below any physically plausible preheat or interpass temperature for welding.',
     coolingHeatInputCardTitle: 'Heat input',
     coolingJointCardTitle: 'Joint & thickness',
     coolingJointTypeLabel: 'Joint type',
@@ -817,6 +828,9 @@ const Map<AppLanguage, L10nStrings> _strings = {
     preheatYieldStrengthLabel: 'Çelik akma dayanımı (N/mm², isteğe bağlı)',
     preheatCalculateButton: 'Ön ısıtma sıcaklığını hesapla',
     preheatResultLabel: 'Önerilen ön ısıtma sıcaklığı',
+    preheatNoPreheatRequiredLabel: 'Ön ısıtma gerekli değil',
+    preheatComputedValueBelowAmbientNote:
+        'Hesaplanan Yöntem B değeri: {value} °C (20 °C ortam referansının altında).',
     preheatSpecialRuleNote:
         "Tasarım CET değeri EN 1011-2'nin özel kuralına göre %{value} olarak ayarlandı (kaynak metali CET + %0.03).",
     preheatWarningCetOutOfRange:
@@ -843,6 +857,8 @@ const Map<AppLanguage, L10nStrings> _strings = {
     coolingT0Label: 'Ön ısıtma veya pasolar arası sıcaklık T0 (°C)',
     coolingT0InvalidError:
         "500°C'nin altında olmalıdır — soğuma formülü bu değerde ve üzerinde tanımsızdır.",
+    coolingT0BelowMinError:
+        "-50°C veya üzerinde olmalıdır — bu, kaynak için fiziksel olarak makul herhangi bir ön ısıtma veya pasolar arası sıcaklığın çok altındadır.",
     coolingHeatInputCardTitle: 'Isı girdisi',
     coolingJointCardTitle: 'Bağlantı ve kalınlık',
     coolingJointTypeLabel: 'Bağlantı tipi',
@@ -1053,6 +1069,9 @@ const Map<AppLanguage, L10nStrings> _strings = {
     preheatYieldStrengthLabel: 'Предел текучести стали (Н/мм², необязательно)',
     preheatCalculateButton: 'Рассчитать температуру подогрева',
     preheatResultLabel: 'Рекомендуемая температура предварительного подогрева',
+    preheatNoPreheatRequiredLabel: 'Предварительный подогрев не требуется',
+    preheatComputedValueBelowAmbientNote:
+        'Расчётное значение по методу B: {value} °C (ниже эталонной температуры окружающей среды 20 °C).',
     preheatSpecialRuleNote:
         'Расчётный CET скорректирован до {value}% согласно особому правилу EN 1011-2 (CET наплавленного металла + 0.03%).',
     preheatWarningCetOutOfRange:
@@ -1079,6 +1098,8 @@ const Map<AppLanguage, L10nStrings> _strings = {
     coolingT0Label: 'Температура подогрева или между проходами T0 (°C)',
     coolingT0InvalidError:
         'Должна быть ниже 500°C — формула охлаждения не определена при этом значении и выше.',
+    coolingT0BelowMinError:
+        'Должна быть не ниже -50°C — это значительно ниже любой физически правдоподобной температуры подогрева или между проходами при сварке.',
     coolingHeatInputCardTitle: 'Погонная энергия',
     coolingJointCardTitle: 'Соединение и толщина',
     coolingJointTypeLabel: 'Тип соединения',
@@ -1294,6 +1315,9 @@ const Map<AppLanguage, L10nStrings> _strings = {
     preheatYieldStrengthLabel: 'Streckgrenze des Stahls (N/mm², optional)',
     preheatCalculateButton: 'Vorwärmtemperatur berechnen',
     preheatResultLabel: 'Empfohlene Vorwärmtemperatur',
+    preheatNoPreheatRequiredLabel: 'Kein Vorwärmen erforderlich',
+    preheatComputedValueBelowAmbientNote:
+        'Berechneter Methode-B-Wert: {value} °C (unter der Umgebungsreferenz von 20 °C).',
     preheatSpecialRuleNote:
         'Design-CET auf {value}% angepasst gemäß der Sonderregel von EN 1011-2 (Schweißgut-CET + 0,03%).',
     preheatWarningCetOutOfRange:
@@ -1320,6 +1344,8 @@ const Map<AppLanguage, L10nStrings> _strings = {
     coolingT0Label: 'Vorwärm- oder Zwischenlagentemperatur T0 (°C)',
     coolingT0InvalidError:
         'Muss unter 500°C liegen — die Abkühlformel ist bei diesem Wert oder darüber nicht definiert.',
+    coolingT0BelowMinError:
+        'Muss mindestens -50°C betragen — das liegt weit unter jeder physikalisch plausiblen Vorwärm- oder Zwischenlagentemperatur beim Schweißen.',
     coolingHeatInputCardTitle: 'Streckenenergie',
     coolingJointCardTitle: 'Verbindung & Dicke',
     coolingJointTypeLabel: 'Verbindungsart',
@@ -1528,6 +1554,9 @@ const Map<AppLanguage, L10nStrings> _strings = {
     preheatYieldStrengthLabel: 'स्टील यील्ड स्ट्रेंथ (N/mm², वैकल्पिक)',
     preheatCalculateButton: 'प्रीहीट तापमान की गणना करें',
     preheatResultLabel: 'अनुशंसित प्रीहीट तापमान',
+    preheatNoPreheatRequiredLabel: 'प्रीहीट की आवश्यकता नहीं',
+    preheatComputedValueBelowAmbientNote:
+        'गणना किया गया मेथड B मान: {value} °C (20 °C एम्बिएंट संदर्भ से कम)।',
     preheatSpecialRuleNote:
         'EN 1011-2 के विशेष नियम (वेल्ड मेटल CET + 0.03%) के अनुसार डिज़ाइन CET को {value}% पर समायोजित किया गया।',
     preheatWarningCetOutOfRange:
@@ -1552,6 +1581,8 @@ const Map<AppLanguage, L10nStrings> _strings = {
     coolingT0Label: 'प्रीहीट या इंटरपास तापमान T0 (°C)',
     coolingT0InvalidError:
         '500°C से कम होना चाहिए — इस मान पर या इससे ऊपर कूलिंग फॉर्मूला अपरिभाषित है।',
+    coolingT0BelowMinError:
+        '-50°C या उससे अधिक होना चाहिए — यह वेल्डिंग के लिए किसी भी भौतिक रूप से संभव प्रीहीट या इंटरपास तापमान से काफी कम है।',
     coolingHeatInputCardTitle: 'हीट इनपुट',
     coolingJointCardTitle: 'जॉइंट और मोटाई',
     coolingJointTypeLabel: 'जॉइंट टाइप',

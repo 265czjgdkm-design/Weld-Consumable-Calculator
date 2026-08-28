@@ -66,10 +66,16 @@ double? _elementValueOf(CustomBaseMaterial material, String key) =>
       _ => throw ArgumentError('Unknown element key: $key'),
     };
 
+/// Ambient reference temperature (°C) EN 1011-2 Method B is implicitly
+/// computed against -- a Tp at or below this means no preheat is needed,
+/// not a sub-zero preheat target.
+const _ambientC = 20.0;
+
 class _PreheatResult {
   const _PreheatResult({
     required this.tp,
     required this.parentCet,
+    required this.cetIsOverride,
     required this.designCet,
     required this.specialRuleApplied,
     required this.flags,
@@ -79,10 +85,15 @@ class _PreheatResult {
     required this.tanhTerm,
     required this.hdTerm,
     required this.qTerm,
+    required this.thicknessMm,
+    required this.hd,
+    required this.heatInputKJPerMm,
+    required this.yieldStrengthNPerMm2,
   });
 
   final double tp;
   final double parentCet;
+  final bool cetIsOverride;
   final double designCet;
   final bool specialRuleApplied;
   final List<PreheatRangeFlag> flags;
@@ -92,6 +103,12 @@ class _PreheatResult {
   final double tanhTerm;
   final double hdTerm;
   final double qTerm;
+  final double thicknessMm;
+  final double hd;
+  final double heatInputKJPerMm;
+  final double? yieldStrengthNPerMm2;
+
+  bool get noPreheatRequired => tp <= _ambientC;
 }
 
 class _PreheatCalculatorScreenState extends State<PreheatCalculatorScreen> {
@@ -109,6 +126,14 @@ class _PreheatCalculatorScreenState extends State<PreheatCalculatorScreen> {
   List<CustomBaseMaterial> _libraryMaterials = const [];
   CustomBaseMaterial? _selectedLibraryMaterial;
   double? _heatInputKJPerMm;
+
+  // Set at load time from the picked material and kept around independently
+  // of _selectedLibraryMaterial (which gets reset to null right after load
+  // purely to reset the dropdown's visible selection -- see
+  // _libraryDropdownResetToken below) so the stored override values are
+  // still available to _calculate().
+  double? _loadedPcmPercent;
+  double? _loadedCetPercent;
 
   // Bumped on every load so the dropdown's key changes and it remounts
   // showing null again -- DropdownButtonFormField's `initialValue` is only
@@ -154,6 +179,8 @@ class _PreheatCalculatorScreenState extends State<PreheatCalculatorScreen> {
     setState(() {
       _selectedLibraryMaterial = null;
       _libraryDropdownResetToken++;
+      _loadedPcmPercent = material.pcmPercent;
+      _loadedCetPercent = material.cetPercent;
     });
   }
 
@@ -205,14 +232,17 @@ class _PreheatCalculatorScreenState extends State<PreheatCalculatorScreen> {
     if (invalid) return;
 
     double v(String key) => elementResults[key]!.value ?? 0.0;
-    final parentCet = computeCet(
-      c: v('carbon'),
-      mn: v('manganese'),
-      mo: v('molybdenum'),
-      cr: v('chromium'),
-      cu: v('copper'),
-      ni: v('nickel'),
-    );
+    final storedCet = _loadedCetPercent;
+    final parentCet =
+        storedCet ??
+        computeCet(
+          c: v('carbon'),
+          mn: v('manganese'),
+          mo: v('molybdenum'),
+          cr: v('chromium'),
+          cu: v('copper'),
+          ni: v('nickel'),
+        );
     final designCet = resolveDesignCet(
       parentMetalCet: parentCet,
       weldMetalCet: weldMetalCet.value,
@@ -242,7 +272,7 @@ class _PreheatCalculatorScreenState extends State<PreheatCalculatorScreen> {
       ni: v('nickel'),
       cu: v('copper'),
     );
-    final storedPcm = _selectedLibraryMaterial?.pcmPercent;
+    final storedPcm = _loadedPcmPercent;
     final pcm =
         storedPcm ??
         computePcmItoBessyo(
@@ -261,6 +291,7 @@ class _PreheatCalculatorScreenState extends State<PreheatCalculatorScreen> {
       _result = _PreheatResult(
         tp: tp,
         parentCet: parentCet,
+        cetIsOverride: storedCet != null,
         designCet: designCet,
         specialRuleApplied: weldMetalCet.value != null && designCet != parentCet,
         flags: flags,
@@ -270,6 +301,10 @@ class _PreheatCalculatorScreenState extends State<PreheatCalculatorScreen> {
         tanhTerm: tanhTerm,
         hdTerm: hdTerm,
         qTerm: qTerm,
+        thicknessMm: thickness.value!,
+        hd: hd.value!,
+        heatInputKJPerMm: _heatInputKJPerMm!,
+        yieldStrengthNPerMm2: yieldStrength.value,
       );
     });
   }
@@ -467,12 +502,26 @@ class _PreheatResultView extends StatelessWidget {
               ),
               const SizedBox(height: 6),
               Text(
-                '${result.tp.round()} °C',
+                result.noPreheatRequired
+                    ? strings.preheatNoPreheatRequiredLabel
+                    : '${result.tp.round()} °C',
                 style: Theme.of(context).textTheme.displaySmall?.copyWith(
                   color: Colors.white,
                   fontWeight: FontWeight.w800,
                 ),
               ),
+              if (result.noPreheatRequired) ...[
+                const SizedBox(height: 4),
+                Text(
+                  strings.preheatComputedValueBelowAmbientNote.replaceFirst(
+                    '{value}',
+                    result.tp.toStringAsFixed(1),
+                  ),
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: Colors.white54,
+                  ),
+                ),
+              ],
             ],
           ),
         ),
@@ -502,7 +551,12 @@ class _PreheatResultView extends StatelessWidget {
           title: 'EN 1011-2 Annex C.3 (Method B)',
           subtitle: 'Tp = 697·CET + 160·tanh(d/35) + 62·HD^0.35 + (53·CET−32)·Q − 328',
           items: [
-            (label: 'CET (parent)', value: result.parentCet.toStringAsFixed(3)),
+            (
+              label: result.cetIsOverride
+                  ? 'CET (parent, stored override)'
+                  : 'CET (parent)',
+              value: result.parentCet.toStringAsFixed(3),
+            ),
             if (result.specialRuleApplied)
               (label: 'Design CET', value: result.designCet.toStringAsFixed(3)),
             (
@@ -556,8 +610,11 @@ class _PreheatResultView extends StatelessWidget {
           child: OutlinedButton(
             onPressed: () => Navigator.of(context).push(
               MaterialPageRoute(
-                builder: (context) =>
-                    CoolingTimeCalculatorScreen(initialPreheatTempC: result.tp),
+                builder: (context) => CoolingTimeCalculatorScreen(
+                  initialPreheatTempC: result.noPreheatRequired
+                      ? _ambientC
+                      : result.tp,
+                ),
               ),
             ),
             child: Text(strings.preheatUseInCoolingTimeButton),
@@ -576,12 +633,22 @@ class _PreheatResultView extends StatelessWidget {
       PreheatRangeFlag.cetOutOfRange => strings.preheatWarningCetOutOfRange
           .replaceFirst('{value}', result.designCet.toStringAsFixed(3)),
       PreheatRangeFlag.thicknessOutOfRange =>
-        strings.preheatWarningThicknessOutOfRange,
-      PreheatRangeFlag.hdOutOfRange => strings.preheatWarningHdOutOfRange,
+        strings.preheatWarningThicknessOutOfRange.replaceFirst(
+          '{value}',
+          result.thicknessMm.toStringAsFixed(1),
+        ),
+      PreheatRangeFlag.hdOutOfRange => strings.preheatWarningHdOutOfRange
+          .replaceFirst('{value}', result.hd.toStringAsFixed(1)),
       PreheatRangeFlag.heatInputOutOfRange =>
-        strings.preheatWarningHeatInputOutOfRange,
+        strings.preheatWarningHeatInputOutOfRange.replaceFirst(
+          '{value}',
+          result.heatInputKJPerMm.toStringAsFixed(2),
+        ),
       PreheatRangeFlag.yieldStrengthOutOfRange =>
-        strings.preheatWarningYieldOutOfRange,
+        strings.preheatWarningYieldOutOfRange.replaceFirst(
+          '{value}',
+          (result.yieldStrengthNPerMm2 ?? 0).toStringAsFixed(0),
+        ),
     };
   }
 }

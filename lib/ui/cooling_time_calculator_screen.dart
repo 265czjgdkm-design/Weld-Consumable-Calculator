@@ -13,6 +13,11 @@ import 'widgets/optional_number_field.dart';
 /// scope-cut note); results are shown in-app only. Fillet weld joints are
 /// deliberately not modeled -- see `shapeFactorsFor` in
 /// `en1011_formulas.dart`.
+/// Lower sanity bound for T0 (°C) -- well below any physically plausible
+/// preheat/interpass temperature for welding, mirroring the upper-bound
+/// guard from isPreheatOrInterpassTempValid (500 C).
+const _minT0C = -50.0;
+
 class CoolingTimeCalculatorScreen extends StatefulWidget {
   const CoolingTimeCalculatorScreen({super.key, this.initialPreheatTempC});
 
@@ -48,7 +53,7 @@ class _CoolingResult {
 class _CoolingTimeCalculatorScreenState
     extends State<CoolingTimeCalculatorScreen> {
   late final TextEditingController _t0Controller = TextEditingController(
-    text: widget.initialPreheatTempC?.toString() ?? '',
+    text: widget.initialPreheatTempC?.round().toString() ?? '',
   );
   final TextEditingController _thicknessController = TextEditingController();
 
@@ -78,7 +83,7 @@ class _CoolingTimeCalculatorScreenState
         ? strings.materialFieldInvalidNumber
         : (!isPreheatOrInterpassTempValid(t0.value!)
               ? strings.coolingT0InvalidError
-              : null);
+              : (t0.value! < _minT0C ? strings.coolingT0BelowMinError : null));
     final thicknessError = thickness.invalid || thickness.value == null
         ? strings.materialFieldInvalidNumber
         : (thickness.value! <= 0 ? strings.materialFieldOutOfRange : null);
