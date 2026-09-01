@@ -16,6 +16,7 @@ import '../services/preset_sync_service.dart';
 import '../services/saved_report_store.dart';
 import '../services/user_account_store.dart';
 import '../services/user_preset_store.dart';
+import '../services/user_preset_sync.dart';
 import '../services/weld_pdf_report_service.dart';
 import 'widgets/weld_drawing_preview.dart';
 import 'calculator_page/calculator_page_models.dart';
@@ -2161,33 +2162,13 @@ class _CalculatorPageState extends State<CalculatorPage> {
       return;
     }
 
-    List<UserWeldPreset> presets;
-    var skippedCount = 0;
-    try {
-      final result = await _presetSyncService.list(email);
-      presets = result.presets;
-      skippedCount = result.skippedCount;
-      // A cloud row this build couldn't parse must not destroy a good
-      // local copy of that same preset -- merge the local cache's copies
-      // of whatever's missing back in rather than saving the truncated
-      // cloud list over it (see finding #1).
-      if (skippedCount > 0) {
-        final localPresets = (await _userPresetStore.load()).presets;
-        final cloudIds = presets.map((preset) => preset.id).toSet();
-        presets = [
-          ...presets,
-          for (final local in localPresets)
-            if (!cloudIds.contains(local.id)) local,
-        ]..sort((a, b) => b.updatedAtEpochMs.compareTo(a.updatedAtEpochMs));
-      }
-      await _userPresetStore.save(presets);
-    } catch (_) {
-      presets = (await _userPresetStore.load()).presets;
-      // The local fallback above is already the untruncated cache, so a
-      // stale skip count from `list()` must not be surfaced here (see
-      // finding #6).
-      skippedCount = 0;
-    }
+    final result = await loadSyncedUserPresets(
+      email: email,
+      presetSyncService: _presetSyncService,
+      userPresetStore: _userPresetStore,
+    );
+    final presets = result.presets;
+    final skippedCount = result.skippedCount;
 
     if (!mounted) return;
     setState(() {
@@ -3223,6 +3204,7 @@ class _CalculatorPageState extends State<CalculatorPage> {
       _jointAlignment = JointAlignment.centerline;
       _inputPreset = InputPreset.custom;
       _selectedUserPresetId = null;
+      _pinnedStaleCustomSelection = null;
       _applyProcessFieldDefaults();
       _consumableSelection = BuiltInConsumableSelection(
         WeldingDefaults.defaultConsumableFor(_weldingProcess),

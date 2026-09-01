@@ -235,4 +235,60 @@ void main() {
       expect(find.textContaining('as saved'), findsNothing);
     },
   );
+
+  testWidgets(
+    'tapping Reset clears a pinned stale custom-material selection, so the '
+    'dropdown no longer offers a "My Materials" / "(as saved)" entry left '
+    'over from a since-reset saved calculation (see finding #2)',
+    (tester) async {
+      SharedPreferences.setMockInitialValues({
+        'custom_filler_materials_v1': jsonEncode(const []),
+      });
+      final originalPhysicalSize = tester.view.physicalSize;
+      final originalDevicePixelRatio = tester.view.devicePixelRatio;
+      tester.view.physicalSize = const Size(1400, 3000);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(() {
+        tester.view.physicalSize = originalPhysicalSize;
+        tester.view.devicePixelRatio = originalDevicePixelRatio;
+      });
+
+      await tester.pumpWidget(
+        AppLocaleScope(
+          locale: AppLocale(),
+          child: MaterialApp(
+            home: CalculatorPage(
+              presetToLoad: _presetWithCustomFiller(_savedMaterial),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // The pin gets set as soon as the (now-deleted) snapshot fails to
+      // match the loaded (empty) library.
+      expect(find.textContaining('as saved'), findsWidgets);
+
+      await tester.ensureVisible(find.text('Reset'));
+      await tester.tap(find.text('Reset'));
+      await tester.pumpAndSettle();
+
+      final dropdownFinder = find.byWidgetPredicate(
+        (widget) => widget is DropdownButtonFormField<ConsumableSelection>,
+      );
+      await tester.ensureVisible(dropdownFinder);
+      await tester.tap(dropdownFinder);
+      await tester.pumpAndSettle();
+
+      // Reset restores the GTAW default (ER70S-2); confirm the menu route
+      // actually opened (closed field + open menu entry) rather than this
+      // assertion trivially passing because nothing rendered at all.
+      expect(
+        find.textContaining('AWS A5.18 ER70S-2 (Carbon Steel)'),
+        findsNWidgets(2),
+      );
+      expect(find.textContaining('as saved'), findsNothing);
+      expect(find.text('My Materials'), findsNothing);
+    },
+  );
 }
