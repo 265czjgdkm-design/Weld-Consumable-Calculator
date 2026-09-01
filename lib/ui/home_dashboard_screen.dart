@@ -56,7 +56,7 @@ class HomeDashboardScreen extends StatelessWidget {
                               label: strings.dashboardFillerConsumption,
                               onPressed: () => Navigator.of(context).push(
                                 MaterialPageRoute(
-                                  builder: (context) => const CalculatorPage(),
+                                  builder: (context) => CalculatorPage(),
                                 ),
                               ),
                             ),

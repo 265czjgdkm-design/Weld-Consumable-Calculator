@@ -38,7 +38,7 @@ void main() {
         await tester.pumpWidget(
           AppLocaleScope(
             locale: AppLocale(),
-            child: const MaterialApp(home: CalculatorPage()),
+            child: MaterialApp(home: CalculatorPage()),
           ),
         );
         await tester.pumpAndSettle();

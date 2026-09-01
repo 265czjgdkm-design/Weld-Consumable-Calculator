@@ -1,13 +1,113 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:purchases_flutter/purchases_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:weld_consumable_calculator/app.dart';
 import 'package:weld_consumable_calculator/l10n/app_locale.dart';
 import 'package:weld_consumable_calculator/l10n/app_locale_scope.dart';
 import 'package:weld_consumable_calculator/models/weld_models.dart';
+import 'package:weld_consumable_calculator/services/entitlement_service.dart';
+import 'package:weld_consumable_calculator/services/purchases_config.dart';
 import 'package:weld_consumable_calculator/ui/calculator_page.dart';
 import 'package:weld_consumable_calculator/ui/calculator_page/wizard/process_icons.dart';
+
+/// Fake [EntitlementService] so paywall tests never touch the real
+/// RevenueCat SDK -- see lib/services/entitlement_service.dart.
+class _FakeEntitlementService extends EntitlementService {
+  _FakeEntitlementService({this.offering, this.purchaseResult});
+
+  final Offering? offering;
+  final CustomerInfo? purchaseResult;
+
+  @override
+  Future<bool> isPremiumActive() async => false;
+
+  @override
+  Stream<bool> premiumStatusStream() => const Stream<bool>.empty();
+
+  @override
+  Future<Offering?> currentOffering() async => offering;
+
+  @override
+  Future<CustomerInfo> purchasePackage(Package package) async {
+    final result = purchaseResult;
+    if (result == null) {
+      throw StateError('Unexpected purchase in test');
+    }
+    return result;
+  }
+
+  @override
+  Future<CustomerInfo> restorePurchases() async {
+    throw StateError('Unexpected restore in test');
+  }
+}
+
+Package _fakePackage(String identifier) {
+  return Package(
+    identifier,
+    PackageType.custom,
+    StoreProduct(identifier, 'description', 'title', 2.99, '\$2.99', 'USD'),
+    const PresentedOfferingContext(PurchasesConfig.offeringId, null, null),
+  );
+}
+
+Offering _fakeOffering() {
+  return Offering(PurchasesConfig.offeringId, 'description', const {}, [
+    _fakePackage(PurchasesConfig.monthlyPackageId),
+    _fakePackage(PurchasesConfig.yearlyPackageId),
+  ]);
+}
+
+CustomerInfo _activeCustomerInfo() {
+  final entitlement = EntitlementInfo(
+    PurchasesConfig.entitlementId,
+    true,
+    true,
+    '2026-01-01T00:00:00Z',
+    '2026-01-01T00:00:00Z',
+    PurchasesConfig.monthlyPackageId,
+    false,
+  );
+  return CustomerInfo(
+    EntitlementInfos({
+      PurchasesConfig.entitlementId: entitlement,
+    }, {PurchasesConfig.entitlementId: entitlement}),
+    const {},
+    [PurchasesConfig.monthlyPackageId],
+    [PurchasesConfig.monthlyPackageId],
+    const [],
+    '2026-01-01T00:00:00Z',
+    'test-app-user-id',
+    const {},
+    '2026-01-01T00:00:00Z',
+  );
+}
+
+/// Builds [CalculatorPage] directly with a fake [EntitlementService] and
+/// walks it through to the wizard's summary step, bypassing the splash/
+/// registration/dashboard flow those don't need to be exercised for.
+Future<void> _pumpCalculatorToSummary(
+  WidgetTester tester,
+  EntitlementService entitlementService,
+) async {
+  await tester.pumpWidget(
+    AppLocaleScope(
+      locale: AppLocale(),
+      child: MaterialApp(
+        home: CalculatorPage(entitlementService: entitlementService),
+      ),
+    ),
+  );
+  await tester.pumpAndSettle();
+  await tester.ensureVisible(find.text('Get Started'));
+  await tester.tap(find.text('Get Started'));
+  await tester.pumpAndSettle();
+  await _continueWizardStep(tester); // process -> dimensions
+  await _continueWizardStep(tester); // dimensions -> consumable
+  await _continueWizardStep(tester); // consumable -> summary
+}
 
 Future<void> _pumpPastSplash(WidgetTester tester) async {
   await tester.pumpWidget(const WeldConsumableCalculatorApp());
@@ -252,27 +352,71 @@ void main() {
     expect(find.text('Alignment Reference'), findsOneWidget);
   });
 
-  testWidgets('pdf export is locked behind the premium paywall until unlocked', (
-    tester,
-  ) async {
-    await _pumpToWizardSummary(tester);
+  testWidgets(
+    'pdf export shows a coming-soon paywall when no real offering is configured',
+    (tester) async {
+      await _pumpCalculatorToSummary(
+        tester,
+        _FakeEntitlementService(offering: null),
+      );
 
-    await tester.ensureVisible(find.text('Calculate'));
-    await tester.tap(find.text('Calculate'));
-    await tester.pumpAndSettle();
+      await tester.ensureVisible(find.text('Calculate'));
+      await tester.tap(find.text('Calculate'));
+      await tester.pumpAndSettle();
 
-    expect(find.text('Unlock PDF'), findsOneWidget);
+      expect(find.text('Unlock PDF'), findsOneWidget);
 
-    await tester.tap(find.text('Unlock PDF'));
-    await tester.pumpAndSettle();
+      await tester.tap(find.text('Unlock PDF'));
+      await tester.pumpAndSettle();
 
-    expect(find.text('Varyos Weld Premium'), findsOneWidget);
+      expect(find.text('Varyos Weld Premium'), findsOneWidget);
+      expect(
+        find.text('Client-ready PDF export for every estimate'),
+        findsOneWidget,
+      );
+      expect(find.text('Restore Purchases'), findsOneWidget);
 
-    await tester.tap(find.textContaining('Subscribe'));
-    await tester.pumpAndSettle();
+      final comingSoonButton = tester.widget<FilledButton>(
+        find.widgetWithText(FilledButton, 'Premium -- Coming Soon'),
+      );
+      expect(comingSoonButton.onPressed, isNull);
 
-    expect(find.text('Export PDF'), findsOneWidget);
-  });
+      // Dismiss the sheet via its barrier and confirm PDF export is still
+      // locked -- nothing in the coming-soon state can unlock it.
+      await tester.tapAt(const Offset(20, 20));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Unlock PDF'), findsOneWidget);
+    },
+  );
+
+  testWidgets(
+    'pdf export unlocks after purchasing a package from a real offering',
+    (tester) async {
+      await _pumpCalculatorToSummary(
+        tester,
+        _FakeEntitlementService(
+          offering: _fakeOffering(),
+          purchaseResult: _activeCustomerInfo(),
+        ),
+      );
+
+      await tester.ensureVisible(find.text('Calculate'));
+      await tester.tap(find.text('Calculate'));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Unlock PDF'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Monthly -- \$2.99/mo'), findsOneWidget);
+      expect(find.text('Yearly -- \$19.99/yr (save ~44%)'), findsOneWidget);
+
+      await tester.tap(find.text('Monthly -- \$2.99/mo'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Export PDF'), findsOneWidget);
+    },
+  );
 
   testWidgets(
     'back navigation from dimensions returns to process step with selection kept',

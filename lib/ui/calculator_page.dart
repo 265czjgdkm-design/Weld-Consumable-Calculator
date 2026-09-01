@@ -1,7 +1,9 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:purchases_flutter/purchases_flutter.dart';
 
 import '../core/weld_calculator.dart';
 import '../core/welding_defaults.dart';
@@ -11,8 +13,10 @@ import '../models/custom_material_models.dart';
 import '../models/saved_report.dart';
 import '../models/weld_models.dart';
 import '../services/custom_filler_material_store.dart';
+import '../services/entitlement_service.dart';
 import '../services/pdf_report_exporter.dart';
 import '../services/preset_sync_service.dart';
+import '../services/purchases_config.dart';
 import '../services/saved_report_store.dart';
 import '../services/user_account_store.dart';
 import '../services/user_preset_store.dart';
@@ -39,13 +43,18 @@ class _RequiredFieldMissingException implements Exception {
 }
 
 class CalculatorPage extends StatefulWidget {
-  const CalculatorPage({super.key, this.presetToLoad});
+  CalculatorPage({super.key, this.presetToLoad, EntitlementService? entitlementService})
+    : entitlementService = entitlementService ?? EntitlementService();
 
   /// When set, skips the intro screen, applies this preset's data the same
   /// way picking it from the (now-removed) inline preset dropdown used to,
   /// and opens straight on the Process wizard step / desktop workspace.
   /// Set by [SavedCalculationsScreen]'s "Load" action.
   final UserWeldPreset? presetToLoad;
+
+  /// Overridable so tests can inject a fake without touching the real
+  /// RevenueCat SDK. See lib/services/entitlement_service.dart.
+  final EntitlementService entitlementService;
 
   @override
   State<CalculatorPage> createState() => _CalculatorPageState();
@@ -112,11 +121,8 @@ class _CalculatorPageState extends State<CalculatorPage> {
   // Calculate is only reachable from WizardStep.summary, so falling back
   // from results naturally re-lands on summary already.
   WizardStep _wizardStep = WizardStep.process;
-  // TODO: replace with a real StoreKit/RevenueCat entitlement check once
-  // the Apple Developer account and App Store Connect subscription product
-  // exist. This flag is a local-only stand-in so the paywall UX can be
-  // built and demoed before that infrastructure is in place.
   bool _isPremium = false;
+  StreamSubscription<bool>? _premiumStatusSubscription;
   bool _isExportingPdf = false;
   bool _isUserPresetBusy = false;
 
@@ -125,6 +131,7 @@ class _CalculatorPageState extends State<CalculatorPage> {
     super.initState();
     _resetFields();
     _initUserPresets();
+    _initEntitlement();
     _fillerMaterialStore.load().then((materials) {
       if (!mounted) return;
       setState(() {
@@ -152,6 +159,22 @@ class _CalculatorPageState extends State<CalculatorPage> {
     await _loadUserPresets();
   }
 
+  Future<void> _initEntitlement() async {
+    try {
+      final isPremium = await widget.entitlementService.isPremiumActive();
+      if (!mounted) return;
+      setState(() => _isPremium = isPremium);
+    } catch (error) {
+      debugPrint('Failed to read entitlement status: $error');
+    }
+    _premiumStatusSubscription = widget.entitlementService
+        .premiumStatusStream()
+        .listen((isPremium) {
+          if (!mounted) return;
+          setState(() => _isPremium = isPremium);
+        });
+  }
+
   // The wizard's step content swaps under the same `_pageScrollController`
   // (only the child of the SingleChildScrollView changes), so without this
   // a new step opens at whatever scroll offset the previous step was left
@@ -167,6 +190,7 @@ class _CalculatorPageState extends State<CalculatorPage> {
 
   @override
   void dispose() {
+    _premiumStatusSubscription?.cancel();
     _pageScrollController.dispose();
     _inputColumnScrollController.dispose();
     _drawingColumnScrollController.dispose();
@@ -3002,144 +3026,26 @@ class _CalculatorPageState extends State<CalculatorPage> {
   }
 
   /// Premium paywall shown when a free user taps a gated feature (PDF
-  /// export). "Subscribe" here only flips the local [_isPremium] flag so
-  /// the unlocked experience can be previewed -- it does not charge
-  /// anyone. Swap this for a real StoreKit/RevenueCat purchase flow once
-  /// the Apple Developer account and an App Store Connect subscription
-  /// product exist, and wire "Restore Purchases" to the real entitlement
-  /// check at the same time.
+  /// export). Fetches the RevenueCat `default` offering when opened: if it's
+  /// missing the expected monthly/yearly packages (the expected state until
+  /// the real API key and an App Store Connect subscription product exist),
+  /// [_PaywallSheet] renders a disabled "coming soon" state instead of real
+  /// purchase buttons.
   Future<void> _showPaywall() {
     return showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (sheetContext) {
-        return Padding(
-          padding: EdgeInsets.only(
-            bottom: MediaQuery.of(sheetContext).viewInsets.bottom,
-          ),
-          child: Container(
-            width: double.infinity,
-            padding: const EdgeInsets.fromLTRB(24, 16, 24, 26),
-            decoration: const BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Center(
-                  child: Container(
-                    width: 40,
-                    height: 4,
-                    margin: const EdgeInsets.only(bottom: 18),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFD2DCE3),
-                      borderRadius: BorderRadius.circular(999),
-                    ),
-                  ),
-                ),
-                Row(
-                  children: [
-                    Container(
-                      width: 46,
-                      height: 46,
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(14),
-                        color: const Color(0xFFFF6A35),
-                      ),
-                      alignment: Alignment.center,
-                      child: const Icon(
-                        Icons.workspace_premium_outlined,
-                        color: Colors.white,
-                      ),
-                    ),
-                    const SizedBox(width: 14),
-                    Expanded(
-                      child: Text(
-                        'Varyos Weld Premium',
-                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 18),
-                _buildPaywallBenefit(
-                  icon: Icons.picture_as_pdf_outlined,
-                  text: 'Client-ready PDF export for every estimate',
-                ),
-                const SizedBox(height: 10),
-                _buildPaywallBenefit(
-                  icon: Icons.badge_outlined,
-                  text: 'Report-grade layout with engineering basis included',
-                ),
-                const SizedBox(height: 10),
-                _buildPaywallBenefit(
-                  icon: Icons.event_repeat_outlined,
-                  text: 'Cancel anytime from Settings',
-                ),
-                const SizedBox(height: 22),
-                SizedBox(
-                  width: double.infinity,
-                  child: FilledButton(
-                    onPressed: () {
-                      setState(() => _isPremium = true);
-                      Navigator.of(sheetContext).pop();
-                      _showMessage('Premium unlocked for this session.');
-                    },
-                    style: FilledButton.styleFrom(
-                      backgroundColor: const Color(0xFF12191B),
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                    ),
-                    child: const Text('Subscribe -- \$4.99/month'),
-                  ),
-                ),
-                const SizedBox(height: 10),
-                Center(
-                  child: TextButton(
-                    onPressed: () => _showMessage(
-                      'Restore Purchases will be available once payments are live.',
-                    ),
-                    child: const Text('Restore Purchases'),
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  'Auto-renewing subscription. Price shown is a placeholder until the App Store listing is finalized.',
-                  textAlign: TextAlign.center,
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: const Color(0xFF8398A5),
-                  ),
-                ),
-              ],
-            ),
-          ),
+        return _PaywallSheet(
+          entitlementService: widget.entitlementService,
+          onEntitlementChanged: (isPremium) {
+            if (!mounted) return;
+            setState(() => _isPremium = isPremium);
+          },
+          onMessage: _showMessage,
         );
       },
-    );
-  }
-
-  Widget _buildPaywallBenefit({required IconData icon, required String text}) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Icon(icon, size: 20, color: const Color(0xFF12191B)),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Text(
-            text,
-            style: Theme.of(
-              context,
-            ).textTheme.bodyMedium?.copyWith(color: const Color(0xFF33474F)),
-          ),
-        ),
-      ],
     );
   }
 
@@ -3549,6 +3455,279 @@ class _CalculatorPageState extends State<CalculatorPage> {
     }
 
     return items;
+  }
+}
+
+/// Content of the premium paywall bottom sheet. A dedicated StatefulWidget
+/// (rather than a method on [_CalculatorPageState]) so fetching the
+/// RevenueCat offering and tracking in-flight purchase/restore calls have
+/// their own local state, independent of the page behind the sheet.
+class _PaywallSheet extends StatefulWidget {
+  const _PaywallSheet({
+    required this.entitlementService,
+    required this.onEntitlementChanged,
+    required this.onMessage,
+  });
+
+  final EntitlementService entitlementService;
+  final ValueChanged<bool> onEntitlementChanged;
+  final ValueChanged<String> onMessage;
+
+  @override
+  State<_PaywallSheet> createState() => _PaywallSheetState();
+}
+
+class _PaywallSheetState extends State<_PaywallSheet> {
+  Offering? _offering;
+  bool _loadingOffering = true;
+  String? _purchasingPackageId;
+  bool _restoring = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadOffering();
+  }
+
+  Future<void> _loadOffering() async {
+    Offering? offering;
+    try {
+      offering = await widget.entitlementService.currentOffering();
+    } catch (error) {
+      debugPrint('Failed to load RevenueCat offering: $error');
+    }
+    if (!mounted) return;
+    setState(() {
+      _offering = offering;
+      _loadingOffering = false;
+    });
+  }
+
+  Package? get _monthlyPackage =>
+      _offering?.getPackage(PurchasesConfig.monthlyPackageId);
+  Package? get _yearlyPackage =>
+      _offering?.getPackage(PurchasesConfig.yearlyPackageId);
+
+  bool get _hasRealOffering =>
+      _monthlyPackage != null && _yearlyPackage != null;
+
+  bool _isEntitlementActive(CustomerInfo customerInfo) => customerInfo
+      .entitlements
+      .active
+      .containsKey(PurchasesConfig.entitlementId);
+
+  Future<void> _purchase(Package package) async {
+    setState(() => _purchasingPackageId = package.identifier);
+    try {
+      final customerInfo = await widget.entitlementService.purchasePackage(
+        package,
+      );
+      final isActive = _isEntitlementActive(customerInfo);
+      widget.onEntitlementChanged(isActive);
+      if (!mounted) return;
+      Navigator.of(context).pop();
+      widget.onMessage(
+        isActive ? 'Premium unlocked.' : 'Purchase completed.',
+      );
+      return;
+    } on PlatformException catch (error) {
+      if (PurchasesErrorHelper.getErrorCode(error) ==
+          PurchasesErrorCode.purchaseCancelledError) {
+        // User backed out of the store sheet -- not an error worth surfacing.
+      } else {
+        widget.onMessage('Purchase failed. Please try again.');
+      }
+    } catch (error) {
+      widget.onMessage('Purchase failed. Please try again.');
+    }
+    if (mounted) setState(() => _purchasingPackageId = null);
+  }
+
+  Future<void> _restore() async {
+    setState(() => _restoring = true);
+    try {
+      final customerInfo = await widget.entitlementService.restorePurchases();
+      final isActive = _isEntitlementActive(customerInfo);
+      widget.onEntitlementChanged(isActive);
+      widget.onMessage(
+        isActive ? 'Purchases restored.' : 'No previous purchase found.',
+      );
+    } catch (error) {
+      widget.onMessage('Restore failed. Please try again.');
+    }
+    if (mounted) setState(() => _restoring = false);
+  }
+
+  Widget _buildPaywallBenefit({required IconData icon, required String text}) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(icon, size: 20, color: const Color(0xFF12191B)),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Text(
+            text,
+            style: Theme.of(
+              context,
+            ).textTheme.bodyMedium?.copyWith(color: const Color(0xFF33474F)),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildPurchaseButton({
+    required String label,
+    required Package package,
+  }) {
+    final busy = _purchasingPackageId == package.identifier;
+    final disabled = _purchasingPackageId != null;
+    return SizedBox(
+      width: double.infinity,
+      child: FilledButton(
+        onPressed: disabled ? null : () => _purchase(package),
+        style: FilledButton.styleFrom(
+          backgroundColor: const Color(0xFF12191B),
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+        ),
+        child: busy
+            ? const SizedBox(
+                width: 18,
+                height: 18,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2.2,
+                  color: Colors.white,
+                ),
+              )
+            : Text(label),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.fromLTRB(24, 16, 24, 26),
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                margin: const EdgeInsets.only(bottom: 18),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFD2DCE3),
+                  borderRadius: BorderRadius.circular(999),
+                ),
+              ),
+            ),
+            Row(
+              children: [
+                Container(
+                  width: 46,
+                  height: 46,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(14),
+                    color: const Color(0xFFFF6A35),
+                  ),
+                  alignment: Alignment.center,
+                  child: const Icon(
+                    Icons.workspace_premium_outlined,
+                    color: Colors.white,
+                  ),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Text(
+                    'Varyos Weld Premium',
+                    style: Theme.of(
+                      context,
+                    ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 18),
+            _buildPaywallBenefit(
+              icon: Icons.picture_as_pdf_outlined,
+              text: 'Client-ready PDF export for every estimate',
+            ),
+            const SizedBox(height: 10),
+            _buildPaywallBenefit(
+              icon: Icons.badge_outlined,
+              text: 'Report-grade layout with engineering basis included',
+            ),
+            const SizedBox(height: 10),
+            _buildPaywallBenefit(
+              icon: Icons.event_repeat_outlined,
+              text: 'Cancel anytime from Settings',
+            ),
+            const SizedBox(height: 22),
+            if (_loadingOffering)
+              const Center(child: CircularProgressIndicator())
+            else if (_hasRealOffering) ...[
+              _buildPurchaseButton(
+                label: 'Monthly -- \$2.99/mo',
+                package: _monthlyPackage!,
+              ),
+              const SizedBox(height: 10),
+              _buildPurchaseButton(
+                label: 'Yearly -- \$19.99/yr (save ~44%)',
+                package: _yearlyPackage!,
+              ),
+            ] else
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton(
+                  onPressed: null,
+                  style: FilledButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                  ),
+                  child: const Text('Premium -- Coming Soon'),
+                ),
+              ),
+            const SizedBox(height: 10),
+            Center(
+              child: TextButton(
+                onPressed: _restoring ? null : _restore,
+                child: _restoring
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2.2),
+                      )
+                    : const Text('Restore Purchases'),
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              _hasRealOffering
+                  ? 'Auto-renewing subscription. Cancel anytime from Settings.'
+                  : 'Premium subscriptions are coming soon. Planned pricing (\$2.99/mo, \$19.99/yr) is shown for reference and subject to change.',
+              textAlign: TextAlign.center,
+              style: Theme.of(
+                context,
+              ).textTheme.bodySmall?.copyWith(color: const Color(0xFF8398A5)),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
 
