@@ -17,6 +17,7 @@ class WizardSummaryStep extends StatelessWidget {
     required this.onReset,
     required this.onSaveAsPreset,
     required this.saveAsPresetBusy,
+    required this.saveAsPresetLabel,
   });
 
   final Widget engineeringBasisBanner;
@@ -30,6 +31,7 @@ class WizardSummaryStep extends StatelessWidget {
   final VoidCallback onReset;
   final VoidCallback? onSaveAsPreset;
   final bool saveAsPresetBusy;
+  final String saveAsPresetLabel;
 
   @override
   Widget build(BuildContext context) {
@@ -81,7 +83,7 @@ class WizardSummaryStep extends StatelessWidget {
                     child: CircularProgressIndicator(strokeWidth: 2),
                   )
                 : const Icon(Icons.bookmark_add_outlined),
-            label: const Text('Save as Preset'),
+            label: Text(saveAsPresetLabel),
             style: OutlinedButton.styleFrom(
               padding: const EdgeInsets.symmetric(vertical: 16),
             ),

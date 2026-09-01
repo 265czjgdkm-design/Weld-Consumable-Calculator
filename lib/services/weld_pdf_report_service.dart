@@ -3,6 +3,7 @@ import 'dart:typed_data';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 
+import '../models/consumable_selection.dart';
 import '../models/weld_models.dart';
 
 class WeldPdfReportService {
@@ -22,7 +23,7 @@ class WeldPdfReportService {
     required JointType jointType,
     required GrooveType grooveType,
     required WeldingProcess weldingProcess,
-    required ConsumablePreset consumablePreset,
+    required ConsumableSelection consumableSelection,
     required WeldCalculationResult result,
     required List<MapEntry<String, String>> basisEntries,
   }) async {
@@ -48,7 +49,7 @@ class WeldPdfReportService {
           jointType: jointType,
           grooveType: grooveType,
           weldingProcess: weldingProcess,
-          consumablePreset: consumablePreset,
+          consumableSelection: consumableSelection,
           generatedAt: generatedAt,
           result: result,
         ),
@@ -91,7 +92,7 @@ class WeldPdfReportService {
             jointType: jointType,
             grooveType: grooveType,
             weldingProcess: weldingProcess,
-            consumablePreset: consumablePreset,
+            consumableSelection: consumableSelection,
             generatedAt: generatedAt,
           ),
           pw.SizedBox(height: 16),
@@ -157,7 +158,7 @@ class WeldPdfReportService {
     required JointType jointType,
     required GrooveType grooveType,
     required WeldingProcess weldingProcess,
-    required ConsumablePreset consumablePreset,
+    required ConsumableSelection consumableSelection,
     required WeldCalculationResult result,
     required List<MapEntry<String, String>> basisEntries,
   }) async {
@@ -166,7 +167,7 @@ class WeldPdfReportService {
       jointType: jointType,
       grooveType: grooveType,
       weldingProcess: weldingProcess,
-      consumablePreset: consumablePreset,
+      consumableSelection: consumableSelection,
       result: result,
       basisEntries: basisEntries,
     );
@@ -185,7 +186,7 @@ class WeldPdfReportService {
     required JointType jointType,
     required GrooveType grooveType,
     required WeldingProcess weldingProcess,
-    required ConsumablePreset consumablePreset,
+    required ConsumableSelection consumableSelection,
     required DateTime generatedAt,
     required WeldCalculationResult result,
   }) {
@@ -263,7 +264,7 @@ class WeldPdfReportService {
                 _summaryChip('Process', weldingProcess.label),
                 _summaryChip(
                   'Classification',
-                  '${consumablePreset.awsSpecification} ${consumablePreset.label}',
+                  _classificationLabel(consumableSelection),
                 ),
               ],
             ),
@@ -411,7 +412,7 @@ class WeldPdfReportService {
     required JointType jointType,
     required GrooveType grooveType,
     required WeldingProcess weldingProcess,
-    required ConsumablePreset consumablePreset,
+    required ConsumableSelection consumableSelection,
     required DateTime generatedAt,
   }) {
     return pw.Container(
@@ -529,9 +530,9 @@ class WeldPdfReportService {
               _summaryChip('Process', weldingProcess.label),
               _summaryChip(
                 'Classification',
-                '${consumablePreset.awsSpecification} ${consumablePreset.label}',
+                _classificationLabel(consumableSelection),
               ),
-              _summaryChip('Family', consumablePreset.family.label),
+              _summaryChip('Family', consumableSelection.family.label),
               _summaryChip(
                 'Generated',
                 '${generatedAt.year}-${_two(generatedAt.month)}-${_two(generatedAt.day)} ${_two(generatedAt.hour)}:${_two(generatedAt.minute)}',
@@ -1201,6 +1202,13 @@ class WeldPdfReportService {
       '${(ratio * 100).toStringAsFixed(digits)}%';
 
   String _two(int value) => value.toString().padLeft(2, '0');
+
+  /// Custom filler materials may have no AWS spec on file -- omit that
+  /// segment entirely rather than printing a literal "null".
+  String _classificationLabel(ConsumableSelection selection) {
+    final awsSpec = selection.awsSpecification;
+    return awsSpec == null ? selection.label : '$awsSpec ${selection.label}';
+  }
 }
 
 class _ReportIndicator {

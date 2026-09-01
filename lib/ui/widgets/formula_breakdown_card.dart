@@ -5,7 +5,7 @@ typedef FormulaBasisItem = ({String label, String value});
 
 /// Same visual language as `CalculationBasisPanel` in
 /// `calculator_page_widgets.dart`, but not coupled to that panel's
-/// `ConsumablePreset` constructor requirement -- used by the preheat and
+/// `ConsumableSelection` constructor requirement -- used by the preheat and
 /// cooling-time calculators, which have no consumable preset of their own.
 class FormulaBreakdownCard extends StatelessWidget {
   const FormulaBreakdownCard({

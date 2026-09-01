@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../l10n/app_locale_scope.dart';
+import '../models/consumable_selection.dart';
 import '../models/weld_models.dart';
 import '../services/preset_sync_service.dart';
 import '../services/user_account_store.dart';
@@ -161,7 +162,7 @@ class _SavedCalculationsScreenState extends State<SavedCalculationsScreen> {
 
   String _summaryLine(UserWeldPreset preset) {
     final data = preset.data;
-    return '${data.jointType.label} · ${data.grooveType.label} · ${data.weldingProcess.label} · ${data.consumablePreset.label}';
+    return '${data.jointType.label} · ${data.grooveType.label} · ${data.weldingProcess.label} · ${data.consumableSelection.label}';
   }
 
   String _formatDate(int epochMs) {

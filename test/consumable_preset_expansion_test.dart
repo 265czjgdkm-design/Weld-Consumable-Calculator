@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:weld_consumable_calculator/app.dart';
 import 'package:weld_consumable_calculator/core/welding_defaults.dart';
+import 'package:weld_consumable_calculator/models/consumable_selection.dart';
 import 'package:weld_consumable_calculator/models/weld_models.dart';
 import 'package:weld_consumable_calculator/services/weld_pdf_report_service.dart';
 
@@ -97,7 +98,7 @@ void main() {
 
     await tester.tap(
       find.byWidgetPredicate(
-        (widget) => widget is DropdownButtonFormField<ConsumablePreset>,
+        (widget) => widget is DropdownButtonFormField<ConsumableSelection>,
       ),
     );
     await tester.pumpAndSettle();
@@ -140,7 +141,9 @@ void main() {
         jointType: JointType.plateButt,
         grooveType: GrooveType.doubleV,
         weldingProcess: WeldingProcess.smaw,
-        consumablePreset: ConsumablePreset.e7018a1,
+        consumableSelection: const BuiltInConsumableSelection(
+          ConsumablePreset.e7018a1,
+        ),
         result: result,
         basisEntries: const [MapEntry('Density', '7.85 g/cm3')],
       );

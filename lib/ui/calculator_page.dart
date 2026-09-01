@@ -6,8 +6,11 @@ import 'package:flutter/services.dart';
 import '../core/weld_calculator.dart';
 import '../core/welding_defaults.dart';
 import '../l10n/app_locale_scope.dart';
+import '../models/consumable_selection.dart';
+import '../models/custom_material_models.dart';
 import '../models/saved_report.dart';
 import '../models/weld_models.dart';
+import '../services/custom_filler_material_store.dart';
 import '../services/pdf_report_exporter.dart';
 import '../services/preset_sync_service.dart';
 import '../services/saved_report_store.dart';
@@ -54,6 +57,8 @@ class _CalculatorPageState extends State<CalculatorPage> {
   final SavedReportStore _savedReportStore = const SavedReportStore();
   final UserAccountStore _accountStore = const UserAccountStore();
   final PresetSyncService _presetSyncService = const PresetSyncService();
+  final CustomFillerMaterialStore _fillerMaterialStore =
+      const CustomFillerMaterialStore();
   final ScrollController _pageScrollController = ScrollController();
   final ScrollController _inputColumnScrollController = ScrollController();
   final ScrollController _drawingColumnScrollController = ScrollController();
@@ -74,7 +79,10 @@ class _CalculatorPageState extends State<CalculatorPage> {
   DrawingMode _drawingMode = DrawingMode.visual;
   JointGeometryMode _jointGeometryMode = JointGeometryMode.equal;
   JointAlignment _jointAlignment = JointAlignment.centerline;
-  ConsumablePreset _consumablePreset = ConsumablePreset.er70s2;
+  ConsumableSelection _consumableSelection = const BuiltInConsumableSelection(
+    ConsumablePreset.er70s2,
+  );
+  List<CustomFillerMaterial> _customFillerMaterials = const [];
   InputPreset _inputPreset = InputPreset.custom;
   // Bumped whenever a starter-preset process-switch confirmation is
   // cancelled, so the dropdown (keyed on `_inputPreset` + this) remounts
@@ -105,6 +113,10 @@ class _CalculatorPageState extends State<CalculatorPage> {
     super.initState();
     _resetFields();
     _initUserPresets();
+    _fillerMaterialStore.load().then((materials) {
+      if (!mounted) return;
+      setState(() => _customFillerMaterials = materials);
+    });
     final presetToLoad = widget.presetToLoad;
     if (presetToLoad != null) {
       _showIntro = false;
@@ -258,7 +270,7 @@ class _CalculatorPageState extends State<CalculatorPage> {
                 grooveLabel: _grooveType.label,
                 processLabel: _weldingProcess.label,
                 drawingModeLabel: _drawingMode.label,
-                consumableLabel: _consumablePreset.label,
+                consumableLabel: _consumableSelection.label,
                 savedPresetCount: _userPresets.length,
                 hasResults: _result != null,
               ),
@@ -374,7 +386,7 @@ class _CalculatorPageState extends State<CalculatorPage> {
             PanelNote(
               icon: Icons.science_outlined,
               text:
-                  'Typical base metals: ${_consumablePreset.typicalBaseMetals.join(', ')}',
+                  'Typical base metals: ${_consumableSelection.typicalBaseMetalsText}',
             ),
           ],
         ),
@@ -412,6 +424,7 @@ class _CalculatorPageState extends State<CalculatorPage> {
         onReset: _resetFields,
         onSaveAsPreset: _isUserPresetBusy ? null : _saveCurrentAsUserPreset,
         saveAsPresetBusy: _isUserPresetBusy,
+        saveAsPresetLabel: _saveAsPresetButtonLabel,
       ),
     };
 
@@ -1094,11 +1107,20 @@ class _CalculatorPageState extends State<CalculatorPage> {
   }
 
   /// Extracted so the mobile wizard's consumable step can reuse the exact
-  /// same dropdown as the desktop [_buildInputParametersCard].
+  /// same dropdown as the desktop [_buildInputParametersCard]. Custom
+  /// filler materials from the library appear under a disabled "My
+  /// Materials" header, unfiltered by process (see coder task decision #4).
   Widget _buildConsumableClassificationSection(
     BuildContext context,
     List<ConsumablePreset> availableConsumables,
   ) {
+    final builtInSelections = availableConsumables
+        .map(BuiltInConsumableSelection.new)
+        .toList();
+    final customSelections = _customFillerMaterials
+        .map(CustomConsumableSelection.new)
+        .toList();
+
     return InputPanelSection(
       icon: Icons.inventory_2_outlined,
       title: 'Consumable & Density',
@@ -1108,36 +1130,55 @@ class _CalculatorPageState extends State<CalculatorPage> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _buildDropdownFrame(
-            DropdownButtonFormField<ConsumablePreset>(
-              initialValue: _consumablePreset,
+            DropdownButtonFormField<ConsumableSelection>(
+              initialValue: _consumableSelection,
               isExpanded: true,
               decoration: const InputDecoration(
                 labelText: 'Consumable Classification',
                 helperText:
                     'Select an AWS filler metal classification. Density is populated automatically and can still be adjusted.',
               ),
-              selectedItemBuilder: (context) => availableConsumables
-                  .map(
-                    (preset) =>
-                        _buildDropdownSelectedText(preset.awsDisplayLabel),
-                  )
-                  .toList(),
-              items: availableConsumables
-                  .map(
-                    (preset) => DropdownMenuItem(
-                      value: preset,
+              selectedItemBuilder: (context) => [
+                for (final selection in builtInSelections)
+                  _buildDropdownSelectedText(selection.awsDisplayLabel),
+                if (customSelections.isNotEmpty) ...[
+                  _buildDropdownSelectedText(''),
+                  for (final selection in customSelections)
+                    _buildDropdownSelectedText(selection.awsDisplayLabel),
+                ],
+              ],
+              items: [
+                for (final selection in builtInSelections)
+                  DropdownMenuItem(
+                    value: selection,
+                    child: Text(
+                      selection.awsDisplayLabel,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                if (customSelections.isNotEmpty) ...[
+                  const DropdownMenuItem<ConsumableSelection>(
+                    enabled: false,
+                    child: Text(
+                      'My Materials',
+                      style: TextStyle(fontWeight: FontWeight.w700),
+                    ),
+                  ),
+                  for (final selection in customSelections)
+                    DropdownMenuItem(
+                      value: selection,
                       child: Text(
-                        preset.awsDisplayLabel,
+                        selection.awsDisplayLabel,
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
-                  )
-                  .toList(),
+                ],
+              ],
               onChanged: (value) {
                 if (value == null) return;
                 setState(() {
-                  _consumablePreset = value;
-                  _applyConsumablePreset(value);
+                  _consumableSelection = value;
+                  _applyConsumableSelection(value);
                   _result = null;
                 });
               },
@@ -1147,7 +1188,7 @@ class _CalculatorPageState extends State<CalculatorPage> {
           PanelNote(
             icon: Icons.verified_outlined,
             text:
-                'Selected classification: ${_consumablePreset.awsSpecification} | ${_consumablePreset.label} | ${_consumablePreset.family.label} | Density ${_formatNumber(_consumablePreset.densityGPerCm3, 2)} g/cm3',
+                'Selected classification: ${[if (_consumableSelection.awsSpecification != null) _consumableSelection.awsSpecification!, _consumableSelection.label, _consumableSelection.family.label, 'Density ${_formatNumber(_consumableSelection.densityGPerCm3, 2)} g/cm3'].join(' | ')}',
           ),
         ],
       ),
@@ -1319,7 +1360,7 @@ class _CalculatorPageState extends State<CalculatorPage> {
                         child: CircularProgressIndicator(strokeWidth: 2),
                       )
                     : const Icon(Icons.bookmark_add_outlined),
-                label: const Text('Save as Preset'),
+                label: Text(_saveAsPresetButtonLabel),
               ),
             ),
             const SizedBox(height: 14),
@@ -1366,7 +1407,7 @@ class _CalculatorPageState extends State<CalculatorPage> {
             : ResultsSection(
                 result: _result!,
                 basis: _buildCalculationBasis(),
-                consumablePreset: _consumablePreset,
+                consumableSelection: _consumableSelection,
                 onPdfPressed: _isExportingPdf
                     ? null
                     : (_isPremium ? _exportPdf : _showPaywall),
@@ -2020,13 +2061,28 @@ class _CalculatorPageState extends State<CalculatorPage> {
     return 'Manual mode overrides the estimated rate with a measured shop value, project planning value, or WPS assumption.';
   }
 
+  // Only force-switches away from a built-in selection the new process
+  // doesn't support -- a custom material selection is left alone on
+  // process change, since custom materials aren't process-filtered (see
+  // coder task decision #4).
   void _syncConsumableForProcess() {
-    final available = WeldingDefaults.consumablesFor(_weldingProcess);
-    if (!available.contains(_consumablePreset)) {
-      _consumablePreset = WeldingDefaults.defaultConsumableFor(_weldingProcess);
+    final selection = _consumableSelection;
+    if (selection is BuiltInConsumableSelection) {
+      final available = WeldingDefaults.consumablesFor(_weldingProcess);
+      if (!available.contains(selection.preset)) {
+        _consumableSelection = BuiltInConsumableSelection(
+          WeldingDefaults.defaultConsumableFor(_weldingProcess),
+        );
+      }
     }
-    _applyConsumablePreset(_consumablePreset);
+    _applyConsumableSelection(_consumableSelection);
   }
+
+  /// "Update Saved Calculation" once this state was loaded from (and hasn't
+  /// been navigated away from) an existing saved preset -- see
+  /// _saveCurrentAsUserPreset's in-place-update branch.
+  String get _saveAsPresetButtonLabel =>
+      _selectedUserPresetId != null ? 'Update Saved Calculation' : 'Save as Preset';
 
   UserWeldPreset? get _selectedUserPreset {
     final presetId = _selectedUserPresetId;
@@ -2157,7 +2213,7 @@ class _CalculatorPageState extends State<CalculatorPage> {
     _depositionRateMode = data.depositionRateMode;
     _jointGeometryMode = data.jointGeometryMode;
     _jointAlignment = data.jointAlignment;
-    _consumablePreset = data.consumablePreset;
+    _consumableSelection = data.consumableSelection;
 
     _applyProcessFieldDefaults();
     _syncConsumableForProcess();
@@ -2221,6 +2277,13 @@ class _CalculatorPageState extends State<CalculatorPage> {
   }
 
   Future<void> _saveCurrentAsUserPreset() async {
+    final selectedId = _selectedUserPresetId;
+    final selectedName = _selectedUserPreset?.name;
+    if (selectedId != null && selectedName != null && _accountEmail != null) {
+      await _updateSelectedUserPreset(_accountEmail!, selectedId, selectedName);
+      return;
+    }
+
     var email = _accountEmail;
     String name;
 
@@ -2287,6 +2350,50 @@ class _CalculatorPageState extends State<CalculatorPage> {
     }
   }
 
+  /// Hitting Save while this state was loaded from an existing saved
+  /// calculation updates it in place under its existing name instead of
+  /// prompting for a new name and appending a duplicate (see coder task
+  /// decision #3 / Feature B).
+  Future<void> _updateSelectedUserPreset(
+    String email,
+    String presetId,
+    String name,
+  ) async {
+    try {
+      setState(() => _isUserPresetBusy = true);
+      final preset = UserWeldPreset(
+        id: presetId,
+        name: name,
+        updatedAtEpochMs: DateTime.now().millisecondsSinceEpoch,
+        data: _captureCurrentPresetData(),
+      );
+      var syncSucceeded = true;
+      try {
+        await _presetSyncService.save(email, preset);
+      } catch (_) {
+        syncSucceeded = false;
+      }
+      final presets = [
+        for (final existing in _userPresets)
+          if (existing.id == presetId) preset else existing,
+      ]..sort((a, b) => b.updatedAtEpochMs.compareTo(a.updatedAtEpochMs));
+      await _userPresetStore.save(presets);
+      if (!mounted) return;
+      setState(() => _userPresets = presets);
+      final strings = AppLocaleScope.stringsOf(context);
+      _showMessage(
+        syncSucceeded ? strings.presetUpdated : strings.presetUpdatedOffline,
+      );
+    } catch (_) {
+      if (!mounted) return;
+      _showMessage(AppLocaleScope.stringsOf(context).presetSaveError);
+    } finally {
+      if (mounted) {
+        setState(() => _isUserPresetBusy = false);
+      }
+    }
+  }
+
   /// A device that already had local-only presets before accounts existed
   /// shouldn't lose them the first time it logs in -- upload each one
   /// under the new account so they show up alongside (or merge with)
@@ -2315,7 +2422,7 @@ class _CalculatorPageState extends State<CalculatorPage> {
     jointType: _jointType,
     grooveType: _grooveType,
     weldingProcess: _weldingProcess,
-    consumablePreset: _consumablePreset,
+    consumableSelection: _consumableSelection,
     depositionRateMode: _depositionRateMode,
     jointGeometryMode: _jointGeometryMode,
     jointAlignment: _jointAlignment,
@@ -2394,8 +2501,8 @@ class _CalculatorPageState extends State<CalculatorPage> {
     );
   }
 
-  void _applyConsumablePreset(ConsumablePreset preset) {
-    _controllers[FieldKey.density]!.text = preset.densityGPerCm3
+  void _applyConsumableSelection(ConsumableSelection selection) {
+    _controllers[FieldKey.density]!.text = selection.densityGPerCm3
         .toStringAsFixed(2);
   }
 
@@ -3015,8 +3122,10 @@ class _CalculatorPageState extends State<CalculatorPage> {
       _inputPreset = InputPreset.custom;
       _selectedUserPresetId = null;
       _applyProcessFieldDefaults();
-      _consumablePreset = WeldingDefaults.defaultConsumableFor(_weldingProcess);
-      _applyConsumablePreset(_consumablePreset);
+      _consumableSelection = BuiltInConsumableSelection(
+        WeldingDefaults.defaultConsumableFor(_weldingProcess),
+      );
+      _applyConsumableSelection(_consumableSelection);
       _result = null;
       _wizardStep = WizardStep.process;
     });
@@ -3080,7 +3189,7 @@ class _CalculatorPageState extends State<CalculatorPage> {
         jointType: _jointType,
         grooveType: _grooveType,
         weldingProcess: _weldingProcess,
-        consumablePreset: _consumablePreset,
+        consumableSelection: _consumableSelection,
         result: result,
         basisEntries: basisEntries,
       );
@@ -3133,11 +3242,13 @@ class _CalculatorPageState extends State<CalculatorPage> {
       CalculationBasisItem('Groove', _grooveType.label),
       CalculationBasisItem(
         'Classification',
-        '${_consumablePreset.awsSpecification} ${_consumablePreset.label}',
+        _consumableSelection.awsSpecification == null
+            ? _consumableSelection.label
+            : '${_consumableSelection.awsSpecification} ${_consumableSelection.label}',
       ),
       CalculationBasisItem(
         'Filler Metal Family',
-        _consumablePreset.family.label,
+        _consumableSelection.family.label,
       ),
       CalculationBasisItem(
         'Density',

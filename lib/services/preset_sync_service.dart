@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
 import '../models/weld_models.dart';
@@ -26,12 +27,17 @@ class PresetSyncService {
     if (body['ok'] != true) {
       throw Exception(body['error']?.toString() ?? 'Preset list failed.');
     }
-    final presets = body['presets'];
-    if (presets is! List) return const [];
-    return presets
-        .whereType<Map>()
-        .map((item) => UserWeldPreset.fromJson(Map<String, dynamic>.from(item)))
-        .toList();
+    final rawPresets = body['presets'];
+    if (rawPresets is! List) return const [];
+    final presets = <UserWeldPreset>[];
+    for (final item in rawPresets.whereType<Map>()) {
+      try {
+        presets.add(UserWeldPreset.fromJson(Map<String, dynamic>.from(item)));
+      } catch (error) {
+        debugPrint('Skipping unreadable synced preset row: $error');
+      }
+    }
+    return presets;
   }
 
   Future<void> save(String email, UserWeldPreset preset) async {

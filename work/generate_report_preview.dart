@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:weld_consumable_calculator/core/weld_calculator.dart';
+import 'package:weld_consumable_calculator/models/consumable_selection.dart';
 import 'package:weld_consumable_calculator/models/weld_models.dart';
 import 'package:weld_consumable_calculator/services/weld_pdf_report_service.dart';
 
@@ -31,7 +32,9 @@ Future<void> main() async {
     jointType: JointType.pipeButt,
     grooveType: GrooveType.doubleV,
     weldingProcess: WeldingProcess.gtawSmaw,
-    consumablePreset: ConsumablePreset.gtawRootSmawFill,
+    consumableSelection: const BuiltInConsumableSelection(
+      ConsumablePreset.gtawRootSmawFill,
+    ),
     result: result,
     basisEntries: const [
       MapEntry('Process', 'GTAW + SMAW'),

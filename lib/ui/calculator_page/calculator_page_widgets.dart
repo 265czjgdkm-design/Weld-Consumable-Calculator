@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../core/weld_formulas.dart';
 import '../../l10n/app_language.dart';
 import '../../l10n/app_locale_scope.dart';
+import '../../models/consumable_selection.dart';
 import '../../models/weld_models.dart';
 import '../widgets/result_card.dart';
 import 'calculator_page_models.dart';
@@ -861,7 +862,7 @@ class ResultsSection extends StatelessWidget {
     super.key,
     required this.result,
     required this.basis,
-    required this.consumablePreset,
+    required this.consumableSelection,
     required this.onPdfPressed,
     required this.pdfBusy,
     this.pdfLocked = false,
@@ -869,7 +870,7 @@ class ResultsSection extends StatelessWidget {
 
   final WeldCalculationResult result;
   final List<CalculationBasisItem> basis;
-  final ConsumablePreset consumablePreset;
+  final ConsumableSelection consumableSelection;
   final VoidCallback? onPdfPressed;
   final bool pdfBusy;
   final bool pdfLocked;
@@ -1130,7 +1131,7 @@ class ResultsSection extends StatelessWidget {
         const SizedBox(height: 18),
         CalculationBasisPanel(
           items: basis,
-          consumablePreset: consumablePreset,
+          consumableSelection: consumableSelection,
           subtitle:
               'Full engineering basis used in this estimate, including geometry, process setup, density, and deposition assumptions.',
         ),
@@ -1210,12 +1211,12 @@ class CalculationBasisPanel extends StatelessWidget {
   const CalculationBasisPanel({
     super.key,
     required this.items,
-    required this.consumablePreset,
+    required this.consumableSelection,
     required this.subtitle,
   });
 
   final List<CalculationBasisItem> items;
-  final ConsumablePreset consumablePreset;
+  final ConsumableSelection consumableSelection;
   final String subtitle;
 
   @override
@@ -1243,7 +1244,7 @@ class CalculationBasisPanel extends StatelessWidget {
           ),
           const SizedBox(height: 6),
           Text(
-            consumablePreset.description,
+            consumableSelection.description,
             style: Theme.of(
               context,
             ).textTheme.bodyMedium?.copyWith(color: const Color(0xFF607482)),

@@ -1,3 +1,5 @@
+import 'consumable_selection.dart';
+
 enum JointType { pipeButt, plateButt, fillet }
 
 enum GrooveType { singleV, halfV, doubleV, compoundV, square, fillet }
@@ -502,7 +504,9 @@ extension InputPresetX on InputPreset {
       jointType: JointType.pipeButt,
       grooveType: GrooveType.singleV,
       weldingProcess: WeldingProcess.gtawSmaw,
-      consumablePreset: ConsumablePreset.gtawRootSmawFill,
+      consumableSelection: BuiltInConsumableSelection(
+        ConsumablePreset.gtawRootSmawFill,
+      ),
       quantity: 1,
       pipeOdMm: 168.3,
       thicknessMm: 12,
@@ -518,7 +522,9 @@ extension InputPresetX on InputPreset {
       jointType: JointType.pipeButt,
       grooveType: GrooveType.doubleV,
       weldingProcess: WeldingProcess.gtawSmaw,
-      consumablePreset: ConsumablePreset.gtawRootSmawFill,
+      consumableSelection: BuiltInConsumableSelection(
+        ConsumablePreset.gtawRootSmawFill,
+      ),
       quantity: 1,
       pipeOdMm: 323.9,
       thicknessMm: 16,
@@ -534,7 +540,9 @@ extension InputPresetX on InputPreset {
       jointType: JointType.pipeButt,
       grooveType: GrooveType.singleV,
       weldingProcess: WeldingProcess.gtaw,
-      consumablePreset: ConsumablePreset.er308l,
+      consumableSelection: BuiltInConsumableSelection(
+        ConsumablePreset.er308l,
+      ),
       quantity: 1,
       pipeOdMm: 114.3,
       thicknessMm: 6,
@@ -548,7 +556,9 @@ extension InputPresetX on InputPreset {
       jointType: JointType.plateButt,
       grooveType: GrooveType.singleV,
       weldingProcess: WeldingProcess.gmaw,
-      consumablePreset: ConsumablePreset.er70s6,
+      consumableSelection: BuiltInConsumableSelection(
+        ConsumablePreset.er70s6,
+      ),
       quantity: 1,
       lengthPerPieceMm: 800,
       thicknessMm: 10,
@@ -562,7 +572,9 @@ extension InputPresetX on InputPreset {
       jointType: JointType.plateButt,
       grooveType: GrooveType.doubleV,
       weldingProcess: WeldingProcess.smaw,
-      consumablePreset: ConsumablePreset.e7018,
+      consumableSelection: BuiltInConsumableSelection(
+        ConsumablePreset.e7018,
+      ),
       quantity: 1,
       lengthPerPieceMm: 1000,
       thicknessMm: 20,
@@ -576,7 +588,9 @@ extension InputPresetX on InputPreset {
       jointType: JointType.fillet,
       grooveType: GrooveType.fillet,
       weldingProcess: WeldingProcess.fcaw,
-      consumablePreset: ConsumablePreset.e71t1,
+      consumableSelection: BuiltInConsumableSelection(
+        ConsumablePreset.e71t1,
+      ),
       quantity: 2,
       lengthPerPieceMm: 600,
       legSizeMm: 8,
@@ -591,7 +605,7 @@ class WeldInputPresetData {
     required this.jointType,
     required this.grooveType,
     required this.weldingProcess,
-    required this.consumablePreset,
+    required this.consumableSelection,
     required this.quantity,
     required this.wasteFactorPercent,
     this.depositionRateMode = DepositionRateMode.preset,
@@ -624,7 +638,7 @@ class WeldInputPresetData {
   final JointType jointType;
   final GrooveType grooveType;
   final WeldingProcess weldingProcess;
-  final ConsumablePreset consumablePreset;
+  final ConsumableSelection consumableSelection;
   final DepositionRateMode depositionRateMode;
   final JointGeometryMode jointGeometryMode;
   final JointAlignment jointAlignment;
@@ -657,7 +671,7 @@ class WeldInputPresetData {
     'jointType': jointType.name,
     'grooveType': grooveType.name,
     'weldingProcess': weldingProcess.name,
-    'consumablePreset': consumablePreset.name,
+    'consumableSelection': consumableSelection.toJson(),
     'depositionRateMode': depositionRateMode.name,
     'jointGeometryMode': jointGeometryMode.name,
     'jointAlignment': jointAlignment.name,
@@ -700,9 +714,16 @@ class WeldInputPresetData {
     weldingProcess: WeldingProcess.values.byName(
       json['weldingProcess'] as String,
     ),
-    consumablePreset: ConsumablePreset.values.byName(
-      json['consumablePreset'] as String,
-    ),
+    // Old saved calculations (local store + cloud sheet) stored a bare
+    // `consumablePreset` key with no discriminant, predating custom filler
+    // materials -- keep loading those without migration.
+    consumableSelection: json['consumableSelection'] != null
+        ? ConsumableSelection.fromJson(
+            json['consumableSelection'] as Map<String, dynamic>,
+          )
+        : BuiltInConsumableSelection(
+            ConsumablePreset.values.byName(json['consumablePreset'] as String),
+          ),
     quantity: (json['quantity'] as num).toDouble(),
     wasteFactorPercent: (json['wasteFactorPercent'] as num).toDouble(),
     depositionRateMode: json['depositionRateMode'] == null

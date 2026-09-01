@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../models/weld_models.dart';
@@ -21,11 +22,16 @@ class UserPresetStore {
       return const [];
     }
 
-    return decoded
-        .whereType<Map>()
-        .map((item) => UserWeldPreset.fromJson(Map<String, dynamic>.from(item)))
-        .toList()
-      ..sort((a, b) => b.updatedAtEpochMs.compareTo(a.updatedAtEpochMs));
+    final presets = <UserWeldPreset>[];
+    for (final item in decoded.whereType<Map>()) {
+      try {
+        presets.add(UserWeldPreset.fromJson(Map<String, dynamic>.from(item)));
+      } catch (error) {
+        debugPrint('Skipping unreadable saved calculation row: $error');
+      }
+    }
+    presets.sort((a, b) => b.updatedAtEpochMs.compareTo(a.updatedAtEpochMs));
+    return presets;
   }
 
   Future<void> save(List<UserWeldPreset> presets) async {

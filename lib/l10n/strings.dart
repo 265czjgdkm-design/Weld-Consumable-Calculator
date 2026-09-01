@@ -145,6 +145,8 @@ class L10nStrings {
     required this.presetSaveError,
     required this.presetSaved,
     required this.presetSavedOffline,
+    required this.presetUpdated,
+    required this.presetUpdatedOffline,
     required this.dashboardPreheatCalculator,
     required this.dashboardCoolingTimeCalculator,
     required this.materialFieldNickel,
@@ -346,6 +348,8 @@ class L10nStrings {
   final String presetSaveError;
   final String presetSaved;
   final String presetSavedOffline;
+  final String presetUpdated;
+  final String presetUpdatedOffline;
   final String dashboardPreheatCalculator;
   final String dashboardCoolingTimeCalculator;
   final String materialFieldNickel;
@@ -569,6 +573,9 @@ const Map<AppLanguage, L10nStrings> _strings = {
     presetSaved: 'Preset saved.',
     presetSavedOffline:
         'Saved on this device only — will sync once you\'re back online.',
+    presetUpdated: 'Saved calculation updated.',
+    presetUpdatedOffline:
+        'Updated on this device only — will sync once you\'re back online.',
     dashboardPreheatCalculator: 'Preheat Temperature',
     dashboardCoolingTimeCalculator: 'Cooling Time (t8/5)',
     materialFieldNickel: 'Nickel (Ni) %',
@@ -810,6 +817,9 @@ const Map<AppLanguage, L10nStrings> _strings = {
     presetSaved: 'Şablon kaydedildi.',
     presetSavedOffline:
         'Sadece bu cihazda kaydedildi — internete bağlanınca eşitlenecek.',
+    presetUpdated: 'Kayıtlı hesaplama güncellendi.',
+    presetUpdatedOffline:
+        'Sadece bu cihazda güncellendi — internete bağlanınca eşitlenecek.',
     dashboardPreheatCalculator: 'Ön Isıtma Sıcaklığı',
     dashboardCoolingTimeCalculator: 'Soğuma Süresi (t8/5)',
     materialFieldNickel: 'Nikel (Ni) %',
@@ -1051,6 +1061,9 @@ const Map<AppLanguage, L10nStrings> _strings = {
     presetSaved: 'Шаблон сохранён.',
     presetSavedOffline:
         'Сохранено только на этом устройстве — синхронизируется, когда появится подключение к интернету.',
+    presetUpdated: 'Сохранённый расчёт обновлён.',
+    presetUpdatedOffline:
+        'Обновлено только на этом устройстве — синхронизируется, когда появится подключение к интернету.',
     dashboardPreheatCalculator: 'Температура предварительного подогрева',
     dashboardCoolingTimeCalculator: 'Время охлаждения (t8/5)',
     materialFieldNickel: 'Никель (Ni) %',
@@ -1296,6 +1309,9 @@ const Map<AppLanguage, L10nStrings> _strings = {
     presetSaved: 'Vorlage gespeichert.',
     presetSavedOffline:
         'Nur auf diesem Gerät gespeichert — wird synchronisiert, sobald Sie wieder online sind.',
+    presetUpdated: 'Gespeicherte Berechnung aktualisiert.',
+    presetUpdatedOffline:
+        'Nur auf diesem Gerät aktualisiert — wird synchronisiert, sobald Sie wieder online sind.',
     dashboardPreheatCalculator: 'Vorwärmtemperatur',
     dashboardCoolingTimeCalculator: 'Abkühlzeit (t8/5)',
     materialFieldNickel: 'Nickel (Ni) %',
@@ -1537,6 +1553,9 @@ const Map<AppLanguage, L10nStrings> _strings = {
     presetSaved: 'प्रीसेट सेव हो गया।',
     presetSavedOffline:
         'सिर्फ इस डिवाइस पर सेव हुआ — इंटरनेट से जुड़ते ही सिंक हो जाएगा।',
+    presetUpdated: 'सेव की गई कैलकुलेशन अपडेट हो गई।',
+    presetUpdatedOffline:
+        'सिर्फ इस डिवाइस पर अपडेट हुआ — इंटरनेट से जुड़ते ही सिंक हो जाएगा।',
     dashboardPreheatCalculator: 'प्रीहीट तापमान',
     dashboardCoolingTimeCalculator: 'कूलिंग टाइम (t8/5)',
     materialFieldNickel: 'निकल (Ni) %',
