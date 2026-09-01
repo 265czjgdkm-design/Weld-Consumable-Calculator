@@ -17,10 +17,11 @@ import 'package:weld_consumable_calculator/ui/calculator_page/wizard/process_ico
 /// Fake [EntitlementService] so paywall tests never touch the real
 /// RevenueCat SDK -- see lib/services/entitlement_service.dart.
 class _FakeEntitlementService extends EntitlementService {
-  _FakeEntitlementService({this.offering, this.purchaseResult});
+  _FakeEntitlementService({this.offering, this.purchaseResult, this.restoreFuture});
 
   final Offering? offering;
   final CustomerInfo? purchaseResult;
+  final Future<CustomerInfo>? restoreFuture;
 
   @override
   Future<bool> isPremiumActive() async => false;
@@ -42,6 +43,8 @@ class _FakeEntitlementService extends EntitlementService {
 
   @override
   Future<CustomerInfo> restorePurchases() async {
+    final future = restoreFuture;
+    if (future != null) return future;
     throw StateError('Unexpected restore in test');
   }
 }
@@ -516,6 +519,76 @@ void main() {
       // message actually renders instead of painting underneath it.
       expect(find.text('Varyos Weld Premium'), findsNothing);
       expect(find.text('Restore failed. Please try again.'), findsOneWidget);
+    },
+  );
+
+  testWidgets(
+    'restore purchases success path dismisses the sheet and unlocks premium',
+    (tester) async {
+      await _pumpCalculatorToSummary(
+        tester,
+        _FakeEntitlementService(
+          offering: null,
+          restoreFuture: Future.value(_activeCustomerInfo()),
+        ),
+      );
+
+      await tester.ensureVisible(find.text('Calculate'));
+      await tester.tap(find.text('Calculate'));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Unlock PDF'));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Restore Purchases'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Varyos Weld Premium'), findsNothing);
+      expect(find.text('Purchases restored.'), findsOneWidget);
+      expect(find.text('Export PDF'), findsOneWidget);
+    },
+  );
+
+  testWidgets(
+    'dismissing the paywall sheet via the barrier while a restore is in '
+    'flight does not pop the CalculatorPage underneath it',
+    (tester) async {
+      final restoreCompleter = Completer<CustomerInfo>();
+      await _pumpCalculatorToSummary(
+        tester,
+        _FakeEntitlementService(
+          offering: null,
+          restoreFuture: restoreCompleter.future,
+        ),
+      );
+
+      await tester.ensureVisible(find.text('Calculate'));
+      await tester.tap(find.text('Calculate'));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Unlock PDF'));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Restore Purchases'));
+      await tester.pump(); // starts the still-pending restore call
+
+      // User dismisses the sheet via the barrier while the restore call is
+      // still in flight -- the sheet's route becomes non-current
+      // immediately, before its exit animation even finishes.
+      await tester.tapAt(const Offset(20, 20));
+      await tester.pump(const Duration(milliseconds: 50));
+
+      // The in-flight restore call now resolves *after* the sheet's own
+      // route already stopped being current -- a naive unconditional
+      // `Navigator.pop()` here would pop the CalculatorPage underneath it.
+      restoreCompleter.complete(_activeCustomerInfo());
+      await tester.pumpAndSettle();
+
+      expect(find.text('Varyos Weld Premium'), findsNothing);
+      // The CalculatorPage (and its computed result) is still here -- a
+      // naive unconditional pop would have destroyed the whole wizard.
+      expect(find.text('Export PDF'), findsOneWidget);
+      expect(find.text('Purchases restored.'), findsOneWidget);
     },
   );
 

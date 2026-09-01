@@ -3553,8 +3553,19 @@ class _PaywallSheetState extends State<_PaywallSheet> {
       .active
       .containsKey(PurchasesConfig.entitlementId);
 
+  // The sheet's own route may already be `popping` (e.g. the user dismissed
+  // it via the barrier) by the time an in-flight purchase/restore call
+  // resolves -- popping unconditionally in that case pops the route
+  // *underneath* the sheet (the whole CalculatorPage). Capture the route
+  // before the await and only pop it if it's still current.
+  void _dismissSheetIfCurrent(NavigatorState navigator, ModalRoute? route) {
+    if (route?.isCurrent ?? false) navigator.pop();
+  }
+
   Future<void> _purchase(Package package) async {
     setState(() => _purchasingPackageId = package.identifier);
+    final navigator = Navigator.of(context);
+    final sheetRoute = ModalRoute.of(context);
     try {
       final customerInfo = await widget.entitlementService.purchasePackage(
         package,
@@ -3562,7 +3573,7 @@ class _PaywallSheetState extends State<_PaywallSheet> {
       final isActive = _isEntitlementActive(customerInfo);
       widget.onEntitlementChanged(isActive);
       if (!mounted) return;
-      Navigator.of(context).pop();
+      _dismissSheetIfCurrent(navigator, sheetRoute);
       widget.onMessage(
         isActive ? 'Premium unlocked.' : 'Purchase completed.',
       );
@@ -3572,9 +3583,13 @@ class _PaywallSheetState extends State<_PaywallSheet> {
           PurchasesErrorCode.purchaseCancelledError) {
         // User backed out of the store sheet -- not an error worth surfacing.
       } else {
+        if (!mounted) return;
+        _dismissSheetIfCurrent(navigator, sheetRoute);
         widget.onMessage('Purchase failed. Please try again.');
       }
     } catch (error) {
+      if (!mounted) return;
+      _dismissSheetIfCurrent(navigator, sheetRoute);
       widget.onMessage('Purchase failed. Please try again.');
     }
     if (mounted) setState(() => _purchasingPackageId = null);
@@ -3582,6 +3597,8 @@ class _PaywallSheetState extends State<_PaywallSheet> {
 
   Future<void> _restore() async {
     setState(() => _restoring = true);
+    final navigator = Navigator.of(context);
+    final sheetRoute = ModalRoute.of(context);
     try {
       final customerInfo = await widget.entitlementService.restorePurchases();
       final isActive = _isEntitlementActive(customerInfo);
@@ -3590,14 +3607,16 @@ class _PaywallSheetState extends State<_PaywallSheet> {
       // Dismiss the sheet before messaging, same as `_purchase` -- otherwise
       // the SnackBar paints underneath the still-open sheet and is
       // invisible.
-      Navigator.of(context).pop();
+      _dismissSheetIfCurrent(navigator, sheetRoute);
       widget.onMessage(
         isActive ? 'Purchases restored.' : 'No previous purchase found.',
       );
     } catch (error) {
       if (!mounted) return;
-      Navigator.of(context).pop();
+      _dismissSheetIfCurrent(navigator, sheetRoute);
       widget.onMessage('Restore failed. Please try again.');
+    } finally {
+      if (mounted) setState(() => _restoring = false);
     }
   }
 
@@ -3624,7 +3643,7 @@ class _PaywallSheetState extends State<_PaywallSheet> {
     required Package package,
   }) {
     final busy = _purchasingPackageId == package.identifier;
-    final disabled = _purchasingPackageId != null;
+    final disabled = _purchasingPackageId != null || _restoring;
     return SizedBox(
       width: double.infinity,
       child: FilledButton(
@@ -3750,7 +3769,9 @@ class _PaywallSheetState extends State<_PaywallSheet> {
             const SizedBox(height: 10),
             Center(
               child: TextButton(
-                onPressed: _restoring ? null : _restore,
+                onPressed: (_restoring || _purchasingPackageId != null)
+                    ? null
+                    : _restore,
                 child: _restoring
                     ? const SizedBox(
                         width: 18,
