@@ -1120,6 +1120,24 @@ class _CalculatorPageState extends State<CalculatorPage> {
     final customSelections = _customFillerMaterials
         .map(CustomConsumableSelection.new)
         .toList();
+    // The library list is live and loads asynchronously, so a saved
+    // calculation's snapshot may not (yet, or ever again) match any entry
+    // in it -- edited/deleted-since-save, or just not loaded on frame 1.
+    // `DropdownButtonFormField` throws unless its value equals exactly one
+    // item, so the snapshot itself must always be injected as a selectable
+    // item even when it's missing from the live library (see finding #1).
+    final selectedSnapshot = _consumableSelection;
+    final isSelectedSnapshotMissing =
+        selectedSnapshot is CustomConsumableSelection &&
+        !customSelections.contains(selectedSnapshot);
+    final displayedCustomSelections = [
+      ...customSelections,
+      if (isSelectedSnapshotMissing) selectedSnapshot,
+    ];
+    String customSelectionLabel(ConsumableSelection selection) =>
+        isSelectedSnapshotMissing && selection == selectedSnapshot
+        ? '${selection.awsDisplayLabel} (as saved)'
+        : selection.awsDisplayLabel;
 
     return InputPanelSection(
       icon: Icons.inventory_2_outlined,
@@ -1141,10 +1159,12 @@ class _CalculatorPageState extends State<CalculatorPage> {
               selectedItemBuilder: (context) => [
                 for (final selection in builtInSelections)
                   _buildDropdownSelectedText(selection.awsDisplayLabel),
-                if (customSelections.isNotEmpty) ...[
+                if (displayedCustomSelections.isNotEmpty) ...[
                   _buildDropdownSelectedText(''),
-                  for (final selection in customSelections)
-                    _buildDropdownSelectedText(selection.awsDisplayLabel),
+                  for (final selection in displayedCustomSelections)
+                    _buildDropdownSelectedText(
+                      customSelectionLabel(selection),
+                    ),
                 ],
               ],
               items: [
@@ -1156,7 +1176,7 @@ class _CalculatorPageState extends State<CalculatorPage> {
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
-                if (customSelections.isNotEmpty) ...[
+                if (displayedCustomSelections.isNotEmpty) ...[
                   const DropdownMenuItem<ConsumableSelection>(
                     enabled: false,
                     child: Text(
@@ -1164,11 +1184,11 @@ class _CalculatorPageState extends State<CalculatorPage> {
                       style: TextStyle(fontWeight: FontWeight.w700),
                     ),
                   ),
-                  for (final selection in customSelections)
+                  for (final selection in displayedCustomSelections)
                     DropdownMenuItem(
                       value: selection,
                       child: Text(
-                        selection.awsDisplayLabel,
+                        customSelectionLabel(selection),
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
@@ -2078,11 +2098,19 @@ class _CalculatorPageState extends State<CalculatorPage> {
     _applyConsumableSelection(_consumableSelection);
   }
 
-  /// "Update Saved Calculation" once this state was loaded from (and hasn't
-  /// been navigated away from) an existing saved preset -- see
-  /// _saveCurrentAsUserPreset's in-place-update branch.
-  String get _saveAsPresetButtonLabel =>
-      _selectedUserPresetId != null ? 'Update Saved Calculation' : 'Save as Preset';
+  /// Single source of truth for whether Save takes the in-place-update
+  /// path, shared by the button label and _saveCurrentAsUserPreset's
+  /// branch so they can't disagree (see finding #5) -- true once this
+  /// state was loaded from (and hasn't been navigated away from) an
+  /// existing saved preset that's still resolvable and has an account.
+  bool get _isUpdatingSelectedUserPreset =>
+      _selectedUserPresetId != null &&
+      _selectedUserPreset != null &&
+      _accountEmail != null;
+
+  String get _saveAsPresetButtonLabel => _isUpdatingSelectedUserPreset
+      ? 'Update Saved Calculation'
+      : 'Save as Preset';
 
   UserWeldPreset? get _selectedUserPreset {
     final presetId = _selectedUserPresetId;
@@ -2107,8 +2135,11 @@ class _CalculatorPageState extends State<CalculatorPage> {
     }
 
     List<UserWeldPreset> presets;
+    var skippedCount = 0;
     try {
-      presets = await _presetSyncService.list(email);
+      final result = await _presetSyncService.list(email);
+      presets = result.presets;
+      skippedCount = result.skippedCount;
       await _userPresetStore.save(presets);
     } catch (_) {
       presets = await _userPresetStore.load();
@@ -2122,6 +2153,12 @@ class _CalculatorPageState extends State<CalculatorPage> {
         _selectedUserPresetId = null;
       }
     });
+    if (skippedCount > 0) {
+      _showMessage(
+        "$skippedCount saved calculation${skippedCount == 1 ? '' : 's'} "
+        "couldn't be loaded and ${skippedCount == 1 ? 'was' : 'were'} skipped.",
+      );
+    }
   }
 
   Future<void> _applyInputPreset(BuildContext context, InputPreset preset) async {
@@ -2277,10 +2314,12 @@ class _CalculatorPageState extends State<CalculatorPage> {
   }
 
   Future<void> _saveCurrentAsUserPreset() async {
-    final selectedId = _selectedUserPresetId;
-    final selectedName = _selectedUserPreset?.name;
-    if (selectedId != null && selectedName != null && _accountEmail != null) {
-      await _updateSelectedUserPreset(_accountEmail!, selectedId, selectedName);
+    if (_isUpdatingSelectedUserPreset) {
+      await _updateSelectedUserPreset(
+        _accountEmail!,
+        _selectedUserPresetId!,
+        _selectedUserPreset!.name,
+      );
       return;
     }
 
@@ -2373,17 +2412,32 @@ class _CalculatorPageState extends State<CalculatorPage> {
       } catch (_) {
         syncSucceeded = false;
       }
+      // If another device deleted this preset while the save above was in
+      // flight, `save`'s upsert just recreated it server-side, but the
+      // list comprehension below would otherwise match nothing and drop
+      // it from the local list silently -- re-add it instead (see
+      // finding #4) rather than let it vanish from view.
+      final presetStillExists = _userPresets.any(
+        (existing) => existing.id == presetId,
+      );
       final presets = [
         for (final existing in _userPresets)
           if (existing.id == presetId) preset else existing,
+        if (!presetStillExists) preset,
       ]..sort((a, b) => b.updatedAtEpochMs.compareTo(a.updatedAtEpochMs));
       await _userPresetStore.save(presets);
       if (!mounted) return;
       setState(() => _userPresets = presets);
       final strings = AppLocaleScope.stringsOf(context);
-      _showMessage(
-        syncSucceeded ? strings.presetUpdated : strings.presetUpdatedOffline,
-      );
+      if (!presetStillExists) {
+        _showMessage(
+          'This saved calculation had been removed elsewhere and was restored.',
+        );
+      } else {
+        _showMessage(
+          syncSucceeded ? strings.presetUpdated : strings.presetUpdatedOffline,
+        );
+      }
     } catch (_) {
       if (!mounted) return;
       _showMessage(AppLocaleScope.stringsOf(context).presetSaveError);

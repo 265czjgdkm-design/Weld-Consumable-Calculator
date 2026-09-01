@@ -672,6 +672,12 @@ class WeldInputPresetData {
     'grooveType': grooveType.name,
     'weldingProcess': weldingProcess.name,
     'consumableSelection': consumableSelection.toJson(),
+    // Legacy key kept for pre-custom-filler-materials app builds reading
+    // this account's presets from the shared cloud sheet (see finding #2)
+    // -- no legacy equivalent exists for custom materials, so it's simply
+    // omitted there, which those older builds don't understand anyway.
+    if (consumableSelection case BuiltInConsumableSelection(:final preset))
+      'consumablePreset': preset.name,
     'depositionRateMode': depositionRateMode.name,
     'jointGeometryMode': jointGeometryMode.name,
     'jointAlignment': jointAlignment.name,

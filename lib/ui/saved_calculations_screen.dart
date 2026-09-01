@@ -51,8 +51,11 @@ class _SavedCalculationsScreenState extends State<SavedCalculationsScreen> {
     }
 
     List<UserWeldPreset> presets;
+    var skippedCount = 0;
     try {
-      presets = await _presetSyncService.list(email);
+      final result = await _presetSyncService.list(email);
+      presets = result.presets;
+      skippedCount = result.skippedCount;
       await _presetStore.save(presets);
     } catch (_) {
       presets = await _presetStore.load();
@@ -63,6 +66,18 @@ class _SavedCalculationsScreenState extends State<SavedCalculationsScreen> {
       _presets = presets;
       _loading = false;
     });
+    if (skippedCount > 0) {
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          SnackBar(
+            content: Text(
+              "$skippedCount saved calculation${skippedCount == 1 ? '' : 's'} "
+              "couldn't be loaded and ${skippedCount == 1 ? 'was' : 'were'} skipped.",
+            ),
+          ),
+        );
+    }
   }
 
   Future<void> _openInCalculator(UserWeldPreset preset) async {

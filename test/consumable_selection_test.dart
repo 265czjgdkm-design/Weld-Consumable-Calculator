@@ -89,6 +89,30 @@ void main() {
       },
     );
 
+    test(
+      'a builtin selection still emits the legacy "consumablePreset" key '
+      'alongside the new one, so a pre-custom-filler app build reading '
+      'this account\'s synced presets does not crash on a missing key',
+      () {
+        final data = _presetDataWith(
+          const BuiltInConsumableSelection(ConsumablePreset.er70s6),
+        );
+        final json = data.toJson();
+        expect(json['consumablePreset'], 'er70s6');
+        expect(json['consumableSelection'], isNotNull);
+      },
+    );
+
+    test(
+      'a custom selection has no legacy "consumablePreset" key (there is '
+      'no equivalent for an old app build to fall back to)',
+      () {
+        final data = _presetDataWith(const CustomConsumableSelection(_customMaterial));
+        final json = data.toJson();
+        expect(json.containsKey('consumablePreset'), isFalse);
+      },
+    );
+
     test('new-format JSON with a custom selection round-trips', () {
       final data = _presetDataWith(const CustomConsumableSelection(_customMaterial));
       final restored = WeldInputPresetData.fromJson(data.toJson());

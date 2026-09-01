@@ -18,7 +18,13 @@ import 'signup_config.dart';
 class PresetSyncService {
   const PresetSyncService();
 
-  Future<List<UserWeldPreset>> list(String email) async {
+  /// [skippedCount] is how many rows were dropped for being individually
+  /// unreadable (not transient network/parse failures on the whole
+  /// response, which still throw) -- callers should surface this to the
+  /// user rather than silently shrinking their saved list (see finding #3).
+  Future<({List<UserWeldPreset> presets, int skippedCount})> list(
+    String email,
+  ) async {
     final uri = Uri.parse(SignupConfig.presetApiUrl).replace(
       queryParameters: {'action': 'listPresets', 'email': email},
     );
@@ -28,16 +34,20 @@ class PresetSyncService {
       throw Exception(body['error']?.toString() ?? 'Preset list failed.');
     }
     final rawPresets = body['presets'];
-    if (rawPresets is! List) return const [];
+    if (rawPresets is! List) {
+      return (presets: const <UserWeldPreset>[], skippedCount: 0);
+    }
     final presets = <UserWeldPreset>[];
+    var skippedCount = 0;
     for (final item in rawPresets.whereType<Map>()) {
       try {
         presets.add(UserWeldPreset.fromJson(Map<String, dynamic>.from(item)));
       } catch (error) {
+        skippedCount++;
         debugPrint('Skipping unreadable synced preset row: $error');
       }
     }
-    return presets;
+    return (presets: presets, skippedCount: skippedCount);
   }
 
   Future<void> save(String email, UserWeldPreset preset) async {
