@@ -34,23 +34,18 @@ void main() {
         ],
       });
 
-      await http.runWithClient(
-        () async {
-          await tester.pumpWidget(
-            AppLocaleScope(
-              locale: AppLocale(),
-              child: const MaterialApp(home: CalculatorPage()),
-            ),
-          );
-          await tester.pumpAndSettle();
-        },
-        () => MockClient(
-          (request) async => http.Response(responseBody, 200),
-        ),
-      );
+      await http.runWithClient(() async {
+        await tester.pumpWidget(
+          AppLocaleScope(
+            locale: AppLocale(),
+            child: const MaterialApp(home: CalculatorPage()),
+          ),
+        );
+        await tester.pumpAndSettle();
+      }, () => MockClient((request) async => http.Response(responseBody, 200)));
 
       expect(
-        find.textContaining("couldn't be loaded and was skipped"),
+        find.textContaining("couldn't be loaded and were skipped"),
         findsOneWidget,
       );
     },

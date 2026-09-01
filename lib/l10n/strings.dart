@@ -147,6 +147,9 @@ class L10nStrings {
     required this.presetSavedOffline,
     required this.presetUpdated,
     required this.presetUpdatedOffline,
+    required this.presetRestored,
+    required this.presetRestoredOffline,
+    required this.savedCalculationsSkippedWarning,
     required this.dashboardPreheatCalculator,
     required this.dashboardCoolingTimeCalculator,
     required this.materialFieldNickel,
@@ -350,6 +353,9 @@ class L10nStrings {
   final String presetSavedOffline;
   final String presetUpdated;
   final String presetUpdatedOffline;
+  final String presetRestored;
+  final String presetRestoredOffline;
+  final String savedCalculationsSkippedWarning;
   final String dashboardPreheatCalculator;
   final String dashboardCoolingTimeCalculator;
   final String materialFieldNickel;
@@ -559,11 +565,13 @@ const Map<AppLanguage, L10nStrings> _strings = {
     savedCalculationsLoadButton: 'Load',
     savedCalculationsRenameTitle: 'Rename Preset',
     savedCalculationsRenameFieldLabel: 'Preset Name',
-    savedCalculationsRenameError: "Couldn't rename the preset. Please try again.",
+    savedCalculationsRenameError:
+        "Couldn't rename the preset. Please try again.",
     savedCalculationsDeleteConfirmTitle: 'Delete Preset',
     savedCalculationsDeleteConfirmBody:
         'Delete "{name}" from your saved calculations? This cannot be undone.',
-    savedCalculationsDeleteError: "Couldn't delete the preset. Please try again.",
+    savedCalculationsDeleteError:
+        "Couldn't delete the preset. Please try again.",
     presetProcessSwitchConfirmTitle: 'Switch Welding Process?',
     presetProcessSwitchConfirmBody:
         'This starter preset uses {presetProcess}. Continue and switch the welding process, or keep {currentProcess}?',
@@ -576,6 +584,12 @@ const Map<AppLanguage, L10nStrings> _strings = {
     presetUpdated: 'Saved calculation updated.',
     presetUpdatedOffline:
         'Updated on this device only — will sync once you\'re back online.',
+    presetRestored:
+        'This saved calculation had been removed elsewhere and was restored.',
+    presetRestoredOffline:
+        'This saved calculation had been removed elsewhere and was restored on this device only — will sync once you\'re back online.',
+    savedCalculationsSkippedWarning:
+        "{count} saved calculation(s) couldn't be loaded and were skipped.",
     dashboardPreheatCalculator: 'Preheat Temperature',
     dashboardCoolingTimeCalculator: 'Cooling Time (t8/5)',
     materialFieldNickel: 'Nickel (Ni) %',
@@ -803,7 +817,8 @@ const Map<AppLanguage, L10nStrings> _strings = {
     savedCalculationsLoadButton: 'Yükle',
     savedCalculationsRenameTitle: 'Şablonu Yeniden Adlandır',
     savedCalculationsRenameFieldLabel: 'Şablon Adı',
-    savedCalculationsRenameError: 'Şablon yeniden adlandırılamadı. Lütfen tekrar dene.',
+    savedCalculationsRenameError:
+        'Şablon yeniden adlandırılamadı. Lütfen tekrar dene.',
     savedCalculationsDeleteConfirmTitle: 'Şablonu Sil',
     savedCalculationsDeleteConfirmBody:
         '"{name}" kayıtlı hesaplamalarından silinsin mi? Bu işlem geri alınamaz.',
@@ -820,6 +835,12 @@ const Map<AppLanguage, L10nStrings> _strings = {
     presetUpdated: 'Kayıtlı hesaplama güncellendi.',
     presetUpdatedOffline:
         'Sadece bu cihazda güncellendi — internete bağlanınca eşitlenecek.',
+    presetRestored:
+        'Bu kayıtlı hesaplama başka bir yerde silinmişti ve geri yüklendi.',
+    presetRestoredOffline:
+        'Bu kayıtlı hesaplama başka bir yerde silinmişti ve sadece bu cihazda geri yüklendi — internete bağlanınca eşitlenecek.',
+    savedCalculationsSkippedWarning:
+        '{count} kayıtlı hesaplama yüklenemedi ve atlandı.',
     dashboardPreheatCalculator: 'Ön Isıtma Sıcaklığı',
     dashboardCoolingTimeCalculator: 'Soğuma Süresi (t8/5)',
     materialFieldNickel: 'Nikel (Ni) %',
@@ -949,7 +970,8 @@ const Map<AppLanguage, L10nStrings> _strings = {
     emailGateInvalidEmail: 'Введите корректный адрес электронной почты',
     emailGateError:
         'Не удалось сохранить сейчас — вы можете продолжить как гость.',
-    emailGateWelcomeToast: 'Готово — проверьте почту, там приветственное письмо.',
+    emailGateWelcomeToast:
+        'Готово — проверьте почту, там приветственное письмо.',
     authChoiceTitle: 'Добро пожаловать в Varyos Weld',
     authChoiceBody:
         'Создайте аккаунт, чтобы сохранять шаблоны и отчёты на всех устройствах, или продолжите как гость.',
@@ -1038,7 +1060,8 @@ const Map<AppLanguage, L10nStrings> _strings = {
     savedReportsDeleteConfirmTitle: 'Удалить отчёт',
     savedReportsDeleteConfirmBody:
         'Удалить «{name}» из сохранённых отчётов? Это действие необратимо.',
-    savedReportsShareError: 'Не удалось поделиться отчётом. Попробуйте ещё раз.',
+    savedReportsShareError:
+        'Не удалось поделиться отчётом. Попробуйте ещё раз.',
     savedCalculationsTitle: 'Сохранённые расчёты',
     savedCalculationsEmptyState:
         'Пока нет сохранённых расчётов. Сохраните один на шаге сводки в калькуляторе, чтобы увидеть его здесь.',
@@ -1047,11 +1070,13 @@ const Map<AppLanguage, L10nStrings> _strings = {
     savedCalculationsLoadButton: 'Загрузить',
     savedCalculationsRenameTitle: 'Переименовать шаблон',
     savedCalculationsRenameFieldLabel: 'Название шаблона',
-    savedCalculationsRenameError: 'Не удалось переименовать шаблон. Попробуйте ещё раз.',
+    savedCalculationsRenameError:
+        'Не удалось переименовать шаблон. Попробуйте ещё раз.',
     savedCalculationsDeleteConfirmTitle: 'Удалить шаблон',
     savedCalculationsDeleteConfirmBody:
         'Удалить «{name}» из сохранённых расчётов? Это действие необратимо.',
-    savedCalculationsDeleteError: 'Не удалось удалить шаблон. Попробуйте ещё раз.',
+    savedCalculationsDeleteError:
+        'Не удалось удалить шаблон. Попробуйте ещё раз.',
     presetProcessSwitchConfirmTitle: 'Сменить способ сварки?',
     presetProcessSwitchConfirmBody:
         'В этом стартовом шаблоне используется {presetProcess}. Продолжить и сменить способ сварки или оставить {currentProcess}?',
@@ -1064,6 +1089,12 @@ const Map<AppLanguage, L10nStrings> _strings = {
     presetUpdated: 'Сохранённый расчёт обновлён.',
     presetUpdatedOffline:
         'Обновлено только на этом устройстве — синхронизируется, когда появится подключение к интернету.',
+    presetRestored:
+        'Этот сохранённый расчёт был удалён в другом месте и был восстановлен.',
+    presetRestoredOffline:
+        'Этот сохранённый расчёт был удалён в другом месте и восстановлен только на этом устройстве — синхронизируется, когда появится подключение к интернету.',
+    savedCalculationsSkippedWarning:
+        '{count} сохранённых расчётов не удалось загрузить, они были пропущены.',
     dashboardPreheatCalculator: 'Температура предварительного подогрева',
     dashboardCoolingTimeCalculator: 'Время охлаждения (t8/5)',
     materialFieldNickel: 'Никель (Ni) %',
@@ -1107,7 +1138,8 @@ const Map<AppLanguage, L10nStrings> _strings = {
         'Использовать эту температуру подогрева в калькуляторе времени охлаждения',
     coolingScreenTitle: 'Калькулятор времени охлаждения (t8/5)',
     coolingScreenSubtitle: 'EN 1011-2, Приложение D.6',
-    coolingTempCardTitle: 'Температура предварительного подогрева / между проходами',
+    coolingTempCardTitle:
+        'Температура предварительного подогрева / между проходами',
     coolingT0Label: 'Температура подогрева или между проходами T0 (°C)',
     coolingT0InvalidError:
         'Должна быть ниже 500°C — формула охлаждения не определена при этом значении и выше.',
@@ -1283,7 +1315,8 @@ const Map<AppLanguage, L10nStrings> _strings = {
     savedReportsDeleteConfirmTitle: 'Bericht löschen',
     savedReportsDeleteConfirmBody:
         '„{name}“ aus Ihren gespeicherten Berichten löschen? Dies kann nicht rückgängig gemacht werden.',
-    savedReportsShareError: 'Bericht konnte nicht geteilt werden. Bitte versuchen Sie es erneut.',
+    savedReportsShareError:
+        'Bericht konnte nicht geteilt werden. Bitte versuchen Sie es erneut.',
     savedCalculationsTitle: 'Gespeicherte Berechnungen',
     savedCalculationsEmptyState:
         'Noch keine gespeicherten Berechnungen. Speichern Sie eine im Zusammenfassungsschritt des Rechners, um sie hier zu sehen.',
@@ -1312,6 +1345,12 @@ const Map<AppLanguage, L10nStrings> _strings = {
     presetUpdated: 'Gespeicherte Berechnung aktualisiert.',
     presetUpdatedOffline:
         'Nur auf diesem Gerät aktualisiert — wird synchronisiert, sobald Sie wieder online sind.',
+    presetRestored:
+        'Diese gespeicherte Berechnung wurde anderswo entfernt und wurde wiederhergestellt.',
+    presetRestoredOffline:
+        'Diese gespeicherte Berechnung wurde anderswo entfernt und nur auf diesem Gerät wiederhergestellt — wird synchronisiert, sobald Sie wieder online sind.',
+    savedCalculationsSkippedWarning:
+        '{count} gespeicherte Berechnung(en) konnten nicht geladen werden und wurden übersprungen.',
     dashboardPreheatCalculator: 'Vorwärmtemperatur',
     dashboardCoolingTimeCalculator: 'Abkühlzeit (t8/5)',
     materialFieldNickel: 'Nickel (Ni) %',
@@ -1530,7 +1569,8 @@ const Map<AppLanguage, L10nStrings> _strings = {
     savedReportsDeleteConfirmTitle: 'रिपोर्ट डिलीट करें',
     savedReportsDeleteConfirmBody:
         'क्या सेव्ड रिपोर्ट्स से "{name}" डिलीट करें? यह वापस नहीं लिया जा सकता।',
-    savedReportsShareError: 'रिपोर्ट शेयर नहीं हो सकी। कृपया फिर से कोशिश करें।',
+    savedReportsShareError:
+        'रिपोर्ट शेयर नहीं हो सकी। कृपया फिर से कोशिश करें।',
     savedCalculationsTitle: 'सेव्ड कैलकुलेशन्स',
     savedCalculationsEmptyState:
         'अभी तक कोई सेव्ड कैलकुलेशन नहीं है। इसे यहां देखने के लिए कैलकुलेटर के समरी स्टेप से एक सेव करें।',
@@ -1539,11 +1579,13 @@ const Map<AppLanguage, L10nStrings> _strings = {
     savedCalculationsLoadButton: 'लोड करें',
     savedCalculationsRenameTitle: 'प्रीसेट का नाम बदलें',
     savedCalculationsRenameFieldLabel: 'प्रीसेट का नाम',
-    savedCalculationsRenameError: 'प्रीसेट का नाम नहीं बदला जा सका। कृपया फिर से कोशिश करें।',
+    savedCalculationsRenameError:
+        'प्रीसेट का नाम नहीं बदला जा सका। कृपया फिर से कोशिश करें।',
     savedCalculationsDeleteConfirmTitle: 'प्रीसेट डिलीट करें',
     savedCalculationsDeleteConfirmBody:
         'क्या सेव्ड कैलकुलेशन्स से "{name}" डिलीट करें? यह वापस नहीं लिया जा सकता।',
-    savedCalculationsDeleteError: 'प्रीसेट डिलीट नहीं हो सका। कृपया फिर से कोशिश करें।',
+    savedCalculationsDeleteError:
+        'प्रीसेट डिलीट नहीं हो सका। कृपया फिर से कोशिश करें।',
     presetProcessSwitchConfirmTitle: 'वेल्डिंग प्रोसेस बदलें?',
     presetProcessSwitchConfirmBody:
         'यह स्टार्टर प्रीसेट {presetProcess} इस्तेमाल करता है। आगे बढ़कर वेल्डिंग प्रोसेस बदलें, या {currentProcess} बनाए रखें?',
@@ -1556,13 +1598,20 @@ const Map<AppLanguage, L10nStrings> _strings = {
     presetUpdated: 'सेव की गई कैलकुलेशन अपडेट हो गई।',
     presetUpdatedOffline:
         'सिर्फ इस डिवाइस पर अपडेट हुआ — इंटरनेट से जुड़ते ही सिंक हो जाएगा।',
+    presetRestored:
+        'यह सेव की गई कैलकुलेशन कहीं और से हटा दी गई थी और इसे फिर से बहाल कर दिया गया।',
+    presetRestoredOffline:
+        'यह सेव की गई कैलकुलेशन कहीं और से हटा दी गई थी और सिर्फ इस डिवाइस पर बहाल हुई — इंटरनेट से जुड़ते ही सिंक हो जाएगा।',
+    savedCalculationsSkippedWarning:
+        '{count} सेव की गई कैलकुलेशन लोड नहीं हो सकीं और उन्हें छोड़ दिया गया।',
     dashboardPreheatCalculator: 'प्रीहीट तापमान',
     dashboardCoolingTimeCalculator: 'कूलिंग टाइम (t8/5)',
     materialFieldNickel: 'निकल (Ni) %',
     preheatScreenTitle: 'प्रीहीट तापमान कैलकुलेटर',
     preheatScreenSubtitle: 'EN 1011-2 मेथड B (CET आधारित)',
     preheatCompositionCardTitle: 'मूल धातु संरचना',
-    preheatCompositionCardSubtitle: 'वज़न के अनुसार प्रतिशत दर्ज करें; खाली = 0%',
+    preheatCompositionCardSubtitle:
+        'वज़न के अनुसार प्रतिशत दर्ज करें; खाली = 0%',
     preheatLoadFromLibraryLabel: 'सेव किए गए मूल धातु से लोड करें',
     preheatBlankMeansZeroNote:
         'अगर कोई तत्व विश्लेषित नहीं हुआ या मौजूद नहीं है तो उसे खाली छोड़ दें — गणना में इसे 0% माना जाएगा।',
@@ -1590,8 +1639,10 @@ const Map<AppLanguage, L10nStrings> _strings = {
         'यील्ड स्ट्रेंथ {value} N/mm² है — मानक की मान्य सीमा 1000 N/mm² से अधिक।',
     preheatIso15608Note:
         'यह विधि (EN 1011-2 परिशिष्ट C.3, मेथड B) ISO/TR 15608 के अनुसार स्टील ग्रुप 1–4 (सामान्य संरचनात्मक और प्रेशर-वेसल स्टील) के लिए मान्य है। हाई-अलॉय या असामान्य ग्रेड के लिए इस परिणाम पर भरोसा करने से पहले अपने स्टील का ग्रुप अलग से जांच लें।',
-    preheatOtherCarbonEquivalentsTitle: 'अन्य कार्बन इक्विवैलेंट (केवल संदर्भ हेतु)',
-    preheatOtherCarbonEquivalentsCaption: 'EN 1011-2 का हिस्सा नहीं है — केवल जानकारी हेतु।',
+    preheatOtherCarbonEquivalentsTitle:
+        'अन्य कार्बन इक्विवैलेंट (केवल संदर्भ हेतु)',
+    preheatOtherCarbonEquivalentsCaption:
+        'EN 1011-2 का हिस्सा नहीं है — केवल जानकारी हेतु।',
     preheatUseInCoolingTimeButton:
         'इस प्रीहीट तापमान को कूलिंग टाइम कैलकुलेटर में इस्तेमाल करें',
     coolingScreenTitle: 'कूलिंग टाइम (t8/5) कैलकुलेटर',

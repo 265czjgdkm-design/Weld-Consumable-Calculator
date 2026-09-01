@@ -83,6 +83,17 @@ class _CalculatorPageState extends State<CalculatorPage> {
     ConsumablePreset.er70s2,
   );
   List<CustomFillerMaterial> _customFillerMaterials = const [];
+  // False until `_fillerMaterialStore.load()` resolves, so the "(as saved)"
+  // label/"My Materials" header can wait for the real library contents
+  // instead of judging staleness against the still-empty initial list on
+  // frame 1 of every load (see finding #3 of the second reviewer pass).
+  bool _fillerMaterialsLoaded = false;
+  // Set once, the first time a saved calculation's custom-filler snapshot
+  // turns out stale/deleted relative to the loaded library, and never
+  // cleared for the life of this screen instance -- so picking a different
+  // material to compare doesn't lose the ability to select the original
+  // "(as saved)" entry again (see finding #4 / user decision).
+  ConsumableSelection? _pinnedStaleCustomSelection;
   InputPreset _inputPreset = InputPreset.custom;
   // Bumped whenever a starter-preset process-switch confirmation is
   // cancelled, so the dropdown (keyed on `_inputPreset` + this) remounts
@@ -115,7 +126,10 @@ class _CalculatorPageState extends State<CalculatorPage> {
     _initUserPresets();
     _fillerMaterialStore.load().then((materials) {
       if (!mounted) return;
-      setState(() => _customFillerMaterials = materials);
+      setState(() {
+        _customFillerMaterials = materials;
+        _fillerMaterialsLoaded = true;
+      });
     });
     final presetToLoad = widget.presetToLoad;
     if (presetToLoad != null) {
@@ -1126,16 +1140,33 @@ class _CalculatorPageState extends State<CalculatorPage> {
     // `DropdownButtonFormField` throws unless its value equals exactly one
     // item, so the snapshot itself must always be injected as a selectable
     // item even when it's missing from the live library (see finding #1).
+    // This membership check alone is unreliable for anything beyond that
+    // crash-prevention injection: it's also true on frame 1 of every load
+    // (the library hasn't finished loading yet) and it stops being true the
+    // moment the user picks something else. Neither the "(as saved)" label
+    // nor whether the snapshot survives in the list once deselected should
+    // depend on it -- see findings #3 and #4.
     final selectedSnapshot = _consumableSelection;
-    final isSelectedSnapshotMissing =
+    final isCurrentSelectionMissing =
         selectedSnapshot is CustomConsumableSelection &&
         !customSelections.contains(selectedSnapshot);
+    if (_fillerMaterialsLoaded &&
+        isCurrentSelectionMissing &&
+        _pinnedStaleCustomSelection == null) {
+      _pinnedStaleCustomSelection = selectedSnapshot;
+    }
+    final pinnedSnapshot = _pinnedStaleCustomSelection;
     final displayedCustomSelections = [
       ...customSelections,
-      if (isSelectedSnapshotMissing) selectedSnapshot,
+      if (isCurrentSelectionMissing && selectedSnapshot != pinnedSnapshot)
+        selectedSnapshot,
+      if (pinnedSnapshot != null && !customSelections.contains(pinnedSnapshot))
+        pinnedSnapshot,
     ];
+    final showCustomGroupHeader =
+        _fillerMaterialsLoaded && displayedCustomSelections.isNotEmpty;
     String customSelectionLabel(ConsumableSelection selection) =>
-        isSelectedSnapshotMissing && selection == selectedSnapshot
+        _fillerMaterialsLoaded && selection == pinnedSnapshot
         ? '${selection.awsDisplayLabel} (as saved)'
         : selection.awsDisplayLabel;
 
@@ -1160,11 +1191,9 @@ class _CalculatorPageState extends State<CalculatorPage> {
                 for (final selection in builtInSelections)
                   _buildDropdownSelectedText(selection.awsDisplayLabel),
                 if (displayedCustomSelections.isNotEmpty) ...[
-                  _buildDropdownSelectedText(''),
+                  if (showCustomGroupHeader) _buildDropdownSelectedText(''),
                   for (final selection in displayedCustomSelections)
-                    _buildDropdownSelectedText(
-                      customSelectionLabel(selection),
-                    ),
+                    _buildDropdownSelectedText(customSelectionLabel(selection)),
                 ],
               ],
               items: [
@@ -1177,13 +1206,14 @@ class _CalculatorPageState extends State<CalculatorPage> {
                     ),
                   ),
                 if (displayedCustomSelections.isNotEmpty) ...[
-                  const DropdownMenuItem<ConsumableSelection>(
-                    enabled: false,
-                    child: Text(
-                      'My Materials',
-                      style: TextStyle(fontWeight: FontWeight.w700),
+                  if (showCustomGroupHeader)
+                    const DropdownMenuItem<ConsumableSelection>(
+                      enabled: false,
+                      child: Text(
+                        'My Materials',
+                        style: TextStyle(fontWeight: FontWeight.w700),
+                      ),
                     ),
-                  ),
                   for (final selection in displayedCustomSelections)
                     DropdownMenuItem(
                       value: selection,
@@ -1284,7 +1314,10 @@ class _CalculatorPageState extends State<CalculatorPage> {
             const SizedBox(height: 16),
             _buildStarterPresetSection(context),
             const SizedBox(height: 14),
-            _buildConsumableClassificationSection(context, availableConsumables),
+            _buildConsumableClassificationSection(
+              context,
+              availableConsumables,
+            ),
             const SizedBox(height: 14),
             _buildRateBasisSection(context),
             const SizedBox(height: 14),
@@ -1622,10 +1655,7 @@ class _CalculatorPageState extends State<CalculatorPage> {
       children: [
         for (final item in items)
           Container(
-            padding: const EdgeInsets.symmetric(
-              horizontal: 12,
-              vertical: 10,
-            ),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
             decoration: BoxDecoration(
               color: const Color(0xFFF7FBFD),
               borderRadius: BorderRadius.circular(16),
@@ -1633,10 +1663,7 @@ class _CalculatorPageState extends State<CalculatorPage> {
             ),
             child: RichText(
               text: TextSpan(
-                style: const TextStyle(
-                  color: Color(0xFF15232D),
-                  fontSize: 13,
-                ),
+                style: const TextStyle(color: Color(0xFF15232D), fontSize: 13),
                 children: [
                   TextSpan(
                     text: '${item.label}: ',
@@ -2140,9 +2167,26 @@ class _CalculatorPageState extends State<CalculatorPage> {
       final result = await _presetSyncService.list(email);
       presets = result.presets;
       skippedCount = result.skippedCount;
+      // A cloud row this build couldn't parse must not destroy a good
+      // local copy of that same preset -- merge the local cache's copies
+      // of whatever's missing back in rather than saving the truncated
+      // cloud list over it (see finding #1).
+      if (skippedCount > 0) {
+        final localPresets = (await _userPresetStore.load()).presets;
+        final cloudIds = presets.map((preset) => preset.id).toSet();
+        presets = [
+          ...presets,
+          for (final local in localPresets)
+            if (!cloudIds.contains(local.id)) local,
+        ]..sort((a, b) => b.updatedAtEpochMs.compareTo(a.updatedAtEpochMs));
+      }
       await _userPresetStore.save(presets);
     } catch (_) {
-      presets = await _userPresetStore.load();
+      presets = (await _userPresetStore.load()).presets;
+      // The local fallback above is already the untruncated cache, so a
+      // stale skip count from `list()` must not be surfaced here (see
+      // finding #6).
+      skippedCount = 0;
     }
 
     if (!mounted) return;
@@ -2155,13 +2199,16 @@ class _CalculatorPageState extends State<CalculatorPage> {
     });
     if (skippedCount > 0) {
       _showMessage(
-        "$skippedCount saved calculation${skippedCount == 1 ? '' : 's'} "
-        "couldn't be loaded and ${skippedCount == 1 ? 'was' : 'were'} skipped.",
+        AppLocaleScope.stringsOf(context).savedCalculationsSkippedWarning
+            .replaceFirst('{count}', '$skippedCount'),
       );
     }
   }
 
-  Future<void> _applyInputPreset(BuildContext context, InputPreset preset) async {
+  Future<void> _applyInputPreset(
+    BuildContext context,
+    InputPreset preset,
+  ) async {
     final data = preset.data;
     if (data == null) return;
 
@@ -2431,7 +2478,9 @@ class _CalculatorPageState extends State<CalculatorPage> {
       final strings = AppLocaleScope.stringsOf(context);
       if (!presetStillExists) {
         _showMessage(
-          'This saved calculation had been removed elsewhere and was restored.',
+          syncSucceeded
+              ? strings.presetRestored
+              : strings.presetRestoredOffline,
         );
       } else {
         _showMessage(
@@ -2453,7 +2502,7 @@ class _CalculatorPageState extends State<CalculatorPage> {
   /// under the new account so they show up alongside (or merge with)
   /// whatever that email already has saved in the cloud.
   Future<void> _migrateLocalPresetsToAccount(String email) async {
-    final localPresets = await _userPresetStore.load();
+    final localPresets = (await _userPresetStore.load()).presets;
     for (final preset in localPresets) {
       try {
         await _presetSyncService.save(email, preset);
@@ -2464,8 +2513,7 @@ class _CalculatorPageState extends State<CalculatorPage> {
     }
   }
 
-  Future<({String email, String name})?>
-  _promptAccountEmailAndPresetName() {
+  Future<({String email, String name})?> _promptAccountEmailAndPresetName() {
     return showDialog<({String email, String name})>(
       context: context,
       builder: (context) => const _AccountEmailAndPresetNameDialog(),

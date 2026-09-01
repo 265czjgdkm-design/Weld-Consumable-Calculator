@@ -56,9 +56,26 @@ class _SavedCalculationsScreenState extends State<SavedCalculationsScreen> {
       final result = await _presetSyncService.list(email);
       presets = result.presets;
       skippedCount = result.skippedCount;
+      // A cloud row this build couldn't parse must not destroy a good
+      // local copy of that same preset -- merge the local cache's copies
+      // of whatever's missing back in rather than saving the truncated
+      // cloud list over it (see finding #1).
+      if (skippedCount > 0) {
+        final localPresets = (await _presetStore.load()).presets;
+        final cloudIds = presets.map((preset) => preset.id).toSet();
+        presets = [
+          ...presets,
+          for (final local in localPresets)
+            if (!cloudIds.contains(local.id)) local,
+        ]..sort((a, b) => b.updatedAtEpochMs.compareTo(a.updatedAtEpochMs));
+      }
       await _presetStore.save(presets);
     } catch (_) {
-      presets = await _presetStore.load();
+      presets = (await _presetStore.load()).presets;
+      // The local fallback above is already the untruncated cache, so a
+      // stale skip count from `list()` must not be surfaced here (see
+      // finding #6).
+      skippedCount = 0;
     }
 
     if (!mounted) return;
@@ -67,13 +84,16 @@ class _SavedCalculationsScreenState extends State<SavedCalculationsScreen> {
       _loading = false;
     });
     if (skippedCount > 0) {
+      final strings = AppLocaleScope.stringsOf(context);
       ScaffoldMessenger.of(context)
         ..hideCurrentSnackBar()
         ..showSnackBar(
           SnackBar(
             content: Text(
-              "$skippedCount saved calculation${skippedCount == 1 ? '' : 's'} "
-              "couldn't be loaded and ${skippedCount == 1 ? 'was' : 'were'} skipped.",
+              strings.savedCalculationsSkippedWarning.replaceFirst(
+                '{count}',
+                '$skippedCount',
+              ),
             ),
           ),
         );
@@ -108,10 +128,11 @@ class _SavedCalculationsScreenState extends State<SavedCalculationsScreen> {
         updatedAtEpochMs: DateTime.now().millisecondsSinceEpoch,
       );
       await _presetSyncService.save(email, updated);
-      final presets = _presets
-          .map((item) => item.id == updated.id ? updated : item)
-          .toList()
-        ..sort((a, b) => b.updatedAtEpochMs.compareTo(a.updatedAtEpochMs));
+      final presets =
+          _presets
+              .map((item) => item.id == updated.id ? updated : item)
+              .toList()
+            ..sort((a, b) => b.updatedAtEpochMs.compareTo(a.updatedAtEpochMs));
       await _presetStore.save(presets);
       if (!mounted) return;
       setState(() => _presets = presets);
@@ -119,7 +140,9 @@ class _SavedCalculationsScreenState extends State<SavedCalculationsScreen> {
       if (!mounted) return;
       ScaffoldMessenger.of(context)
         ..hideCurrentSnackBar()
-        ..showSnackBar(SnackBar(content: Text(strings.savedCalculationsRenameError)));
+        ..showSnackBar(
+          SnackBar(content: Text(strings.savedCalculationsRenameError)),
+        );
     } finally {
       if (mounted) {
         setState(() => _busyPresetId = null);
@@ -167,7 +190,9 @@ class _SavedCalculationsScreenState extends State<SavedCalculationsScreen> {
       if (!mounted) return;
       ScaffoldMessenger.of(context)
         ..hideCurrentSnackBar()
-        ..showSnackBar(SnackBar(content: Text(strings.savedCalculationsDeleteError)));
+        ..showSnackBar(
+          SnackBar(content: Text(strings.savedCalculationsDeleteError)),
+        );
     } finally {
       if (mounted) {
         setState(() => _busyPresetId = null);
@@ -204,9 +229,9 @@ class _SavedCalculationsScreenState extends State<SavedCalculationsScreen> {
                       ? strings.savedCalculationsGuestState
                       : strings.savedCalculationsEmptyState,
                   textAlign: TextAlign.center,
-                  style: Theme.of(
-                    context,
-                  ).textTheme.bodyMedium?.copyWith(color: const Color(0xFF607482)),
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: const Color(0xFF607482),
+                  ),
                 ),
               ),
             )
@@ -229,7 +254,9 @@ class _SavedCalculationsScreenState extends State<SavedCalculationsScreen> {
                             children: [
                               Text(
                                 preset.name,
-                                style: const TextStyle(fontWeight: FontWeight.w700),
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w700,
+                                ),
                                 overflow: TextOverflow.ellipsis,
                               ),
                               const SizedBox(height: 4),
@@ -249,8 +276,13 @@ class _SavedCalculationsScreenState extends State<SavedCalculationsScreen> {
                                 onPressed: busy
                                     ? null
                                     : () => _openInCalculator(preset),
-                                icon: const Icon(Icons.launch_outlined, size: 18),
-                                label: Text(strings.savedCalculationsLoadButton),
+                                icon: const Icon(
+                                  Icons.launch_outlined,
+                                  size: 18,
+                                ),
+                                label: Text(
+                                  strings.savedCalculationsLoadButton,
+                                ),
                               ),
                             ],
                           ),
@@ -263,7 +295,9 @@ class _SavedCalculationsScreenState extends State<SavedCalculationsScreen> {
                                   ? const SizedBox(
                                       width: 18,
                                       height: 18,
-                                      child: CircularProgressIndicator(strokeWidth: 2),
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                      ),
                                     )
                                   : const Icon(Icons.edit_outlined),
                               tooltip: strings.commonEdit,

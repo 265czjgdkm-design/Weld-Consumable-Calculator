@@ -82,7 +82,7 @@ void main() {
         await tester.pumpAndSettle();
 
         const store = UserPresetStore();
-        final saved = await store.load();
+        final saved = (await store.load()).presets;
         expect(saved, hasLength(1));
         expect(saved.single.id, 'existing-1');
         expect(saved.single.name, 'My Saved Calc');

@@ -39,7 +39,10 @@ void main() {
       const selection = BuiltInConsumableSelection(ConsumablePreset.er70s6);
       final restored = ConsumableSelection.fromJson(selection.toJson());
       expect(restored, isA<BuiltInConsumableSelection>());
-      expect((restored as BuiltInConsumableSelection).preset, ConsumablePreset.er70s6);
+      expect(
+        (restored as BuiltInConsumableSelection).preset,
+        ConsumablePreset.er70s6,
+      );
     });
 
     test('custom toJson embeds a full material snapshot, not just an id', () {
@@ -89,82 +92,79 @@ void main() {
       },
     );
 
-    test(
-      'a builtin selection still emits the legacy "consumablePreset" key '
-      'alongside the new one, so a pre-custom-filler app build reading '
-      'this account\'s synced presets does not crash on a missing key',
-      () {
-        final data = _presetDataWith(
-          const BuiltInConsumableSelection(ConsumablePreset.er70s6),
-        );
-        final json = data.toJson();
-        expect(json['consumablePreset'], 'er70s6');
-        expect(json['consumableSelection'], isNotNull);
-      },
-    );
+    test('a builtin selection still emits the legacy "consumablePreset" key '
+        'alongside the new one, so a pre-custom-filler app build reading '
+        'this account\'s synced presets does not crash on a missing key', () {
+      final data = _presetDataWith(
+        const BuiltInConsumableSelection(ConsumablePreset.er70s6),
+      );
+      final json = data.toJson();
+      expect(json['consumablePreset'], 'er70s6');
+      expect(json['consumableSelection'], isNotNull);
+    });
 
-    test(
-      'a custom selection has no legacy "consumablePreset" key (there is '
-      'no equivalent for an old app build to fall back to)',
-      () {
-        final data = _presetDataWith(const CustomConsumableSelection(_customMaterial));
-        final json = data.toJson();
-        expect(json.containsKey('consumablePreset'), isFalse);
-      },
-    );
+    test('a custom selection has no legacy "consumablePreset" key (there is '
+        'no equivalent for an old app build to fall back to)', () {
+      final data = _presetDataWith(
+        const CustomConsumableSelection(_customMaterial),
+      );
+      final json = data.toJson();
+      expect(json.containsKey('consumablePreset'), isFalse);
+    });
 
     test('new-format JSON with a custom selection round-trips', () {
-      final data = _presetDataWith(const CustomConsumableSelection(_customMaterial));
+      final data = _presetDataWith(
+        const CustomConsumableSelection(_customMaterial),
+      );
       final restored = WeldInputPresetData.fromJson(data.toJson());
       expect(restored.consumableSelection, isA<CustomConsumableSelection>());
       expect(
-        (restored.consumableSelection as CustomConsumableSelection).material.name,
+        (restored.consumableSelection as CustomConsumableSelection)
+            .material
+            .name,
         'Acme XR-70',
       );
     });
   });
 
-  test(
-    'a saved calculation referencing a custom material keeps its snapshot '
-    'even after the source library entry is edited or deleted',
-    () async {
-      const fillerStore = CustomFillerMaterialStore();
-      await fillerStore.save([_customMaterial]);
+  test('a saved calculation referencing a custom material keeps its snapshot '
+      'even after the source library entry is edited or deleted', () async {
+    const fillerStore = CustomFillerMaterialStore();
+    await fillerStore.save([_customMaterial]);
 
-      // Capture the selection as the calculator would at save time.
-      const selection = CustomConsumableSelection(_customMaterial);
-      final preset = UserWeldPreset(
-        id: 'preset-1',
-        name: 'Custom Filler Test',
-        updatedAtEpochMs: 1,
-        data: _presetDataWith(selection),
-      );
+    // Capture the selection as the calculator would at save time.
+    const selection = CustomConsumableSelection(_customMaterial);
+    final preset = UserWeldPreset(
+      id: 'preset-1',
+      name: 'Custom Filler Test',
+      updatedAtEpochMs: 1,
+      data: _presetDataWith(selection),
+    );
 
-      const presetStore = UserPresetStore();
-      await presetStore.save([preset]);
+    const presetStore = UserPresetStore();
+    await presetStore.save([preset]);
 
-      // The library entry is now edited (same id, different values) and
-      // then deleted entirely -- neither should affect the saved snapshot.
-      const editedMaterial = CustomFillerMaterial(
-        id: 'filler-custom-1',
-        name: 'Renamed Material',
-        family: ConsumableFamily.stainlessSteel,
-        densityGPerCm3: 8.0,
-        notes: 'Edited after the calculation was saved.',
-        updatedAtEpochMs: 6000,
-      );
-      await fillerStore.save([editedMaterial]);
-      await fillerStore.save(const []);
+    // The library entry is now edited (same id, different values) and
+    // then deleted entirely -- neither should affect the saved snapshot.
+    const editedMaterial = CustomFillerMaterial(
+      id: 'filler-custom-1',
+      name: 'Renamed Material',
+      family: ConsumableFamily.stainlessSteel,
+      densityGPerCm3: 8.0,
+      notes: 'Edited after the calculation was saved.',
+      updatedAtEpochMs: 6000,
+    );
+    await fillerStore.save([editedMaterial]);
+    await fillerStore.save(const []);
 
-      final reloaded = await presetStore.load();
-      expect(reloaded, hasLength(1));
-      final reloadedSelection =
-          reloaded.single.data.consumableSelection as CustomConsumableSelection;
-      expect(reloadedSelection.material.name, 'Acme XR-70');
-      expect(reloadedSelection.material.family, ConsumableFamily.carbonSteel);
-      expect(reloadedSelection.material.densityGPerCm3, 7.9);
-    },
-  );
+    final reloaded = (await presetStore.load()).presets;
+    expect(reloaded, hasLength(1));
+    final reloadedSelection =
+        reloaded.single.data.consumableSelection as CustomConsumableSelection;
+    expect(reloadedSelection.material.name, 'Acme XR-70');
+    expect(reloadedSelection.material.family, ConsumableFamily.carbonSteel);
+    expect(reloadedSelection.material.densityGPerCm3, 7.9);
+  });
 
   test(
     'PDF report generation does not crash for a custom material with no AWS spec',

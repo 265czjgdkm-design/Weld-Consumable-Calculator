@@ -70,10 +70,8 @@ void main() {
         // Same id, later updatedAtEpochMs -- an edit in the library since
         // this calculation was saved.
         'custom_filler_materials_v1': jsonEncode([
-          _savedMaterial
-              .toJson()
-              .cast<String, dynamic>()
-                ..['updatedAtEpochMs'] = 9000,
+          _savedMaterial.toJson().cast<String, dynamic>()
+            ..['updatedAtEpochMs'] = 9000,
         ]),
       });
       _setDesktopViewport(tester);
@@ -126,6 +124,77 @@ void main() {
   );
 
   testWidgets(
+    'a deleted custom filler snapshot stays selectable in the dropdown '
+    'after picking something else, for the life of this screen instance '
+    '(see finding #4)',
+    (tester) async {
+      SharedPreferences.setMockInitialValues({
+        'custom_filler_materials_v1': jsonEncode(const []),
+      });
+      final originalPhysicalSize = tester.view.physicalSize;
+      final originalDevicePixelRatio = tester.view.devicePixelRatio;
+      // Tall enough that the dropdown menu route actually builds the
+      // trailing "My Materials" entry, not just the leading built-ins (see
+      // the note on `_setDesktopViewport`'s counterpart in
+      // calculator_page_custom_filler_test.dart).
+      tester.view.physicalSize = const Size(1400, 3000);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(() {
+        tester.view.physicalSize = originalPhysicalSize;
+        tester.view.devicePixelRatio = originalDevicePixelRatio;
+      });
+
+      await tester.pumpWidget(
+        AppLocaleScope(
+          locale: AppLocale(),
+          child: MaterialApp(
+            home: CalculatorPage(
+              presetToLoad: _presetWithCustomFiller(_savedMaterial),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('as saved'), findsWidgets);
+
+      // Switch to a built-in classification to compare against.
+      await tester.tap(
+        find.byWidgetPredicate(
+          (widget) => widget is DropdownButtonFormField<ConsumableSelection>,
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('AWS A5.18 ER70S-6 (Carbon Steel)').last);
+      await tester.pumpAndSettle();
+
+      // The "(as saved)" snapshot must still be offered, not silently
+      // dropped once it stopped being the current selection.
+      await tester.tap(
+        find.byWidgetPredicate(
+          (widget) => widget is DropdownButtonFormField<ConsumableSelection>,
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.textContaining('as saved'), findsWidgets);
+
+      // Reselecting it must work, restoring the original custom material.
+      await tester.tap(find.textContaining('as saved').last);
+      await tester.pumpAndSettle();
+
+      expect(tester.takeException(), isNull);
+      final densityField = tester.widget<TextField>(
+        find.byWidgetPredicate(
+          (widget) =>
+              widget is TextField &&
+              widget.decoration?.labelText == 'Density (g/cm3)',
+        ),
+      );
+      expect(densityField.controller!.text, '7.90');
+    },
+  );
+
+  testWidgets(
     'opening a saved calculation with a custom filler material renders the '
     'very first frame without crashing, before the library store finishes '
     'loading asynchronously',
@@ -153,12 +222,17 @@ void main() {
 
       expect(tester.takeException(), isNull);
       expect(find.byType(ErrorWidget), findsNothing);
+      // The library hasn't loaded yet on this very first frame, so the
+      // still-healthy snapshot must not be flagged "(as saved)" -- that
+      // label should wait for `_fillerMaterialsLoaded` (see finding #3).
+      expect(find.textContaining('as saved'), findsNothing);
 
       // Let the async store load settle so the test doesn't leak a pending
       // timer/future into the next test.
       await tester.pumpAndSettle();
       expect(tester.takeException(), isNull);
       expect(find.byType(ErrorWidget), findsNothing);
+      expect(find.textContaining('as saved'), findsNothing);
     },
   );
 }
