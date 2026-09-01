@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:purchases_flutter/purchases_flutter.dart';
@@ -415,6 +417,105 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Export PDF'), findsOneWidget);
+    },
+  );
+
+  testWidgets(
+    'offering with only a monthly package renders just the monthly button',
+    (tester) async {
+      // Uses RevenueCat's own predefined `$rc_monthly` id via the `monthly:`
+      // slot rather than a PurchasesConfig custom id, matching the common
+      // dashboard default this offering resolution needs to also support.
+      final monthlyOnlyOffering = Offering(
+        PurchasesConfig.offeringId,
+        'description',
+        const {},
+        [_fakePackage(r'$rc_monthly')],
+        monthly: _fakePackage(r'$rc_monthly'),
+      );
+
+      await _pumpCalculatorToSummary(
+        tester,
+        _FakeEntitlementService(offering: monthlyOnlyOffering),
+      );
+
+      await tester.ensureVisible(find.text('Calculate'));
+      await tester.tap(find.text('Calculate'));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Unlock PDF'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Monthly -- \$2.99/mo'), findsOneWidget);
+      expect(find.text('Yearly -- \$19.99/yr (save ~44%)'), findsNothing);
+      expect(find.text('Premium -- Coming Soon'), findsNothing);
+    },
+  );
+
+  testWidgets(
+    'offering with no resolvable package logs a warning instead of failing silently',
+    (tester) async {
+      final unresolvedOffering = Offering(
+        PurchasesConfig.offeringId,
+        'description',
+        const {},
+        const [],
+      );
+      // Captures via a zone-scoped `print` override (rather than reassigning
+      // the global `debugPrint` variable) because flutter_test's invariant
+      // check fails a test that leaves a foundation debug variable changed.
+      final loggedMessages = <String>[];
+      await runZoned(
+        () async {
+          await _pumpCalculatorToSummary(
+            tester,
+            _FakeEntitlementService(offering: unresolvedOffering),
+          );
+
+          await tester.ensureVisible(find.text('Calculate'));
+          await tester.tap(find.text('Calculate'));
+          await tester.pumpAndSettle();
+
+          await tester.tap(find.text('Unlock PDF'));
+          await tester.pumpAndSettle();
+        },
+        zoneSpecification: ZoneSpecification(
+          print: (self, parent, zone, line) => loggedMessages.add(line),
+        ),
+      );
+
+      expect(find.text('Premium -- Coming Soon'), findsOneWidget);
+      expect(
+        loggedMessages.any(
+          (message) => message.contains('no monthly or annual package'),
+        ),
+        isTrue,
+      );
+    },
+  );
+
+  testWidgets(
+    'restore purchases dismisses the coming-soon sheet and shows the result',
+    (tester) async {
+      await _pumpCalculatorToSummary(
+        tester,
+        _FakeEntitlementService(offering: null),
+      );
+
+      await tester.ensureVisible(find.text('Calculate'));
+      await tester.tap(find.text('Calculate'));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Unlock PDF'));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Restore Purchases'));
+      await tester.pumpAndSettle();
+
+      // Sheet dismissed (not left open on top of the result) and the
+      // message actually renders instead of painting underneath it.
+      expect(find.text('Varyos Weld Premium'), findsNothing);
+      expect(find.text('Restore failed. Please try again.'), findsOneWidget);
     },
   );
 

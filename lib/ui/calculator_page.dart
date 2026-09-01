@@ -167,6 +167,12 @@ class _CalculatorPageState extends State<CalculatorPage> {
     } catch (error) {
       debugPrint('Failed to read entitlement status: $error');
     }
+    // Re-check here too: dispose() may have already run while the call
+    // above was in flight (it cancels `_premiumStatusSubscription`, but
+    // only what's assigned by the time it runs -- subscribing after that
+    // point would never get cancelled and leak this State via RevenueCat's
+    // retained listener).
+    if (!mounted) return;
     _premiumStatusSubscription = widget.entitlementService
         .premiumStatusStream()
         .listen((isPremium) {
@@ -3159,7 +3165,13 @@ class _CalculatorPageState extends State<CalculatorPage> {
     return parsed;
   }
 
+  // Guarded here rather than at each call site so every caller -- including
+  // the paywall sheet's `onMessage` callback, which can fire after this
+  // page's own async work outlives the sheet -- is protected by
+  // construction instead of relying on each new call site remembering to
+  // check `mounted` itself.
   void _showMessage(String message) {
+    if (!mounted) return;
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
       ..showSnackBar(SnackBar(content: Text(message)));
@@ -3496,6 +3508,15 @@ class _PaywallSheetState extends State<_PaywallSheet> {
     } catch (error) {
       debugPrint('Failed to load RevenueCat offering: $error');
     }
+    if (offering != null &&
+        _resolveMonthly(offering) == null &&
+        _resolveYearly(offering) == null) {
+      debugPrint(
+        'RevenueCat offering "${offering.identifier}" has no monthly or '
+        'annual package (checked package duration and the '
+        'PurchasesConfig custom ids) -- paywall has nothing purchasable.',
+      );
+    }
     if (!mounted) return;
     setState(() {
       _offering = offering;
@@ -3503,13 +3524,29 @@ class _PaywallSheetState extends State<_PaywallSheet> {
     });
   }
 
-  Package? get _monthlyPackage =>
-      _offering?.getPackage(PurchasesConfig.monthlyPackageId);
-  Package? get _yearlyPackage =>
-      _offering?.getPackage(PurchasesConfig.yearlyPackageId);
+  // `.monthly`/`.annual` resolve by the package's actual duration, so they
+  // match whether the RevenueCat dashboard used its own predefined
+  // $rc_monthly/$rc_annual ids or the custom PurchasesConfig ids -- falling
+  // back to an exact custom-id match only keeps those constants meaningful
+  // as a reference if a dashboard ever uses them literally.
+  Package? _resolveMonthly(Offering offering) =>
+      offering.monthly ?? offering.getPackage(PurchasesConfig.monthlyPackageId);
+  Package? _resolveYearly(Offering offering) =>
+      offering.annual ?? offering.getPackage(PurchasesConfig.yearlyPackageId);
 
-  bool get _hasRealOffering =>
-      _monthlyPackage != null && _yearlyPackage != null;
+  Package? get _monthlyPackage {
+    final offering = _offering;
+    return offering == null ? null : _resolveMonthly(offering);
+  }
+
+  Package? get _yearlyPackage {
+    final offering = _offering;
+    return offering == null ? null : _resolveYearly(offering);
+  }
+
+  // Render whichever packages actually exist rather than requiring both --
+  // an offering with only one configured is still real and purchasable.
+  bool get _hasAnyPackage => _monthlyPackage != null || _yearlyPackage != null;
 
   bool _isEntitlementActive(CustomerInfo customerInfo) => customerInfo
       .entitlements
@@ -3549,13 +3586,19 @@ class _PaywallSheetState extends State<_PaywallSheet> {
       final customerInfo = await widget.entitlementService.restorePurchases();
       final isActive = _isEntitlementActive(customerInfo);
       widget.onEntitlementChanged(isActive);
+      if (!mounted) return;
+      // Dismiss the sheet before messaging, same as `_purchase` -- otherwise
+      // the SnackBar paints underneath the still-open sheet and is
+      // invisible.
+      Navigator.of(context).pop();
       widget.onMessage(
         isActive ? 'Purchases restored.' : 'No previous purchase found.',
       );
     } catch (error) {
+      if (!mounted) return;
+      Navigator.of(context).pop();
       widget.onMessage('Restore failed. Please try again.');
     }
-    if (mounted) setState(() => _restoring = false);
   }
 
   Widget _buildPaywallBenefit({required IconData icon, required String text}) {
@@ -3677,16 +3720,19 @@ class _PaywallSheetState extends State<_PaywallSheet> {
             const SizedBox(height: 22),
             if (_loadingOffering)
               const Center(child: CircularProgressIndicator())
-            else if (_hasRealOffering) ...[
-              _buildPurchaseButton(
-                label: 'Monthly -- \$2.99/mo',
-                package: _monthlyPackage!,
-              ),
-              const SizedBox(height: 10),
-              _buildPurchaseButton(
-                label: 'Yearly -- \$19.99/yr (save ~44%)',
-                package: _yearlyPackage!,
-              ),
+            else if (_hasAnyPackage) ...[
+              if (_monthlyPackage != null) ...[
+                _buildPurchaseButton(
+                  label: 'Monthly -- \$2.99/mo',
+                  package: _monthlyPackage!,
+                ),
+                if (_yearlyPackage != null) const SizedBox(height: 10),
+              ],
+              if (_yearlyPackage != null)
+                _buildPurchaseButton(
+                  label: 'Yearly -- \$19.99/yr (save ~44%)',
+                  package: _yearlyPackage!,
+                ),
             ] else
               SizedBox(
                 width: double.infinity,
@@ -3716,7 +3762,7 @@ class _PaywallSheetState extends State<_PaywallSheet> {
             ),
             const SizedBox(height: 4),
             Text(
-              _hasRealOffering
+              _hasAnyPackage
                   ? 'Auto-renewing subscription. Cancel anytime from Settings.'
                   : 'Premium subscriptions are coming soon. Planned pricing (\$2.99/mo, \$19.99/yr) is shown for reference and subject to change.',
               textAlign: TextAlign.center,
