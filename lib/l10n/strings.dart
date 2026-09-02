@@ -31,16 +31,6 @@ class L10nStrings {
     required this.capabilityReportTitle,
     required this.capabilityReportDesc,
     required this.getStarted,
-    required this.footerTitle,
-    required this.footerBody,
-    required this.footerWorkflowLabel,
-    required this.footerWorkflowValue,
-    required this.footerDrawingLabel,
-    required this.footerDrawingValue,
-    required this.footerReportsLabel,
-    required this.footerReportsValue,
-    required this.footerDataLabel,
-    required this.footerDataValue,
     required this.languagePickerTitle,
     required this.emailGateHint,
     required this.emailGateInvalidEmail,
@@ -237,16 +227,6 @@ class L10nStrings {
   final String capabilityReportTitle;
   final String capabilityReportDesc;
   final String getStarted;
-  final String footerTitle;
-  final String footerBody;
-  final String footerWorkflowLabel;
-  final String footerWorkflowValue;
-  final String footerDrawingLabel;
-  final String footerDrawingValue;
-  final String footerReportsLabel;
-  final String footerReportsValue;
-  final String footerDataLabel;
-  final String footerDataValue;
   final String languagePickerTitle;
   final String emailGateHint;
   final String emailGateInvalidEmail;
@@ -451,17 +431,6 @@ const Map<AppLanguage, L10nStrings> _strings = {
     capabilityReportDesc:
         'Turn the live estimate into a PDF-ready result summary with a clear engineering basis and reusable presets.',
     getStarted: 'Get Started',
-    footerTitle: 'Built for real job planning',
-    footerBody:
-        'Estimate a joint, check the drawing against the print, and hand a client-ready PDF straight from the same session.',
-    footerWorkflowLabel: 'Workflow',
-    footerWorkflowValue: 'Guided, step by step',
-    footerDrawingLabel: 'Drawing',
-    footerDrawingValue: 'Live technical view',
-    footerReportsLabel: 'Reports',
-    footerReportsValue: 'PDF export path',
-    footerDataLabel: 'Data',
-    footerDataValue: 'Reusable presets',
     languagePickerTitle: 'Language',
     emailGateHint: 'you@example.com',
     emailGateInvalidEmail: 'Enter a valid email address',
@@ -702,17 +671,6 @@ const Map<AppLanguage, L10nStrings> _strings = {
     capabilityReportDesc:
         'Canlı hesaplamayı net bir mühendislik dayanağı ve tekrar kullanılabilir şablonlarla PDF\'e hazır bir sonuç özetine dönüştürün.',
     getStarted: 'Başla',
-    footerTitle: 'Gerçek iş planlaması için tasarlandı',
-    footerBody:
-        'Bir birleşimi hesaplayın, çizimi teknik resimle karşılaştırın ve aynı oturumdan müşteriye hazır bir PDF verin.',
-    footerWorkflowLabel: 'Akış',
-    footerWorkflowValue: 'Adım adım rehberli',
-    footerDrawingLabel: 'Çizim',
-    footerDrawingValue: 'Canlı teknik görünüm',
-    footerReportsLabel: 'Raporlar',
-    footerReportsValue: 'PDF dışa aktarma',
-    footerDataLabel: 'Veri',
-    footerDataValue: 'Tekrar kullanılabilir şablonlar',
     languagePickerTitle: 'Dil',
     emailGateHint: 'sen@ornek.com',
     emailGateInvalidEmail: 'Geçerli bir mail adresi gir',
@@ -954,17 +912,6 @@ const Map<AppLanguage, L10nStrings> _strings = {
     capabilityReportDesc:
         'Превращайте расчёт в готовый к печати PDF-отчёт с чёткой инженерной основой и повторно используемыми шаблонами.',
     getStarted: 'Начать',
-    footerTitle: 'Создано для реального планирования работ',
-    footerBody:
-        'Рассчитайте соединение, сверьте чертёж с чертежом проекта и передайте клиенту готовый PDF в рамках одной сессии.',
-    footerWorkflowLabel: 'Процесс',
-    footerWorkflowValue: 'Пошаговое руководство',
-    footerDrawingLabel: 'Чертёж',
-    footerDrawingValue: 'Живой технический вид',
-    footerReportsLabel: 'Отчёты',
-    footerReportsValue: 'Экспорт в PDF',
-    footerDataLabel: 'Данные',
-    footerDataValue: 'Повторно используемые шаблоны',
     languagePickerTitle: 'Язык',
     emailGateHint: 'you@example.com',
     emailGateInvalidEmail: 'Введите корректный адрес электронной почты',
@@ -1209,17 +1156,6 @@ const Map<AppLanguage, L10nStrings> _strings = {
     capabilityReportDesc:
         'Wandeln Sie die Live-Kalkulation in ein PDF-fertiges Ergebnis mit klarer technischer Grundlage und wiederverwendbaren Vorlagen um.',
     getStarted: 'Loslegen',
-    footerTitle: 'Für reale Arbeitsplanung entwickelt',
-    footerBody:
-        'Berechnen Sie eine Verbindung, prüfen Sie die Zeichnung gegen den Plan und übergeben Sie ein kundenfertiges PDF aus derselben Sitzung.',
-    footerWorkflowLabel: 'Ablauf',
-    footerWorkflowValue: 'Schritt für Schritt geführt',
-    footerDrawingLabel: 'Zeichnung',
-    footerDrawingValue: 'Live-Technikansicht',
-    footerReportsLabel: 'Berichte',
-    footerReportsValue: 'PDF-Export',
-    footerDataLabel: 'Daten',
-    footerDataValue: 'Wiederverwendbare Vorlagen',
     languagePickerTitle: 'Sprache',
     emailGateHint: 'sie@beispiel.com',
     emailGateInvalidEmail: 'Geben Sie eine gültige E-Mail-Adresse ein',
@@ -1464,17 +1400,6 @@ const Map<AppLanguage, L10nStrings> _strings = {
     capabilityReportDesc:
         'लाइव एस्टिमेट को स्पष्ट इंजीनियरिंग आधार और पुन: उपयोग योग्य प्रीसेट के साथ PDF-रेडी रिज़ल्ट में बदलें।',
     getStarted: 'शुरू करें',
-    footerTitle: 'वास्तविक जॉब प्लानिंग के लिए बनाया गया',
-    footerBody:
-        'एक जॉइंट का एस्टिमेट लगाएं, ड्रॉइंग को प्रिंट से मिलाएं, और उसी सेशन से क्लाइंट-रेडी PDF सौंपें।',
-    footerWorkflowLabel: 'वर्कफ़्लो',
-    footerWorkflowValue: 'स्टेप-बाय-स्टेप गाइडेड',
-    footerDrawingLabel: 'ड्रॉइंग',
-    footerDrawingValue: 'लाइव टेक्निकल व्यू',
-    footerReportsLabel: 'रिपोर्ट्स',
-    footerReportsValue: 'PDF एक्सपोर्ट',
-    footerDataLabel: 'डेटा',
-    footerDataValue: 'पुन: उपयोग योग्य प्रीसेट',
     languagePickerTitle: 'भाषा',
     emailGateHint: 'aap@example.com',
     emailGateInvalidEmail: 'एक मान्य मेल पता दर्ज करें',

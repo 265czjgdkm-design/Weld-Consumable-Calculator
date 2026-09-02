@@ -343,8 +343,6 @@ class _CalculatorPageState extends State<CalculatorPage> {
               ),
               const SizedBox(height: 22),
               const CapabilityStrip(),
-              const SizedBox(height: 22),
-              const WebsiteReadyFooter(),
             ],
           ),
         ),
@@ -849,9 +847,6 @@ class _CalculatorPageState extends State<CalculatorPage> {
   }
 
   Widget _buildJointConfigurationCard(BuildContext context) {
-    final processEfficiency = _previewEfficiency;
-    final depositionRate = _previewDepositionRate;
-
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(22),
@@ -919,27 +914,6 @@ class _CalculatorPageState extends State<CalculatorPage> {
                   ],
                 );
               },
-            ),
-            const SizedBox(height: 14),
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(20),
-                color: const Color(0xFFF6F9FB),
-                border: Border.all(color: const Color(0xFFDCE5EB)),
-              ),
-              child: Row(
-                children: [
-                  const Icon(Icons.settings_suggest_outlined),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      '${_jointType.helper} $_unequalGeometrySummary${_processRateSummary(processEfficiency, depositionRate)}',
-                      style: Theme.of(context).textTheme.bodyMedium,
-                    ),
-                  ),
-                ],
-              ),
             ),
           ],
         ),
