@@ -3,6 +3,7 @@ import 'dart:typed_data';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 
+import '../core/basis_value_parsing.dart';
 import '../models/consumable_selection.dart';
 import '../models/weld_models.dart';
 
@@ -1081,9 +1082,7 @@ class WeldPdfReportService {
   ) {
     for (final entry in entries) {
       if (entry.key != label) continue;
-      final match = RegExp(r'-?\d+(\.\d+)?').firstMatch(entry.value);
-      if (match == null) return null;
-      return double.tryParse(match.group(0)!);
+      return parseBasisNumber(entry.value);
     }
     return null;
   }

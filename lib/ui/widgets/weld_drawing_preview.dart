@@ -285,6 +285,7 @@ class _WeldDrawingPainter extends CustomPainter {
       text: TextSpan(
         text: text,
         style: TextStyle(
+          fontFamily: 'Roboto',
           fontSize: _annotationFontSize(size, fontSize),
           fontWeight: weight,
           letterSpacing: _isTechnical ? 0.04 : 0.06,
@@ -2275,6 +2276,7 @@ class _WeldDrawingPainter extends CustomPainter {
       text: TextSpan(
         text: text,
         style: TextStyle(
+          fontFamily: 'Roboto',
           color: _labelColor,
           fontSize: _annotationFontSize(size, fontSize),
           fontWeight: weight,
@@ -2345,6 +2347,7 @@ class _WeldDrawingPainter extends CustomPainter {
       text: TextSpan(
         text: text,
         style: TextStyle(
+          fontFamily: 'Roboto',
           color: _labelColor,
           fontSize: _annotationFontSize(size, fontSize),
           fontWeight: weight,

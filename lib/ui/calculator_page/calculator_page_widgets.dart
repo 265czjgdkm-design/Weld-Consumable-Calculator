@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../core/basis_value_parsing.dart';
 import '../../core/weld_formulas.dart';
 import '../../l10n/app_language.dart';
 import '../../l10n/app_locale_scope.dart';
@@ -1085,10 +1086,7 @@ class ResultsSection extends StatelessWidget {
   double? _basisNumber(BasisKey key) {
     for (final item in basis) {
       if (item.key != key) continue;
-      final normalized = item.value.replaceAll(',', '.');
-      final match = RegExp(r'-?\d+(\.\d+)?').firstMatch(normalized);
-      if (match == null) return null;
-      return double.tryParse(match.group(0)!);
+      return parseBasisNumber(item.value);
     }
     return null;
   }

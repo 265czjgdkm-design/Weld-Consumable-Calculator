@@ -2447,6 +2447,7 @@ const Map<AppLanguage, L10nStrings> _strings = {
     grooveSingleV: 'V-образная разделка',
     grooveHalfV: 'Скос одной кромки',
     grooveDoubleV: 'X-образная разделка',
+    // TODO: unverified term -- pending native-speaker/GOST-source confirmation.
     grooveCompoundV: 'Комбинированная V-разделка',
     grooveSquare: 'Без скоса кромок',
     grooveFillet: 'Угловой шов',
