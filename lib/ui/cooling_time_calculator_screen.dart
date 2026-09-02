@@ -158,6 +158,7 @@ class _CoolingTimeCalculatorScreenState
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    const BackToDashboardButton(),
                     const TopNavigationBar(),
                     const SizedBox(height: 24),
                     Text(

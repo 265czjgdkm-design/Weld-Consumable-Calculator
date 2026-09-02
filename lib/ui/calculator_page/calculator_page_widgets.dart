@@ -62,6 +62,28 @@ class _VaryosMarkPainter extends CustomPainter {
   bool shouldRepaint(covariant _VaryosMarkPainter oldDelegate) => false;
 }
 
+/// A small circular back affordance for screens reached via
+/// `Navigator.push` from the home dashboard that don't use an [AppBar]
+/// (which would otherwise auto-add one). Guarded by `canPop()` in case the
+/// screen is ever reached some other way. Placed right before
+/// [TopNavigationBar] in the layout.
+class BackToDashboardButton extends StatelessWidget {
+  const BackToDashboardButton({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    if (!Navigator.of(context).canPop()) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: IconButton.filledTonal(
+        onPressed: () => Navigator.of(context).pop(),
+        icon: const Icon(Icons.arrow_back),
+        tooltip: 'Back to Dashboard',
+      ),
+    );
+  }
+}
+
 class TopNavigationBar extends StatelessWidget {
   const TopNavigationBar({super.key});
 

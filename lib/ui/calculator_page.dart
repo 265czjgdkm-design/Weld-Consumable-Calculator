@@ -277,23 +277,6 @@ class _CalculatorPageState extends State<CalculatorPage> {
     );
   }
 
-  // CalculatorPage is only ever reached via Navigator.push from
-  // HomeDashboardScreen, so system/browser back already works, but none of
-  // this page's own layouts (intro, mobile wizard, desktop wide page) had a
-  // visible affordance back to the dashboard. `canPop()` still guards this
-  // in case CalculatorPage is ever reached some other way in the future.
-  Widget _buildBackToDashboardButton(BuildContext context) {
-    if (!Navigator.of(context).canPop()) return const SizedBox.shrink();
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: IconButton.filledTonal(
-        onPressed: () => Navigator.of(context).pop(),
-        icon: const Icon(Icons.arrow_back),
-        tooltip: 'Back to Dashboard',
-      ),
-    );
-  }
-
   /// Landing screen: the product pitch, capability highlights, and branding
   /// live here instead of above the input form, so the calculator itself
   /// opens straight into Joint Type once the user taps through.
@@ -307,7 +290,7 @@ class _CalculatorPageState extends State<CalculatorPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _buildBackToDashboardButton(context),
+              const BackToDashboardButton(),
               const TopNavigationBar(),
               const SizedBox(height: 18),
               ExperienceHero(
@@ -360,7 +343,7 @@ class _CalculatorPageState extends State<CalculatorPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _buildBackToDashboardButton(context),
+              const BackToDashboardButton(),
               _buildEstimatorWorkspace(context),
             ],
           ),

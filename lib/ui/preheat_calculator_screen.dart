@@ -338,6 +338,7 @@ class _PreheatCalculatorScreenState extends State<PreheatCalculatorScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    const BackToDashboardButton(),
                     const TopNavigationBar(),
                     const SizedBox(height: 24),
                     Text(
