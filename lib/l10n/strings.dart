@@ -543,7 +543,7 @@ const Map<AppLanguage, L10nStrings> _strings = {
         "Couldn't delete the preset. Please try again.",
     presetProcessSwitchConfirmTitle: 'Switch Welding Process?',
     presetProcessSwitchConfirmBody:
-        'This starter preset uses {presetProcess}. Continue and switch the welding process, or keep {currentProcess}?',
+        'This starter template normally uses {presetProcess}. Switch your welding process to match it, or keep {currentProcess}?',
     presetProcessSwitchConfirmSwitchButton: 'Switch to {presetProcess}',
     presetProcessSwitchConfirmKeepButton: 'Keep {currentProcess}',
     presetSaveError: "Couldn't save the preset. Please try again.",
@@ -783,7 +783,7 @@ const Map<AppLanguage, L10nStrings> _strings = {
     savedCalculationsDeleteError: 'Şablon silinemedi. Lütfen tekrar dene.',
     presetProcessSwitchConfirmTitle: 'Kaynak Yöntemi Değişsin mi?',
     presetProcessSwitchConfirmBody:
-        'Bu başlangıç şablonu {presetProcess} kullanıyor. Devam edip kaynak yöntemini değiştir, yoksa {currentProcess} olarak mı kalsın?',
+        'Bu başlangıç şablonu genellikle {presetProcess} kullanır. Kaynak yöntemini buna göre değiştir, yoksa {currentProcess} olarak mı kalsın?',
     presetProcessSwitchConfirmSwitchButton: '{presetProcess} olarak değiştir',
     presetProcessSwitchConfirmKeepButton: '{currentProcess} olarak kalsın',
     presetSaveError: 'Şablon kaydedilemedi. Lütfen tekrar dene.',
@@ -1026,7 +1026,7 @@ const Map<AppLanguage, L10nStrings> _strings = {
         'Не удалось удалить шаблон. Попробуйте ещё раз.',
     presetProcessSwitchConfirmTitle: 'Сменить способ сварки?',
     presetProcessSwitchConfirmBody:
-        'В этом стартовом шаблоне используется {presetProcess}. Продолжить и сменить способ сварки или оставить {currentProcess}?',
+        'Этот стартовый шаблон обычно использует {presetProcess}. Сменить способ сварки, чтобы совпадал, или оставить {currentProcess}?',
     presetProcessSwitchConfirmSwitchButton: 'Сменить на {presetProcess}',
     presetProcessSwitchConfirmKeepButton: 'Оставить {currentProcess}',
     presetSaveError: 'Не удалось сохранить шаблон. Попробуйте ещё раз.',
@@ -1270,7 +1270,7 @@ const Map<AppLanguage, L10nStrings> _strings = {
         'Vorlage konnte nicht gelöscht werden. Bitte versuchen Sie es erneut.',
     presetProcessSwitchConfirmTitle: 'Schweißverfahren wechseln?',
     presetProcessSwitchConfirmBody:
-        'Diese Startvorlage verwendet {presetProcess}. Fortfahren und das Schweißverfahren wechseln oder {currentProcess} beibehalten?',
+        'Diese Startvorlage verwendet normalerweise {presetProcess}. Schweißverfahren entsprechend wechseln oder {currentProcess} beibehalten?',
     presetProcessSwitchConfirmSwitchButton: 'Zu {presetProcess} wechseln',
     presetProcessSwitchConfirmKeepButton: '{currentProcess} beibehalten',
     presetSaveError:
@@ -1513,7 +1513,7 @@ const Map<AppLanguage, L10nStrings> _strings = {
         'प्रीसेट डिलीट नहीं हो सका। कृपया फिर से कोशिश करें।',
     presetProcessSwitchConfirmTitle: 'वेल्डिंग प्रोसेस बदलें?',
     presetProcessSwitchConfirmBody:
-        'यह स्टार्टर प्रीसेट {presetProcess} इस्तेमाल करता है। आगे बढ़कर वेल्डिंग प्रोसेस बदलें, या {currentProcess} बनाए रखें?',
+        'यह स्टार्टर टेम्पलेट आमतौर पर {presetProcess} इस्तेमाल करता है। इसके अनुसार वेल्डिंग प्रोसेस बदलें, या {currentProcess} बनाए रखें?',
     presetProcessSwitchConfirmSwitchButton: '{presetProcess} में बदलें',
     presetProcessSwitchConfirmKeepButton: '{currentProcess} बनाए रखें',
     presetSaveError: 'प्रीसेट सेव नहीं हो सका। कृपया फिर से कोशिश करें।',

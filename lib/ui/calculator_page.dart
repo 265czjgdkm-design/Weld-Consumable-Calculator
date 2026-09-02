@@ -1050,8 +1050,10 @@ class _CalculatorPageState extends State<CalculatorPage> {
   Widget _buildStarterPresetSection(BuildContext context) {
     return InputPanelSection(
       icon: Icons.auto_awesome_outlined,
-      title: 'Starter Setup',
-      subtitle: 'Load a practical built-in starting point, then fine-tune it.',
+      title: 'Starting Template',
+      subtitle:
+          'Loads a full example setup, including joint, dimensions, and '
+          'welding process, that you can then adjust.',
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -1065,11 +1067,7 @@ class _CalculatorPageState extends State<CalculatorPage> {
               key: ValueKey('$_inputPreset-$_starterPresetDropdownResetToken'),
               initialValue: _inputPreset,
               isExpanded: true,
-              decoration: const InputDecoration(
-                labelText: 'Input Preset',
-                helperText:
-                    'Load a practical starting setup, then fine-tune dimensions as needed.',
-              ),
+              decoration: const InputDecoration(labelText: 'Input Preset'),
               selectedItemBuilder: (context) => InputPreset.values
                   .map((preset) => _buildDropdownSelectedText(preset.label))
                   .toList(),
