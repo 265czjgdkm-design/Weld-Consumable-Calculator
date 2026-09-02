@@ -1,9 +1,10 @@
 import 'app_language.dart';
 
-/// Static copy for the intro/splash screen, translated into every
-/// language the app supports. Deeper, field-by-field calculator copy
-/// (input labels, helper text, results, paywall) is still English-only
-/// and is intentionally out of scope for this first localization pass.
+/// Static copy for the app, translated into every language it supports --
+/// intro/splash screen, and the calculator input panel, results screen,
+/// and wizard (field-by-field labels, helper text, results, paywall).
+/// The PDF report (weld_pdf_report_service.dart) is a separately scoped
+/// follow-up and remains English-only for now.
 class L10nStrings {
   const L10nStrings({
     required this.navBrand,
@@ -423,6 +424,20 @@ class L10nStrings {
     required this.basisGtawWireDiameter,
     required this.basisSmawDepositionRate,
     required this.basisSmawElectrodeDiameter,
+    required this.calcRateBasisLabel,
+    required this.calcGtawTransitionDepthLabel,
+    required this.calcThenSmawSuffix,
+    required this.calcDepositionEfficiencyLabel,
+    required this.calcEquivalentDepositionRateLabel,
+    required this.calcDepositionRateLabel,
+    required this.calcUserDefinedLabel,
+    required this.calcWireLabel,
+    required this.calcElectrodeLabel,
+    required this.calcWireUnitSuffix,
+    required this.calcElectrodeUnitSuffix,
+    required this.calcUnequalJointLabel,
+    required this.calcGoverningThicknessLabel,
+    required this.calcUnitJointSuffix,
     required this.wizardJointDimensionsTitle,
     required this.wizardConsumableRateTitle,
     required this.wizardProcessStepSubtitle,
@@ -893,6 +908,22 @@ class L10nStrings {
   final String basisGtawWireDiameter;
   final String basisSmawDepositionRate;
   final String basisSmawElectrodeDiameter;
+  // Composed "Active Engineering Basis" banner sentence fragments (see
+  // _processRateSummary / _unequalGeometrySummary in calculator_page.dart).
+  final String calcRateBasisLabel;
+  final String calcGtawTransitionDepthLabel;
+  final String calcThenSmawSuffix;
+  final String calcDepositionEfficiencyLabel;
+  final String calcEquivalentDepositionRateLabel;
+  final String calcDepositionRateLabel;
+  final String calcUserDefinedLabel;
+  final String calcWireLabel;
+  final String calcElectrodeLabel;
+  final String calcWireUnitSuffix;
+  final String calcElectrodeUnitSuffix;
+  final String calcUnequalJointLabel;
+  final String calcGoverningThicknessLabel;
+  final String calcUnitJointSuffix;
   final String wizardJointDimensionsTitle;
   final String wizardConsumableRateTitle;
   final String wizardProcessStepSubtitle;
@@ -1469,6 +1500,20 @@ const Map<AppLanguage, L10nStrings> _strings = {
     basisGtawWireDiameter: 'GTAW Wire Diameter',
     basisSmawDepositionRate: 'SMAW Deposition Rate',
     basisSmawElectrodeDiameter: 'SMAW Electrode Diameter',
+    calcRateBasisLabel: 'Rate basis',
+    calcGtawTransitionDepthLabel: 'GTAW transition depth',
+    calcThenSmawSuffix: 'then SMAW',
+    calcDepositionEfficiencyLabel: 'Deposition efficiency',
+    calcEquivalentDepositionRateLabel: 'Equivalent deposition rate',
+    calcDepositionRateLabel: 'Deposition rate',
+    calcUserDefinedLabel: 'User-defined',
+    calcWireLabel: 'Wire',
+    calcElectrodeLabel: 'Electrode',
+    calcWireUnitSuffix: 'wire',
+    calcElectrodeUnitSuffix: 'electrode',
+    calcUnequalJointLabel: 'Unequal joint',
+    calcGoverningThicknessLabel: 'Governing thickness',
+    calcUnitJointSuffix: 'joint',
     wizardJointDimensionsTitle: 'Joint & Dimensions',
     wizardConsumableRateTitle: 'Consumable & Rate',
     wizardProcessStepSubtitle:
@@ -2062,6 +2107,20 @@ const Map<AppLanguage, L10nStrings> _strings = {
     basisGtawWireDiameter: 'GTAW Tel Çapı',
     basisSmawDepositionRate: 'SMAW Dolgu Hızı',
     basisSmawElectrodeDiameter: 'SMAW Elektrot Çapı',
+    calcRateBasisLabel: 'Hız Esası',
+    calcGtawTransitionDepthLabel: 'GTAW Geçiş Derinliği',
+    calcThenSmawSuffix: 'ardından SMAW',
+    calcDepositionEfficiencyLabel: 'Dolgu Verimi',
+    calcEquivalentDepositionRateLabel: 'Eşdeğer Dolgu Hızı',
+    calcDepositionRateLabel: 'Dolgu Hızı',
+    calcUserDefinedLabel: 'Kullanıcı Tanımlı',
+    calcWireLabel: 'Tel',
+    calcElectrodeLabel: 'Elektrot',
+    calcWireUnitSuffix: 'tel',
+    calcElectrodeUnitSuffix: 'elektrot',
+    calcUnequalJointLabel: 'Eşitsiz Birleşim',
+    calcGoverningThicknessLabel: 'Belirleyici Kalınlık',
+    calcUnitJointSuffix: 'birleşim',
     wizardJointDimensionsTitle: 'Birleşim ve Ölçüler',
     wizardConsumableRateTitle: 'Sarf Malzeme ve Hız',
     wizardProcessStepSubtitle:
@@ -2663,6 +2722,20 @@ const Map<AppLanguage, L10nStrings> _strings = {
     basisGtawWireDiameter: 'Диаметр проволоки GTAW',
     basisSmawDepositionRate: 'Скорость наплавки SMAW',
     basisSmawElectrodeDiameter: 'Диаметр электрода SMAW',
+    calcRateBasisLabel: 'Основа скорости наплавки',
+    calcGtawTransitionDepthLabel: 'Глубина перехода GTAW',
+    calcThenSmawSuffix: 'затем SMAW',
+    calcDepositionEfficiencyLabel: 'КПД наплавки',
+    calcEquivalentDepositionRateLabel: 'Эквивалентная скорость наплавки',
+    calcDepositionRateLabel: 'Скорость наплавки',
+    calcUserDefinedLabel: 'Заданная пользователем',
+    calcWireLabel: 'Проволока',
+    calcElectrodeLabel: 'Электрод',
+    calcWireUnitSuffix: 'проволока',
+    calcElectrodeUnitSuffix: 'электрод',
+    calcUnequalJointLabel: 'Неравное соединение',
+    calcGoverningThicknessLabel: 'Определяющая толщина',
+    calcUnitJointSuffix: 'соединение',
     wizardJointDimensionsTitle: 'Соединение и размеры',
     wizardConsumableRateTitle: 'Присадка и скорость наплавки',
     wizardProcessStepSubtitle:
@@ -2990,7 +3063,7 @@ const Map<AppLanguage, L10nStrings> _strings = {
     grooveSingleV: 'V-Naht',
     grooveHalfV: 'HV-Naht',
     grooveDoubleV: 'Doppel-V-Naht',
-    grooveCompoundV: 'Verbund-V-Naht',
+    grooveCompoundV: 'V-Naht mit zusammengesetzter Fase',
     grooveSquare: 'I-Naht',
     grooveFillet: 'Kehlnaht',
     depositionRateModePreset: 'Geschätzt',
@@ -3263,6 +3336,20 @@ const Map<AppLanguage, L10nStrings> _strings = {
     basisGtawWireDiameter: 'GTAW-Drahtdurchmesser',
     basisSmawDepositionRate: 'SMAW-Abschmelzleistung',
     basisSmawElectrodeDiameter: 'SMAW-Elektrodendurchmesser',
+    calcRateBasisLabel: 'Abschmelzgrundlage',
+    calcGtawTransitionDepthLabel: 'GTAW-Übergangstiefe',
+    calcThenSmawSuffix: 'dann SMAW',
+    calcDepositionEfficiencyLabel: 'Abschmelzwirkungsgrad',
+    calcEquivalentDepositionRateLabel: 'Äquivalente Abschmelzleistung',
+    calcDepositionRateLabel: 'Abschmelzleistung',
+    calcUserDefinedLabel: 'Benutzerdefiniert',
+    calcWireLabel: 'Draht',
+    calcElectrodeLabel: 'Elektrode',
+    calcWireUnitSuffix: 'Draht',
+    calcElectrodeUnitSuffix: 'Elektrode',
+    calcUnequalJointLabel: 'Ungleiche Verbindung',
+    calcGoverningThicknessLabel: 'Maßgebende Dicke',
+    calcUnitJointSuffix: 'Verbindung',
     wizardJointDimensionsTitle: 'Verbindung & Abmessungen',
     wizardConsumableRateTitle: 'Zusatzwerkstoff & Leistung',
     wizardProcessStepSubtitle:
@@ -3849,6 +3936,20 @@ const Map<AppLanguage, L10nStrings> _strings = {
     basisGtawWireDiameter: 'GTAW वायर डायमीटर',
     basisSmawDepositionRate: 'SMAW डिपॉज़िशन रेट',
     basisSmawElectrodeDiameter: 'SMAW इलेक्ट्रोड डायमीटर',
+    calcRateBasisLabel: 'रेट बेसिस',
+    calcGtawTransitionDepthLabel: 'GTAW ट्रांज़िशन डेप्थ',
+    calcThenSmawSuffix: 'फिर SMAW',
+    calcDepositionEfficiencyLabel: 'डिपॉज़िशन एफिशिएंसी',
+    calcEquivalentDepositionRateLabel: 'इक्विवैलेंट डिपॉज़िशन रेट',
+    calcDepositionRateLabel: 'डिपॉज़िशन रेट',
+    calcUserDefinedLabel: 'यूज़र-डिफाइंड',
+    calcWireLabel: 'वायर',
+    calcElectrodeLabel: 'इलेक्ट्रोड',
+    calcWireUnitSuffix: 'वायर',
+    calcElectrodeUnitSuffix: 'इलेक्ट्रोड',
+    calcUnequalJointLabel: 'असमान जॉइंट',
+    calcGoverningThicknessLabel: 'गवर्निंग मोटाई',
+    calcUnitJointSuffix: 'जॉइंट',
     wizardJointDimensionsTitle: 'जॉइंट और डाइमेंशन',
     wizardConsumableRateTitle: 'कंज़्यूमेबल और रेट',
     wizardProcessStepSubtitle:

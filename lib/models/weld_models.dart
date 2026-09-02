@@ -73,17 +73,8 @@ extension JointTypeX on JointType {
     JointType.fillet => 'Fillet Weld',
   };
 
-  String get helper => switch (this) {
-    JointType.pipeButt =>
-      'Total weld length is calculated from pipe outside diameter x quantity.',
-    JointType.plateButt =>
-      'Total weld length is calculated from weld run length x quantity.',
-    JointType.fillet =>
-      'Fillet weld area is based on equal-leg geometry and entered weld length.',
-  };
-
-  // `label`/`helper` above stay plain English -- weld_pdf_report_service.dart
-  // depends on them for the (separately scoped) PDF export. UI call sites
+  // `label` above stays plain English -- weld_pdf_report_service.dart
+  // depends on it for the (separately scoped) PDF export. UI call sites
   // use these localized counterparts instead.
   String labelFor(L10nStrings strings) => switch (this) {
     JointType.pipeButt => strings.jointTypePipeButt,

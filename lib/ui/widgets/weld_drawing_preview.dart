@@ -21,11 +21,6 @@ class DrawingHotspot {
 }
 
 extension DrawingModeX on DrawingMode {
-  String get label => switch (this) {
-    DrawingMode.visual => 'Visual',
-    DrawingMode.technical => 'Technical',
-  };
-
   String labelFor(L10nStrings strings) => switch (this) {
     DrawingMode.visual => strings.drawingModeVisual,
     DrawingMode.technical => strings.drawingModeTechnical,

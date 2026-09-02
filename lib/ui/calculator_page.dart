@@ -686,7 +686,7 @@ class _CalculatorPageState extends State<CalculatorPage> {
                   ),
                   const SizedBox(height: 10),
                   Text(
-                    '${_jointType.helperFor(strings)} $_unequalGeometrySummary${_processRateSummary(strings, processEfficiency, depositionRate)}',
+                    '${_jointType.helperFor(strings)} ${_unequalGeometrySummary(strings)}${_processRateSummary(strings, processEfficiency, depositionRate)}',
                     style: const TextStyle(
                       color: Color(0xFFE1F0F3),
                       height: 1.42,
@@ -1714,7 +1714,7 @@ class _CalculatorPageState extends State<CalculatorPage> {
                     text: '${item.key.labelFor(strings)}: ',
                     style: const TextStyle(fontWeight: FontWeight.w700),
                   ),
-                  TextSpan(text: item.value),
+                  TextSpan(text: item.localizedValue),
                 ],
               ),
             ),
@@ -2095,41 +2095,41 @@ class _CalculatorPageState extends State<CalculatorPage> {
       );
       final gtawSetting = _depositionRateMode == DepositionRateMode.manual
           ? '${_formatNumber(_parsePreviewValue(FieldKey.manualGtawRateKgPerHour) ?? WeldingDefaults.depositionRateFor(WeldingProcess.gtaw), 2)} kg/h'
-          : '${_formatNumber(_parsePreviewValue(FieldKey.gtawWireDiameterMm) ?? 2.4, 1)} mm wire';
+          : '${_formatNumber(_parsePreviewValue(FieldKey.gtawWireDiameterMm) ?? 2.4, 1)} mm ${strings.calcWireUnitSuffix}';
       final smawSetting = _depositionRateMode == DepositionRateMode.manual
           ? '${_formatNumber(_parsePreviewValue(FieldKey.manualSmawRateKgPerHour) ?? WeldingDefaults.depositionRateFor(WeldingProcess.smaw), 2)} kg/h'
-          : '${_formatNumber(_parsePreviewValue(FieldKey.smawElectrodeDiameterMm) ?? 3.2, 1)} mm electrode';
-      return 'Rate basis $sourceText | GTAW transition depth $gtawUpTo mm, then SMAW | Deposition efficiency ${_formatPercent(efficiency)} | Equivalent deposition rate ${_formatNumber(depositionRate, 2)} kg/h | GTAW $gtawSetting | SMAW $smawSetting';
+          : '${_formatNumber(_parsePreviewValue(FieldKey.smawElectrodeDiameterMm) ?? 3.2, 1)} mm ${strings.calcElectrodeUnitSuffix}';
+      return '${strings.calcRateBasisLabel} $sourceText | ${strings.calcGtawTransitionDepthLabel} $gtawUpTo mm, ${strings.calcThenSmawSuffix} | ${strings.calcDepositionEfficiencyLabel} ${_formatPercent(efficiency)} | ${strings.calcEquivalentDepositionRateLabel} ${_formatNumber(depositionRate, 2)} kg/h | GTAW $gtawSetting | SMAW $smawSetting';
     }
 
     final detailText = _depositionRateMode == DepositionRateMode.manual
-        ? ' | User-defined ${_formatNumber(_parsePreviewValue(FieldKey.manualDepositionRateKgPerHour) ?? WeldingDefaults.depositionRateFor(_weldingProcess), 2)} kg/h'
+        ? ' | ${strings.calcUserDefinedLabel} ${_formatNumber(_parsePreviewValue(FieldKey.manualDepositionRateKgPerHour) ?? WeldingDefaults.depositionRateFor(_weldingProcess), 2)} kg/h'
         : switch (_weldingProcess) {
             WeldingProcess.gtaw =>
-              ' | Wire ${_formatNumber(_parsePreviewValue(FieldKey.wireDiameterMm) ?? 2.4, 1)} mm',
+              ' | ${strings.calcWireLabel} ${_formatNumber(_parsePreviewValue(FieldKey.wireDiameterMm) ?? 2.4, 1)} mm',
             WeldingProcess.smaw =>
-              ' | Electrode ${_formatNumber(_parsePreviewValue(FieldKey.electrodeDiameterMm) ?? 3.2, 1)} mm',
+              ' | ${strings.calcElectrodeLabel} ${_formatNumber(_parsePreviewValue(FieldKey.electrodeDiameterMm) ?? 3.2, 1)} mm',
             WeldingProcess.gmaw =>
-              ' | Wire ${_formatNumber(_parsePreviewValue(FieldKey.wireDiameterMm) ?? 1.2, 1)} mm',
+              ' | ${strings.calcWireLabel} ${_formatNumber(_parsePreviewValue(FieldKey.wireDiameterMm) ?? 1.2, 1)} mm',
             WeldingProcess.fcaw =>
-              ' | Wire ${_formatNumber(_parsePreviewValue(FieldKey.wireDiameterMm) ?? 1.6, 1)} mm',
+              ' | ${strings.calcWireLabel} ${_formatNumber(_parsePreviewValue(FieldKey.wireDiameterMm) ?? 1.6, 1)} mm',
             WeldingProcess.gtawSmaw => '',
           };
-    return 'Rate basis $sourceText | Deposition efficiency ${_formatPercent(efficiency)} | Deposition rate ${_formatNumber(depositionRate, 2)} kg/h$detailText';
+    return '${strings.calcRateBasisLabel} $sourceText | ${strings.calcDepositionEfficiencyLabel} ${_formatPercent(efficiency)} | ${strings.calcDepositionRateLabel} ${_formatNumber(depositionRate, 2)} kg/h$detailText';
   }
 
-  String get _unequalGeometrySummary {
+  String _unequalGeometrySummary(L10nStrings strings) {
     if (!_isUnequalGeometry) return '';
 
     final thickness = _governingThicknessPreview;
     final od = _governingPipeOdPreview;
     final thicknessText = thickness == null
         ? ''
-        : 'Unequal joint | Governing thickness ${_formatNumber(thickness, 1)} mm | ';
+        : '${strings.calcUnequalJointLabel} | ${strings.calcGoverningThicknessLabel} ${_formatNumber(thickness, 1)} mm | ';
     final odText = _jointType == JointType.pipeButt && od != null
-        ? 'Reference OD ${_formatNumber(od, 1)} mm | ${_jointAlignment.label} | '
+        ? '${strings.basisReferenceOd} ${_formatNumber(od, 1)} mm | ${_jointAlignment.labelFor(strings)} | '
         : _jointType == JointType.plateButt
-        ? '${_jointAlignment.label} | '
+        ? '${_jointAlignment.labelFor(strings)} | '
         : '';
     return '$thicknessText$odText';
   }
@@ -3254,18 +3254,23 @@ class _CalculatorPageState extends State<CalculatorPage> {
       '${(ratio * 100).toStringAsFixed(digits)}%';
 
   List<CalculationBasisItem> _buildCalculationBasis() {
+    final strings = AppLocaleScope.stringsOf(context);
     final items = <CalculationBasisItem>[
+      // WeldingProcess.label is never localized (GTAW/SMAW/etc. are
+      // international AWS process abbreviations) -- no localizedValue needed.
       CalculationBasisItem(BasisKey.process, 'Process', _weldingProcess.label),
       CalculationBasisItem(
         BasisKey.rateBasis,
         'Rate Basis',
         _depositionRateMode.label,
+        _depositionRateMode.labelFor(strings),
       ),
       if (_inputPreset != InputPreset.custom)
         CalculationBasisItem(
           BasisKey.inputPreset,
           'Input Preset',
           _inputPreset.label,
+          _inputPreset.labelFor(strings),
         ),
       if (_selectedUserPreset != null)
         CalculationBasisItem(
@@ -3273,20 +3278,32 @@ class _CalculatorPageState extends State<CalculatorPage> {
           'Saved Preset',
           _selectedUserPreset!.name,
         ),
-      CalculationBasisItem(BasisKey.joint, 'Joint', _jointType.label),
+      CalculationBasisItem(
+        BasisKey.joint,
+        'Joint',
+        _jointType.label,
+        _jointType.labelFor(strings),
+      ),
       if (_supportsUnequalGeometry)
         CalculationBasisItem(
           BasisKey.geometry,
           'Geometry',
           _jointGeometryMode.label,
+          _jointGeometryMode.labelFor(strings),
         ),
       if (_isUnequalGeometry)
         CalculationBasisItem(
           BasisKey.alignment,
           'Alignment',
           _jointAlignment.label,
+          _jointAlignment.labelFor(strings),
         ),
-      CalculationBasisItem(BasisKey.groove, 'Groove', _grooveType.label),
+      CalculationBasisItem(
+        BasisKey.groove,
+        'Groove',
+        _grooveType.label,
+        _grooveType.labelFor(strings),
+      ),
       CalculationBasisItem(
         BasisKey.classification,
         'Classification',
@@ -3298,6 +3315,7 @@ class _CalculatorPageState extends State<CalculatorPage> {
         BasisKey.fillerMetalFamily,
         'Filler Metal Family',
         _consumableSelection.family.label,
+        _consumableSelection.family.labelFor(strings),
       ),
       CalculationBasisItem(
         BasisKey.density,

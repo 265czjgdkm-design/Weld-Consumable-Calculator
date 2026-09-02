@@ -1006,12 +1006,12 @@ class ResultsSection extends StatelessWidget {
             InsightItem(
               label: strings.insightFillerPerJoint,
               value: _number(fillerPerJoint, 3),
-              unit: 'kg/joint',
+              unit: 'kg/${strings.calcUnitJointSuffix}',
             ),
             InsightItem(
               label: strings.insightArcOnPerJoint,
               value: _number(arcMinutesPerJoint, 2),
-              unit: 'min/joint',
+              unit: 'min/${strings.calcUnitJointSuffix}',
             ),
             InsightItem(
               label: strings.insightEfficiencyLossBasis,
@@ -1085,7 +1085,8 @@ class ResultsSection extends StatelessWidget {
   double? _basisNumber(BasisKey key) {
     for (final item in basis) {
       if (item.key != key) continue;
-      final match = RegExp(r'-?\d+(\.\d+)?').firstMatch(item.value);
+      final normalized = item.value.replaceAll(',', '.');
+      final match = RegExp(r'-?\d+(\.\d+)?').firstMatch(normalized);
       if (match == null) return null;
       return double.tryParse(match.group(0)!);
     }
@@ -1245,7 +1246,7 @@ class CalculationBasisPanel extends StatelessWidget {
                           text: '${item.key.labelFor(strings)}: ',
                           style: const TextStyle(fontWeight: FontWeight.w700),
                         ),
-                        TextSpan(text: item.value),
+                        TextSpan(text: item.localizedValue),
                       ],
                     ),
                   ),

@@ -158,7 +158,12 @@ extension BasisKeyX on BasisKey {
 }
 
 class CalculationBasisItem {
-  const CalculationBasisItem(this.key, this.label, this.value);
+  const CalculationBasisItem(
+    this.key,
+    this.label,
+    this.value, [
+    String? localizedValue,
+  ]) : localizedValue = localizedValue ?? value;
 
   final BasisKey key;
   // Plain English -- weld_pdf_report_service.dart's PDF export consumes
@@ -167,4 +172,8 @@ class CalculationBasisItem {
   // `key.labelFor(strings)` instead of this field.
   final String label;
   final String value;
+  // Localized display value for UI call sites (wizard recap, results
+  // Engineering Basis panel). Falls back to [value] for entries whose
+  // underlying value is already locale-neutral (numbers, units, free text).
+  final String localizedValue;
 }

@@ -5,9 +5,13 @@ import 'package:weld_consumable_calculator/core/weld_calculator.dart';
 import 'package:weld_consumable_calculator/models/consumable_selection.dart';
 import 'package:weld_consumable_calculator/models/custom_material_models.dart';
 import 'package:weld_consumable_calculator/models/weld_models.dart';
+import 'package:weld_consumable_calculator/l10n/app_language.dart';
+import 'package:weld_consumable_calculator/l10n/strings.dart';
 import 'package:weld_consumable_calculator/services/custom_filler_material_store.dart';
 import 'package:weld_consumable_calculator/services/user_preset_store.dart';
 import 'package:weld_consumable_calculator/services/weld_pdf_report_service.dart';
+
+final _strings = stringsFor(AppLanguage.en);
 
 const _customMaterial = CustomFillerMaterial(
   id: 'filler-custom-1',
@@ -65,7 +69,10 @@ void main() {
     test('custom selection has no AWS spec and falls back gracefully', () {
       const selection = CustomConsumableSelection(_customMaterial);
       expect(selection.awsSpecification, isNull);
-      expect(selection.awsDisplayLabel, 'Acme XR-70 (Carbon Steel)');
+      expect(
+        selection.awsDisplayLabelFor(_strings),
+        'Acme XR-70 (Carbon Steel)',
+      );
       expect(selection.description, 'House-brand equivalent to ER70S-6.');
     });
   });

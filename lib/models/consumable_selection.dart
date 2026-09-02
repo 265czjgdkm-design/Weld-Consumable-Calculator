@@ -84,14 +84,6 @@ extension ConsumableSelectionX on ConsumableSelection {
     CustomConsumableSelection(:final material) => material.awsSpecification,
   };
 
-  String get awsDisplayLabel => switch (this) {
-    BuiltInConsumableSelection(:final preset) => preset.awsDisplayLabel,
-    CustomConsumableSelection() =>
-      awsSpecification == null
-          ? '$label (${family.label})'
-          : '$awsSpecification $label (${family.label})',
-  };
-
   String awsDisplayLabelFor(L10nStrings strings) => switch (this) {
     BuiltInConsumableSelection(:final preset) => preset.awsDisplayLabelFor(
       strings,
@@ -121,19 +113,6 @@ extension ConsumableSelectionX on ConsumableSelection {
       material.notes.trim().isNotEmpty
           ? material.notes
           : strings.consumableCustomFallbackDescription,
-  };
-
-  /// Equivalent of [ConsumablePresetX.typicalBaseMetals] for the union,
-  /// already joined for display since custom materials don't have a
-  /// structured base-metals list -- just notes, or a generic fallback.
-  String get typicalBaseMetalsText => switch (this) {
-    BuiltInConsumableSelection(:final preset) => preset.typicalBaseMetals.join(
-      ', ',
-    ),
-    CustomConsumableSelection(:final material) =>
-      material.notes.trim().isNotEmpty
-          ? material.notes
-          : 'No typical base metals recorded for this custom material.',
   };
 
   // Built-in base-metal designation lists stay English-only (disclosed

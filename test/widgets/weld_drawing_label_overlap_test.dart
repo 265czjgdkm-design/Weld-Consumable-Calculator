@@ -14,6 +14,8 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show FontLoader;
 import 'package:flutter_test/flutter_test.dart';
+import 'package:weld_consumable_calculator/l10n/app_language.dart';
+import 'package:weld_consumable_calculator/l10n/strings.dart';
 import 'package:weld_consumable_calculator/models/weld_models.dart';
 import 'package:weld_consumable_calculator/ui/widgets/weld_drawing_preview.dart';
 
@@ -60,6 +62,7 @@ Future<List<Rect>> _renderLabelRects(
   required GrooveType grooveType,
   required DrawingMode drawingMode,
   required Size canvasSize,
+  required L10nStrings strings,
 }) async {
   const data = WeldDrawingData(
     weldingProcess: WeldingProcess.gtaw,
@@ -88,12 +91,12 @@ Future<List<Rect>> _renderLabelRects(
               jointType: jointType,
               drawingMode: drawingMode,
               data: data,
-              jointTypeLabel: jointType.label,
-              grooveTypeLabel: grooveType.label,
-              filletWeldFaceLabel: 'fillet weld face',
-              tJointLabel: 'T-joint',
-              smawFillCapLabel: 'SMAW fill / cap',
-              gtawRootLabel: 'GTAW root',
+              jointTypeLabel: jointType.labelFor(strings),
+              grooveTypeLabel: grooveType.labelFor(strings),
+              filletWeldFaceLabel: strings.drawingLabelFilletWeldFace,
+              tJointLabel: strings.drawingLabelTJoint,
+              smawFillCapLabel: strings.drawingLabelSmawFillCap,
+              gtawRootLabel: strings.drawingLabelGtawRoot,
               fillAvailableSpace: true,
             ),
           ),
@@ -122,6 +125,7 @@ void _expectNoOverlap(
   required GrooveType grooveType,
   required DrawingMode drawingMode,
   required Size canvasSize,
+  required AppLanguage language,
 }) {
   testWidgets('no label overlap: $description', (tester) async {
     final rects = await _renderLabelRects(
@@ -130,6 +134,7 @@ void _expectNoOverlap(
       grooveType: grooveType,
       drawingMode: drawingMode,
       canvasSize: canvasSize,
+      strings: stringsFor(language),
     );
     final overlaps = _overlapDescriptions(rects);
     expect(
@@ -182,39 +187,44 @@ void main() {
   ];
   final normalButtGrooves = [GrooveType.singleV, GrooveType.square];
 
-  for (final width in widths) {
-    for (final joint in joints) {
-      for (final groove in busyGrooves) {
-        for (final mode in DrawingMode.values) {
-          _expectNoOverlap(
-            '$groove/$joint/$mode @${width.toInt()}',
-            jointType: joint,
-            grooveType: groove,
-            drawingMode: mode,
-            canvasSize: Size(width, busyHeight),
-          );
+  for (final language in AppLanguage.values) {
+    for (final width in widths) {
+      for (final joint in joints) {
+        for (final groove in busyGrooves) {
+          for (final mode in DrawingMode.values) {
+            _expectNoOverlap(
+              '$groove/$joint/$mode @${width.toInt()} [$language]',
+              jointType: joint,
+              grooveType: groove,
+              drawingMode: mode,
+              canvasSize: Size(width, busyHeight),
+              language: language,
+            );
+          }
+        }
+        for (final groove in normalButtGrooves) {
+          for (final mode in DrawingMode.values) {
+            _expectNoOverlap(
+              '$groove/$joint/$mode @${width.toInt()} [$language]',
+              jointType: joint,
+              grooveType: groove,
+              drawingMode: mode,
+              canvasSize: Size(width, normalHeight),
+              language: language,
+            );
+          }
         }
       }
-      for (final groove in normalButtGrooves) {
-        for (final mode in DrawingMode.values) {
-          _expectNoOverlap(
-            '$groove/$joint/$mode @${width.toInt()}',
-            jointType: joint,
-            grooveType: groove,
-            drawingMode: mode,
-            canvasSize: Size(width, normalHeight),
-          );
-        }
+      for (final mode in DrawingMode.values) {
+        _expectNoOverlap(
+          'fillet/$mode @${width.toInt()} [$language]',
+          jointType: JointType.fillet,
+          grooveType: GrooveType.fillet,
+          drawingMode: mode,
+          canvasSize: Size(width, filletHeight),
+          language: language,
+        );
       }
-    }
-    for (final mode in DrawingMode.values) {
-      _expectNoOverlap(
-        'fillet/$mode @${width.toInt()}',
-        jointType: JointType.fillet,
-        grooveType: GrooveType.fillet,
-        drawingMode: mode,
-        canvasSize: Size(width, filletHeight),
-      );
     }
   }
 }
