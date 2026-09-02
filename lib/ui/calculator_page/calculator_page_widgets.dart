@@ -73,12 +73,13 @@ class BackToDashboardButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (!Navigator.of(context).canPop()) return const SizedBox.shrink();
+    final strings = AppLocaleScope.stringsOf(context);
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: IconButton.filledTonal(
         onPressed: () => Navigator.of(context).pop(),
         icon: const Icon(Icons.arrow_back),
-        tooltip: 'Back to Dashboard',
+        tooltip: strings.calcBackToDashboardTooltip,
       ),
     );
   }
@@ -664,11 +665,12 @@ class EmptyResultsState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final strings = AppLocaleScope.stringsOf(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Results',
+          strings.calcResultsTitle,
           style: Theme.of(
             context,
           ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
@@ -676,8 +678,11 @@ class EmptyResultsState extends StatelessWidget {
         const SizedBox(height: 10),
         Text(
           process == WeldingProcess.gtawSmaw
-              ? 'Choose the joint, then enter GTAW transition depth together with GTAW wire and SMAW electrode diameters before calculating.'
-              : 'Choose the joint, review the input parameters, then calculate. Process ${process.label} uses its active deposition efficiency and deposition rate basis.',
+              ? strings.calcEmptyResultsBodyGtawSmaw
+              : strings.calcEmptyResultsBodyDefault.replaceFirst(
+                  '{process}',
+                  process.label,
+                ),
           style: Theme.of(
             context,
           ).textTheme.bodyMedium?.copyWith(color: const Color(0xFF607482)),
@@ -811,7 +816,8 @@ class ResultsSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final quantity = _basisNumber('Quantity') ?? 1;
+    final strings = AppLocaleScope.stringsOf(context);
+    final quantity = _basisNumber(BasisKey.quantity) ?? 1;
     final totalLengthMeters = result.lengthMm / 1000;
     final fillerPerMeter = totalLengthMeters > 0
         ? result.fillerKg / totalLengthMeters
@@ -831,8 +837,9 @@ class ResultsSection extends StatelessWidget {
         : result.weldMetalKg / result.depositionEfficiency;
     final wasteAllowanceKg = result.fillerKg - theoreticalWithoutWaste;
     final efficiencyLossKg = theoreticalWithoutWaste - result.weldMetalKg;
-    final currentLegSizeMm = _basisNumber('Fillet Leg Size');
-    final nextStandardLegSizeMm = currentLegSizeMm != null && currentLegSizeMm > 0
+    final currentLegSizeMm = _basisNumber(BasisKey.filletLegSize);
+    final nextStandardLegSizeMm =
+        currentLegSizeMm != null && currentLegSizeMm > 0
         ? WeldFormulas.nextStandardFilletLegMm(currentLegSizeMm)
         : null;
     final oversizeDeltaPercent = nextStandardLegSizeMm != null
@@ -844,49 +851,49 @@ class ResultsSection extends StatelessWidget {
         : null;
     final metrics = [
       (
-        'Weld Area',
+        strings.metricWeldArea,
         _number(result.areaMm2, 2),
         'mm²',
         Icons.square_foot_outlined,
       ),
       (
-        'Weld Length',
+        strings.metricWeldLength,
         _number(result.lengthMm, 2),
         'mm',
         Icons.straighten_outlined,
       ),
       (
-        'Weld Metal Volume',
+        strings.metricWeldMetalVolume,
         _number(result.volumeCm3, 3),
         'cm³',
         Icons.view_in_ar_outlined,
       ),
       (
-        'Weld Metal Weight',
+        strings.metricWeldMetalWeight,
         _number(result.weldMetalKg, 3),
         'kg',
         Icons.scale_outlined,
       ),
       (
-        'Filler Metal Consumption',
+        strings.metricFillerMetalConsumption,
         _number(result.fillerKg, 3),
         'kg',
         Icons.inventory_2_outlined,
       ),
       (
-        'Estimated Arc-On Time',
+        strings.metricEstimatedArcOnTime,
         _number(result.arcTimeHours, 3),
         'h',
         Icons.timer_outlined,
       ),
       (
-        'Effective Deposition Efficiency',
+        strings.metricEffectiveDepositionEfficiency,
         _percent(result.depositionEfficiency),
         '',
         Icons.speed_outlined,
       ),
       (
-        'Effective Deposition Rate',
+        strings.metricEffectiveDepositionRate,
         _number(result.depositionRateKgPerHour, 2),
         'kg/h',
         Icons.bolt_outlined,
@@ -900,7 +907,7 @@ class ResultsSection extends StatelessWidget {
           children: [
             Expanded(
               child: Text(
-                'Results',
+                strings.calcResultsTitle,
                 style: Theme.of(
                   context,
                 ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
@@ -922,22 +929,24 @@ class ResultsSection extends StatelessWidget {
                     ),
               label: Text(
                 pdfBusy
-                    ? 'Preparing PDF...'
-                    : (pdfLocked ? 'Unlock PDF' : 'Export PDF'),
+                    ? strings.resultsPdfPreparing
+                    : (pdfLocked
+                          ? strings.resultsPdfUnlock
+                          : strings.resultsPdfExport),
               ),
             ),
           ],
         ),
         const SizedBox(height: 8),
         Text(
-          'Report-grade summary for engineering review, material planning, and consumable comparison.',
+          strings.resultsSummaryCaption,
           style: Theme.of(
             context,
           ).textTheme.bodyMedium?.copyWith(color: const Color(0xFF607482)),
         ),
         const SizedBox(height: 6),
         Text(
-          'This is a first-pass planning estimate — confirm against your qualified WPS and a test coupon before production use.',
+          strings.resultsDisclaimer,
           style: Theme.of(
             context,
           ).textTheme.bodySmall?.copyWith(color: const Color(0xFF607482)),
@@ -968,8 +977,9 @@ class ResultsSection extends StatelessWidget {
         if (oversizeDeltaPercent != null && nextStandardLegSizeMm != null) ...[
           const SizedBox(height: 10),
           Text(
-            'Next standard leg size up (${_number(nextStandardLegSizeMm, 0)}mm) '
-            'costs ~${_number(oversizeDeltaPercent, 1)}% more filler.',
+            strings.resultsNextStandardLeg
+                .replaceFirst('{size}', _number(nextStandardLegSizeMm, 0))
+                .replaceFirst('{percent}', _number(oversizeDeltaPercent, 1)),
             style: Theme.of(
               context,
             ).textTheme.bodySmall?.copyWith(color: const Color(0xFF607482)),
@@ -979,42 +989,42 @@ class ResultsSection extends StatelessWidget {
         PlanningInsightsPanel(
           items: [
             InsightItem(
-              label: 'Filler per Meter',
+              label: strings.resultsHighlightFillerPerMeter,
               value: _number(fillerPerMeter, 3),
               unit: 'kg/m',
             ),
             InsightItem(
-              label: 'Weld Metal per Meter',
+              label: strings.insightWeldMetalPerMeter,
               value: _number(weldMetalPerMeter, 3),
               unit: 'kg/m',
             ),
             InsightItem(
-              label: 'Arc-On per Meter',
+              label: strings.resultsHighlightArcOnPerMeter,
               value: _number(arcMinutesPerMeter, 2),
               unit: 'min/m',
             ),
             InsightItem(
-              label: 'Filler per Joint',
+              label: strings.insightFillerPerJoint,
               value: _number(fillerPerJoint, 3),
               unit: 'kg/joint',
             ),
             InsightItem(
-              label: 'Arc-On per Joint',
+              label: strings.insightArcOnPerJoint,
               value: _number(arcMinutesPerJoint, 2),
               unit: 'min/joint',
             ),
             InsightItem(
-              label: 'Efficiency Loss Basis',
+              label: strings.insightEfficiencyLossBasis,
               value: _number(efficiencyLossKg, 3),
               unit: 'kg',
             ),
             InsightItem(
-              label: 'Waste Allowance Basis',
+              label: strings.insightWasteAllowanceBasis,
               value: _number(wasteAllowanceKg, 3),
               unit: 'kg',
             ),
             InsightItem(
-              label: 'Consumption Multiplier',
+              label: strings.insightConsumptionMultiplier,
               value: _number(
                 result.weldMetalKg == 0
                     ? 0
@@ -1028,14 +1038,14 @@ class ResultsSection extends StatelessWidget {
         if (result.processBreakdowns.length > 1) ...[
           const SizedBox(height: 22),
           Text(
-            'Process Breakdown',
+            strings.processBreakdownTitle,
             style: Theme.of(
               context,
             ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
           ),
           const SizedBox(height: 6),
           Text(
-            'Distribution of deposited weld metal, filler demand, and arc-on time by process segment.',
+            strings.processBreakdownSubtitle,
             style: Theme.of(
               context,
             ).textTheme.bodyMedium?.copyWith(color: const Color(0xFF607482)),
@@ -1056,26 +1066,25 @@ class ResultsSection extends StatelessWidget {
         const SizedBox(height: 22),
         ReportMethodPanel(
           notes: [
-            'Arc-on time covers welding time only. Fit-up, handling, cleaning, repositioning, and inspection are not included.',
-            'Filler metal consumption includes deposited weld metal, process deposition efficiency, and the entered waste allowance.',
-            'Consumable classification provides material family and density reference. Final project or client requirements should always govern.',
-            'This report is suitable for estimation and planning. It is not an approved WPS, PQR, welder qualification, or release document.',
+            strings.engineeringNote1,
+            strings.engineeringNote2,
+            strings.engineeringNote3,
+            strings.engineeringNote4,
           ],
         ),
         const SizedBox(height: 18),
         CalculationBasisPanel(
           items: basis,
           consumableSelection: consumableSelection,
-          subtitle:
-              'Full engineering basis used in this estimate, including geometry, process setup, density, and deposition assumptions.',
+          subtitle: strings.engineeringBasisSubtitle,
         ),
       ],
     );
   }
 
-  double? _basisNumber(String label) {
+  double? _basisNumber(BasisKey key) {
     for (final item in basis) {
-      if (item.label != label) continue;
+      if (item.key != key) continue;
       final match = RegExp(r'-?\d+(\.\d+)?').firstMatch(item.value);
       if (match == null) return null;
       return double.tryParse(match.group(0)!);
@@ -1097,6 +1106,7 @@ class ProcessBreakdownCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final strings = AppLocaleScope.stringsOf(context);
     return Card(
       color: const Color(0xFFF9FBFC),
       child: Padding(
@@ -1112,7 +1122,10 @@ class ProcessBreakdownCard extends StatelessWidget {
             ),
             const SizedBox(height: 6),
             Text(
-              'Area Share ${ResultsSection._number(breakdown.sharePercent * 100, 1)}%',
+              strings.processBreakdownAreaShare.replaceFirst(
+                '{value}',
+                ResultsSection._number(breakdown.sharePercent * 100, 1),
+              ),
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                 color: const Color(0xFF607482),
                 fontWeight: FontWeight.w600,
@@ -1120,19 +1133,34 @@ class ProcessBreakdownCard extends StatelessWidget {
             ),
             const SizedBox(height: 12),
             Text(
-              'Weld Metal ${ResultsSection._number(breakdown.weldMetalKg, 3)} kg',
+              strings.processBreakdownWeldMetal.replaceFirst(
+                '{value}',
+                ResultsSection._number(breakdown.weldMetalKg, 3),
+              ),
             ),
             Text(
-              'Filler Consumption ${ResultsSection._number(breakdown.fillerKg, 3)} kg',
+              strings.processBreakdownFillerConsumption.replaceFirst(
+                '{value}',
+                ResultsSection._number(breakdown.fillerKg, 3),
+              ),
             ),
             Text(
-              'Arc-On Time ${ResultsSection._number(breakdown.arcTimeHours, 3)} h',
+              strings.processBreakdownArcOnTime.replaceFirst(
+                '{value}',
+                ResultsSection._number(breakdown.arcTimeHours, 3),
+              ),
             ),
             Text(
-              'Deposition Rate ${ResultsSection._number(breakdown.depositionRateKgPerHour, 2)} kg/h',
+              strings.processBreakdownDepositionRate.replaceFirst(
+                '{value}',
+                ResultsSection._number(breakdown.depositionRateKgPerHour, 2),
+              ),
             ),
             Text(
-              'Deposition Efficiency ${ResultsSection._percent(breakdown.depositionEfficiency)}',
+              strings.processBreakdownDepositionEfficiency.replaceFirst(
+                '{value}',
+                ResultsSection._percent(breakdown.depositionEfficiency),
+              ),
             ),
           ],
         ),
@@ -1155,6 +1183,7 @@ class CalculationBasisPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final strings = AppLocaleScope.stringsOf(context);
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(18),
@@ -1171,14 +1200,14 @@ class CalculationBasisPanel extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Engineering Basis',
+            strings.engineeringBasisTitle,
             style: Theme.of(
               context,
             ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
           ),
           const SizedBox(height: 6),
           Text(
-            consumableSelection.description,
+            consumableSelection.descriptionFor(strings),
             style: Theme.of(
               context,
             ).textTheme.bodyMedium?.copyWith(color: const Color(0xFF607482)),
@@ -1213,7 +1242,7 @@ class CalculationBasisPanel extends StatelessWidget {
                       ),
                       children: [
                         TextSpan(
-                          text: '${item.label}: ',
+                          text: '${item.key.labelFor(strings)}: ',
                           style: const TextStyle(fontWeight: FontWeight.w700),
                         ),
                         TextSpan(text: item.value),
@@ -1243,6 +1272,7 @@ class ResultsHighlightBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final strings = AppLocaleScope.stringsOf(context);
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(18),
@@ -1263,9 +1293,9 @@ class ResultsHighlightBanner extends StatelessWidget {
               color: const Color(0x33FFFFFF),
               borderRadius: BorderRadius.circular(999),
             ),
-            child: const Text(
-              'ESTIMATE READY',
-              style: TextStyle(
+            child: Text(
+              strings.resultsEstimateReadyBadge,
+              style: const TextStyle(
                 color: Colors.white,
                 fontWeight: FontWeight.w800,
                 fontSize: 12,
@@ -1275,7 +1305,15 @@ class ResultsHighlightBanner extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           Text(
-            'Estimated filler metal consumption is ${ResultsSection._number(result.fillerKg, 3)} kg with ${ResultsSection._number(result.arcTimeHours, 3)} h of arc-on time.',
+            strings.resultsHighlightSentence
+                .replaceFirst(
+                  '{filler}',
+                  ResultsSection._number(result.fillerKg, 3),
+                )
+                .replaceFirst(
+                  '{arcTime}',
+                  ResultsSection._number(result.arcTimeHours, 3),
+                ),
             style: const TextStyle(
               color: Colors.white,
               fontSize: 18,
@@ -1289,16 +1327,16 @@ class ResultsHighlightBanner extends StatelessWidget {
             runSpacing: 10,
             children: [
               HighlightChip(
-                label: 'Effective Rate',
+                label: strings.resultsHighlightEffectiveRate,
                 value:
                     '${ResultsSection._number(result.depositionRateKgPerHour, 2)} kg/h',
               ),
               HighlightChip(
-                label: 'Filler per Meter',
+                label: strings.resultsHighlightFillerPerMeter,
                 value: '${ResultsSection._number(fillerPerMeter, 3)} kg/m',
               ),
               HighlightChip(
-                label: 'Arc-On per Meter',
+                label: strings.resultsHighlightArcOnPerMeter,
                 value: '${ResultsSection._number(arcMinutesPerMeter, 2)} min/m',
               ),
             ],
@@ -1351,6 +1389,7 @@ class PlanningInsightsPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final strings = AppLocaleScope.stringsOf(context);
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(18),
@@ -1367,14 +1406,14 @@ class PlanningInsightsPanel extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Planning Indicators',
+            strings.planningIndicatorsTitle,
             style: Theme.of(
               context,
             ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
           ),
           const SizedBox(height: 6),
           Text(
-            'Normalized indicators that help compare joint options, labor load, and consumable planning basis.',
+            strings.planningIndicatorsSubtitle,
             style: Theme.of(
               context,
             ).textTheme.bodyMedium?.copyWith(color: const Color(0xFF607482)),
@@ -1442,6 +1481,7 @@ class ReportMethodPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final strings = AppLocaleScope.stringsOf(context);
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(18),
@@ -1454,7 +1494,7 @@ class ReportMethodPanel extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Engineering Notes',
+            strings.engineeringNotesTitle,
             style: Theme.of(
               context,
             ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),

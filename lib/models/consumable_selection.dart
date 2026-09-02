@@ -1,3 +1,4 @@
+import '../l10n/strings.dart';
 import 'custom_material_models.dart';
 import 'weld_models.dart';
 
@@ -85,9 +86,20 @@ extension ConsumableSelectionX on ConsumableSelection {
 
   String get awsDisplayLabel => switch (this) {
     BuiltInConsumableSelection(:final preset) => preset.awsDisplayLabel,
-    CustomConsumableSelection() => awsSpecification == null
-        ? '$label (${family.label})'
-        : '$awsSpecification $label (${family.label})',
+    CustomConsumableSelection() =>
+      awsSpecification == null
+          ? '$label (${family.label})'
+          : '$awsSpecification $label (${family.label})',
+  };
+
+  String awsDisplayLabelFor(L10nStrings strings) => switch (this) {
+    BuiltInConsumableSelection(:final preset) => preset.awsDisplayLabelFor(
+      strings,
+    ),
+    CustomConsumableSelection() =>
+      awsSpecification == null
+          ? '$label (${family.labelFor(strings)})'
+          : '$awsSpecification $label (${family.labelFor(strings)})',
   };
 
   double get densityGPerCm3 => switch (this) {
@@ -103,15 +115,37 @@ extension ConsumableSelectionX on ConsumableSelection {
           : 'Custom filler material from your library.',
   };
 
+  String descriptionFor(L10nStrings strings) => switch (this) {
+    BuiltInConsumableSelection(:final preset) => preset.descriptionFor(strings),
+    CustomConsumableSelection(:final material) =>
+      material.notes.trim().isNotEmpty
+          ? material.notes
+          : strings.consumableCustomFallbackDescription,
+  };
+
   /// Equivalent of [ConsumablePresetX.typicalBaseMetals] for the union,
   /// already joined for display since custom materials don't have a
   /// structured base-metals list -- just notes, or a generic fallback.
   String get typicalBaseMetalsText => switch (this) {
-    BuiltInConsumableSelection(:final preset) =>
-      preset.typicalBaseMetals.join(', '),
+    BuiltInConsumableSelection(:final preset) => preset.typicalBaseMetals.join(
+      ', ',
+    ),
     CustomConsumableSelection(:final material) =>
       material.notes.trim().isNotEmpty
           ? material.notes
           : 'No typical base metals recorded for this custom material.',
+  };
+
+  // Built-in base-metal designation lists stay English-only (disclosed
+  // follow-up, see ConsumablePresetX.typicalBaseMetals) -- only the custom
+  // fallback sentence (actual UI prose, not a code list) is localized here.
+  String typicalBaseMetalsTextFor(L10nStrings strings) => switch (this) {
+    BuiltInConsumableSelection(:final preset) => preset.typicalBaseMetals.join(
+      ', ',
+    ),
+    CustomConsumableSelection(:final material) =>
+      material.notes.trim().isNotEmpty
+          ? material.notes
+          : strings.consumableCustomNoTypicalBaseMetals,
   };
 }

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../../l10n/app_locale_scope.dart';
+
 /// Step 2 of the mobile wizard: technical drawing preview, joint type,
 /// member geometry, groove type, and dimension fields. Pure presentation --
 /// every section is pre-built by the caller in `calculator_page.dart`,
@@ -28,6 +30,7 @@ class WizardDimensionsStep extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final strings = AppLocaleScope.stringsOf(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -40,10 +43,10 @@ class WizardDimensionsStep extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Joint & Dimensions',
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.w800,
-                  ),
+                  strings.wizardJointDimensionsTitle,
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
                 ),
                 const SizedBox(height: 14),
                 starterPresetSection,
@@ -65,10 +68,7 @@ class WizardDimensionsStep extends StatelessWidget {
                     runSpacing: 16,
                     children: [
                       for (final field in dimensionFields)
-                        SizedBox(
-                          width: double.infinity,
-                          child: field,
-                        ),
+                        SizedBox(width: double.infinity, child: field),
                     ],
                   ),
                 ),
@@ -88,7 +88,7 @@ class WizardDimensionsStep extends StatelessWidget {
                     borderRadius: BorderRadius.circular(16),
                   ),
                 ),
-                child: const Text('Back'),
+                child: Text(strings.commonBack),
               ),
             ),
             const SizedBox(width: 12),
@@ -101,7 +101,7 @@ class WizardDimensionsStep extends StatelessWidget {
                     borderRadius: BorderRadius.circular(16),
                   ),
                 ),
-                child: const Text('Continue'),
+                child: Text(strings.commonContinue),
               ),
             ),
           ],

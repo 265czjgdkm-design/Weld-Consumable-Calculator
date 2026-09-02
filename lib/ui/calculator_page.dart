@@ -8,6 +8,7 @@ import 'package:purchases_flutter/purchases_flutter.dart';
 import '../core/weld_calculator.dart';
 import '../core/welding_defaults.dart';
 import '../l10n/app_locale_scope.dart';
+import '../l10n/strings.dart';
 import '../models/consumable_selection.dart';
 import '../models/custom_material_models.dart';
 import '../models/saved_report.dart';
@@ -43,8 +44,11 @@ class _RequiredFieldMissingException implements Exception {
 }
 
 class CalculatorPage extends StatefulWidget {
-  CalculatorPage({super.key, this.presetToLoad, EntitlementService? entitlementService})
-    : entitlementService = entitlementService ?? EntitlementService();
+  CalculatorPage({
+    super.key,
+    this.presetToLoad,
+    EntitlementService? entitlementService,
+  }) : entitlementService = entitlementService ?? EntitlementService();
 
   /// When set, skips the intro screen, applies this preset's data the same
   /// way picking it from the (now-removed) inline preset dropdown used to,
@@ -294,10 +298,10 @@ class _CalculatorPageState extends State<CalculatorPage> {
               const TopNavigationBar(),
               const SizedBox(height: 18),
               ExperienceHero(
-                jointTypeLabel: _jointType.label,
-                grooveLabel: _grooveType.label,
+                jointTypeLabel: _jointType.labelFor(strings),
+                grooveLabel: _grooveType.labelFor(strings),
                 processLabel: _weldingProcess.label,
-                drawingModeLabel: _drawingMode.label,
+                drawingModeLabel: _drawingMode.labelFor(strings),
                 consumableLabel: _consumableSelection.label,
                 savedPresetCount: _userPresets.length,
                 hasResults: _result != null,
@@ -356,6 +360,7 @@ class _CalculatorPageState extends State<CalculatorPage> {
   /// Consumable -> Summary) instead of one long scroll, reusing the same
   /// State methods/section builders as the desktop card layout below.
   Widget _buildWizardFlow(BuildContext context) {
+    final strings = AppLocaleScope.stringsOf(context);
     final availableConsumables = WeldingDefaults.consumablesFor(
       _weldingProcess,
     );
@@ -389,7 +394,8 @@ class _CalculatorPageState extends State<CalculatorPage> {
         memberGeometrySection: _buildMemberGeometrySection(context),
         grooveTypeDropdown: _buildGrooveTypeDropdown(context),
         dimensionFields: [
-          for (final field in _wizardDimensionFields) _buildFieldInput(field),
+          for (final field in _wizardDimensionFields(strings))
+            _buildFieldInput(field),
         ],
         onBack: () {
           setState(() => _wizardStep = WizardStep.process);
@@ -411,14 +417,17 @@ class _CalculatorPageState extends State<CalculatorPage> {
             const SizedBox(height: 12),
             PanelNote(
               icon: Icons.science_outlined,
-              text:
-                  'Typical base metals: ${_consumableSelection.typicalBaseMetalsText}',
+              text: strings.calcTypicalBaseMetalsNote.replaceFirst(
+                '{value}',
+                _consumableSelection.typicalBaseMetalsTextFor(strings),
+              ),
             ),
           ],
         ),
         rateBasisSection: _buildRateBasisSection(context),
         consumableFields: [
-          for (final field in _wizardConsumableFields) _buildFieldInput(field),
+          for (final field in _wizardConsumableFields(strings))
+            _buildFieldInput(field),
         ],
         onBack: () {
           setState(() => _wizardStep = WizardStep.dimensions);
@@ -450,7 +459,7 @@ class _CalculatorPageState extends State<CalculatorPage> {
         onReset: _resetFields,
         onSaveAsPreset: _isUserPresetBusy ? null : _saveCurrentAsUserPreset,
         saveAsPresetBusy: _isUserPresetBusy,
-        saveAsPresetLabel: _saveAsPresetButtonLabel,
+        saveAsPresetLabel: _saveAsPresetButtonLabel(strings),
       ),
     };
 
@@ -467,7 +476,7 @@ class _CalculatorPageState extends State<CalculatorPage> {
                   child: IconButton.filledTonal(
                     onPressed: () => Navigator.of(context).pop(),
                     icon: const Icon(Icons.arrow_back),
-                    tooltip: 'Back to Dashboard',
+                    tooltip: strings.calcBackToDashboardTooltip,
                   ),
                 ),
               Expanded(
@@ -522,7 +531,8 @@ class _CalculatorPageState extends State<CalculatorPage> {
   }
 
   Widget _buildEstimatorWorkspace(BuildContext context) {
-    final visibleFields = _visibleFieldSpecs;
+    final strings = AppLocaleScope.stringsOf(context);
+    final visibleFields = _visibleFieldSpecs(strings);
     final availableConsumables = WeldingDefaults.consumablesFor(
       _weldingProcess,
     );
@@ -641,6 +651,7 @@ class _CalculatorPageState extends State<CalculatorPage> {
   }
 
   Widget _buildEstimatorControlCard(BuildContext context) {
+    final strings = AppLocaleScope.stringsOf(context);
     final processEfficiency = _previewEfficiency;
     final depositionRate = _previewDepositionRate;
 
@@ -664,9 +675,9 @@ class _CalculatorPageState extends State<CalculatorPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
-                    'Active Engineering Basis',
-                    style: TextStyle(
+                  Text(
+                    strings.calcActiveEngineeringBasisTitle,
+                    style: const TextStyle(
                       color: Colors.white,
                       fontWeight: FontWeight.w800,
                       fontSize: 13,
@@ -675,7 +686,7 @@ class _CalculatorPageState extends State<CalculatorPage> {
                   ),
                   const SizedBox(height: 10),
                   Text(
-                    '${_jointType.helper} $_unequalGeometrySummary${_processRateSummary(processEfficiency, depositionRate)}',
+                    '${_jointType.helperFor(strings)} $_unequalGeometrySummary${_processRateSummary(strings, processEfficiency, depositionRate)}',
                     style: const TextStyle(
                       color: Color(0xFFE1F0F3),
                       height: 1.42,
@@ -694,11 +705,12 @@ class _CalculatorPageState extends State<CalculatorPage> {
   /// Extracted so the mobile wizard's dimensions step can reuse the exact
   /// same "Joint Type" chips as the desktop [_buildJointConfigurationCard].
   Widget _buildJointTypeSection(BuildContext context) {
+    final strings = AppLocaleScope.stringsOf(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Joint Type',
+          strings.calcJointTypeSectionTitle,
           style: Theme.of(
             context,
           ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
@@ -710,7 +722,7 @@ class _CalculatorPageState extends State<CalculatorPage> {
           children: [
             for (final joint in JointType.values)
               _buildSelectionChip(
-                label: joint.label,
+                label: joint.labelFor(strings),
                 selected: _jointType == joint,
                 onSelected: () => _onJointTypeChanged(joint),
               ),
@@ -727,13 +739,14 @@ class _CalculatorPageState extends State<CalculatorPage> {
   /// desktop card's conditional rendering.
   Widget _buildMemberGeometrySection(BuildContext context) {
     if (!_supportsUnequalGeometry) return const SizedBox.shrink();
+    final strings = AppLocaleScope.stringsOf(context);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const SizedBox(height: 18),
         Text(
-          'Member Geometry',
+          strings.calcMemberGeometrySectionTitle,
           style: Theme.of(
             context,
           ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
@@ -745,7 +758,7 @@ class _CalculatorPageState extends State<CalculatorPage> {
           children: [
             for (final mode in JointGeometryMode.values)
               _buildSelectionChip(
-                label: mode.label,
+                label: mode.labelFor(strings),
                 selected: _jointGeometryMode == mode,
                 onSelected: () {
                   setState(() {
@@ -762,14 +775,14 @@ class _CalculatorPageState extends State<CalculatorPage> {
             DropdownButtonFormField<JointAlignment>(
               initialValue: _jointAlignment,
               isExpanded: true,
-              decoration: const InputDecoration(
-                labelText: 'Alignment Reference',
-                helperText:
-                    'Defines how unequal members are aligned in the section sketch.',
+              decoration: InputDecoration(
+                labelText: strings.calcAlignmentReferenceLabel,
+                helperText: strings.calcAlignmentReferenceHelper,
               ),
               selectedItemBuilder: (context) => JointAlignment.values
                   .map(
-                    (alignment) => _buildDropdownSelectedText(alignment.label),
+                    (alignment) =>
+                        _buildDropdownSelectedText(alignment.labelFor(strings)),
                   )
                   .toList(),
               items: JointAlignment.values
@@ -777,7 +790,7 @@ class _CalculatorPageState extends State<CalculatorPage> {
                     (alignment) => DropdownMenuItem(
                       value: alignment,
                       child: Text(
-                        alignment.label,
+                        alignment.labelFor(strings),
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
@@ -802,19 +815,25 @@ class _CalculatorPageState extends State<CalculatorPage> {
   /// (which pairs it with the process dropdown -- process now lives on the
   /// wizard's own first step, so this dropdown stands alone there).
   Widget _buildGrooveTypeDropdown(BuildContext context) {
+    final strings = AppLocaleScope.stringsOf(context);
     return _buildDropdownFrame(
       DropdownButtonFormField<GrooveType>(
         initialValue: _grooveType,
         isExpanded: true,
-        decoration: const InputDecoration(labelText: 'Groove Type'),
+        decoration: InputDecoration(labelText: strings.calcGrooveTypeLabel),
         selectedItemBuilder: (context) => _jointType.supportedGrooves
-            .map((groove) => _buildDropdownSelectedText(groove.label))
+            .map(
+              (groove) => _buildDropdownSelectedText(groove.labelFor(strings)),
+            )
             .toList(),
         items: _jointType.supportedGrooves
             .map(
               (groove) => DropdownMenuItem(
                 value: groove,
-                child: Text(groove.label, overflow: TextOverflow.ellipsis),
+                child: Text(
+                  groove.labelFor(strings),
+                  overflow: TextOverflow.ellipsis,
+                ),
               ),
             )
             .toList(),
@@ -830,6 +849,7 @@ class _CalculatorPageState extends State<CalculatorPage> {
   }
 
   Widget _buildJointConfigurationCard(BuildContext context) {
+    final strings = AppLocaleScope.stringsOf(context);
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(22),
@@ -847,8 +867,8 @@ class _CalculatorPageState extends State<CalculatorPage> {
                   DropdownButtonFormField<WeldingProcess>(
                     initialValue: _weldingProcess,
                     isExpanded: true,
-                    decoration: const InputDecoration(
-                      labelText: 'Welding Process',
+                    decoration: InputDecoration(
+                      labelText: strings.calcWeldingProcessLabel,
                     ),
                     selectedItemBuilder: (context) => WeldingProcess.values
                         .map(
@@ -908,6 +928,7 @@ class _CalculatorPageState extends State<CalculatorPage> {
     BuildContext context, {
     bool compact = false,
   }) {
+    final strings = AppLocaleScope.stringsOf(context);
     Widget buildDrawingPreviewPanel() {
       return Container(
         decoration: BoxDecoration(
@@ -927,6 +948,12 @@ class _CalculatorPageState extends State<CalculatorPage> {
                 data: _drawingData,
                 onFieldTap: _handleDrawingFieldTap,
                 fillAvailableSpace: true,
+                jointTypeLabel: _jointType.labelFor(strings),
+                grooveTypeLabel: _grooveType.labelFor(strings),
+                filletWeldFaceLabel: strings.drawingLabelFilletWeldFace,
+                tJointLabel: strings.drawingLabelTJoint,
+                smawFillCapLabel: strings.drawingLabelSmawFillCap,
+                gtawRootLabel: strings.drawingLabelGtawRoot,
               )
             : Center(
                 child: FittedBox(
@@ -939,6 +966,12 @@ class _CalculatorPageState extends State<CalculatorPage> {
                       drawingMode: _drawingMode,
                       data: _drawingData,
                       onFieldTap: _handleDrawingFieldTap,
+                      jointTypeLabel: _jointType.labelFor(strings),
+                      grooveTypeLabel: _grooveType.labelFor(strings),
+                      filletWeldFaceLabel: strings.drawingLabelFilletWeldFace,
+                      tJointLabel: strings.drawingLabelTJoint,
+                      smawFillCapLabel: strings.drawingLabelSmawFillCap,
+                      gtawRootLabel: strings.drawingLabelGtawRoot,
                     ),
                   ),
                 ),
@@ -958,7 +991,7 @@ class _CalculatorPageState extends State<CalculatorPage> {
               children: [
                 if (compact) ...[
                   Text(
-                    'Technical Drawing',
+                    strings.techDrawingTitle,
                     style: Theme.of(context).textTheme.titleMedium?.copyWith(
                       fontWeight: FontWeight.w800,
                     ),
@@ -971,7 +1004,7 @@ class _CalculatorPageState extends State<CalculatorPage> {
                           const SizedBox(width: 8),
                         Expanded(
                           child: _buildCompactModeSegment(
-                            label: mode.label,
+                            label: mode.labelFor(strings),
                             selected: _drawingMode == mode,
                             onSelected: () {
                               setState(() {
@@ -992,15 +1025,15 @@ class _CalculatorPageState extends State<CalculatorPage> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              'Technical Drawing',
+                              strings.techDrawingTitle,
                               style: Theme.of(context).textTheme.titleLarge
                                   ?.copyWith(fontWeight: FontWeight.w800),
                             ),
                             const SizedBox(height: 8),
                             Text(
                               _drawingMode == DrawingMode.technical
-                                  ? 'Technical mode applies engineering-style line weights, hatch, and dimension annotations.'
-                                  : 'Visual mode keeps the sketch softer while still following the live joint geometry.',
+                                  ? strings.techDrawingModeTechnicalDesc
+                                  : strings.techDrawingModeVisualDesc,
                               style: Theme.of(context).textTheme.bodyMedium
                                   ?.copyWith(color: const Color(0xFF607482)),
                             ),
@@ -1016,7 +1049,7 @@ class _CalculatorPageState extends State<CalculatorPage> {
                           children: [
                             for (final mode in DrawingMode.values)
                               _buildSelectionChip(
-                                label: mode.label,
+                                label: mode.labelFor(strings),
                                 selected: _drawingMode == mode,
                                 onSelected: () {
                                   setState(() {
@@ -1048,12 +1081,11 @@ class _CalculatorPageState extends State<CalculatorPage> {
   /// in this same section too, but browsing/loading/deleting those now
   /// happens entirely on the dashboard's Saved Calculations screen instead.
   Widget _buildStarterPresetSection(BuildContext context) {
+    final strings = AppLocaleScope.stringsOf(context);
     return InputPanelSection(
       icon: Icons.auto_awesome_outlined,
-      title: 'Starting Template',
-      subtitle:
-          'Loads a full example setup, including joint, dimensions, and '
-          'welding process, that you can then adjust.',
+      title: strings.calcStartingTemplateTitle,
+      subtitle: strings.calcStartingTemplateSubtitle,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -1067,16 +1099,21 @@ class _CalculatorPageState extends State<CalculatorPage> {
               key: ValueKey('$_inputPreset-$_starterPresetDropdownResetToken'),
               initialValue: _inputPreset,
               isExpanded: true,
-              decoration: const InputDecoration(labelText: 'Input Preset'),
+              decoration: InputDecoration(
+                labelText: strings.calcInputPresetLabel,
+              ),
               selectedItemBuilder: (context) => InputPreset.values
-                  .map((preset) => _buildDropdownSelectedText(preset.label))
+                  .map(
+                    (preset) =>
+                        _buildDropdownSelectedText(preset.labelFor(strings)),
+                  )
                   .toList(),
               items: InputPreset.values
                   .map(
                     (preset) => DropdownMenuItem(
                       value: preset,
                       child: Text(
-                        preset.label,
+                        preset.labelFor(strings),
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
@@ -1099,7 +1136,7 @@ class _CalculatorPageState extends State<CalculatorPage> {
           const SizedBox(height: 12),
           PanelNote(
             icon: Icons.auto_fix_high_outlined,
-            text: _inputPreset.description,
+            text: _inputPreset.descriptionFor(strings),
           ),
         ],
       ),
@@ -1114,6 +1151,7 @@ class _CalculatorPageState extends State<CalculatorPage> {
     BuildContext context,
     List<ConsumablePreset> availableConsumables,
   ) {
+    final strings = AppLocaleScope.stringsOf(context);
     final builtInSelections = availableConsumables
         .map(BuiltInConsumableSelection.new)
         .toList();
@@ -1153,14 +1191,13 @@ class _CalculatorPageState extends State<CalculatorPage> {
         _fillerMaterialsLoaded && displayedCustomSelections.isNotEmpty;
     String customSelectionLabel(ConsumableSelection selection) =>
         _fillerMaterialsLoaded && selection == pinnedSnapshot
-        ? '${selection.awsDisplayLabel} (as saved)'
-        : selection.awsDisplayLabel;
+        ? '${selection.awsDisplayLabelFor(strings)}${strings.calcAsSavedSuffix}'
+        : selection.awsDisplayLabelFor(strings);
 
     return InputPanelSection(
       icon: Icons.inventory_2_outlined,
-      title: 'Consumable & Density',
-      subtitle:
-          'AWS filler selection, family information, and weld metal density basis.',
+      title: strings.calcConsumableDensityTitle,
+      subtitle: strings.calcConsumableDensitySubtitle,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -1168,14 +1205,15 @@ class _CalculatorPageState extends State<CalculatorPage> {
             DropdownButtonFormField<ConsumableSelection>(
               initialValue: _consumableSelection,
               isExpanded: true,
-              decoration: const InputDecoration(
-                labelText: 'Consumable Classification',
-                helperText:
-                    'Select an AWS filler metal classification. Density is populated automatically and can still be adjusted.',
+              decoration: InputDecoration(
+                labelText: strings.calcConsumableClassificationLabel,
+                helperText: strings.calcConsumableClassificationHelper,
               ),
               selectedItemBuilder: (context) => [
                 for (final selection in builtInSelections)
-                  _buildDropdownSelectedText(selection.awsDisplayLabel),
+                  _buildDropdownSelectedText(
+                    selection.awsDisplayLabelFor(strings),
+                  ),
                 if (displayedCustomSelections.isNotEmpty) ...[
                   if (showCustomGroupHeader) _buildDropdownSelectedText(''),
                   for (final selection in displayedCustomSelections)
@@ -1187,17 +1225,17 @@ class _CalculatorPageState extends State<CalculatorPage> {
                   DropdownMenuItem(
                     value: selection,
                     child: Text(
-                      selection.awsDisplayLabel,
+                      selection.awsDisplayLabelFor(strings),
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
                 if (displayedCustomSelections.isNotEmpty) ...[
                   if (showCustomGroupHeader)
-                    const DropdownMenuItem<ConsumableSelection>(
+                    DropdownMenuItem<ConsumableSelection>(
                       enabled: false,
                       child: Text(
-                        'My Materials',
-                        style: TextStyle(fontWeight: FontWeight.w700),
+                        strings.calcMyMaterialsHeader,
+                        style: const TextStyle(fontWeight: FontWeight.w700),
                       ),
                     ),
                   for (final selection in displayedCustomSelections)
@@ -1223,8 +1261,16 @@ class _CalculatorPageState extends State<CalculatorPage> {
           const SizedBox(height: 12),
           PanelNote(
             icon: Icons.verified_outlined,
-            text:
-                'Selected classification: ${[if (_consumableSelection.awsSpecification != null) _consumableSelection.awsSpecification!, _consumableSelection.label, _consumableSelection.family.label, 'Density ${_formatNumber(_consumableSelection.densityGPerCm3, 2)} g/cm3'].join(' | ')}',
+            text: strings.calcSelectedClassificationNote.replaceFirst(
+              '{value}',
+              [
+                if (_consumableSelection.awsSpecification != null)
+                  _consumableSelection.awsSpecification!,
+                _consumableSelection.label,
+                _consumableSelection.family.labelFor(strings),
+                '${strings.basisDensity} ${_formatNumber(_consumableSelection.densityGPerCm3, 2)} g/cm3',
+              ].join(' | '),
+            ),
           ),
         ],
       ),
@@ -1234,11 +1280,11 @@ class _CalculatorPageState extends State<CalculatorPage> {
   /// Extracted so the mobile wizard's consumable step can reuse the exact
   /// same section as the desktop [_buildInputParametersCard].
   Widget _buildRateBasisSection(BuildContext context) {
+    final strings = AppLocaleScope.stringsOf(context);
     return InputPanelSection(
       icon: Icons.speed_outlined,
-      title: 'Rate Basis',
-      subtitle:
-          'Choose whether deposition rate comes from estimated process defaults or manual planning data.',
+      title: strings.calcRateBasisTitle,
+      subtitle: strings.calcRateBasisSubtitle,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -1248,7 +1294,7 @@ class _CalculatorPageState extends State<CalculatorPage> {
             children: [
               for (final mode in DepositionRateMode.values)
                 _buildSelectionChip(
-                  label: mode.label,
+                  label: mode.labelFor(strings),
                   selected: _depositionRateMode == mode,
                   onSelected: () {
                     setState(() {
@@ -1265,8 +1311,8 @@ class _CalculatorPageState extends State<CalculatorPage> {
                 ? Icons.tune_outlined
                 : Icons.auto_awesome_motion_outlined,
             text: _depositionRateMode == DepositionRateMode.manual
-                ? _manualRateHelperText
-                : _presetRateHelperText,
+                ? _manualRateHelperText(strings)
+                : _presetRateHelperText(strings),
           ),
         ],
       ),
@@ -1278,6 +1324,7 @@ class _CalculatorPageState extends State<CalculatorPage> {
     List<InputFieldSpec> visibleFields,
     List<ConsumablePreset> availableConsumables,
   ) {
+    final strings = AppLocaleScope.stringsOf(context);
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(22),
@@ -1285,14 +1332,22 @@ class _CalculatorPageState extends State<CalculatorPage> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Input Parameters',
+              strings.calcInputParametersTitle,
               style: Theme.of(
                 context,
               ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
             ),
             const SizedBox(height: 6),
             Text(
-              'Default assumptions: density ${WeldingDefaults.densityGPerCm3} g/cm3, waste allowance ${WeldingDefaults.wasteFactorPercent}%',
+              strings.calcInputParametersSubtitle
+                  .replaceFirst(
+                    '{density}',
+                    '${WeldingDefaults.densityGPerCm3}',
+                  )
+                  .replaceFirst(
+                    '{waste}',
+                    '${WeldingDefaults.wasteFactorPercent}',
+                  ),
               style: Theme.of(
                 context,
               ).textTheme.bodyMedium?.copyWith(color: const Color(0xFF5E7380)),
@@ -1309,9 +1364,8 @@ class _CalculatorPageState extends State<CalculatorPage> {
             const SizedBox(height: 14),
             InputPanelSection(
               icon: Icons.straighten_outlined,
-              title: 'Dimensional Inputs',
-              subtitle:
-                  'Enter weld geometry, member size, process diameter, and calculation assumptions.',
+              title: strings.calcDimensionalInputsTitle,
+              subtitle: strings.calcDimensionalInputsSubtitle,
               child: LayoutBuilder(
                 builder: (context, constraints) {
                   final wide = constraints.maxWidth >= 700;
@@ -1348,6 +1402,7 @@ class _CalculatorPageState extends State<CalculatorPage> {
   }
 
   Widget _buildActionPanel(BuildContext context) {
+    final strings = AppLocaleScope.stringsOf(context);
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(22),
@@ -1355,14 +1410,14 @@ class _CalculatorPageState extends State<CalculatorPage> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Run Estimate',
+              strings.calcRunEstimateTitle,
               style: Theme.of(
                 context,
               ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
             ),
             const SizedBox(height: 8),
             Text(
-              'Use calculate for live estimate refresh. Reset restores the default engineering starter values.',
+              strings.calcRunEstimateSubtitle,
               style: Theme.of(
                 context,
               ).textTheme.bodyMedium?.copyWith(color: const Color(0xFF607482)),
@@ -1374,7 +1429,7 @@ class _CalculatorPageState extends State<CalculatorPage> {
                   child: FilledButton.icon(
                     onPressed: _calculate,
                     icon: const Icon(Icons.calculate_outlined),
-                    label: const Text('Calculate'),
+                    label: Text(strings.commonCalculate),
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -1382,7 +1437,7 @@ class _CalculatorPageState extends State<CalculatorPage> {
                   child: OutlinedButton.icon(
                     onPressed: _resetFields,
                     icon: const Icon(Icons.refresh_outlined),
-                    label: const Text('Reset'),
+                    label: Text(strings.commonReset),
                   ),
                 ),
               ],
@@ -1399,7 +1454,7 @@ class _CalculatorPageState extends State<CalculatorPage> {
                         child: CircularProgressIndicator(strokeWidth: 2),
                       )
                     : const Icon(Icons.bookmark_add_outlined),
-                label: Text(_saveAsPresetButtonLabel),
+                label: Text(_saveAsPresetButtonLabel(strings)),
               ),
             ),
             const SizedBox(height: 14),
@@ -1423,8 +1478,8 @@ class _CalculatorPageState extends State<CalculatorPage> {
                   Expanded(
                     child: Text(
                       _result == null
-                          ? 'PDF export activates after a successful estimate so the report always reflects the current engineering basis.'
-                          : 'The report panel is ready for polished PDF output once the estimate looks correct.',
+                          ? strings.calcPdfHintBeforeResult
+                          : strings.calcPdfHintAfterResult,
                       style: Theme.of(context).textTheme.bodyMedium,
                     ),
                   ),
@@ -1461,6 +1516,7 @@ class _CalculatorPageState extends State<CalculatorPage> {
   /// separate from the input flow so the numbers read as a clear final
   /// step rather than another card in the same long scroll.
   Widget _buildResultsScreen(BuildContext context) {
+    final strings = AppLocaleScope.stringsOf(context);
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(18, 18, 18, 40),
       child: Center(
@@ -1474,12 +1530,12 @@ class _CalculatorPageState extends State<CalculatorPage> {
                   IconButton.filledTonal(
                     onPressed: () => setState(() => _showResultsScreen = false),
                     icon: const Icon(Icons.arrow_back),
-                    tooltip: 'Edit inputs',
+                    tooltip: strings.calcEditInputsTooltip,
                   ),
                   const SizedBox(width: 14),
                   Expanded(
                     child: Text(
-                      'Results',
+                      strings.calcResultsTitle,
                       style: Theme.of(context).textTheme.headlineMedium
                           ?.copyWith(fontWeight: FontWeight.w800),
                     ),
@@ -1494,7 +1550,7 @@ class _CalculatorPageState extends State<CalculatorPage> {
                 child: OutlinedButton.icon(
                   onPressed: () => setState(() => _showResultsScreen = false),
                   icon: const Icon(Icons.tune_outlined),
-                  label: const Text('Edit Inputs'),
+                  label: Text(strings.calcEditInputsButton),
                 ),
               ),
             ],
@@ -1568,73 +1624,76 @@ class _CalculatorPageState extends State<CalculatorPage> {
     FieldKey.legSizeMm,
   };
 
-  List<InputFieldSpec> get _wizardDimensionFields => _visibleFieldSpecs
-      .where((spec) => _wizardDimensionFieldKeys.contains(spec.key))
-      .toList();
+  List<InputFieldSpec> _wizardDimensionFields(L10nStrings strings) =>
+      _visibleFieldSpecs(
+        strings,
+      ).where((spec) => _wizardDimensionFieldKeys.contains(spec.key)).toList();
 
-  List<InputFieldSpec> get _wizardConsumableFields => _visibleFieldSpecs
-      .where((spec) => !_wizardDimensionFieldKeys.contains(spec.key))
-      .toList();
+  List<InputFieldSpec> _wizardConsumableFields(L10nStrings strings) =>
+      _visibleFieldSpecs(
+        strings,
+      ).where((spec) => !_wizardDimensionFieldKeys.contains(spec.key)).toList();
 
   // Which _buildCalculationBasis() labels recap under the wizard's summary
   // "Dimensions" card. Anything not in this set (besides 'Process', which
   // gets its own card) falls through to the "Consumable" recap card -- see
   // _wizardConsumableRecapItems -- so a future basis item is never silently
   // dropped from the summary.
-  static const Set<String> _wizardDimensionBasisLabels = {
-    'Joint',
-    'Geometry',
-    'Alignment',
-    'Groove',
-    'Quantity',
-    'Weld Length per Piece',
-    'Pipe OD',
-    'Thickness',
-    'Thickness A',
-    'Thickness B',
-    'Controlling Thickness',
-    'OD A',
-    'OD B',
-    'Reference OD',
-    'Root Gap',
-    'Root Face',
-    'Root Face per Side',
-    'Bevel Angle',
-    'Primary Bevel Angle',
-    'Secondary Bevel Angle',
-    'Break Height',
-    'Fillet Leg Size',
+  static const Set<BasisKey> _wizardDimensionBasisKeys = {
+    BasisKey.joint,
+    BasisKey.geometry,
+    BasisKey.alignment,
+    BasisKey.groove,
+    BasisKey.quantity,
+    BasisKey.weldLengthPerPiece,
+    BasisKey.pipeOd,
+    BasisKey.thickness,
+    BasisKey.thicknessA,
+    BasisKey.thicknessB,
+    BasisKey.controllingThickness,
+    BasisKey.odA,
+    BasisKey.odB,
+    BasisKey.referenceOd,
+    BasisKey.rootGap,
+    BasisKey.rootFace,
+    BasisKey.rootFacePerSide,
+    BasisKey.bevelAngle,
+    BasisKey.primaryBevelAngle,
+    BasisKey.secondaryBevelAngle,
+    BasisKey.breakHeight,
+    BasisKey.filletLegSize,
   };
 
-  // Labels that recap under the wizard's "Process" summary card -- these
+  // Keys that recap under the wizard's "Process" summary card -- these
   // belong there rather than falling through to Consumable because the
   // Preset Workspace UI they describe lives on the Process step.
-  static const Set<String> _wizardProcessBasisLabels = {
-    'Process',
-    'Input Preset',
-    'Saved Preset',
+  static const Set<BasisKey> _wizardProcessBasisKeys = {
+    BasisKey.process,
+    BasisKey.inputPreset,
+    BasisKey.savedPreset,
   };
 
   List<CalculationBasisItem> get _wizardProcessRecapItems =>
       _buildCalculationBasis()
-          .where((item) => _wizardProcessBasisLabels.contains(item.label))
+          .where((item) => _wizardProcessBasisKeys.contains(item.key))
           .toList();
 
   List<CalculationBasisItem> get _wizardDimensionsRecapItems =>
       _buildCalculationBasis()
-          .where((item) => _wizardDimensionBasisLabels.contains(item.label))
+          .where((item) => _wizardDimensionBasisKeys.contains(item.key))
           .toList();
 
   List<CalculationBasisItem> get _wizardConsumableRecapItems =>
       _buildCalculationBasis()
           .where(
             (item) =>
-                !_wizardProcessBasisLabels.contains(item.label) &&
-                !_wizardDimensionBasisLabels.contains(item.label),
+                !_wizardProcessBasisKeys.contains(item.key) &&
+                !_wizardDimensionBasisKeys.contains(item.key),
           )
           .toList();
 
   Widget _buildRecapChips(List<CalculationBasisItem> items) {
+    final strings = AppLocaleScope.stringsOf(context);
     return Wrap(
       spacing: 10,
       runSpacing: 10,
@@ -1652,7 +1711,7 @@ class _CalculatorPageState extends State<CalculatorPage> {
                 style: const TextStyle(color: Color(0xFF15232D), fontSize: 13),
                 children: [
                   TextSpan(
-                    text: '${item.label}: ',
+                    text: '${item.key.labelFor(strings)}: ',
                     style: const TextStyle(fontWeight: FontWeight.w700),
                   ),
                   TextSpan(text: item.value),
@@ -1664,45 +1723,45 @@ class _CalculatorPageState extends State<CalculatorPage> {
     );
   }
 
-  List<InputFieldSpec> get _visibleFieldSpecs {
+  List<InputFieldSpec> _visibleFieldSpecs(L10nStrings strings) {
     final specs = <InputFieldSpec>[
-      const InputFieldSpec(
+      InputFieldSpec(
         key: FieldKey.quantity,
-        label: 'Quantity',
-        helperText: 'Number of identical welds.',
+        label: strings.calcFieldQuantityLabel,
+        helperText: strings.calcFieldQuantityHelper,
       ),
     ];
 
     if (_jointType == JointType.plateButt || _jointType == JointType.fillet) {
       specs.add(
-        const InputFieldSpec(
+        InputFieldSpec(
           key: FieldKey.lengthMm,
-          label: 'Weld Length per Piece (mm)',
-          helperText: 'Straight weld run length.',
+          label: strings.calcFieldWeldLengthLabel,
+          helperText: strings.calcFieldWeldLengthHelper,
         ),
       );
     }
 
     if (_jointType == JointType.pipeButt) {
       if (_isUnequalGeometry) {
-        specs.addAll(const [
+        specs.addAll([
           InputFieldSpec(
             key: FieldKey.pipeOdAMm,
-            label: 'Pipe OD A (mm)',
-            helperText: 'Outside diameter of member A.',
+            label: strings.calcFieldPipeOdALabel,
+            helperText: strings.calcFieldPipeOdAHelper,
           ),
           InputFieldSpec(
             key: FieldKey.pipeOdBMm,
-            label: 'Pipe OD B (mm)',
-            helperText: 'Outside diameter of member B.',
+            label: strings.calcFieldPipeOdBLabel,
+            helperText: strings.calcFieldPipeOdBHelper,
           ),
         ]);
       } else {
         specs.add(
-          const InputFieldSpec(
+          InputFieldSpec(
             key: FieldKey.pipeOdMm,
-            label: 'Pipe OD (mm)',
-            helperText: 'Outside diameter used for circumference calculation.',
+            label: strings.calcFieldPipeOdLabel,
+            helperText: strings.calcFieldPipeOdHelper,
           ),
         );
       }
@@ -1714,34 +1773,34 @@ class _CalculatorPageState extends State<CalculatorPage> {
         _grooveType == GrooveType.compoundV ||
         _grooveType == GrooveType.doubleV) {
       if (_isUnequalGeometry) {
-        specs.addAll(const [
+        specs.addAll([
           InputFieldSpec(
             key: FieldKey.thicknessAMm,
-            label: 'Thickness A (mm)',
-            helperText: 'Wall or plate thickness of member A.',
+            label: strings.calcFieldThicknessALabel,
+            helperText: strings.calcFieldThicknessAHelper,
           ),
           InputFieldSpec(
             key: FieldKey.thicknessBMm,
-            label: 'Thickness B (mm)',
-            helperText: 'Wall or plate thickness of member B.',
+            label: strings.calcFieldThicknessBLabel,
+            helperText: strings.calcFieldThicknessBHelper,
           ),
           InputFieldSpec(
             key: FieldKey.rootGapMm,
-            label: 'Root Gap (mm)',
-            helperText: 'Root opening.',
+            label: strings.calcFieldRootGapLabel,
+            helperText: strings.calcFieldRootGapHelper,
           ),
         ]);
       } else {
-        specs.addAll(const [
+        specs.addAll([
           InputFieldSpec(
             key: FieldKey.thicknessMm,
-            label: 'Thickness (mm)',
-            helperText: 'Base material thickness.',
+            label: strings.calcFieldThicknessLabel,
+            helperText: strings.calcFieldThicknessHelper,
           ),
           InputFieldSpec(
             key: FieldKey.rootGapMm,
-            label: 'Root Gap (mm)',
-            helperText: 'Root opening.',
+            label: strings.calcFieldRootGapLabel,
+            helperText: strings.calcFieldRootGapHelper,
           ),
         ]);
       }
@@ -1754,64 +1813,64 @@ class _CalculatorPageState extends State<CalculatorPage> {
         InputFieldSpec(
           key: FieldKey.rootFaceMm,
           label: _grooveType == GrooveType.doubleV
-              ? 'Root Face per Side (mm)'
-              : 'Root Face (mm)',
+              ? strings.calcFieldRootFacePerSideLabel
+              : strings.calcFieldRootFaceLabel,
           helperText: _grooveType == GrooveType.doubleV
-              ? 'Root face on each side of the joint centerline.'
-              : 'Root face before the bevel starts.',
+              ? strings.calcFieldRootFacePerSideHelper
+              : strings.calcFieldRootFaceHelper,
         ),
       );
       specs.add(
-        const InputFieldSpec(
+        InputFieldSpec(
           key: FieldKey.bevelAngleDeg,
-          label: 'Bevel Angle (deg)',
-          helperText: 'Included as bevel angle in degrees.',
+          label: strings.calcFieldBevelAngleLabel,
+          helperText: strings.calcFieldBevelAngleHelper,
         ),
       );
     }
 
     if (_grooveType == GrooveType.compoundV) {
-      specs.addAll(const [
+      specs.addAll([
         InputFieldSpec(
           key: FieldKey.rootFaceMm,
-          label: 'Root Face (mm)',
-          helperText: 'Root face before the bevel starts.',
+          label: strings.calcFieldRootFaceLabel,
+          helperText: strings.calcFieldRootFaceHelper,
         ),
         InputFieldSpec(
           key: FieldKey.bevelAngleDeg,
-          label: 'Primary Angle alpha (deg)',
-          helperText: 'Lower bevel angle near the root.',
+          label: strings.calcFieldPrimaryAngleLabel,
+          helperText: strings.calcFieldPrimaryAngleHelper,
         ),
         InputFieldSpec(
           key: FieldKey.secondaryBevelAngleDeg,
-          label: 'Secondary Angle beta (deg)',
-          helperText: 'Upper bevel angle above the break point.',
+          label: strings.calcFieldSecondaryAngleLabel,
+          helperText: strings.calcFieldSecondaryAngleHelper,
         ),
         InputFieldSpec(
           key: FieldKey.breakHeightMm,
-          label: 'Break Height h (mm)',
-          helperText: 'Distance from root face to bevel break point.',
+          label: strings.calcFieldBreakHeightLabel,
+          helperText: strings.calcFieldBreakHeightHelper,
         ),
       ]);
     }
 
     if (_grooveType == GrooveType.fillet) {
       specs.add(
-        const InputFieldSpec(
+        InputFieldSpec(
           key: FieldKey.legSizeMm,
-          label: 'Leg Size (mm)',
-          helperText: 'Equal leg size of the fillet weld.',
+          label: strings.calcFieldLegSizeLabel,
+          helperText: strings.calcFieldLegSizeHelper,
         ),
       );
     }
 
     if (_weldingProcess == WeldingProcess.gtaw) {
       specs.add(
-        const InputFieldSpec.diameter(
+        InputFieldSpec.diameter(
           key: FieldKey.wireDiameterMm,
-          label: 'GTAW Wire Diameter (mm)',
-          helperText: 'Common filler diameters: 1.6, 2.0, 2.4, 3.2 mm.',
-          diameterOptions: [
+          label: strings.calcFieldGtawWireDiameterLabel,
+          helperText: strings.calcFieldGtawWireDiameterHelper,
+          diameterOptions: const [
             DiameterPresetOption(label: '1.6 mm', value: 1.6),
             DiameterPresetOption(label: '2.0 mm', value: 2.0),
             DiameterPresetOption(label: '2.4 mm', value: 2.4),
@@ -1823,11 +1882,11 @@ class _CalculatorPageState extends State<CalculatorPage> {
 
     if (_weldingProcess == WeldingProcess.smaw) {
       specs.add(
-        const InputFieldSpec.diameter(
+        InputFieldSpec.diameter(
           key: FieldKey.electrodeDiameterMm,
-          label: 'SMAW Electrode Diameter (mm)',
-          helperText: 'Common electrode diameters: 2.5, 3.2, 4.0, 5.0 mm.',
-          diameterOptions: [
+          label: strings.calcFieldSmawElectrodeDiameterLabel,
+          helperText: strings.calcFieldSmawElectrodeDiameterHelper,
+          diameterOptions: const [
             DiameterPresetOption(label: '2.5 mm', value: 2.5),
             DiameterPresetOption(label: '3.2 mm', value: 3.2),
             DiameterPresetOption(label: '4.0 mm', value: 4.0),
@@ -1843,11 +1902,11 @@ class _CalculatorPageState extends State<CalculatorPage> {
         InputFieldSpec.diameter(
           key: FieldKey.wireDiameterMm,
           label: _weldingProcess == WeldingProcess.gmaw
-              ? 'GMAW Wire Diameter (mm)'
-              : 'FCAW Wire Diameter (mm)',
+              ? strings.calcFieldGmawWireDiameterLabel
+              : strings.calcFieldFcawWireDiameterLabel,
           helperText: _weldingProcess == WeldingProcess.gmaw
-              ? 'Common wire diameters: 0.8, 1.0, 1.2, 1.6 mm.'
-              : 'Common wire diameters: 1.2, 1.6, 2.0 mm.',
+              ? strings.calcFieldGmawWireDiameterHelper
+              : strings.calcFieldFcawWireDiameterHelper,
           diameterOptions: _weldingProcess == WeldingProcess.gmaw
               ? const [
                   DiameterPresetOption(label: '0.8 mm', value: 0.8),
@@ -1865,18 +1924,17 @@ class _CalculatorPageState extends State<CalculatorPage> {
     }
 
     if (_weldingProcess == WeldingProcess.gtawSmaw) {
-      specs.addAll(const [
+      specs.addAll([
         InputFieldSpec(
           key: FieldKey.gtawTransitionMm,
-          label: 'GTAW Transition Depth (mm)',
-          helperText:
-              'Depth deposited by GTAW from the root side before switching to SMAW.',
+          label: strings.calcFieldGtawTransitionLabel,
+          helperText: strings.calcFieldGtawTransitionHelper,
         ),
         InputFieldSpec.diameter(
           key: FieldKey.gtawWireDiameterMm,
-          label: 'GTAW Wire Diameter (mm)',
-          helperText: 'Common filler diameters: 1.6, 2.0, 2.4, 3.2 mm.',
-          diameterOptions: [
+          label: strings.calcFieldGtawWireDiameterLabel,
+          helperText: strings.calcFieldGtawWireDiameterHelper,
+          diameterOptions: const [
             DiameterPresetOption(label: '1.6 mm', value: 1.6),
             DiameterPresetOption(label: '2.0 mm', value: 2.0),
             DiameterPresetOption(label: '2.4 mm', value: 2.4),
@@ -1885,9 +1943,9 @@ class _CalculatorPageState extends State<CalculatorPage> {
         ),
         InputFieldSpec.diameter(
           key: FieldKey.smawElectrodeDiameterMm,
-          label: 'SMAW Electrode Diameter (mm)',
-          helperText: 'Common electrode diameters: 2.5, 3.2, 4.0, 5.0 mm.',
-          diameterOptions: [
+          label: strings.calcFieldSmawElectrodeDiameterLabel,
+          helperText: strings.calcFieldSmawElectrodeDiameterHelper,
+          diameterOptions: const [
             DiameterPresetOption(label: '2.5 mm', value: 2.5),
             DiameterPresetOption(label: '3.2 mm', value: 3.2),
             DiameterPresetOption(label: '4.0 mm', value: 4.0),
@@ -1899,43 +1957,39 @@ class _CalculatorPageState extends State<CalculatorPage> {
 
     if (_depositionRateMode == DepositionRateMode.manual) {
       if (_weldingProcess == WeldingProcess.gtawSmaw) {
-        specs.addAll(const [
+        specs.addAll([
           InputFieldSpec(
             key: FieldKey.manualGtawRateKgPerHour,
-            label: 'GTAW Deposition Rate (kg/h)',
-            helperText:
-                'User-defined deposition rate for the GTAW root portion.',
+            label: strings.calcFieldGtawDepositionRateLabel,
+            helperText: strings.calcFieldGtawDepositionRateHelper,
           ),
           InputFieldSpec(
             key: FieldKey.manualSmawRateKgPerHour,
-            label: 'SMAW Deposition Rate (kg/h)',
-            helperText:
-                'User-defined deposition rate for the SMAW fill and cap portion.',
+            label: strings.calcFieldSmawDepositionRateLabel,
+            helperText: strings.calcFieldSmawDepositionRateHelper,
           ),
         ]);
       } else {
         specs.add(
-          const InputFieldSpec(
+          InputFieldSpec(
             key: FieldKey.manualDepositionRateKgPerHour,
-            label: 'Deposition Rate (kg/h)',
-            helperText:
-                'User-defined deposition rate based on shop data, planning value, or WPS assumption.',
+            label: strings.calcFieldDepositionRateLabel,
+            helperText: strings.calcFieldDepositionRateHelper,
           ),
         );
       }
     }
 
-    specs.addAll(const [
+    specs.addAll([
       InputFieldSpec(
         key: FieldKey.density,
-        label: 'Density (g/cm3)',
-        helperText:
-            'Bulk weld metal density. Default follows the selected classification.',
+        label: strings.calcFieldDensityLabel,
+        helperText: strings.calcFieldDensityHelper,
       ),
       InputFieldSpec(
         key: FieldKey.wasteFactor,
-        label: 'Waste Allowance (%)',
-        helperText: 'Allowance for stub loss, cut-off, spatter, and handling.',
+        label: strings.calcFieldWasteAllowanceLabel,
+        helperText: strings.calcFieldWasteAllowanceHelper,
       ),
     ]);
 
@@ -2027,10 +2081,12 @@ class _CalculatorPageState extends State<CalculatorPage> {
     return totalHeight <= 0 ? 0.5 : (gtawMm / totalHeight).clamp(0.0, 1.0);
   }
 
-  String _processRateSummary(double efficiency, double depositionRate) {
-    final sourceText = _depositionRateMode == DepositionRateMode.manual
-        ? 'Manual'
-        : 'Estimated';
+  String _processRateSummary(
+    L10nStrings strings,
+    double efficiency,
+    double depositionRate,
+  ) {
+    final sourceText = _depositionRateMode.labelFor(strings);
 
     if (_weldingProcess == WeldingProcess.gtawSmaw) {
       final gtawUpTo = _formatNumber(
@@ -2078,20 +2134,20 @@ class _CalculatorPageState extends State<CalculatorPage> {
     return '$thicknessText$odText';
   }
 
-  String get _presetRateHelperText {
+  String _presetRateHelperText(L10nStrings strings) {
     if (_weldingProcess == WeldingProcess.gtawSmaw) {
-      return 'Estimated mode derives GTAW and SMAW deposition rates from the selected filler diameters, then combines them using the GTAW transition depth.';
+      return strings.calcPresetRateHelperGtawSmaw;
     }
 
-    return 'Estimated mode derives deposition rate from process and filler diameter. Use it for preliminary estimating, not qualification-level planning.';
+    return strings.calcPresetRateHelperDefault;
   }
 
-  String get _manualRateHelperText {
+  String _manualRateHelperText(L10nStrings strings) {
     if (_weldingProcess == WeldingProcess.gtawSmaw) {
-      return 'Manual mode lets you enter separate GTAW and SMAW deposition rates so arc time follows the planned root, fill, and cap sequence.';
+      return strings.calcManualRateHelperGtawSmaw;
     }
 
-    return 'Manual mode overrides the estimated rate with a measured shop value, project planning value, or WPS assumption.';
+    return strings.calcManualRateHelperDefault;
   }
 
   // Only force-switches away from a built-in selection the new process
@@ -2121,9 +2177,10 @@ class _CalculatorPageState extends State<CalculatorPage> {
       _selectedUserPreset != null &&
       _accountEmail != null;
 
-  String get _saveAsPresetButtonLabel => _isUpdatingSelectedUserPreset
-      ? 'Update Saved Calculation'
-      : 'Save as Preset';
+  String _saveAsPresetButtonLabel(L10nStrings strings) =>
+      _isUpdatingSelectedUserPreset
+      ? strings.calcUpdateSavedCalculationLabel
+      : strings.calcSaveAsPresetLabel;
 
   UserWeldPreset? get _selectedUserPreset {
     final presetId = _selectedUserPresetId;
@@ -2640,6 +2697,7 @@ class _CalculatorPageState extends State<CalculatorPage> {
   }
 
   Widget _buildDiameterField(InputFieldSpec field) {
+    final strings = AppLocaleScope.stringsOf(context);
     final selectedMode =
         _diameterPresetModes[field.key] ??
         _resolveDiameterModeFromController(field);
@@ -2659,7 +2717,7 @@ class _CalculatorPageState extends State<CalculatorPage> {
             selectedItemBuilder: (context) => [
               for (final option in field.diameterOptions!)
                 _buildDropdownSelectedText(option.label),
-              _buildDropdownSelectedText('Custom diameter'),
+              _buildDropdownSelectedText(strings.calcCustomDiameterOption),
             ],
             items: [
               for (final option in field.diameterOptions!)
@@ -2667,9 +2725,9 @@ class _CalculatorPageState extends State<CalculatorPage> {
                   value: _diameterValueToken(option.value),
                   child: Text(option.label, overflow: TextOverflow.ellipsis),
                 ),
-              const DropdownMenuItem(
+              DropdownMenuItem(
                 value: _customDiameterValue,
-                child: Text('Custom diameter'),
+                child: Text(strings.calcCustomDiameterOption),
               ),
             ],
             onChanged: (value) {
@@ -2692,9 +2750,9 @@ class _CalculatorPageState extends State<CalculatorPage> {
             inputFormatters: [
               FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]')),
             ],
-            decoration: const InputDecoration(
-              labelText: 'Custom Diameter (mm)',
-              helperText: 'Enter an exact diameter value.',
+            decoration: InputDecoration(
+              labelText: strings.calcCustomDiameterLabel,
+              helperText: strings.calcCustomDiameterHelper,
             ),
             onChanged: (_) => setState(() => _result = null),
           ),
@@ -2846,17 +2904,27 @@ class _CalculatorPageState extends State<CalculatorPage> {
   }
 
   void _calculate() {
+    final strings = AppLocaleScope.stringsOf(context);
     try {
       final input = WeldInputData(
         jointType: _jointType,
         grooveType: _grooveType,
         weldingProcess: _weldingProcess,
         depositionRateMode: _depositionRateMode,
-        quantity: _parseRequired(FieldKey.quantity, 'Quantity'),
-        densityGPerCm3: _parseRequired(FieldKey.density, 'Density'),
+        quantity: _parseRequired(
+          FieldKey.quantity,
+          strings.calcErrorLabelQuantity,
+          strings,
+        ),
+        densityGPerCm3: _parseRequired(
+          FieldKey.density,
+          strings.calcErrorLabelDensity,
+          strings,
+        ),
         wasteFactorPercent: _parseRequired(
           FieldKey.wasteFactor,
-          'Waste factor',
+          strings.calcErrorLabelWasteFactor,
+          strings,
         ),
         lengthPerPieceMm: _parseOptional(FieldKey.lengthMm),
         pipeOdMm: _resolvePipeOdForCalculation(),
@@ -2905,7 +2973,7 @@ class _CalculatorPageState extends State<CalculatorPage> {
       _showMessage(error.message);
     } catch (_) {
       setState(() => _result = null);
-      _showMessage('Calculation failed. Please review the inputs.');
+      _showMessage(strings.calcCalculationFailedError);
     }
   }
 
@@ -2913,8 +2981,9 @@ class _CalculatorPageState extends State<CalculatorPage> {
   /// technical drawing, so the value can be entered right there without
   /// hunting for the matching field further down the page.
   void _handleDrawingFieldTap(FieldKey fieldKey) {
+    final strings = AppLocaleScope.stringsOf(context);
     InputFieldSpec? field;
-    for (final candidate in _visibleFieldSpecs) {
+    for (final candidate in _visibleFieldSpecs(strings)) {
       if (candidate.key == fieldKey) {
         field = candidate;
         break;
@@ -2925,6 +2994,7 @@ class _CalculatorPageState extends State<CalculatorPage> {
   }
 
   Future<void> _showQuickEditSheet(InputFieldSpec field) {
+    final strings = AppLocaleScope.stringsOf(context);
     return showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
@@ -2975,7 +3045,7 @@ class _CalculatorPageState extends State<CalculatorPage> {
                         borderRadius: BorderRadius.circular(16),
                       ),
                     ),
-                    child: const Text('Done'),
+                    child: Text(strings.commonDone),
                   ),
                 ),
               ],
@@ -3083,13 +3153,13 @@ class _CalculatorPageState extends State<CalculatorPage> {
     _resetWizardScroll();
   }
 
-  double _parseRequired(FieldKey key, String label) {
+  double _parseRequired(FieldKey key, String label, L10nStrings strings) {
     final value = _controllers[key]!.text.trim();
     final parsed = double.tryParse(value.replaceAll(',', '.'));
     if (parsed == null) {
       throw _RequiredFieldMissingException(
         key,
-        '$label must be a valid number.',
+        strings.calcFieldRequiredError.replaceFirst('{label}', label),
       );
     }
     return parsed;
@@ -3185,42 +3255,71 @@ class _CalculatorPageState extends State<CalculatorPage> {
 
   List<CalculationBasisItem> _buildCalculationBasis() {
     final items = <CalculationBasisItem>[
-      CalculationBasisItem('Process', _weldingProcess.label),
-      CalculationBasisItem('Rate Basis', _depositionRateMode.label),
-      if (_inputPreset != InputPreset.custom)
-        CalculationBasisItem('Input Preset', _inputPreset.label),
-      if (_selectedUserPreset != null)
-        CalculationBasisItem('Saved Preset', _selectedUserPreset!.name),
-      CalculationBasisItem('Joint', _jointType.label),
-      if (_supportsUnequalGeometry)
-        CalculationBasisItem('Geometry', _jointGeometryMode.label),
-      if (_isUnequalGeometry)
-        CalculationBasisItem('Alignment', _jointAlignment.label),
-      CalculationBasisItem('Groove', _grooveType.label),
+      CalculationBasisItem(BasisKey.process, 'Process', _weldingProcess.label),
       CalculationBasisItem(
+        BasisKey.rateBasis,
+        'Rate Basis',
+        _depositionRateMode.label,
+      ),
+      if (_inputPreset != InputPreset.custom)
+        CalculationBasisItem(
+          BasisKey.inputPreset,
+          'Input Preset',
+          _inputPreset.label,
+        ),
+      if (_selectedUserPreset != null)
+        CalculationBasisItem(
+          BasisKey.savedPreset,
+          'Saved Preset',
+          _selectedUserPreset!.name,
+        ),
+      CalculationBasisItem(BasisKey.joint, 'Joint', _jointType.label),
+      if (_supportsUnequalGeometry)
+        CalculationBasisItem(
+          BasisKey.geometry,
+          'Geometry',
+          _jointGeometryMode.label,
+        ),
+      if (_isUnequalGeometry)
+        CalculationBasisItem(
+          BasisKey.alignment,
+          'Alignment',
+          _jointAlignment.label,
+        ),
+      CalculationBasisItem(BasisKey.groove, 'Groove', _grooveType.label),
+      CalculationBasisItem(
+        BasisKey.classification,
         'Classification',
         _consumableSelection.awsSpecification == null
             ? _consumableSelection.label
             : '${_consumableSelection.awsSpecification} ${_consumableSelection.label}',
       ),
       CalculationBasisItem(
+        BasisKey.fillerMetalFamily,
         'Filler Metal Family',
         _consumableSelection.family.label,
       ),
       CalculationBasisItem(
+        BasisKey.density,
         'Density',
         '${_controllers[FieldKey.density]!.text} g/cm3',
       ),
       CalculationBasisItem(
+        BasisKey.wasteAllowance,
         'Waste Allowance',
         '${_controllers[FieldKey.wasteFactor]!.text}%',
       ),
-      CalculationBasisItem('Quantity', _controllers[FieldKey.quantity]!.text),
+      CalculationBasisItem(
+        BasisKey.quantity,
+        'Quantity',
+        _controllers[FieldKey.quantity]!.text,
+      ),
     ];
 
     if (_jointType == JointType.plateButt || _jointType == JointType.fillet) {
       items.add(
         CalculationBasisItem(
+          BasisKey.weldLengthPerPiece,
           'Weld Length per Piece',
           '${_controllers[FieldKey.lengthMm]!.text} mm',
         ),
@@ -3230,6 +3329,7 @@ class _CalculatorPageState extends State<CalculatorPage> {
     if (_jointType == JointType.pipeButt && !_isUnequalGeometry) {
       items.add(
         CalculationBasisItem(
+          BasisKey.pipeOd,
           'Pipe OD',
           '${_controllers[FieldKey.pipeOdMm]!.text} mm',
         ),
@@ -3241,6 +3341,7 @@ class _CalculatorPageState extends State<CalculatorPage> {
             _jointType == JointType.pipeButt)) {
       items.add(
         CalculationBasisItem(
+          BasisKey.thickness,
           'Thickness',
           '${_controllers[FieldKey.thicknessMm]!.text} mm',
         ),
@@ -3252,14 +3353,17 @@ class _CalculatorPageState extends State<CalculatorPage> {
           _jointType == JointType.pipeButt) {
         items.addAll([
           CalculationBasisItem(
+            BasisKey.thicknessA,
             'Thickness A',
             '${_controllers[FieldKey.thicknessAMm]!.text} mm',
           ),
           CalculationBasisItem(
+            BasisKey.thicknessB,
             'Thickness B',
             '${_controllers[FieldKey.thicknessBMm]!.text} mm',
           ),
           CalculationBasisItem(
+            BasisKey.controllingThickness,
             'Controlling Thickness',
             '${_formatNumber(_governingThicknessPreview ?? 0, 1)} mm',
           ),
@@ -3268,14 +3372,17 @@ class _CalculatorPageState extends State<CalculatorPage> {
       if (_jointType == JointType.pipeButt) {
         items.addAll([
           CalculationBasisItem(
+            BasisKey.odA,
             'OD A',
             '${_controllers[FieldKey.pipeOdAMm]!.text} mm',
           ),
           CalculationBasisItem(
+            BasisKey.odB,
             'OD B',
             '${_controllers[FieldKey.pipeOdBMm]!.text} mm',
           ),
           CalculationBasisItem(
+            BasisKey.referenceOd,
             'Reference OD',
             '${_formatNumber(_governingPipeOdPreview ?? 0, 1)} mm',
           ),
@@ -3290,6 +3397,7 @@ class _CalculatorPageState extends State<CalculatorPage> {
         _grooveType == GrooveType.compoundV) {
       items.add(
         CalculationBasisItem(
+          BasisKey.rootGap,
           'Root Gap',
           '${_controllers[FieldKey.rootGapMm]!.text} mm',
         ),
@@ -3302,11 +3410,15 @@ class _CalculatorPageState extends State<CalculatorPage> {
       items.addAll([
         CalculationBasisItem(
           _grooveType == GrooveType.doubleV
+              ? BasisKey.rootFacePerSide
+              : BasisKey.rootFace,
+          _grooveType == GrooveType.doubleV
               ? 'Root Face per Side'
               : 'Root Face',
           '${_controllers[FieldKey.rootFaceMm]!.text} mm',
         ),
         CalculationBasisItem(
+          BasisKey.bevelAngle,
           'Bevel Angle',
           '${_controllers[FieldKey.bevelAngleDeg]!.text} deg',
         ),
@@ -3316,18 +3428,22 @@ class _CalculatorPageState extends State<CalculatorPage> {
     if (_grooveType == GrooveType.compoundV) {
       items.addAll([
         CalculationBasisItem(
+          BasisKey.rootFace,
           'Root Face',
           '${_controllers[FieldKey.rootFaceMm]!.text} mm',
         ),
         CalculationBasisItem(
+          BasisKey.primaryBevelAngle,
           'Primary Bevel Angle',
           '${_controllers[FieldKey.bevelAngleDeg]!.text} deg',
         ),
         CalculationBasisItem(
+          BasisKey.secondaryBevelAngle,
           'Secondary Bevel Angle',
           '${_controllers[FieldKey.secondaryBevelAngleDeg]!.text} deg',
         ),
         CalculationBasisItem(
+          BasisKey.breakHeight,
           'Break Height',
           '${_controllers[FieldKey.breakHeightMm]!.text} mm',
         ),
@@ -3337,6 +3453,7 @@ class _CalculatorPageState extends State<CalculatorPage> {
     if (_grooveType == GrooveType.fillet) {
       items.add(
         CalculationBasisItem(
+          BasisKey.filletLegSize,
           'Fillet Leg Size',
           '${_controllers[FieldKey.legSizeMm]!.text} mm',
         ),
@@ -3347,6 +3464,7 @@ class _CalculatorPageState extends State<CalculatorPage> {
       if (_depositionRateMode == DepositionRateMode.manual) {
         items.add(
           CalculationBasisItem(
+            BasisKey.userDefinedRate,
             'User-defined Rate',
             '${_controllers[FieldKey.manualDepositionRateKgPerHour]!.text} kg/h',
           ),
@@ -3354,6 +3472,7 @@ class _CalculatorPageState extends State<CalculatorPage> {
       } else {
         items.add(
           CalculationBasisItem(
+            BasisKey.wireDiameter,
             'Wire Diameter',
             '${_controllers[FieldKey.wireDiameterMm]!.text} mm',
           ),
@@ -3363,6 +3482,7 @@ class _CalculatorPageState extends State<CalculatorPage> {
       if (_depositionRateMode == DepositionRateMode.manual) {
         items.add(
           CalculationBasisItem(
+            BasisKey.userDefinedRate,
             'User-defined Rate',
             '${_controllers[FieldKey.manualDepositionRateKgPerHour]!.text} kg/h',
           ),
@@ -3370,6 +3490,7 @@ class _CalculatorPageState extends State<CalculatorPage> {
       } else {
         items.add(
           CalculationBasisItem(
+            BasisKey.electrodeDiameter,
             'Electrode Diameter',
             '${_controllers[FieldKey.electrodeDiameterMm]!.text} mm',
           ),
@@ -3380,6 +3501,7 @@ class _CalculatorPageState extends State<CalculatorPage> {
       if (_depositionRateMode == DepositionRateMode.manual) {
         items.add(
           CalculationBasisItem(
+            BasisKey.userDefinedRate,
             'User-defined Rate',
             '${_controllers[FieldKey.manualDepositionRateKgPerHour]!.text} kg/h',
           ),
@@ -3387,6 +3509,7 @@ class _CalculatorPageState extends State<CalculatorPage> {
       } else {
         items.add(
           CalculationBasisItem(
+            BasisKey.wireDiameter,
             'Wire Diameter',
             '${_controllers[FieldKey.wireDiameterMm]!.text} mm',
           ),
@@ -3395,26 +3518,31 @@ class _CalculatorPageState extends State<CalculatorPage> {
     } else if (_weldingProcess == WeldingProcess.gtawSmaw) {
       items.addAll([
         CalculationBasisItem(
+          BasisKey.gtawTransitionDepth,
           'GTAW Transition Depth',
           '${_controllers[FieldKey.gtawTransitionMm]!.text} mm',
         ),
         if (_depositionRateMode == DepositionRateMode.manual)
           CalculationBasisItem(
+            BasisKey.gtawDepositionRate,
             'GTAW Deposition Rate',
             '${_controllers[FieldKey.manualGtawRateKgPerHour]!.text} kg/h',
           )
         else
           CalculationBasisItem(
+            BasisKey.gtawWireDiameter,
             'GTAW Wire Diameter',
             '${_controllers[FieldKey.gtawWireDiameterMm]!.text} mm',
           ),
         if (_depositionRateMode == DepositionRateMode.manual)
           CalculationBasisItem(
+            BasisKey.smawDepositionRate,
             'SMAW Deposition Rate',
             '${_controllers[FieldKey.manualSmawRateKgPerHour]!.text} kg/h',
           )
         else
           CalculationBasisItem(
+            BasisKey.smawElectrodeDiameter,
             'SMAW Electrode Diameter',
             '${_controllers[FieldKey.smawElectrodeDiameterMm]!.text} mm',
           ),
@@ -3529,9 +3657,7 @@ class _PaywallSheetState extends State<_PaywallSheet> {
       widget.onEntitlementChanged(isActive);
       if (!mounted) return;
       _dismissSheetIfCurrent(navigator, sheetRoute);
-      widget.onMessage(
-        isActive ? 'Premium unlocked.' : 'Purchase completed.',
-      );
+      widget.onMessage(isActive ? 'Premium unlocked.' : 'Purchase completed.');
       return;
     } on PlatformException catch (error) {
       if (PurchasesErrorHelper.getErrorCode(error) ==
@@ -3627,7 +3753,9 @@ class _PaywallSheetState extends State<_PaywallSheet> {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+      padding: EdgeInsets.only(
+        bottom: MediaQuery.of(context).viewInsets.bottom,
+      ),
       child: Container(
         width: double.infinity,
         padding: const EdgeInsets.fromLTRB(24, 16, 24, 26),
@@ -3669,9 +3797,9 @@ class _PaywallSheetState extends State<_PaywallSheet> {
                 Expanded(
                   child: Text(
                     'Varyos Weld Premium',
-                    style: Theme.of(
-                      context,
-                    ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.w800,
+                    ),
                   ),
                 ),
               ],
@@ -3785,27 +3913,32 @@ class _PresetNameDialogState extends State<_PresetNameDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final strings = AppLocaleScope.stringsOf(context);
     final isUpdate = widget.initialValue != null;
     return AlertDialog(
-      title: Text(isUpdate ? 'Update Preset' : 'Save Preset'),
+      title: Text(
+        isUpdate
+            ? strings.calcPresetNameDialogUpdateTitle
+            : strings.calcPresetNameDialogSaveTitle,
+      ),
       content: TextField(
         controller: _controller,
         autofocus: true,
         textInputAction: TextInputAction.done,
         onSubmitted: (_) => _submit(),
-        decoration: const InputDecoration(
-          labelText: 'Preset Name',
-          helperText: 'Use a short technical reference name.',
+        decoration: InputDecoration(
+          labelText: strings.savedCalculationsRenameFieldLabel,
+          helperText: strings.calcPresetNameHelper,
         ),
       ),
       actions: [
         TextButton(
           onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Cancel'),
+          child: Text(strings.commonCancel),
         ),
         FilledButton(
           onPressed: _submit,
-          child: Text(isUpdate ? 'Update' : 'Save'),
+          child: Text(isUpdate ? strings.commonUpdate : strings.commonSave),
         ),
       ],
     );
@@ -3838,10 +3971,10 @@ class _AccountEmailAndPresetNameDialogState
     super.dispose();
   }
 
-  void _submit() {
+  void _submit(L10nStrings strings) {
     final email = _emailController.text.trim();
     if (!_emailPattern.hasMatch(email)) {
-      setState(() => _emailError = 'Enter a valid email.');
+      setState(() => _emailError = strings.calcAccountEmailInvalidError);
       return;
     }
     final name = _nameController.text.trim();
@@ -3851,23 +3984,21 @@ class _AccountEmailAndPresetNameDialogState
 
   @override
   Widget build(BuildContext context) {
+    final strings = AppLocaleScope.stringsOf(context);
     return AlertDialog(
-      title: const Text('Save with an Account'),
+      title: Text(strings.calcSaveWithAccountTitle),
       content: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Enter your email to save this preset. Use the same '
-            'email on any device to get it back later.',
-          ),
+          Text(strings.calcSaveWithAccountBody),
           const SizedBox(height: 12),
           TextField(
             controller: _emailController,
             autofocus: true,
             keyboardType: TextInputType.emailAddress,
             decoration: InputDecoration(
-              labelText: 'Email',
+              labelText: strings.authFormEmailLabel,
               errorText: _emailError,
             ),
           ),
@@ -3875,10 +4006,10 @@ class _AccountEmailAndPresetNameDialogState
           TextField(
             controller: _nameController,
             textInputAction: TextInputAction.done,
-            onSubmitted: (_) => _submit(),
-            decoration: const InputDecoration(
-              labelText: 'Preset Name',
-              helperText: 'Use a short technical reference name.',
+            onSubmitted: (_) => _submit(strings),
+            decoration: InputDecoration(
+              labelText: strings.savedCalculationsRenameFieldLabel,
+              helperText: strings.calcPresetNameHelper,
             ),
           ),
         ],
@@ -3886,9 +4017,12 @@ class _AccountEmailAndPresetNameDialogState
       actions: [
         TextButton(
           onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Cancel'),
+          child: Text(strings.commonCancel),
         ),
-        FilledButton(onPressed: _submit, child: const Text('Save')),
+        FilledButton(
+          onPressed: () => _submit(strings),
+          child: Text(strings.commonSave),
+        ),
       ],
     );
   }

@@ -1,3 +1,4 @@
+import '../l10n/strings.dart';
 import 'consumable_selection.dart';
 
 enum JointType { pipeButt, plateButt, fillet }
@@ -81,6 +82,21 @@ extension JointTypeX on JointType {
       'Fillet weld area is based on equal-leg geometry and entered weld length.',
   };
 
+  // `label`/`helper` above stay plain English -- weld_pdf_report_service.dart
+  // depends on them for the (separately scoped) PDF export. UI call sites
+  // use these localized counterparts instead.
+  String labelFor(L10nStrings strings) => switch (this) {
+    JointType.pipeButt => strings.jointTypePipeButt,
+    JointType.plateButt => strings.jointTypePlateButt,
+    JointType.fillet => strings.jointTypeFillet,
+  };
+
+  String helperFor(L10nStrings strings) => switch (this) {
+    JointType.pipeButt => strings.jointTypeHelperPipeButt,
+    JointType.plateButt => strings.jointTypeHelperPlateButt,
+    JointType.fillet => strings.jointTypeHelperFillet,
+  };
+
   List<GrooveType> get supportedGrooves => switch (this) {
     JointType.pipeButt => const [
       GrooveType.singleV,
@@ -108,9 +124,21 @@ extension GrooveTypeX on GrooveType {
     GrooveType.square => 'Square',
     GrooveType.fillet => 'Fillet',
   };
+
+  String labelFor(L10nStrings strings) => switch (this) {
+    GrooveType.singleV => strings.grooveSingleV,
+    GrooveType.halfV => strings.grooveHalfV,
+    GrooveType.doubleV => strings.grooveDoubleV,
+    GrooveType.compoundV => strings.grooveCompoundV,
+    GrooveType.square => strings.grooveSquare,
+    GrooveType.fillet => strings.grooveFillet,
+  };
 }
 
 extension WeldingProcessX on WeldingProcess {
+  // Never localized -- GTAW/SMAW/GMAW/FCAW are international AWS process
+  // abbreviations, not prose (explicit user decision), so this label is
+  // already identical across every supported locale.
   String get label => switch (this) {
     WeldingProcess.gtaw => 'GTAW',
     WeldingProcess.smaw => 'SMAW',
@@ -125,12 +153,22 @@ extension DepositionRateModeX on DepositionRateMode {
     DepositionRateMode.preset => 'Estimated',
     DepositionRateMode.manual => 'Manual',
   };
+
+  String labelFor(L10nStrings strings) => switch (this) {
+    DepositionRateMode.preset => strings.depositionRateModePreset,
+    DepositionRateMode.manual => strings.depositionRateModeManual,
+  };
 }
 
 extension JointGeometryModeX on JointGeometryMode {
   String get label => switch (this) {
     JointGeometryMode.equal => 'Equal',
     JointGeometryMode.unequal => 'Unequal',
+  };
+
+  String labelFor(L10nStrings strings) => switch (this) {
+    JointGeometryMode.equal => strings.jointGeometryEqual,
+    JointGeometryMode.unequal => strings.jointGeometryUnequal,
   };
 }
 
@@ -139,6 +177,12 @@ extension JointAlignmentX on JointAlignment {
     JointAlignment.centerline => 'Centerline Match',
     JointAlignment.odMatch => 'OD Match',
     JointAlignment.idMatch => 'ID Match',
+  };
+
+  String labelFor(L10nStrings strings) => switch (this) {
+    JointAlignment.centerline => strings.jointAlignmentCenterline,
+    JointAlignment.odMatch => strings.jointAlignmentOdMatch,
+    JointAlignment.idMatch => strings.jointAlignmentIdMatch,
   };
 }
 
@@ -152,6 +196,17 @@ extension ConsumableFamilyX on ConsumableFamily {
     ConsumableFamily.nickelAlloy => 'Nickel Alloy',
     ConsumableFamily.copperAlloy => 'Copper Alloy',
     ConsumableFamily.castIron => 'Cast Iron',
+  };
+
+  String labelFor(L10nStrings strings) => switch (this) {
+    ConsumableFamily.carbonSteel => strings.consumableFamilyCarbonSteel,
+    ConsumableFamily.stainlessSteel => strings.consumableFamilyStainlessSteel,
+    ConsumableFamily.dissimilar => strings.consumableFamilyDissimilar,
+    ConsumableFamily.aluminium => strings.consumableFamilyAluminium,
+    ConsumableFamily.lowAlloySteel => strings.consumableFamilyLowAlloySteel,
+    ConsumableFamily.nickelAlloy => strings.consumableFamilyNickelAlloy,
+    ConsumableFamily.copperAlloy => strings.consumableFamilyCopperAlloy,
+    ConsumableFamily.castIron => strings.consumableFamilyCastIron,
   };
 }
 
@@ -256,6 +311,16 @@ extension ConsumablePresetX on ConsumablePreset {
 
   String get awsDisplayLabel => '$awsSpecification $label (${family.label})';
 
+  // `label`/`awsSpecification` are AWS classification codes (ER70S-6, AWS
+  // A5.18, etc.) and never translated (explicit user decision) -- only the
+  // family name in parentheses is localized here.
+  String awsDisplayLabelFor(L10nStrings strings) =>
+      '$awsSpecification $label (${family.labelFor(strings)})';
+
+  // Base-metal designation lists (ASTM/aluminum-series codes mixed with a
+  // little prose) are left English-only for now -- translating ~30 lists of
+  // mostly-standard-code text is a disclosed follow-up, not done in this
+  // pass (see coder task report).
   List<String> get typicalBaseMetals => switch (this) {
     ConsumablePreset.er70s6 => const ['ASTM A36', 'ASTM A106', 'ASTM A53'],
     ConsumablePreset.er70s2 => const ['ASTM A36', 'ASTM A106', 'ASTM A53'],
@@ -387,6 +452,39 @@ extension ConsumablePresetX on ConsumablePreset {
       'Aluminum bronze electrode for wear-resistant overlays and dissimilar joints',
   };
 
+  String descriptionFor(L10nStrings strings) => switch (this) {
+    ConsumablePreset.er70s6 => strings.consumablePresetDescEr70s6,
+    ConsumablePreset.er70s2 => strings.consumablePresetDescEr70s2,
+    ConsumablePreset.e7018 => strings.consumablePresetDescE7018,
+    ConsumablePreset.e6010 => strings.consumablePresetDescE6010,
+    ConsumablePreset.e71t1 => strings.consumablePresetDescE71t1,
+    ConsumablePreset.er308l => strings.consumablePresetDescEr308l,
+    ConsumablePreset.e308l16 => strings.consumablePresetDescE308l16,
+    ConsumablePreset.er316l => strings.consumablePresetDescEr316l,
+    ConsumablePreset.er309l => strings.consumablePresetDescEr309l,
+    ConsumablePreset.e309l16 => strings.consumablePresetDescE309l16,
+    ConsumablePreset.er5356 => strings.consumablePresetDescEr5356,
+    ConsumablePreset.gtawRootSmawFill =>
+      strings.consumablePresetDescGtawRootSmawFill,
+    ConsumablePreset.e6013 => strings.consumablePresetDescE6013,
+    ConsumablePreset.e7024 => strings.consumablePresetDescE7024,
+    ConsumablePreset.er70s3 => strings.consumablePresetDescEr70s3,
+    ConsumablePreset.e7018a1 => strings.consumablePresetDescE7018a1,
+    ConsumablePreset.e8018c3 => strings.consumablePresetDescE8018c3,
+    ConsumablePreset.er80sNi1 => strings.consumablePresetDescEr80sNi1,
+    ConsumablePreset.er80sB2 => strings.consumablePresetDescEr80sB2,
+    ConsumablePreset.e316l16 => strings.consumablePresetDescE316l16,
+    ConsumablePreset.er347 => strings.consumablePresetDescEr347,
+    ConsumablePreset.er4043 => strings.consumablePresetDescEr4043,
+    ConsumablePreset.er5183 => strings.consumablePresetDescEr5183,
+    ConsumablePreset.eniCi => strings.consumablePresetDescEniCi,
+    ConsumablePreset.enifeCi => strings.consumablePresetDescEnifeCi,
+    ConsumablePreset.ernicr3 => strings.consumablePresetDescErnicr3,
+    ConsumablePreset.enicrfe3 => strings.consumablePresetDescEnicrfe3,
+    ConsumablePreset.ercusiA => strings.consumablePresetDescErcusiA,
+    ConsumablePreset.ecualA2 => strings.consumablePresetDescEcualA2,
+  };
+
   double get densityGPerCm3 => switch (this) {
     ConsumablePreset.er70s6 => 7.85,
     ConsumablePreset.er70s2 => 7.85,
@@ -468,7 +566,10 @@ extension ConsumablePresetX on ConsumablePreset {
       WeldingProcess.gmaw,
     ],
     ConsumablePreset.enicrfe3 => const [WeldingProcess.smaw],
-    ConsumablePreset.ercusiA => const [WeldingProcess.gtaw, WeldingProcess.gmaw],
+    ConsumablePreset.ercusiA => const [
+      WeldingProcess.gtaw,
+      WeldingProcess.gmaw,
+    ],
     ConsumablePreset.ecualA2 => const [WeldingProcess.smaw],
   };
 }
@@ -496,6 +597,30 @@ extension InputPresetX on InputPreset {
     InputPreset.csPlateDoubleVSmaw =>
       'Carbon steel plate double-V manual welding starter setup.',
     InputPreset.csFilletFcaw => 'Carbon steel structural fillet starter setup.',
+  };
+
+  String labelFor(L10nStrings strings) => switch (this) {
+    InputPreset.custom => strings.inputPresetCustom,
+    InputPreset.csPipeSingleVGtawSmaw =>
+      strings.inputPresetCsPipeSingleVGtawSmaw,
+    InputPreset.csPipeDoubleVGtawSmaw =>
+      strings.inputPresetCsPipeDoubleVGtawSmaw,
+    InputPreset.ssPipeSingleVGtaw => strings.inputPresetSsPipeSingleVGtaw,
+    InputPreset.csPlateSingleVGmaw => strings.inputPresetCsPlateSingleVGmaw,
+    InputPreset.csPlateDoubleVSmaw => strings.inputPresetCsPlateDoubleVSmaw,
+    InputPreset.csFilletFcaw => strings.inputPresetCsFilletFcaw,
+  };
+
+  String descriptionFor(L10nStrings strings) => switch (this) {
+    InputPreset.custom => strings.inputPresetDescCustom,
+    InputPreset.csPipeSingleVGtawSmaw =>
+      strings.inputPresetDescCsPipeSingleVGtawSmaw,
+    InputPreset.csPipeDoubleVGtawSmaw =>
+      strings.inputPresetDescCsPipeDoubleVGtawSmaw,
+    InputPreset.ssPipeSingleVGtaw => strings.inputPresetDescSsPipeSingleVGtaw,
+    InputPreset.csPlateSingleVGmaw => strings.inputPresetDescCsPlateSingleVGmaw,
+    InputPreset.csPlateDoubleVSmaw => strings.inputPresetDescCsPlateDoubleVSmaw,
+    InputPreset.csFilletFcaw => strings.inputPresetDescCsFilletFcaw,
   };
 
   WeldInputPresetData? get data => switch (this) {
@@ -540,9 +665,7 @@ extension InputPresetX on InputPreset {
       jointType: JointType.pipeButt,
       grooveType: GrooveType.singleV,
       weldingProcess: WeldingProcess.gtaw,
-      consumableSelection: BuiltInConsumableSelection(
-        ConsumablePreset.er308l,
-      ),
+      consumableSelection: BuiltInConsumableSelection(ConsumablePreset.er308l),
       quantity: 1,
       pipeOdMm: 114.3,
       thicknessMm: 6,
@@ -556,9 +679,7 @@ extension InputPresetX on InputPreset {
       jointType: JointType.plateButt,
       grooveType: GrooveType.singleV,
       weldingProcess: WeldingProcess.gmaw,
-      consumableSelection: BuiltInConsumableSelection(
-        ConsumablePreset.er70s6,
-      ),
+      consumableSelection: BuiltInConsumableSelection(ConsumablePreset.er70s6),
       quantity: 1,
       lengthPerPieceMm: 800,
       thicknessMm: 10,
@@ -572,9 +693,7 @@ extension InputPresetX on InputPreset {
       jointType: JointType.plateButt,
       grooveType: GrooveType.doubleV,
       weldingProcess: WeldingProcess.smaw,
-      consumableSelection: BuiltInConsumableSelection(
-        ConsumablePreset.e7018,
-      ),
+      consumableSelection: BuiltInConsumableSelection(ConsumablePreset.e7018),
       quantity: 1,
       lengthPerPieceMm: 1000,
       thicknessMm: 20,
@@ -588,9 +707,7 @@ extension InputPresetX on InputPreset {
       jointType: JointType.fillet,
       grooveType: GrooveType.fillet,
       weldingProcess: WeldingProcess.fcaw,
-      consumableSelection: BuiltInConsumableSelection(
-        ConsumablePreset.e71t1,
-      ),
+      consumableSelection: BuiltInConsumableSelection(ConsumablePreset.e71t1),
       quantity: 2,
       lengthPerPieceMm: 600,
       legSizeMm: 8,

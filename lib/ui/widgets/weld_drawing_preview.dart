@@ -2,6 +2,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
+import '../../l10n/strings.dart';
 import '../../models/weld_models.dart';
 import '../calculator_page/calculator_page_models.dart' show FieldKey;
 
@@ -23,6 +24,11 @@ extension DrawingModeX on DrawingMode {
   String get label => switch (this) {
     DrawingMode.visual => 'Visual',
     DrawingMode.technical => 'Technical',
+  };
+
+  String labelFor(L10nStrings strings) => switch (this) {
+    DrawingMode.visual => strings.drawingModeVisual,
+    DrawingMode.technical => strings.drawingModeTechnical,
   };
 }
 
@@ -71,6 +77,12 @@ class WeldDrawingPreview extends StatefulWidget {
     required this.jointType,
     required this.drawingMode,
     required this.data,
+    required this.jointTypeLabel,
+    required this.grooveTypeLabel,
+    required this.filletWeldFaceLabel,
+    required this.tJointLabel,
+    required this.smawFillCapLabel,
+    required this.gtawRootLabel,
     this.onFieldTap,
     this.fillAvailableSpace = false,
   });
@@ -79,6 +91,15 @@ class WeldDrawingPreview extends StatefulWidget {
   final JointType jointType;
   final DrawingMode drawingMode;
   final WeldDrawingData data;
+
+  // Pre-resolved localized labels, passed in by the caller (which has a
+  // BuildContext) since the CustomPainter that actually draws them does not.
+  final String jointTypeLabel;
+  final String grooveTypeLabel;
+  final String filletWeldFaceLabel;
+  final String tJointLabel;
+  final String smawFillCapLabel;
+  final String gtawRootLabel;
 
   /// Called with the [FieldKey] of the dimension nearest to a tap on the
   /// drawing, so the caller can scroll to and focus that input field.
@@ -111,6 +132,12 @@ class _WeldDrawingPreviewState extends State<WeldDrawingPreview> {
           jointType: widget.jointType,
           drawingMode: widget.drawingMode,
           data: widget.data,
+          jointTypeLabel: widget.jointTypeLabel,
+          grooveTypeLabel: widget.grooveTypeLabel,
+          filletWeldFaceLabel: widget.filletWeldFaceLabel,
+          tJointLabel: widget.tJointLabel,
+          smawFillCapLabel: widget.smawFillCapLabel,
+          gtawRootLabel: widget.gtawRootLabel,
           onHotspots: (hotspots) => _hotspots = hotspots,
           fillAvailableSpace: widget.fillAvailableSpace,
         ),
@@ -183,6 +210,12 @@ class _WeldDrawingPainter extends CustomPainter {
     required this.jointType,
     required this.drawingMode,
     required this.data,
+    required this.jointTypeLabel,
+    required this.grooveTypeLabel,
+    required this.filletWeldFaceLabel,
+    required this.tJointLabel,
+    required this.smawFillCapLabel,
+    required this.gtawRootLabel,
     this.onHotspots,
     this.fillAvailableSpace = false,
   });
@@ -191,6 +224,12 @@ class _WeldDrawingPainter extends CustomPainter {
   final JointType jointType;
   final DrawingMode drawingMode;
   final WeldDrawingData data;
+  final String jointTypeLabel;
+  final String grooveTypeLabel;
+  final String filletWeldFaceLabel;
+  final String tJointLabel;
+  final String smawFillCapLabel;
+  final String gtawRootLabel;
   final ValueChanged<List<DrawingHotspot>>? onHotspots;
   final bool fillAvailableSpace;
 
@@ -284,6 +323,7 @@ class _WeldDrawingPainter extends CustomPainter {
       rect.height,
     );
   }
+
   bool get _isCombinedProcess =>
       data.weldingProcess == WeldingProcess.gtawSmaw &&
       (data.gtawTransitionMm ?? 0) > 0;
@@ -426,7 +466,7 @@ class _WeldDrawingPainter extends CustomPainter {
       _drawLabel(
         canvas,
         size,
-        '${jointType.label} / ${grooveType.label}',
+        '$jointTypeLabel / $grooveTypeLabel',
         const Offset(14, 12),
         fontSize: 14,
         weight: FontWeight.w700,
@@ -515,7 +555,7 @@ class _WeldDrawingPainter extends CustomPainter {
       maxHalfWidthMm: halfBody + 10,
       heightMm: thickness + 7,
       topPaddingMm: 4,
-      topChipLabel: 'Single V',
+      topChipLabel: grooveTypeLabel,
     );
     final p = layout.point;
     final member = _memberExtents(thickness);
@@ -654,7 +694,7 @@ class _WeldDrawingPainter extends CustomPainter {
         rootFaceRect,
       ],
     );
-    _drawTopChips(canvas, size, 'Single V');
+    _drawTopChips(canvas, size, grooveTypeLabel);
   }
 
   void _drawHalfV(
@@ -690,7 +730,7 @@ class _WeldDrawingPainter extends CustomPainter {
       maxHalfWidthMm: math.max(leftBody, rightBody) + 10.0,
       heightMm: thickness + 7,
       topPaddingMm: 4,
-      topChipLabel: 'Half V',
+      topChipLabel: grooveTypeLabel,
     );
     final p = layout.point;
     final grooveY = thickness - rootFace;
@@ -790,7 +830,7 @@ class _WeldDrawingPainter extends CustomPainter {
       rightThicknessLabelX: rightBody + 6,
       avoidRects: [angleRect, rootFaceRect],
     );
-    _drawTopChips(canvas, size, 'Half V');
+    _drawTopChips(canvas, size, grooveTypeLabel);
   }
 
   void _drawDoubleV(
@@ -827,7 +867,7 @@ class _WeldDrawingPainter extends CustomPainter {
       maxHalfWidthMm: halfBody + 10,
       heightMm: thickness + 7,
       topPaddingMm: 4,
-      topChipLabel: 'Double V',
+      topChipLabel: grooveTypeLabel,
     );
     final p = layout.point;
     final member = _memberExtents(thickness);
@@ -1015,7 +1055,7 @@ class _WeldDrawingPainter extends CustomPainter {
         avoidRects: [...beforeHalves, upperHalfRect],
       );
     }
-    _drawTopChips(canvas, size, 'Double V');
+    _drawTopChips(canvas, size, grooveTypeLabel);
   }
 
   void _drawCompoundV(
@@ -1067,7 +1107,7 @@ class _WeldDrawingPainter extends CustomPainter {
       maxHalfWidthMm: halfBody + 10,
       heightMm: thickness + 7,
       topPaddingMm: 4,
-      topChipLabel: 'Compound V',
+      topChipLabel: grooveTypeLabel,
     );
     final p = layout.point;
     final breakY = upperHeight;
@@ -1248,7 +1288,7 @@ class _WeldDrawingPainter extends CustomPainter {
         hRect,
       ],
     );
-    _drawTopChips(canvas, size, 'Compound V');
+    _drawTopChips(canvas, size, grooveTypeLabel);
   }
 
   void _drawSquare(
@@ -1268,7 +1308,7 @@ class _WeldDrawingPainter extends CustomPainter {
       maxHalfWidthMm: halfBody + 10,
       heightMm: thickness + 7,
       topPaddingMm: 4,
-      topChipLabel: 'Square',
+      topChipLabel: grooveTypeLabel,
     );
     final p = layout.point;
     final member = _memberExtents(thickness);
@@ -1350,7 +1390,7 @@ class _WeldDrawingPainter extends CustomPainter {
       rightThicknessLabelX: halfBody + 6,
       rootGapLabelY: math.max(member.leftBottom, member.rightBottom),
     );
-    _drawTopChips(canvas, size, 'Square');
+    _drawTopChips(canvas, size, grooveTypeLabel);
   }
 
   void _drawFillet(
@@ -1473,7 +1513,7 @@ class _WeldDrawingPainter extends CustomPainter {
       start: p(webHalfThickness + (leg * 0.48), baseTopY - (leg * 0.34)),
       mid: p(flangeHalfWidth * 0.78, baseTopY - (leg * 0.72)),
       end: p(flangeHalfWidth + 3, baseTopY - (leg * 0.72)),
-      text: 'fillet weld face',
+      text: filletWeldFaceLabel,
       size: size,
       avoidRects: [leg1Rect, leg2Rect],
     );
@@ -1483,11 +1523,11 @@ class _WeldDrawingPainter extends CustomPainter {
       start: p(0, webTopY + ((baseTopY - webTopY) * 0.45)),
       mid: p(-flangeHalfWidth * 0.82, webTopY + 2),
       end: p(-flangeHalfWidth - 4, webTopY + 2),
-      text: 'T-joint',
+      text: tJointLabel,
       size: size,
       avoidRects: [leg1Rect, leg2Rect, filletFaceRect],
     );
-    _drawTypeChip(canvas, size, 'Fillet');
+    _drawTypeChip(canvas, size, grooveTypeLabel);
   }
 
   void _drawJoint(
@@ -1555,14 +1595,14 @@ class _WeldDrawingPainter extends CustomPainter {
     _drawAnnotationLabel(
       canvas,
       size,
-      'SMAW fill / cap',
+      smawFillCapLabel,
       topLabelCenter,
       fontSize: 10,
     );
     _drawAnnotationLabel(
       canvas,
       size,
-      'GTAW root',
+      gtawRootLabel,
       rootLabelCenter,
       fontSize: 10,
     );

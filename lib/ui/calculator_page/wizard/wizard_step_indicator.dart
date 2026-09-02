@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../../l10n/app_locale_scope.dart';
+
 /// Purely presentational row of segments showing wizard progress, plus a
 /// "Step N of M" label. `currentIndex` is 0-based.
 class WizardStepIndicator extends StatelessWidget {
@@ -14,6 +16,7 @@ class WizardStepIndicator extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final strings = AppLocaleScope.stringsOf(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -37,7 +40,9 @@ class WizardStepIndicator extends StatelessWidget {
         ),
         const SizedBox(height: 8),
         Text(
-          'Step ${currentIndex + 1} of $totalSteps',
+          strings.wizardStepOfLabel
+              .replaceFirst('{current}', '${currentIndex + 1}')
+              .replaceFirst('{total}', '$totalSteps'),
           style: const TextStyle(
             color: Color(0xFF12191B),
             fontWeight: FontWeight.w700,

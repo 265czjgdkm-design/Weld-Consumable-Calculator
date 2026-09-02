@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../../l10n/app_locale_scope.dart';
+
 /// Step 3 of the mobile wizard: consumable classification, rate basis, and
 /// the remaining input fields not covered by the dimensions step (diameters,
 /// manual rate fields, density, waste factor). Pure presentation, mirroring
@@ -22,6 +24,7 @@ class WizardConsumableStep extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final strings = AppLocaleScope.stringsOf(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -32,10 +35,10 @@ class WizardConsumableStep extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Consumable & Rate',
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.w800,
-                  ),
+                  strings.wizardConsumableRateTitle,
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
                 ),
                 const SizedBox(height: 14),
                 consumableClassificationDropdown,
@@ -74,7 +77,7 @@ class WizardConsumableStep extends StatelessWidget {
                     borderRadius: BorderRadius.circular(16),
                   ),
                 ),
-                child: const Text('Back'),
+                child: Text(strings.commonBack),
               ),
             ),
             const SizedBox(width: 12),
@@ -87,7 +90,7 @@ class WizardConsumableStep extends StatelessWidget {
                     borderRadius: BorderRadius.circular(16),
                   ),
                 ),
-                child: const Text('Continue'),
+                child: Text(strings.commonContinue),
               ),
             ),
           ],

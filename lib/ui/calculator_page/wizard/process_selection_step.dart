@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../l10n/app_locale_scope.dart';
 import '../../../models/weld_models.dart';
 import 'process_icons.dart';
 
@@ -21,18 +22,19 @@ class WizardProcessStep extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final strings = AppLocaleScope.stringsOf(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Welding Process',
+          strings.calcWeldingProcessLabel,
           style: Theme.of(
             context,
           ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
         ),
         const SizedBox(height: 6),
         Text(
-          'Choose the process used for this weld. This sets the deposition defaults and filler options for the next steps.',
+          strings.wizardProcessStepSubtitle,
           style: Theme.of(
             context,
           ).textTheme.bodyMedium?.copyWith(color: const Color(0xFF607482)),
@@ -64,7 +66,7 @@ class WizardProcessStep extends StatelessWidget {
                 borderRadius: BorderRadius.circular(16),
               ),
             ),
-            child: const Text('Continue'),
+            child: Text(strings.commonContinue),
           ),
         ),
       ],

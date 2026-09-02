@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../l10n/app_locale_scope.dart';
+import '../l10n/strings.dart';
 import '../models/consumable_selection.dart';
 import '../models/weld_models.dart';
 import '../services/preset_sync_service.dart';
@@ -181,9 +182,9 @@ class _SavedCalculationsScreenState extends State<SavedCalculationsScreen> {
     }
   }
 
-  String _summaryLine(UserWeldPreset preset) {
+  String _summaryLine(L10nStrings strings, UserWeldPreset preset) {
     final data = preset.data;
-    return '${data.jointType.label} · ${data.grooveType.label} · ${data.weldingProcess.label} · ${data.consumableSelection.label}';
+    return '${data.jointType.labelFor(strings)} · ${data.grooveType.labelFor(strings)} · ${data.weldingProcess.label} · ${data.consumableSelection.label}';
   }
 
   String _formatDate(int epochMs) {
@@ -242,7 +243,7 @@ class _SavedCalculationsScreenState extends State<SavedCalculationsScreen> {
                               ),
                               const SizedBox(height: 4),
                               Text(
-                                _summaryLine(preset),
+                                _summaryLine(strings, preset),
                                 style: Theme.of(context).textTheme.bodySmall
                                     ?.copyWith(color: const Color(0xFF607482)),
                               ),
