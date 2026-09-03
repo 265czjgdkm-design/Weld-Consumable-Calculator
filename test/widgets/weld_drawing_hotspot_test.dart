@@ -295,7 +295,11 @@ void main() {
             weldingProcess: WeldingProcess.gtaw,
             geometryMode: JointGeometryMode.unequal,
             alignment: JointAlignment.odMatch,
-            thicknessMm: 12,
+            // Governing thicknessMm is always max(A,B) in the real app
+            // (calculator_page.dart's `_governingThicknessPreview`) - using
+            // an inconsistent value here would let this test pass against
+            // geometry the app can never actually produce.
+            thicknessMm: 20,
             thicknessAMm: 8,
             thicknessBMm: 20,
             rootGapMm: 3,

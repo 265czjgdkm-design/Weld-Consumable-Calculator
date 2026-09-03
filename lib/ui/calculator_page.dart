@@ -531,16 +531,16 @@ class _CalculatorPageState extends State<CalculatorPage> {
         _grooveType == GrooveType.halfV ||
         _grooveType == GrooveType.compoundV ||
         _grooveType == GrooveType.doubleV;
-    // Unequal geometry adds its own "B ... mm" thickness label and the
+    // Unequal geometry adds its own "B ... mm" thickness label, and the
     // GTAW+SMAW combined process adds two more (fill/cap + root-zone
-    // labels) - together, on top of any groove type's usual callouts, that
-    // is 3 extra real Roboto-metrics pills fighting for room on the
-    // narrowest supported canvas width, more than either tier above was
-    // sized for (verified via the exhaustive process/geometry matrix in
+    // labels) REGARDLESS of geometry mode - either on its own is enough
+    // extra Roboto-metrics pills fighting for room on the narrowest
+    // supported canvas width that neither tier above was sized for
+    // (verified via the exhaustive process/geometry matrix in
     // test/widgets/weld_drawing_label_overlap_test.dart, added alongside a
     // reviewer audit of weld_drawing_preview.dart's tap/overlap behavior).
     final extraBusy =
-        _jointGeometryMode == JointGeometryMode.unequal &&
+        _jointGeometryMode == JointGeometryMode.unequal ||
         _weldingProcess == WeldingProcess.gtawSmaw;
     if (busy) {
       return extraBusy

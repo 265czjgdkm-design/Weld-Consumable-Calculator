@@ -1047,7 +1047,7 @@ class _WeldDrawingPainter extends CustomPainter {
         ?commonRects.grooveDepth,
       ],
     );
-    _drawAngleTag(
+    final angleRect = _drawAngleTag(
       canvas,
       guidePaint,
       size,
@@ -1080,13 +1080,17 @@ class _WeldDrawingPainter extends CustomPainter {
       // label's pill, reading as a stray diagonal mark crossing the text
       // (see TEAM_LEARNINGS.md, 2026-08-25). Pulled in closer to the plate
       // instead of further out, widening the gap from the main line's lane
-      // without pushing this lane past the canvas edge.
+      // without pushing this lane past the canvas edge. Also on the same
+      // (left) side as the bevel angle tag, which lanes compress into on a
+      // narrow enough canvas - must avoid it too, not just the labels drawn
+      // above.
       final beforeHalves = [
         ...tintRects,
         commonRects.thickness,
         commonRects.rootGap,
         ?commonRects.grooveDepth,
         totalRootFaceRect,
+        angleRect,
       ];
       // These represent the same underlying value as the main thickness
       // label elsewhere in this drawing, just displayed as a half-value -
@@ -1188,8 +1192,20 @@ class _WeldDrawingPainter extends CustomPainter {
     );
     final leftGrooveY = member.leftBottom - leftRootFace;
     final rightGrooveY = member.rightBottom - rightRootFace;
-    final leftBreakY = member.leftTop + upperHeight;
-    final rightBreakY = member.rightTop + upperHeight;
+    // `upperHeight` is derived from the governing (max A/B) thickness, so
+    // applying it unclamped to a thinner member's own top would land its
+    // break vertex below its own groove vertex, self-intersecting the
+    // polygon - clamp it the same way `leftRootFace`/`rightRootFace` above
+    // are already clamped to each member's own actual extent.
+    final leftBreakY =
+        member.leftTop +
+        math.min(upperHeight, math.max(leftThickness - leftRootFace - 0.8, 0.5));
+    final rightBreakY =
+        member.rightTop +
+        math.min(
+          upperHeight,
+          math.max(rightThickness - rightRootFace - 0.8, 0.5),
+        );
     final capRise = math.min(thickness * 0.14, 3.0);
     final rootCrown = math.min(rootFace * 0.32, 1.1);
 
