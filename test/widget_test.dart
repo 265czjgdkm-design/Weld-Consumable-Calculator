@@ -217,6 +217,14 @@ void main() {
     tester,
   ) async {
     await _pumpPastIntro(tester);
+
+    // Step 2's starter-template dropdown is now filtered to the process
+    // picked on Step 1 (see coder task Fix 1), so pick GTAW + SMAW here to
+    // match the CS Pipe Double V preset selected below -- no cross-process
+    // confirmation involved.
+    await tester.ensureVisible(find.text('GTAW + SMAW'));
+    await tester.tap(find.text('GTAW + SMAW'));
+    await tester.pumpAndSettle();
     await _continueWizardStep(tester); // process -> dimensions
 
     await tester.ensureVisible(find.text('Input Preset'));
@@ -230,12 +238,7 @@ void main() {
     await tester.tap(find.text('CS Pipe Double V / GTAW + SMAW').last);
     await tester.pumpAndSettle();
 
-    // Default process is GTAW; this preset uses GTAW + SMAW, so switching
-    // processes needs confirming first.
-    expect(find.text('Switch Welding Process?'), findsOneWidget);
-    await tester.tap(find.text('Switch to GTAW + SMAW'));
-    await tester.pumpAndSettle();
-
+    expect(find.text('Switch Welding Process?'), findsNothing);
     expect(find.text('Pipe OD (mm)'), findsOneWidget);
     expect(find.text('Root Face per Side (mm)'), findsOneWidget);
 
@@ -245,15 +248,31 @@ void main() {
   });
 
   testWidgets(
-    'starter preset with a different process asks for confirmation before switching',
+    'starter preset with a different process asks for confirmation before '
+    'switching (desktop layout -- the mobile wizard filters the dropdown '
+    "to Step 1's process instead, so this cross-process path can only "
+    'still occur there, see coder task Fix 1)',
     (tester) async {
+      final originalPhysicalSize = tester.view.physicalSize;
+      final originalDevicePixelRatio = tester.view.devicePixelRatio;
+      tester.view.physicalSize = const Size(1400, 1600);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(() {
+        tester.view.physicalSize = originalPhysicalSize;
+        tester.view.devicePixelRatio = originalDevicePixelRatio;
+      });
+
       await _pumpPastIntro(tester);
 
-      await tester.ensureVisible(find.text('GMAW'));
-      await tester.tap(find.text('GMAW'));
+      await tester.ensureVisible(find.text('Welding Process'));
+      await tester.tap(
+        find.byWidgetPredicate(
+          (widget) => widget is DropdownButtonFormField<WeldingProcess>,
+        ),
+      );
       await tester.pumpAndSettle();
-
-      await _continueWizardStep(tester); // process -> dimensions
+      await tester.tap(find.text('GMAW').last);
+      await tester.pumpAndSettle();
 
       await tester.ensureVisible(find.text('Input Preset'));
       await tester.tap(
@@ -277,18 +296,6 @@ void main() {
         find.text('Manual setup with no preset assumptions applied.'),
         findsOneWidget,
       );
-
-      await tester.ensureVisible(find.text('Back'));
-      await tester.tap(find.text('Back'));
-      await tester.pumpAndSettle();
-
-      final gmawIcon = tester.widget<ProcessIcon>(
-        find.byWidgetPredicate(
-          (widget) =>
-              widget is ProcessIcon && widget.process == WeldingProcess.gmaw,
-        ),
-      );
-      expect(gmawIcon.color, Colors.white);
     },
   );
 

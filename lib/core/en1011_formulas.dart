@@ -242,8 +242,12 @@ double computeHeatInputKJPerMm({
 }
 
 // ---------------------------------------------------------------------
-// CEV / Pcm -- informational only, NOT part of EN 1011-2. Cross-verified
-// from multiple consistent secondary metallurgy sources.
+// CEV / Pcm. CEV (IIW) below is the same CE formula as EN 1011-2 Annex
+// C.2 (Method A), Equation C.1 -- kept separate here only to avoid
+// conflating it with Method B (CET), which is what this app's actual
+// preheat/cooling-time calculators implement. Pcm (Ito-Bessyo) is not
+// part of EN 1011-2; cross-verified from multiple consistent secondary
+// metallurgy sources.
 // ---------------------------------------------------------------------
 
 /// CEV (IIW), best-fit for C > 0.18%.

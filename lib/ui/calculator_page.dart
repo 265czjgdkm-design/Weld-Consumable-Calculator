@@ -320,6 +320,7 @@ class _CalculatorPageState extends State<CalculatorPage> {
                   icon: const Icon(Icons.arrow_forward),
                   label: Text(strings.getStarted),
                   style: FilledButton.styleFrom(
+                    backgroundColor: const Color(0xFFFF6A35),
                     padding: const EdgeInsets.symmetric(vertical: 18),
                     textStyle: const TextStyle(
                       fontSize: 16,
@@ -373,6 +374,12 @@ class _CalculatorPageState extends State<CalculatorPage> {
             _weldingProcess = value;
             _applyProcessFieldDefaults();
             _syncConsumableForProcess();
+            // Step 2's starter-template dropdown is filtered to the
+            // selected process; a previously applied cross-process template
+            // would no longer be a valid item in that filtered list.
+            if (_inputPreset.data?.weldingProcess != value) {
+              _inputPreset = InputPreset.custom;
+            }
             _result = null;
           });
         },
@@ -389,7 +396,10 @@ class _CalculatorPageState extends State<CalculatorPage> {
             child: _buildTechnicalDrawingCard(context, compact: true),
           ),
         ),
-        starterPresetSection: _buildStarterPresetSection(context),
+        starterPresetSection: _buildStarterPresetSection(
+          context,
+          filterByCurrentProcess: true,
+        ),
         jointTypeSection: _buildJointTypeSection(context),
         memberGeometrySection: _buildMemberGeometrySection(context),
         grooveTypeDropdown: _buildGrooveTypeDropdown(context),
@@ -1080,8 +1090,24 @@ class _CalculatorPageState extends State<CalculatorPage> {
   /// [_buildInputParametersCard]. The user's own saved presets used to live
   /// in this same section too, but browsing/loading/deleting those now
   /// happens entirely on the dashboard's Saved Calculations screen instead.
-  Widget _buildStarterPresetSection(BuildContext context) {
+  Widget _buildStarterPresetSection(
+    BuildContext context, {
+    bool filterByCurrentProcess = false,
+  }) {
     final strings = AppLocaleScope.stringsOf(context);
+    // The mobile wizard already had the user pick a welding process on Step
+    // 1, so offering a cross-process template here would either silently
+    // fight that choice or trigger the process-switch confirmation mid-flow.
+    // The desktop layout has no such earlier step, so it keeps the full list.
+    final availablePresets = filterByCurrentProcess
+        ? InputPreset.values
+              .where(
+                (preset) =>
+                    preset.data == null ||
+                    preset.data!.weldingProcess == _weldingProcess,
+              )
+              .toList()
+        : InputPreset.values;
     return InputPanelSection(
       icon: Icons.auto_awesome_outlined,
       title: strings.calcStartingTemplateTitle,
@@ -1102,13 +1128,13 @@ class _CalculatorPageState extends State<CalculatorPage> {
               decoration: InputDecoration(
                 labelText: strings.calcInputPresetLabel,
               ),
-              selectedItemBuilder: (context) => InputPreset.values
+              selectedItemBuilder: (context) => availablePresets
                   .map(
                     (preset) =>
                         _buildDropdownSelectedText(preset.labelFor(strings)),
                   )
                   .toList(),
-              items: InputPreset.values
+              items: availablePresets
                   .map(
                     (preset) => DropdownMenuItem(
                       value: preset,
