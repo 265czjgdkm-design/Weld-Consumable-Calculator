@@ -531,13 +531,28 @@ class _CalculatorPageState extends State<CalculatorPage> {
         _grooveType == GrooveType.halfV ||
         _grooveType == GrooveType.compoundV ||
         _grooveType == GrooveType.doubleV;
+    // Unequal geometry adds its own "B ... mm" thickness label and the
+    // GTAW+SMAW combined process adds two more (fill/cap + root-zone
+    // labels) - together, on top of any groove type's usual callouts, that
+    // is 3 extra real Roboto-metrics pills fighting for room on the
+    // narrowest supported canvas width, more than either tier above was
+    // sized for (verified via the exhaustive process/geometry matrix in
+    // test/widgets/weld_drawing_label_overlap_test.dart, added alongside a
+    // reviewer audit of weld_drawing_preview.dart's tap/overlap behavior).
+    final extraBusy =
+        _jointGeometryMode == JointGeometryMode.unequal &&
+        _weldingProcess == WeldingProcess.gtawSmaw;
     if (busy) {
-      return (safeHeight * 0.58).clamp(500.0, 560.0);
+      return extraBusy
+          ? (safeHeight * 0.66).clamp(580.0, 640.0)
+          : (safeHeight * 0.58).clamp(500.0, 560.0);
     }
     if (_grooveType == GrooveType.fillet) {
       return (safeHeight * 0.44).clamp(390.0, 440.0);
     }
-    return (safeHeight * 0.52).clamp(440.0, 500.0);
+    return extraBusy
+        ? (safeHeight * 0.58).clamp(500.0, 560.0)
+        : (safeHeight * 0.52).clamp(440.0, 500.0);
   }
 
   Widget _buildEstimatorWorkspace(BuildContext context) {
@@ -1108,6 +1123,14 @@ class _CalculatorPageState extends State<CalculatorPage> {
               )
               .toList()
         : InputPreset.values;
+    // `_inputPreset` can go stale relative to `availablePresets` (e.g. a
+    // template applied before the process changed elsewhere -- desktop's own
+    // process dropdown at `:900` doesn't reset it). Clamp at render time
+    // rather than chasing every mutation site, since `DropdownButtonFormField`
+    // throws unless its value is exactly one item in this list.
+    final selected = availablePresets.contains(_inputPreset)
+        ? _inputPreset
+        : InputPreset.custom;
     return InputPanelSection(
       icon: Icons.auto_awesome_outlined,
       title: strings.calcStartingTemplateTitle,
@@ -1122,8 +1145,8 @@ class _CalculatorPageState extends State<CalculatorPage> {
               // the dropdown to remount back to it, instead of keeping the
               // tapped-but-not-applied item selected via its own internal
               // FormField state.
-              key: ValueKey('$_inputPreset-$_starterPresetDropdownResetToken'),
-              initialValue: _inputPreset,
+              key: ValueKey('$selected-$_starterPresetDropdownResetToken'),
+              initialValue: selected,
               isExpanded: true,
               decoration: InputDecoration(
                 labelText: strings.calcInputPresetLabel,
@@ -1162,7 +1185,7 @@ class _CalculatorPageState extends State<CalculatorPage> {
           const SizedBox(height: 12),
           PanelNote(
             icon: Icons.auto_fix_high_outlined,
-            text: _inputPreset.descriptionFor(strings),
+            text: selected.descriptionFor(strings),
           ),
         ],
       ),

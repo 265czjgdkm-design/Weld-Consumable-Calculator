@@ -56,19 +56,22 @@ List<String> _overlapDescriptions(List<Rect> rects) {
   return out;
 }
 
-Future<List<Rect>> _renderLabelRects(
-  WidgetTester tester, {
-  required JointType jointType,
-  required GrooveType grooveType,
-  required DrawingMode drawingMode,
-  required Size canvasSize,
-  required L10nStrings strings,
-}) async {
-  const data = WeldDrawingData(
-    weldingProcess: WeldingProcess.gtaw,
-    geometryMode: JointGeometryMode.equal,
-    alignment: JointAlignment.centerline,
+/// Builds a representative [WeldDrawingData] for a given process/geometry
+/// combination, using distinct A/B thickness values in Unequal mode (14 vs
+/// 10mm, matching the reviewer audit's own example) so the "B ... mm" label
+/// is never accidentally identical to the "A ... mm"/thickness label.
+WeldDrawingData _buildData({
+  required WeldingProcess weldingProcess,
+  JointGeometryMode geometryMode = JointGeometryMode.equal,
+  JointAlignment alignment = JointAlignment.centerline,
+}) {
+  return WeldDrawingData(
+    weldingProcess: weldingProcess,
+    geometryMode: geometryMode,
+    alignment: alignment,
     thicknessMm: 12,
+    thicknessAMm: geometryMode == JointGeometryMode.unequal ? 14 : null,
+    thicknessBMm: geometryMode == JointGeometryMode.unequal ? 10 : null,
     rootGapMm: 3,
     rootFaceMm: 2,
     bevelAngleDeg: 30,
@@ -76,7 +79,20 @@ Future<List<Rect>> _renderLabelRects(
     breakHeightMm: 4,
     legSizeMm: 6,
     pipeOdMm: 168.3,
+    gtawTransitionMm: weldingProcess == WeldingProcess.gtawSmaw ? 3 : null,
   );
+}
+
+Future<List<Rect>> _renderLabelRects(
+  WidgetTester tester, {
+  required JointType jointType,
+  required GrooveType grooveType,
+  required DrawingMode drawingMode,
+  required Size canvasSize,
+  required L10nStrings strings,
+  WeldDrawingData? data,
+}) async {
+  final resolvedData = data ?? _buildData(weldingProcess: WeldingProcess.gtaw);
 
   await tester.pumpWidget(
     MaterialApp(
@@ -90,7 +106,7 @@ Future<List<Rect>> _renderLabelRects(
               grooveType: grooveType,
               jointType: jointType,
               drawingMode: drawingMode,
-              data: data,
+              data: resolvedData,
               jointTypeLabel: jointType.labelFor(strings),
               grooveTypeLabel: grooveType.labelFor(strings),
               filletWeldFaceLabel: strings.drawingLabelFilletWeldFace,
@@ -126,6 +142,7 @@ void _expectNoOverlap(
   required DrawingMode drawingMode,
   required Size canvasSize,
   required AppLanguage language,
+  WeldDrawingData? data,
 }) {
   testWidgets('no label overlap: $description', (tester) async {
     final rects = await _renderLabelRects(
@@ -135,6 +152,7 @@ void _expectNoOverlap(
       drawingMode: drawingMode,
       canvasSize: canvasSize,
       strings: stringsFor(language),
+      data: data,
     );
     final overlaps = _overlapDescriptions(rects);
     expect(
@@ -224,6 +242,111 @@ void main() {
           canvasSize: Size(width, filletHeight),
           language: language,
         );
+      }
+    }
+  }
+
+  // The matrices above (Equal geometry, gtaw, 316-390px) were the whole
+  // suite before this reviewer round. Everything below extends coverage to
+  // what that round's audit actually exercised - Unequal geometry (all 3
+  // alignments), every welding process (not just gtaw - gtawSmaw activates
+  // the combined-process tint's extra labels, which is what Findings 2-4
+  // were about), and the wider desktop/compact-desktop-column width range,
+  // not just phone widths. Two separate matrices cover this rather than one
+  // full cartesian product across every axis at once (process x alignment x
+  // joint x groove x mode x width x locale would be tens of thousands of
+  // widget pumps) - one crosses process x alignment x width x groove x joint
+  // x mode at a single fixed locale, the other crosses locale x alignment x
+  // width at a fixed (worst-case) process - between them every dimension
+  // the audit covered is exercised, just not combined all at once.
+  final unequalGrooves = [
+    GrooveType.singleV,
+    GrooveType.halfV,
+    GrooveType.doubleV,
+    GrooveType.compoundV,
+    GrooveType.square,
+  ];
+  // Includes the desktop FittedBox width (760) and the compact breakpoints
+  // between narrow-phone and desktop the reviewer audit flagged - the
+  // desktop-app's own compact left column commonly lands in the
+  // 1120-1400px window range, which the FittedBox then shrinks the fixed
+  // 760-wide virtual canvas to fit, so 760 is the actual canvas-space width
+  // relevant there, not the window width.
+  const auditWidths = [316.0, 346.0, 390.0, 480.0, 520.0, 600.0, 640.0, 760.0];
+  // Unequal geometry's extra "B ... mm" label plus GTAW+SMAW combined
+  // process's two extra labels together need more canvas height than either
+  // tier normally gets - calculator_page.dart's `_narrowDrawingHeight`
+  // grants exactly this combination a taller card for that reason; mirror
+  // its bumped floor (translated to canvas height via the same ~106px of
+  // title/toggle/padding chrome the other heights above already subtract).
+  double heightFor(GrooveType groove, WeldDrawingData data) {
+    final extraBusy =
+        data.geometryMode == JointGeometryMode.unequal &&
+        data.weldingProcess == WeldingProcess.gtawSmaw;
+    if (busyGrooves.contains(groove)) {
+      return extraBusy ? 474.0 : busyHeight;
+    }
+    return extraBusy ? 394.0 : normalHeight;
+  }
+
+  for (final alignment in JointAlignment.values) {
+    for (final process in WeldingProcess.values) {
+      final data = _buildData(
+        weldingProcess: process,
+        geometryMode: JointGeometryMode.unequal,
+        alignment: alignment,
+      );
+      for (final width in auditWidths) {
+        for (final joint in joints) {
+          for (final groove in unequalGrooves) {
+            for (final mode in DrawingMode.values) {
+              _expectNoOverlap(
+                'unequal/$alignment/$process/$groove/$joint/$mode '
+                '@${width.toInt()} [en]',
+                jointType: joint,
+                grooveType: groove,
+                drawingMode: mode,
+                canvasSize: Size(width, heightFor(groove, data)),
+                language: AppLanguage.en,
+                data: data,
+              );
+            }
+          }
+        }
+      }
+    }
+  }
+
+  // Finding 4: locale-specific overlaps only surfaced with the combined
+  // GTAW+SMAW process (longest extra labels) and Unequal geometry (extra
+  // "B ... mm" label) together - the worst case for label-packing - across
+  // every alignment and locale, at a representative narrow/mid/desktop
+  // width spread.
+  const localeWidths = [316.0, 480.0, 760.0];
+  for (final language in AppLanguage.values) {
+    for (final alignment in JointAlignment.values) {
+      final data = _buildData(
+        weldingProcess: WeldingProcess.gtawSmaw,
+        geometryMode: JointGeometryMode.unequal,
+        alignment: alignment,
+      );
+      for (final width in localeWidths) {
+        for (final joint in joints) {
+          for (final groove in unequalGrooves) {
+            for (final mode in DrawingMode.values) {
+              _expectNoOverlap(
+                'unequal/$alignment/gtawSmaw/$groove/$joint/$mode '
+                '@${width.toInt()} [$language]',
+                jointType: joint,
+                grooveType: groove,
+                drawingMode: mode,
+                canvasSize: Size(width, heightFor(groove, data)),
+                language: language,
+                data: data,
+              );
+            }
+          }
+        }
       }
     }
   }

@@ -9,15 +9,17 @@ import '../calculator_page/calculator_page_models.dart' show FieldKey;
 enum DrawingMode { visual, technical }
 
 /// A tappable region of the drawing that corresponds to one editable
-/// [FieldKey], recorded by the painter at the exact spot it draws that
-/// dimension's label so a tap on the drawing can jump to the matching
-/// input field below.
+/// [FieldKey], recorded by the painter as the exact clamped rect it drew
+/// that dimension's label pill at, so a tap on the drawing can jump to the
+/// matching input field below. Using the real drawn rect (rather than a
+/// separately-tracked center point) means a tap target can never drift from
+/// the visible pill, even once canvas-edge clamping moves that pill from
+/// its natural, unclamped position.
 class DrawingHotspot {
-  const DrawingHotspot(this.fieldKey, this.center, this.radius);
+  const DrawingHotspot(this.fieldKey, this.rect);
 
   final FieldKey fieldKey;
-  final Offset center;
-  final double radius;
+  final Rect rect;
 }
 
 extension DrawingModeX on DrawingMode {
@@ -152,8 +154,8 @@ class _WeldDrawingPreviewState extends State<WeldDrawingPreview> {
     DrawingHotspot? nearest;
     var nearestDistanceSq = double.infinity;
     for (final hotspot in _hotspots) {
-      final distanceSq = (hotspot.center - tapPosition).distanceSquared;
-      if (distanceSq > hotspot.radius * hotspot.radius) continue;
+      if (!hotspot.rect.contains(tapPosition)) continue;
+      final distanceSq = (hotspot.rect.center - tapPosition).distanceSquared;
       if (distanceSq < nearestDistanceSq) {
         nearest = hotspot;
         nearestDistanceSq = distanceSq;
@@ -230,19 +232,13 @@ class _WeldDrawingPainter extends CustomPainter {
 
   final List<DrawingHotspot> _hotspots = [];
 
-  // Radius constants below are tuned for the default mode, where the
-  // painter always draws at a fixed 760x400 canvas size (see the SizedBox
-  // in calculator_page.dart) that an outer FittedBox then shrinks to ~45%
-  // to fit the pinned mobile drawing card — so a canvas-space radius has to
-  // be generous to still clear a comfortable finger-sized target once that
-  // shrink is applied. In [fillAvailableSpace] mode there is no such
-  // shrink (the canvas IS the real on-screen box), so the same constants
-  // would be wildly oversized; scale them down to roughly what they
-  // resolve to on screen in the default mode.
-  void _hotspot(FieldKey? fieldKey, Offset center, {double radius = 52}) {
+  // Records the exact clamped rect a label was actually drawn at (see
+  // [_measurementLabelRect] / [_drawTechnicalLabel] / [_drawSoftLabel]'s
+  // `safeRect`) as this field's tap target, so hit-testing is inherently in
+  // sync with what's visible on screen regardless of canvas-edge clamping.
+  void _hotspot(FieldKey? fieldKey, Rect rect) {
     if (fieldKey == null) return;
-    final effectiveRadius = fillAvailableSpace ? radius * 0.46 : radius;
-    _hotspots.add(DrawingHotspot(fieldKey, center, effectiveRadius));
+    _hotspots.add(DrawingHotspot(fieldKey, rect));
   }
 
   bool get _isPipeButt => jointType == JointType.pipeButt;
@@ -625,7 +621,7 @@ class _WeldDrawingPainter extends CustomPainter {
       weldPaint,
       outlinePaint,
     );
-    _drawCombinedProcessTint(
+    final tint = _drawCombinedProcessTint(
       canvas,
       size,
       weld,
@@ -634,6 +630,24 @@ class _WeldDrawingPainter extends CustomPainter {
       rootHeightMm: data.gtawTransitionMm,
       topLabelCenter: p(halfTop * 0.48, thickness * 0.18),
       rootLabelCenter: p(halfGap + 6, thickness - 0.8),
+    );
+    final tintRects = [?tint.topLabel, ?tint.rootLabel];
+    // Root face is drawn before common measurements (unlike its natural
+    // top-to-bottom reading order) so its real rect is available for groove
+    // depth's avoid list - mirrors Half V/Compound V's established pattern
+    // for this same class of collision (see the comment on those blocks).
+    final rootFaceRect = _drawDimensionLine(
+      canvas,
+      guidePaint,
+      start: p(halfGap + 5, rightGrooveY),
+      end: p(halfGap + 5, member.rightBottom),
+      label: '${_formatValue(rootFace)} mm root face',
+      labelSize: size,
+      labelOffset: const Offset(42, 0),
+      extensionStart: p(halfGap, rightGrooveY),
+      extensionEnd: p(halfGap, member.rightBottom),
+      fieldKey: FieldKey.rootFaceMm,
+      avoidRects: tintRects,
     );
     final commonRects = _drawButtCommonMeasurements(
       canvas,
@@ -646,29 +660,13 @@ class _WeldDrawingPainter extends CustomPainter {
       thicknessLabelX: -halfBody - 6,
       rightThicknessLabelX: halfBody + 6,
       rootGapLabelY: math.max(member.leftBottom, member.rightBottom),
+      avoidRects: [...tintRects, rootFaceRect],
     );
     // Every label below avoids every label already placed before it - the
     // angle tag sits on the opposite (left) side from root face/groove
     // depth, so it rarely collides with them, but root face shares the
     // same right-hand lane as thickness/root gap/groove depth and can
     // still collapse into them at narrow canvas widths.
-    final rootFaceRect = _drawDimensionLine(
-      canvas,
-      guidePaint,
-      start: p(halfGap + 5, rightGrooveY),
-      end: p(halfGap + 5, member.rightBottom),
-      label: '${_formatValue(rootFace)} mm root face',
-      labelSize: size,
-      labelOffset: const Offset(42, 0),
-      extensionStart: p(halfGap, rightGrooveY),
-      extensionEnd: p(halfGap, member.rightBottom),
-      fieldKey: FieldKey.rootFaceMm,
-      avoidRects: [
-        commonRects.thickness,
-        commonRects.rootGap,
-        ?commonRects.grooveDepth,
-      ],
-    );
     _drawAngleTag(
       canvas,
       guidePaint,
@@ -684,7 +682,9 @@ class _WeldDrawingPainter extends CustomPainter {
       text: '${_formatValue(bevelAngle)}°',
       fieldKey: FieldKey.bevelAngleDeg,
       avoidRects: [
+        ...tintRects,
         commonRects.thickness,
+        ?commonRects.bThickness,
         commonRects.rootGap,
         ?commonRects.grooveDepth,
         rootFaceRect,
@@ -729,40 +729,82 @@ class _WeldDrawingPainter extends CustomPainter {
       topChipLabel: grooveTypeLabel,
     );
     final p = layout.point;
-    final grooveY = thickness - rootFace;
+    // Half V only bevels its right-hand member - the left member is a flat,
+    // square edge - but Unequal geometry can still give the two members
+    // different thicknesses, so (like Single V/Double V/Square) the actual
+    // per-member vertical extents have to come from [_memberExtents], not a
+    // flat 0..thickness range, or the drawing renders both plates at the
+    // same thickness even when the entered A/B thicknesses differ.
+    final member = _memberExtents(thickness);
+    final rightThickness = member.rightBottom - member.rightTop;
+    final rightRootFace = math.min(
+      rootFace,
+      math.max(rightThickness - 0.8, 0.5),
+    );
+    final rightGrooveY = member.rightBottom - rightRootFace;
     final capRise = math.min(thickness * 0.15, 2.8);
     final rootCrown = math.min(rootFace * 0.35, 1.0);
 
     final leftPlate = Path()
-      ..moveTo(p(-leftBody, 0).dx, p(-leftBody, 0).dy)
-      ..lineTo(p(-halfGap, 0).dx, p(-halfGap, 0).dy)
-      ..lineTo(p(-halfGap, thickness).dx, p(-halfGap, thickness).dy)
-      ..lineTo(p(-leftBody, thickness).dx, p(-leftBody, thickness).dy)
+      ..moveTo(p(-leftBody, member.leftTop).dx, p(-leftBody, member.leftTop).dy)
+      ..lineTo(p(-halfGap, member.leftTop).dx, p(-halfGap, member.leftTop).dy)
+      ..lineTo(
+        p(-halfGap, member.leftBottom).dx,
+        p(-halfGap, member.leftBottom).dy,
+      )
+      ..lineTo(
+        p(-leftBody, member.leftBottom).dx,
+        p(-leftBody, member.leftBottom).dy,
+      )
       ..close();
     final rightPlate = Path()
-      ..moveTo(p(rightBody, 0).dx, p(rightBody, 0).dy)
-      ..lineTo(p(topRight, 0).dx, p(topRight, 0).dy)
-      ..lineTo(p(halfGap, grooveY).dx, p(halfGap, grooveY).dy)
-      ..lineTo(p(halfGap, thickness).dx, p(halfGap, thickness).dy)
-      ..lineTo(p(rightBody, thickness).dx, p(rightBody, thickness).dy)
+      ..moveTo(
+        p(rightBody, member.rightTop).dx,
+        p(rightBody, member.rightTop).dy,
+      )
+      ..lineTo(p(topRight, member.rightTop).dx, p(topRight, member.rightTop).dy)
+      ..lineTo(p(halfGap, rightGrooveY).dx, p(halfGap, rightGrooveY).dy)
+      ..lineTo(
+        p(halfGap, member.rightBottom).dx,
+        p(halfGap, member.rightBottom).dy,
+      )
+      ..lineTo(
+        p(rightBody, member.rightBottom).dx,
+        p(rightBody, member.rightBottom).dy,
+      )
       ..close();
     final weld = Path()
-      ..moveTo(p(-halfGap, 0).dx, p(-halfGap, 0).dy)
+      ..moveTo(p(-halfGap, member.leftTop).dx, p(-halfGap, member.leftTop).dy)
       ..quadraticBezierTo(
-        p((topRight - halfGap) / 2, -capRise).dx,
-        p((topRight - halfGap) / 2, -capRise).dy,
-        p(topRight, 0).dx,
-        p(topRight, 0).dy,
+        p(
+          (topRight - halfGap) / 2,
+          math.min(member.leftTop, member.rightTop) - capRise,
+        ).dx,
+        p(
+          (topRight - halfGap) / 2,
+          math.min(member.leftTop, member.rightTop) - capRise,
+        ).dy,
+        p(topRight, member.rightTop).dx,
+        p(topRight, member.rightTop).dy,
       )
-      ..lineTo(p(halfGap, grooveY).dx, p(halfGap, grooveY).dy)
-      ..lineTo(p(halfGap, thickness).dx, p(halfGap, thickness).dy)
+      ..lineTo(p(halfGap, rightGrooveY).dx, p(halfGap, rightGrooveY).dy)
+      ..lineTo(
+        p(halfGap, member.rightBottom).dx,
+        p(halfGap, member.rightBottom).dy,
+      )
       ..quadraticBezierTo(
-        p(0, thickness + rootCrown).dx,
-        p(0, thickness + rootCrown).dy,
-        p(-halfGap, thickness).dx,
-        p(-halfGap, thickness).dy,
+        p(
+          0,
+          math.max(member.leftBottom, member.rightBottom) + rootCrown,
+        ).dx,
+        p(
+          0,
+          math.max(member.leftBottom, member.rightBottom) + rootCrown,
+        ).dy,
+        p(-halfGap, member.leftBottom).dx,
+        p(-halfGap, member.leftBottom).dy,
       )
-      ..lineTo(p(-halfGap, 0).dx, p(-halfGap, 0).dy)
+      ..lineTo(p(-halfGap, member.leftTop).dx, p(-halfGap, member.leftTop).dy)
       ..close();
 
     _drawJoint(
@@ -775,7 +817,7 @@ class _WeldDrawingPainter extends CustomPainter {
       weldPaint,
       outlinePaint,
     );
-    _drawCombinedProcessTint(
+    final tint = _drawCombinedProcessTint(
       canvas,
       size,
       weld,
@@ -785,6 +827,7 @@ class _WeldDrawingPainter extends CustomPainter {
       topLabelCenter: p(topRight * 0.72, thickness * 0.18),
       rootLabelCenter: p(halfGap + 6, thickness - 0.8),
     );
+    final tintRects = [?tint.topLabel, ?tint.rootLabel];
     // Unlike Single V/Double V (whose single angle tag sits on the opposite
     // side from the groove-depth label), Half V's bevel angle and groove
     // depth both live on the right-hand side, close enough together that
@@ -797,22 +840,30 @@ class _WeldDrawingPainter extends CustomPainter {
       canvas,
       guidePaint,
       size,
-      start: p(halfGap + ((topRight - halfGap) * 0.44), grooveY * 0.34),
-      labelCenter: p(topRight + 7.0, grooveY * 0.20),
+      start: p(
+        halfGap + ((topRight - halfGap) * 0.44),
+        member.rightTop + ((rightGrooveY - member.rightTop) * 0.34),
+      ),
+      labelCenter: p(
+        topRight + 7.0,
+        member.rightTop + ((rightGrooveY - member.rightTop) * 0.20),
+      ),
       text: '${_formatValue(bevelAngle)}°',
       fieldKey: FieldKey.bevelAngleDeg,
+      avoidRects: tintRects,
     );
     final rootFaceRect = _drawDimensionLine(
       canvas,
       guidePaint,
-      start: p(halfGap + 5, grooveY),
-      end: p(halfGap + 5, thickness),
+      start: p(halfGap + 5, rightGrooveY),
+      end: p(halfGap + 5, member.rightBottom),
       label: '${_formatValue(rootFace)} mm root face',
       labelSize: size,
       labelOffset: const Offset(42, 0),
-      extensionStart: p(halfGap, grooveY),
-      extensionEnd: p(halfGap, thickness),
+      extensionStart: p(halfGap, rightGrooveY),
+      extensionEnd: p(halfGap, member.rightBottom),
       fieldKey: FieldKey.rootFaceMm,
+      avoidRects: [...tintRects, angleRect],
     );
     _drawButtCommonMeasurements(
       canvas,
@@ -821,10 +872,10 @@ class _WeldDrawingPainter extends CustomPainter {
       layout: layout,
       thickness: thickness,
       halfGap: halfGap,
-      grooveY: grooveY,
+      grooveY: rightGrooveY - member.rightTop,
       thicknessLabelX: -leftBody - 6,
       rightThicknessLabelX: rightBody + 6,
-      avoidRects: [angleRect, rootFaceRect],
+      avoidRects: [...tintRects, angleRect, rootFaceRect],
     );
     _drawTopChips(canvas, size, grooveTypeLabel);
   }
@@ -946,7 +997,7 @@ class _WeldDrawingPainter extends CustomPainter {
       weldPaint,
       outlinePaint,
     );
-    _drawCombinedProcessTint(
+    final tint = _drawCombinedProcessTint(
       canvas,
       size,
       weld,
@@ -963,6 +1014,7 @@ class _WeldDrawingPainter extends CustomPainter {
       topLabelCenter: p(halfTop * 0.45, thickness * 0.16),
       rootLabelCenter: p(halfGap + 6, thickness - 1.0),
     );
+    final tintRects = [?tint.topLabel, ?tint.rootLabel];
     final commonRects = _drawButtCommonMeasurements(
       canvas,
       size,
@@ -974,6 +1026,7 @@ class _WeldDrawingPainter extends CustomPainter {
       thicknessLabelX: -halfBody - 6,
       rightThicknessLabelX: halfBody + 6,
       rootGapLabelY: (leftMid + rightMid) / 2,
+      avoidRects: tintRects,
     );
     final totalRootFaceRect = _drawDimensionLine(
       canvas,
@@ -987,7 +1040,9 @@ class _WeldDrawingPainter extends CustomPainter {
       extensionEnd: p(halfGap, rightLowerRootY),
       fieldKey: FieldKey.rootFaceMm,
       avoidRects: [
+        ...tintRects,
         commonRects.thickness,
+        ?commonRects.bThickness,
         commonRects.rootGap,
         ?commonRects.grooveDepth,
       ],
@@ -1007,7 +1062,9 @@ class _WeldDrawingPainter extends CustomPainter {
       text: '${_formatValue(bevelAngle)}°',
       fieldKey: FieldKey.bevelAngleDeg,
       avoidRects: [
+        ...tintRects,
         commonRects.thickness,
+        ?commonRects.bThickness,
         commonRects.rootGap,
         ?commonRects.grooveDepth,
         totalRootFaceRect,
@@ -1025,11 +1082,15 @@ class _WeldDrawingPainter extends CustomPainter {
       // instead of further out, widening the gap from the main line's lane
       // without pushing this lane past the canvas edge.
       final beforeHalves = [
+        ...tintRects,
         commonRects.thickness,
         commonRects.rootGap,
         ?commonRects.grooveDepth,
         totalRootFaceRect,
       ];
+      // These represent the same underlying value as the main thickness
+      // label elsewhere in this drawing, just displayed as a half-value -
+      // wire both to the same field so they're tappable too.
       final upperHalfRect = _drawDimensionLine(
         canvas,
         guidePaint,
@@ -1038,6 +1099,7 @@ class _WeldDrawingPainter extends CustomPainter {
         label: '${_formatValue(halfThickness)} mm',
         labelSize: size,
         labelOffset: const Offset(-30, -16),
+        fieldKey: FieldKey.thicknessMm,
         avoidRects: beforeHalves,
       );
       _drawDimensionLine(
@@ -1048,6 +1110,7 @@ class _WeldDrawingPainter extends CustomPainter {
         label: '${_formatValue(halfThickness)} mm',
         labelSize: size,
         labelOffset: const Offset(-30, 16),
+        fieldKey: FieldKey.thicknessMm,
         avoidRects: [...beforeHalves, upperHalfRect],
       );
     }
@@ -1106,46 +1169,80 @@ class _WeldDrawingPainter extends CustomPainter {
       topChipLabel: grooveTypeLabel,
     );
     final p = layout.point;
-    final breakY = upperHeight;
-    final grooveY = thickness - rootFace;
+    // Compound V bevels both sides symmetrically, so (like Single V/Double
+    // V/Square) member extents come from [_memberExtents] rather than a
+    // flat 0..thickness range, or Unequal geometry's different A/B
+    // thicknesses render identically. The bevel's horizontal geometry
+    // (widths/angles) stays shared between both sides - only the vertical
+    // references (top/break/groove/bottom) are per-member.
+    final member = _memberExtents(thickness);
+    final leftThickness = member.leftBottom - member.leftTop;
+    final rightThickness = member.rightBottom - member.rightTop;
+    final leftRootFace = math.min(
+      rootFace,
+      math.max(leftThickness - 1.2, 0.5),
+    );
+    final rightRootFace = math.min(
+      rootFace,
+      math.max(rightThickness - 1.2, 0.5),
+    );
+    final leftGrooveY = member.leftBottom - leftRootFace;
+    final rightGrooveY = member.rightBottom - rightRootFace;
+    final leftBreakY = member.leftTop + upperHeight;
+    final rightBreakY = member.rightTop + upperHeight;
     final capRise = math.min(thickness * 0.14, 3.0);
     final rootCrown = math.min(rootFace * 0.32, 1.1);
 
     final leftPlate = Path()
-      ..moveTo(p(-halfBody, 0).dx, p(-halfBody, 0).dy)
-      ..lineTo(p(-halfTop, 0).dx, p(-halfTop, 0).dy)
-      ..lineTo(p(-halfBreak, breakY).dx, p(-halfBreak, breakY).dy)
-      ..lineTo(p(-halfGap, grooveY).dx, p(-halfGap, grooveY).dy)
-      ..lineTo(p(-halfGap, thickness).dx, p(-halfGap, thickness).dy)
-      ..lineTo(p(-halfBody, thickness).dx, p(-halfBody, thickness).dy)
+      ..moveTo(p(-halfBody, member.leftTop).dx, p(-halfBody, member.leftTop).dy)
+      ..lineTo(p(-halfTop, member.leftTop).dx, p(-halfTop, member.leftTop).dy)
+      ..lineTo(p(-halfBreak, leftBreakY).dx, p(-halfBreak, leftBreakY).dy)
+      ..lineTo(p(-halfGap, leftGrooveY).dx, p(-halfGap, leftGrooveY).dy)
+      ..lineTo(
+        p(-halfGap, member.leftBottom).dx,
+        p(-halfGap, member.leftBottom).dy,
+      )
+      ..lineTo(
+        p(-halfBody, member.leftBottom).dx,
+        p(-halfBody, member.leftBottom).dy,
+      )
       ..close();
     final rightPlate = Path()
-      ..moveTo(p(halfBody, 0).dx, p(halfBody, 0).dy)
-      ..lineTo(p(halfTop, 0).dx, p(halfTop, 0).dy)
-      ..lineTo(p(halfBreak, breakY).dx, p(halfBreak, breakY).dy)
-      ..lineTo(p(halfGap, grooveY).dx, p(halfGap, grooveY).dy)
-      ..lineTo(p(halfGap, thickness).dx, p(halfGap, thickness).dy)
-      ..lineTo(p(halfBody, thickness).dx, p(halfBody, thickness).dy)
+      ..moveTo(p(halfBody, member.rightTop).dx, p(halfBody, member.rightTop).dy)
+      ..lineTo(p(halfTop, member.rightTop).dx, p(halfTop, member.rightTop).dy)
+      ..lineTo(p(halfBreak, rightBreakY).dx, p(halfBreak, rightBreakY).dy)
+      ..lineTo(p(halfGap, rightGrooveY).dx, p(halfGap, rightGrooveY).dy)
+      ..lineTo(
+        p(halfGap, member.rightBottom).dx,
+        p(halfGap, member.rightBottom).dy,
+      )
+      ..lineTo(
+        p(halfBody, member.rightBottom).dx,
+        p(halfBody, member.rightBottom).dy,
+      )
       ..close();
     final weld = Path()
-      ..moveTo(p(-halfTop, 0).dx, p(-halfTop, 0).dy)
+      ..moveTo(p(-halfTop, member.leftTop).dx, p(-halfTop, member.leftTop).dy)
       ..quadraticBezierTo(
-        p(0, -capRise).dx,
-        p(0, -capRise).dy,
-        p(halfTop, 0).dx,
-        p(halfTop, 0).dy,
+        p(0, math.min(member.leftTop, member.rightTop) - capRise).dx,
+        p(0, math.min(member.leftTop, member.rightTop) - capRise).dy,
+        p(halfTop, member.rightTop).dx,
+        p(halfTop, member.rightTop).dy,
       )
-      ..lineTo(p(halfBreak, breakY).dx, p(halfBreak, breakY).dy)
-      ..lineTo(p(halfGap, grooveY).dx, p(halfGap, grooveY).dy)
-      ..lineTo(p(halfGap, thickness).dx, p(halfGap, thickness).dy)
+      ..lineTo(p(halfBreak, rightBreakY).dx, p(halfBreak, rightBreakY).dy)
+      ..lineTo(p(halfGap, rightGrooveY).dx, p(halfGap, rightGrooveY).dy)
+      ..lineTo(
+        p(halfGap, member.rightBottom).dx,
+        p(halfGap, member.rightBottom).dy,
+      )
       ..quadraticBezierTo(
-        p(0, thickness + rootCrown).dx,
-        p(0, thickness + rootCrown).dy,
-        p(-halfGap, thickness).dx,
-        p(-halfGap, thickness).dy,
+        p(0, math.max(member.leftBottom, member.rightBottom) + rootCrown).dx,
+        p(0, math.max(member.leftBottom, member.rightBottom) + rootCrown).dy,
+        p(-halfGap, member.leftBottom).dx,
+        p(-halfGap, member.leftBottom).dy,
       )
-      ..lineTo(p(-halfGap, grooveY).dx, p(-halfGap, grooveY).dy)
-      ..lineTo(p(-halfBreak, breakY).dx, p(-halfBreak, breakY).dy)
+      ..lineTo(p(-halfGap, leftGrooveY).dx, p(-halfGap, leftGrooveY).dy)
+      ..lineTo(p(-halfBreak, leftBreakY).dx, p(-halfBreak, leftBreakY).dy)
       ..close();
 
     _drawJoint(
@@ -1158,7 +1255,7 @@ class _WeldDrawingPainter extends CustomPainter {
       weldPaint,
       outlinePaint,
     );
-    _drawCombinedProcessTint(
+    final tint = _drawCombinedProcessTint(
       canvas,
       size,
       weld,
@@ -1168,6 +1265,7 @@ class _WeldDrawingPainter extends CustomPainter {
       topLabelCenter: p(halfTop * 0.48, thickness * 0.16),
       rootLabelCenter: p(halfGap + 6, thickness - 0.8),
     );
+    final tintRects = [?tint.topLabel, ?tint.rootLabel];
     // Compound V carries six callouts (thickness, root gap, groove depth,
     // break height, root face, alpha, beta) plus the type/pipe chips - the
     // busiest drawing in the app. Each label starts in its own mm-space
@@ -1193,7 +1291,7 @@ class _WeldDrawingPainter extends CustomPainter {
       size,
       start: p(
         halfGap + ((halfBreak - halfGap) * 0.52),
-        grooveY - ((grooveY - breakY) * 0.42),
+        rightGrooveY - ((rightGrooveY - rightBreakY) * 0.42),
       ),
       // `halfBreak + 6`, not a fixed offset from the centerline - the bevel
       // is `halfBreak` wide at this height, so the label needs to clear
@@ -1202,9 +1300,10 @@ class _WeldDrawingPainter extends CustomPainter {
       // narrower bevel. A fixed `halfGap + 6` sat visibly on top of the
       // weld metal once the compact canvas's scale was increased to make
       // the drawing itself bigger (see TEAM_LEARNINGS.md).
-      labelCenter: p(halfBreak + 6, breakY * 0.35),
+      labelCenter: p(halfBreak + 6, rightBreakY * 0.35),
       text: 'α ${_formatValue(primaryAngle)}°',
       fieldKey: FieldKey.bevelAngleDeg,
+      avoidRects: tintRects,
     );
     // Root face: bottom, inner-right lane, close to the joint. Drawn before
     // groove depth (unlike its natural top-to-bottom reading order) so its
@@ -1212,14 +1311,15 @@ class _WeldDrawingPainter extends CustomPainter {
     final rootFaceRect = _drawDimensionLine(
       canvas,
       guidePaint,
-      start: p(halfGap + 5, grooveY),
-      end: p(halfGap + 5, thickness),
+      start: p(halfGap + 5, rightGrooveY),
+      end: p(halfGap + 5, member.rightBottom),
       label: '${_formatValue(rootFace)} mm root face',
       labelSize: size,
       labelOffset: const Offset(20, 6),
-      extensionStart: p(halfGap, grooveY),
-      extensionEnd: p(halfGap, thickness),
+      extensionStart: p(halfGap, rightGrooveY),
+      extensionEnd: p(halfGap, member.rightBottom),
       fieldKey: FieldKey.rootFaceMm,
+      avoidRects: [...tintRects, alphaRect],
     );
     final commonRects = _drawButtCommonMeasurements(
       canvas,
@@ -1228,10 +1328,10 @@ class _WeldDrawingPainter extends CustomPainter {
       layout: layout,
       thickness: thickness,
       halfGap: halfGap,
-      grooveY: grooveY,
+      grooveY: rightGrooveY - member.rightTop,
       thicknessLabelX: -halfBody - 6,
       rightThicknessLabelX: halfBody + 6,
-      avoidRects: [alphaRect, rootFaceRect],
+      avoidRects: [...tintRects, alphaRect, rootFaceRect],
     );
     // Break height "h": inner-left lane, kept close to the joint. Every
     // label in this drawing avoids every other label already placed before
@@ -1243,18 +1343,20 @@ class _WeldDrawingPainter extends CustomPainter {
     final hRect = _drawDimensionLine(
       canvas,
       guidePaint,
-      start: p(-halfGap - 12, breakY),
-      end: p(-halfGap - 12, grooveY),
+      start: p(-halfGap - 12, leftBreakY),
+      end: p(-halfGap - 12, leftGrooveY),
       label: 'h ${_formatValue(breakHeight)} mm',
       labelSize: size,
       labelOffset: const Offset(-14, 16),
-      extensionStart: p(-halfBreak, breakY),
-      extensionEnd: p(-halfGap, grooveY),
+      extensionStart: p(-halfBreak, leftBreakY),
+      extensionEnd: p(-halfGap, leftGrooveY),
       fieldKey: FieldKey.breakHeightMm,
       avoidRects: [
+        ...tintRects,
         alphaRect,
         rootFaceRect,
         commonRects.thickness,
+        ?commonRects.bThickness,
         commonRects.rootGap,
         ?commonRects.grooveDepth,
       ],
@@ -1265,20 +1367,25 @@ class _WeldDrawingPainter extends CustomPainter {
       canvas,
       guidePaint,
       size,
-      start: p(halfBreak + ((halfTop - halfBreak) * 0.48), breakY * 0.48),
+      start: p(
+        halfBreak + ((halfTop - halfBreak) * 0.48),
+        rightBreakY * 0.48,
+      ),
       // `halfBreak + 6`, same reasoning as alpha above - this label's
       // natural height sits between the root's `halfGap` width and the
       // break's wider `halfBreak` width, so anchoring off the narrower
       // `halfGap` (as this did before) risks sitting on the wider part of
       // the bevel; `halfBreak` is the safe (wider) bound to clear at
       // either height.
-      labelCenter: p(halfBreak + 6, (breakY + grooveY) / 2),
+      labelCenter: p(halfBreak + 6, (rightBreakY + rightGrooveY) / 2),
       text: 'β ${_formatValue(secondaryAngle)}°',
       fieldKey: FieldKey.secondaryBevelAngleDeg,
       avoidRects: [
+        ...tintRects,
         alphaRect,
         rootFaceRect,
         commonRects.thickness,
+        ?commonRects.bThickness,
         commonRects.rootGap,
         ?commonRects.grooveDepth,
         hRect,
@@ -1364,7 +1471,7 @@ class _WeldDrawingPainter extends CustomPainter {
       weldPaint,
       outlinePaint,
     );
-    _drawCombinedProcessTint(
+    final tint = _drawCombinedProcessTint(
       canvas,
       size,
       weld,
@@ -1385,6 +1492,7 @@ class _WeldDrawingPainter extends CustomPainter {
       thicknessLabelX: -halfBody - 6,
       rightThicknessLabelX: halfBody + 6,
       rootGapLabelY: math.max(member.leftBottom, member.rightBottom),
+      avoidRects: [?tint.topLabel, ?tint.rootLabel],
     );
     _drawTopChips(canvas, size, grooveTypeLabel);
   }
@@ -1545,7 +1653,7 @@ class _WeldDrawingPainter extends CustomPainter {
     canvas.drawPath(weld, outlinePaint);
   }
 
-  void _drawCombinedProcessTint(
+  ({Rect? topLabel, Rect? rootLabel}) _drawCombinedProcessTint(
     Canvas canvas,
     Size size,
     Path weld, {
@@ -1556,11 +1664,16 @@ class _WeldDrawingPainter extends CustomPainter {
     Path? extraRootZone,
     required Offset topLabelCenter,
     required Offset rootLabelCenter,
+    List<Rect> avoidRects = const [],
   }) {
-    if (!_isCombinedProcess || rootHeightMm == null) return;
+    if (!_isCombinedProcess || rootHeightMm == null) {
+      return (topLabel: null, rootLabel: null);
+    }
 
     final boundedRoot = rootHeightMm.clamp(0.0, totalHeightMm).toDouble();
-    if (boundedRoot <= 0 || boundedRoot >= totalHeightMm) return;
+    if (boundedRoot <= 0 || boundedRoot >= totalHeightMm) {
+      return (topLabel: null, rootLabel: null);
+    }
 
     final topOfRoot =
         layout.topY + ((totalHeightMm - boundedRoot) * layout.scale);
@@ -1588,24 +1701,31 @@ class _WeldDrawingPainter extends CustomPainter {
     }
     canvas.restore();
 
-    _drawAnnotationLabel(
+    final topLabelRect = _drawAnnotationLabel(
       canvas,
       size,
       smawFillCapLabel,
       topLabelCenter,
       fontSize: 10,
+      avoidRects: avoidRects,
     );
-    _drawAnnotationLabel(
+    // Both labels mark the same user-editable boundary (the fill/cap zone
+    // is simply the complement of the GTAW root zone), so both jump to the
+    // same field.
+    _hotspot(FieldKey.gtawTransitionMm, topLabelRect);
+    final rootLabelRect = _drawAnnotationLabel(
       canvas,
       size,
       gtawRootLabel,
       rootLabelCenter,
       fontSize: 10,
+      avoidRects: [...avoidRects, topLabelRect],
     );
-    _hotspot(FieldKey.gtawTransitionMm, rootLabelCenter, radius: 22);
+    _hotspot(FieldKey.gtawTransitionMm, rootLabelRect);
+    return (topLabel: topLabelRect, rootLabel: rootLabelRect);
   }
 
-  ({Rect thickness, Rect rootGap, Rect? grooveDepth})
+  ({Rect thickness, Rect? bThickness, Rect rootGap, Rect? grooveDepth})
   _drawButtCommonMeasurements(
     Canvas canvas,
     Size size,
@@ -1638,8 +1758,9 @@ class _WeldDrawingPainter extends CustomPainter {
       fieldKey: unequal ? FieldKey.thicknessAMm : FieldKey.thicknessMm,
       avoidRects: avoidRects,
     );
+    Rect? bThicknessRect;
     if (unequal && rightThicknessLabelX != null) {
-      _drawDimensionLine(
+      bThicknessRect = _drawDimensionLine(
         canvas,
         guidePaint,
         start: p(rightThicknessLabelX, memberExtents.rightTop),
@@ -1651,6 +1772,7 @@ class _WeldDrawingPainter extends CustomPainter {
         extensionStart: p(halfGap, memberExtents.rightTop),
         extensionEnd: p(halfGap, memberExtents.rightBottom),
         fieldKey: FieldKey.thicknessBMm,
+        avoidRects: [...avoidRects, thicknessRect],
       );
     }
     final rootGapRect = _drawDimensionLine(
@@ -1664,19 +1786,9 @@ class _WeldDrawingPainter extends CustomPainter {
       extensionStart: p(-halfGap, rootGapLabelY ?? thickness),
       extensionEnd: p(halfGap, rootGapLabelY ?? thickness),
       fieldKey: FieldKey.rootGapMm,
-      avoidRects: [...avoidRects, thicknessRect],
+      avoidRects: [...avoidRects, thicknessRect, ?bThicknessRect],
     );
     if (grooveY > 0) {
-      // In unequal-geometry mode the "B ... mm" thickness label (right
-      // lane, below) shares almost the same horizontal reach as this one
-      // and sits at a nearly identical vertical center (thickness/2 vs.
-      // grooveY/2), so a horizontal-only offset isn't enough to keep them
-      // apart once the canvas is small enough to shrink that gap below
-      // both bubbles' widths. Nudge this one up so it keeps its own lane
-      // near the top of the member regardless of canvas size.
-      final grooveDepthOffset = unequal
-          ? const Offset(46, -22)
-          : const Offset(46, 0);
       final grooveDepthRect = _drawDimensionLine(
         canvas,
         guidePaint,
@@ -1684,23 +1796,38 @@ class _WeldDrawingPainter extends CustomPainter {
         end: p(halfGap + 20, grooveY),
         label: '${_formatValue(grooveY)} mm groove depth',
         labelSize: size,
-        labelOffset: grooveDepthOffset,
+        labelOffset: const Offset(46, 0),
         extensionStart: p(halfGap, 0),
         extensionEnd: p(halfGap, grooveY),
         fieldKey: FieldKey.rootFaceMm,
-        // Thickness and root gap are drawn just above, in this same
-        // function - avoid both too, not just the caller-supplied rects, or
-        // a push clear of those can still land groove depth on top of one
-        // of them.
-        avoidRects: [...avoidRects, thicknessRect, rootGapRect],
+        // Thickness, B-thickness (unequal geometry) and root gap are drawn
+        // just above, in this same function - avoid all of them too, not
+        // just the caller-supplied rects, or a push clear of those can
+        // still land groove depth on top of one of them. Real avoidance
+        // (rather than the fixed vertical nudge this used to apply for
+        // unequal geometry) keeps this correct regardless of canvas size or
+        // locale string length - see Finding 3/4 in the reviewer audit this
+        // fixed.
+        avoidRects: [
+          ...avoidRects,
+          thicknessRect,
+          ?bThicknessRect,
+          rootGapRect,
+        ],
       );
       return (
         thickness: thicknessRect,
+        bThickness: bThicknessRect,
         rootGap: rootGapRect,
         grooveDepth: grooveDepthRect,
       );
     }
-    return (thickness: thicknessRect, rootGap: rootGapRect, grooveDepth: null);
+    return (
+      thickness: thicknessRect,
+      bThickness: bThicknessRect,
+      rootGap: rootGapRect,
+      grooveDepth: null,
+    );
   }
 
   _MemberExtents _memberExtents(double governingThickness) {
@@ -1898,13 +2025,14 @@ class _WeldDrawingPainter extends CustomPainter {
 
   void _drawPipeChip(Canvas canvas, Size size, {Offset? center}) {
     if (!_isPipeButt || data.pipeOdMm == null || data.pipeOdMm! <= 0) return;
-    _drawAnnotationLabel(
+    final rect = _drawAnnotationLabel(
       canvas,
       size,
       'OD ${_formatValue(data.pipeOdMm!)} mm',
       center ?? Offset(size.width - 82, 28),
       fontSize: 10.5,
     );
+    _hotspot(FieldKey.pipeOdMm, rect);
   }
 
   void _drawWeldHatch(Canvas canvas, Path path, Size size) {
@@ -1987,8 +2115,9 @@ class _WeldDrawingPainter extends CustomPainter {
       fontSize: fontSize,
       technicalDimension: true,
     );
-    _hotspot(fieldKey, labelCenter);
-    return _measurementLabelRect(labelSize, label, labelCenter, fontSize);
+    final rect = _measurementLabelRect(labelSize, label, labelCenter, fontSize);
+    _hotspot(fieldKey, rect);
+    return rect;
   }
 
   Rect _drawLeader(
@@ -2090,8 +2219,9 @@ class _WeldDrawingPainter extends CustomPainter {
       fontSize: fontSize,
       technicalDimension: true,
     );
-    _hotspot(fieldKey, resolvedCenter);
-    return _measurementLabelRect(size, text, resolvedCenter, fontSize);
+    final rect = _measurementLabelRect(size, text, resolvedCenter, fontSize);
+    _hotspot(fieldKey, rect);
+    return rect;
   }
 
   // The true, unclamped pill size/position for a `technicalDimension: true`
@@ -2116,6 +2246,7 @@ class _WeldDrawingPainter extends CustomPainter {
       text: TextSpan(
         text: text,
         style: TextStyle(
+          fontFamily: 'Roboto',
           fontSize: _annotationFontSize(size, fontSize),
           fontWeight: _isTechnical ? FontWeight.w500 : FontWeight.w600,
           letterSpacing: _isTechnical ? 0.04 : 0.06,
@@ -2231,7 +2362,7 @@ class _WeldDrawingPainter extends CustomPainter {
     return center;
   }
 
-  void _drawAnnotationLabel(
+  Rect _drawAnnotationLabel(
     Canvas canvas,
     Size size,
     String text,
@@ -2239,31 +2370,41 @@ class _WeldDrawingPainter extends CustomPainter {
     double fontSize = 12,
     FontWeight weight = FontWeight.w600,
     bool technicalDimension = false,
+    List<Rect> avoidRects = const [],
   }) {
-    if (_isTechnical) {
-      _drawTechnicalLabel(
-        canvas,
+    var resolvedCenter = center;
+    if (avoidRects.isNotEmpty) {
+      resolvedCenter = _clearLabelPosition(
         size,
         text,
         center,
+        fontSize,
+        avoidRects,
+      );
+    }
+    if (_isTechnical) {
+      return _drawTechnicalLabel(
+        canvas,
+        size,
+        text,
+        resolvedCenter,
         fontSize: fontSize,
         weight: technicalDimension ? FontWeight.w500 : weight,
         square: technicalDimension,
       );
-      return;
     }
 
-    _drawSoftLabel(
+    return _drawSoftLabel(
       canvas,
       size,
       text,
-      center,
+      resolvedCenter,
       fontSize: fontSize,
       weight: weight,
     );
   }
 
-  void _drawTechnicalLabel(
+  Rect _drawTechnicalLabel(
     Canvas canvas,
     Size size,
     String text,
@@ -2333,9 +2474,10 @@ class _WeldDrawingPainter extends CustomPainter {
         safeRect.top + ((safeRect.height - painter.height) / 2),
       ),
     );
+    return safeRect;
   }
 
-  void _drawSoftLabel(
+  Rect _drawSoftLabel(
     Canvas canvas,
     Size size,
     String text,
@@ -2390,6 +2532,7 @@ class _WeldDrawingPainter extends CustomPainter {
         safeRect.top + ((safeRect.height - painter.height) / 2),
       ),
     );
+    return safeRect;
   }
 
   void _drawArrowHead(Canvas canvas, Paint paint, Offset tip, Offset tail) {
@@ -2450,4 +2593,46 @@ class _WeldDrawingPainter extends CustomPainter {
       oldDelegate.jointType != jointType ||
       oldDelegate.drawingMode != drawingMode ||
       oldDelegate.data != data;
+}
+
+/// Test-only ground truth for [DrawingHotspot]s: builds the same private
+/// painter [WeldDrawingPreview] uses internally and returns exactly the
+/// hotspot list it records for a single paint pass, so tests can assert tap
+/// correctness (which [FieldKey] a tap at a given rect resolves to) against
+/// real production geometry instead of re-deriving label positions by hand.
+/// [canvas] only needs to support whatever draw calls the caller cares
+/// about recording (e.g. a label-pill-recording mock) - the painter doesn't
+/// require real rendering to compute correct hotspot rects.
+@visibleForTesting
+List<DrawingHotspot> debugWeldDrawingHotspots({
+  required GrooveType grooveType,
+  required JointType jointType,
+  required DrawingMode drawingMode,
+  required WeldDrawingData data,
+  required String jointTypeLabel,
+  required String grooveTypeLabel,
+  required String filletWeldFaceLabel,
+  required String tJointLabel,
+  required String smawFillCapLabel,
+  required String gtawRootLabel,
+  required Canvas canvas,
+  required Size size,
+  bool fillAvailableSpace = true,
+}) {
+  var hotspots = const <DrawingHotspot>[];
+  _WeldDrawingPainter(
+    grooveType: grooveType,
+    jointType: jointType,
+    drawingMode: drawingMode,
+    data: data,
+    jointTypeLabel: jointTypeLabel,
+    grooveTypeLabel: grooveTypeLabel,
+    filletWeldFaceLabel: filletWeldFaceLabel,
+    tJointLabel: tJointLabel,
+    smawFillCapLabel: smawFillCapLabel,
+    gtawRootLabel: gtawRootLabel,
+    onHotspots: (result) => hotspots = result,
+    fillAvailableSpace: fillAvailableSpace,
+  ).paint(canvas, size);
+  return hotspots;
 }

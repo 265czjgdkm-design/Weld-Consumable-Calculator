@@ -248,6 +248,48 @@ void main() {
   });
 
   testWidgets(
+    'desktop layout: confirming a cross-process starter template switch '
+    'actually changes the process and applies the template data (coverage '
+    'relocated here from the mobile wizard, which now filters this '
+    'cross-process path away entirely -- see coder task Fix 1)',
+    (tester) async {
+      final originalPhysicalSize = tester.view.physicalSize;
+      final originalDevicePixelRatio = tester.view.devicePixelRatio;
+      tester.view.physicalSize = const Size(1400, 1600);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(() {
+        tester.view.physicalSize = originalPhysicalSize;
+        tester.view.devicePixelRatio = originalDevicePixelRatio;
+      });
+
+      await _pumpPastIntro(tester);
+
+      await tester.ensureVisible(find.text('Input Preset'));
+      await tester.tap(
+        find.byWidgetPredicate(
+          (widget) => widget is DropdownButtonFormField<InputPreset>,
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('CS Pipe Double V / GTAW + SMAW').last);
+      await tester.pumpAndSettle();
+
+      // Default process is GTAW; this preset uses GTAW + SMAW, so switching
+      // processes needs confirming first.
+      expect(find.text('Switch Welding Process?'), findsOneWidget);
+      await tester.tap(find.text('Switch to GTAW + SMAW'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Switch Welding Process?'), findsNothing);
+      expect(find.text('GTAW + SMAW'), findsWidgets);
+      expect(find.text('Pipe OD (mm)'), findsOneWidget);
+      expect(find.text('Root Face per Side (mm)'), findsOneWidget);
+      expect(find.text('GTAW Transition Depth (mm)'), findsOneWidget);
+    },
+  );
+
+  testWidgets(
     'starter preset with a different process asks for confirmation before '
     'switching (desktop layout -- the mobile wizard filters the dropdown '
     "to Step 1's process instead, so this cross-process path can only "
@@ -296,6 +338,9 @@ void main() {
         find.text('Manual setup with no preset assumptions applied.'),
         findsOneWidget,
       );
+      // The process itself must genuinely be unchanged too, not just the
+      // preset -- check the desktop process dropdown still shows GMAW.
+      expect(find.text('GMAW'), findsOneWidget);
     },
   );
 
@@ -318,6 +363,116 @@ void main() {
 
       expect(find.text('Switch Welding Process?'), findsNothing);
       expect(find.text('Pipe OD (mm)'), findsOneWidget);
+    },
+  );
+
+  testWidgets(
+    'a starter template applied via desktop, then made stale by desktop\'s '
+    'own process dropdown (which does not reset it), does not crash the '
+    "mobile wizard's Step 2 once the viewport shrinks (reviewer finding 1 "
+    'repro: the stale preset must be clamped to Custom at render time)',
+    (tester) async {
+      final originalPhysicalSize = tester.view.physicalSize;
+      final originalDevicePixelRatio = tester.view.devicePixelRatio;
+      tester.view.physicalSize = const Size(1400, 1600);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(() {
+        tester.view.physicalSize = originalPhysicalSize;
+        tester.view.devicePixelRatio = originalDevicePixelRatio;
+      });
+
+      await _pumpPastIntro(tester);
+
+      // Apply a cross-process template (default process is GTAW, this one
+      // is GMAW) via the desktop dropdown/dialog.
+      await tester.ensureVisible(find.text('Input Preset'));
+      await tester.tap(
+        find.byWidgetPredicate(
+          (widget) => widget is DropdownButtonFormField<InputPreset>,
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('CS Plate Single V / GMAW').last);
+      await tester.pumpAndSettle();
+
+      expect(find.text('Switch Welding Process?'), findsOneWidget);
+      await tester.tap(find.text('Switch to GMAW'));
+      await tester.pumpAndSettle();
+
+      // Still on desktop, change process again via desktop's OWN process
+      // dropdown -- this does not reset the now-stale applied template.
+      await tester.ensureVisible(find.text('Welding Process'));
+      await tester.tap(
+        find.byWidgetPredicate(
+          (widget) => widget is DropdownButtonFormField<WeldingProcess>,
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('SMAW').last);
+      await tester.pumpAndSettle();
+
+      // Desktop UX must be genuinely unaffected: the fix lives in Step 2's
+      // render-time clamp, not in this dropdown's onChanged, so the
+      // (now-stale) template label stays visible here rather than silently
+      // resetting to Custom.
+      expect(find.text('CS Plate Single V / GMAW'), findsOneWidget);
+
+      // Shrink below the desktop breakpoint so the mobile wizard renders.
+      tester.view.physicalSize = const Size(390, 844);
+      await tester.pumpAndSettle();
+
+      expect(find.text('Step 1 of 4'), findsOneWidget);
+      await _continueWizardStep(tester); // process -> dimensions
+
+      // Must build cleanly (no assertion failure / red error widget) and
+      // fall back to Custom rather than the stale cross-process template.
+      expect(tester.takeException(), isNull);
+      expect(find.text('Step 2 of 4'), findsOneWidget);
+      expect(
+        find.text('Manual setup with no preset assumptions applied.'),
+        findsOneWidget,
+      );
+    },
+  );
+
+  testWidgets(
+    "a starter template applied on the mobile wizard's Step 2, followed by "
+    "going back to Step 1 and switching process, does not crash Step 2 on "
+    're-entry (reviewer finding 3: the Step 1 process-picker reset at '
+    'calculator_page.dart:377-382)',
+    (tester) async {
+      await _pumpPastIntro(tester);
+      await _continueWizardStep(tester); // process -> dimensions (default GTAW)
+
+      await tester.ensureVisible(find.text('Input Preset'));
+      await tester.tap(
+        find.byWidgetPredicate(
+          (widget) => widget is DropdownButtonFormField<InputPreset>,
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('SS Pipe Single V / GTAW').last);
+      await tester.pumpAndSettle();
+
+      expect(find.text('Switch Welding Process?'), findsNothing);
+      expect(find.text('Pipe OD (mm)'), findsOneWidget);
+
+      await tester.ensureVisible(find.text('Back'));
+      await tester.tap(find.text('Back')); // dimensions -> process
+      await tester.pumpAndSettle();
+
+      expect(find.text('Step 1 of 4'), findsOneWidget);
+      await tester.tap(find.text('GMAW'));
+      await tester.pumpAndSettle();
+
+      await _continueWizardStep(tester); // process -> dimensions
+
+      expect(tester.takeException(), isNull);
+      expect(find.text('Step 2 of 4'), findsOneWidget);
+      expect(
+        find.text('Manual setup with no preset assumptions applied.'),
+        findsOneWidget,
+      );
     },
   );
 

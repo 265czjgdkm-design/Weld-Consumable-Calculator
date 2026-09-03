@@ -65,6 +65,17 @@ void main() {
       expect(find.text('CS Plate Single V / GMAW'), findsNothing);
       expect(find.text('CS Plate Double V / SMAW'), findsNothing);
       expect(find.text('CS Fillet / FCAW'), findsNothing);
+      // A "process CONTAINS gtaw" filter (instead of "process EQUALS
+      // gtaw") would incorrectly let these combined-process templates
+      // through too, since they're partly GTAW.
+      expect(find.text('CS Pipe Single V / GTAW + SMAW'), findsNothing);
+      expect(find.text('CS Pipe Double V / GTAW + SMAW'), findsNothing);
+      // Exact count: only Custom + the one pure-GTAW template should be
+      // offered, nothing else.
+      expect(
+        find.byWidgetPredicate((widget) => widget is DropdownMenuItem<InputPreset>),
+        findsNWidgets(2),
+      );
     },
   );
 
