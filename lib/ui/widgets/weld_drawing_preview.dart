@@ -646,7 +646,18 @@ class _WeldDrawingPainter extends CustomPainter {
       totalHeightMm: thickness,
       rootHeightMm: data.gtawTransitionMm,
       topLabelCenter: p(halfTop * 0.48, thickness * 0.18),
-      rootLabelCenter: p(halfGap + 6, thickness - 0.8),
+      // The root-face dimension line's own stroke sits at `halfGap + 5` and
+      // the groove-depth line's stroke sits at `halfGap + 20` (see the
+      // `_drawDimensionLine` calls below/in `_drawButtCommonMeasurements`) -
+      // both close enough to this label's old `halfGap + 6` that the line
+      // ran straight through the label text instead of past it (see
+      // TEAM_LEARNINGS.md). `halfGap + 16` clears the root-face line by a
+      // real margin without reaching the groove-depth line's own lane;
+      // `rightGrooveY + 2.6` (rather than a fixed offset from `thickness`)
+      // keeps the label below the groove-depth line's horizontal stub
+      // regardless of how large `rootFace` is, since that stub always sits
+      // exactly at `rightGrooveY`, not at a fixed distance from `thickness`.
+      rootLabelCenter: p(halfGap + 16, rightGrooveY + 2.6),
     );
     final tintRects = [?tint.topLabel, ?tint.rootLabel];
     // Root face is drawn before common measurements (unlike its natural
@@ -856,7 +867,18 @@ class _WeldDrawingPainter extends CustomPainter {
       totalHeightMm: thickness,
       rootHeightMm: data.gtawTransitionMm,
       topLabelCenter: p(topRight * 0.72, thickness * 0.18),
-      rootLabelCenter: p(halfGap + 6, thickness - 0.8),
+      // The root-face dimension line's own stroke sits at `halfGap + 5` and
+      // the groove-depth line's stroke sits at `halfGap + 20` (see the
+      // `_drawDimensionLine` calls below/in `_drawButtCommonMeasurements`) -
+      // both close enough to this label's old `halfGap + 6` that the line
+      // ran straight through the label text instead of past it (see
+      // TEAM_LEARNINGS.md). `halfGap + 16` clears the root-face line by a
+      // real margin without reaching the groove-depth line's own lane;
+      // `rightGrooveY + 2.6` (rather than a fixed offset from `thickness`)
+      // keeps the label below the groove-depth line's horizontal stub
+      // regardless of how large `rootFace` is, since that stub always sits
+      // exactly at `rightGrooveY`, not at a fixed distance from `thickness`.
+      rootLabelCenter: p(halfGap + 16, rightGrooveY + 2.6),
     );
     final tintRects = [?tint.topLabel, ?tint.rootLabel];
     // Unlike Single V/Double V (whose single angle tag sits on the opposite
@@ -1094,7 +1116,10 @@ class _WeldDrawingPainter extends CustomPainter {
         ..lineTo(p(-halfGap, leftLowerRootY).dx, p(-halfGap, leftLowerRootY).dy)
         ..close(),
       topLabelCenter: p(halfTop * 0.45, thickness * 0.16),
-      rootLabelCenter: p(halfGap + 6, thickness - 1.0),
+      // Same `halfGap + 5`-vs-label collision as Single/Half/Compound V
+      // above (Double V's line here is `totalRootFaceRect`, drawn below),
+      // moved clear the same way.
+      rootLabelCenter: p(halfGap + 16, thickness - 1.0),
     );
     final tintRects = [?tint.topLabel, ?tint.rootLabel];
     final commonRects = _drawButtCommonMeasurements(
@@ -1422,7 +1447,18 @@ class _WeldDrawingPainter extends CustomPainter {
       totalHeightMm: thickness,
       rootHeightMm: data.gtawTransitionMm,
       topLabelCenter: p(halfTop * 0.48, thickness * 0.16),
-      rootLabelCenter: p(halfGap + 6, thickness - 0.8),
+      // The root-face dimension line's own stroke sits at `halfGap + 5` and
+      // the groove-depth line's stroke sits at `halfGap + 20` (see the
+      // `_drawDimensionLine` calls below/in `_drawButtCommonMeasurements`) -
+      // both close enough to this label's old `halfGap + 6` that the line
+      // ran straight through the label text instead of past it (see
+      // TEAM_LEARNINGS.md). `halfGap + 16` clears the root-face line by a
+      // real margin without reaching the groove-depth line's own lane;
+      // `rightGrooveY + 2.6` (rather than a fixed offset from `thickness`)
+      // keeps the label below the groove-depth line's horizontal stub
+      // regardless of how large `rootFace` is, since that stub always sits
+      // exactly at `rightGrooveY`, not at a fixed distance from `thickness`.
+      rootLabelCenter: p(halfGap + 16, rightGrooveY + 2.6),
     );
     final tintRects = [?tint.topLabel, ?tint.rootLabel];
     // Compound V carries six callouts (thickness, root gap, groove depth,
@@ -1651,7 +1687,12 @@ class _WeldDrawingPainter extends CustomPainter {
       totalHeightMm: thickness,
       rootHeightMm: data.gtawTransitionMm,
       topLabelCenter: p(halfGap + 8, thickness * 0.18),
-      rootLabelCenter: p(halfGap + 5.5, thickness - 0.8),
+      // Square has no bevel/root-face dimension line, but the root-gap
+      // extension stub (drawn in `_drawButtCommonMeasurements` below) sits
+      // right at `halfGap`, close enough to this label's old
+      // `halfGap + 5.5` that it ran through the label the same way as the
+      // other groove types' root-face line.
+      rootLabelCenter: p(halfGap + 16, thickness + 0.6),
     );
     final commonRects = _drawButtCommonMeasurements(
       canvas,

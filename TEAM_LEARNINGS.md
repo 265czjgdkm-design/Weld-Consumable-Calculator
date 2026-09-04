@@ -576,6 +576,51 @@ label-vs-label overlap and label-vs-own-line, and the regression test
 can't catch it either (same blind spot: it only compares label pills to
 each other).**
 
+### 2026-09-05 — [coder] GTAW-root label vs. root-face/groove-depth line - the exact "regression test can't catch it either" gap above, closed
+
+Confirmed via a real screenshot (Double V, GTAW+SMAW combined process,
+desktop): the root-face/groove-depth dimension line ran straight through
+the "GTAW kök" (GTAW root) label's text, reading as a strikethrough, even
+though the label passed every existing pill-vs-pill overlap check. Root
+cause was the same shape in all 5 groove-drawing functions:
+`_drawCombinedProcessTint`'s GTAW-root label was centered at
+`halfGap + 5.5`/`halfGap + 6`, and the very next dimension line drawn
+right next to it (root face for Single/Half/Compound V, total root face
+for Double V, the root-gap extension stub for Square) sits at
+`halfGap`/`halfGap + 5` - only ~1mm of separation, invisible to any
+pill-vs-pill check since it's a label-vs-*line* collision.
+
+Fixed by moving the label, not the line (the line's position is tuned and
+referenced by other avoid-lists downstream): `halfGap + 16` clears the
+root-face line with real margin without reaching the groove-depth line's
+own `halfGap + 20` lane; for Single/Half/Compound V the Y also moved from
+a fixed `thickness`-relative offset to `rightGrooveY + 2.6` so it still
+clears the groove-depth line's horizontal end-stub (which sits at
+`rightGrooveY`, not at a fixed distance from `thickness`) regardless of
+`rootFace`.
+
+Added `test/widgets/weld_drawing_line_label_test.dart` - a genuinely new
+check this suite didn't have: it records every guide-colored line segment
+the painter draws and asserts none of them geometrically intersect the
+GTAW-root label's real rect (Liang-Barsky segment-vs-rect clipping), not
+another pill-vs-pill overlap check. Verified clean across all 5 groove
+types x both joint types x both drawing modes x 6 widths (316-760px) at
+the suite's standard thicknessMm=12, plus a dedicated thickness sweep
+(12/40/50/60mm) for Double V and Square specifically (the two groove
+types realistically welded at real thickness).
+
+**Real, pre-existing residual gap found by that thickness sweep, not
+introduced by this fix and not attempted here (documented in the test's
+own `knownGap` skips, 7 cases): at very thick plate (t>=50) on the
+narrowest real phone canvases, Double V and Square still cross the same
+line again, because a fixed-mm clearance (`halfGap + 16`, the same
+nudge technique every other fix in this file uses) buys progressively
+fewer real pixels as thickness grows and the mm-to-px scale shrinks with
+it - the exact same structural shape as the already-known, already-skipped
+Double V thick-plate gaps in `weld_drawing_label_overlap_test.dart`. A
+real fix needs a scale-aware (not fixed-mm) clearance; out of scope for
+this targeted round.**
+
 ## Archive
 
 (nothing yet)
