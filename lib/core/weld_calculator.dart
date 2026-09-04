@@ -24,7 +24,12 @@ class WeldCalculator {
       densityGPerCm3: input.densityGPerCm3,
     );
     final processSummary = input.weldingProcess == WeldingProcess.gtawSmaw
-        ? _combinedGtawSmawSummary(input, areaMm2, weldMetalKg)
+        ? _combinedGtawSmawSummary(
+            input,
+            areaMm2,
+            grooveAreaMm2,
+            weldMetalKg,
+          )
         : _singleProcessSummary(input, weldMetalKg);
 
     return WeldCalculationResult(
@@ -112,9 +117,14 @@ class WeldCalculator {
   _ProcessSummary _combinedGtawSmawSummary(
     WeldInputData input,
     double totalAreaMm2,
+    double grooveAreaMm2,
     double totalWeldMetalKg,
   ) {
-    final gtawAreaMm2 = _resolveGtawAreaForCombined(input, totalAreaMm2);
+    // The GTAW root pass never includes the cap-reinforcement area (the cap
+    // is always the final/last pass, 100% SMAW) -- so its share must be
+    // computed against the groove-only area, then re-expressed as a ratio
+    // of the (possibly cap-inflated) total area for the split below.
+    final gtawAreaMm2 = _resolveGtawAreaForCombined(input, grooveAreaMm2);
     final gtawRatio = totalAreaMm2 == 0 ? 0.0 : gtawAreaMm2 / totalAreaMm2;
     final gtawWeldMetalKg = totalWeldMetalKg * gtawRatio;
     final smawWeldMetalKg = totalWeldMetalKg - gtawWeldMetalKg;
@@ -262,14 +272,25 @@ class WeldCalculator {
       _requireZeroOrPositive(input.capHeightMm, 'Cap height');
     }
 
-    return WeldFormulas.capReinforcementAreaMm2(
+    final singleFaceCapAreaMm2 = WeldFormulas.capReinforcementAreaMm2(
       grooveTopWidthMm: grooveTopWidthMm,
       capOverlapMm: input.capOverlapMm ?? 0,
       capHeightMm: input.capHeightMm ?? 0,
     );
+
+    // Double V is welded from both sides, so it gets a cap reinforcement
+    // pass on BOTH faces -- the entered overlap/height values apply
+    // identically to each face, so the area contribution is exactly 2x a
+    // single-face groove type for the same inputs.
+    return input.grooveType == GrooveType.doubleV
+        ? singleFaceCapAreaMm2 * 2
+        : singleFaceCapAreaMm2;
   }
 
-  double _resolveGtawAreaForCombined(WeldInputData input, double totalAreaMm2) {
+  double _resolveGtawAreaForCombined(
+    WeldInputData input,
+    double grooveAreaMm2,
+  ) {
     final transition = _requirePositive(
       input.gtawTransitionMm,
       'GTAW up to thickness',
@@ -310,7 +331,7 @@ class WeldCalculator {
         breakHeightMm: _requirePositive(input.breakHeightMm, 'Break height'),
         fillHeightMm: transition,
       ),
-      GrooveType.doubleV => _resolveDoubleVGtawArea(input, totalAreaMm2),
+      GrooveType.doubleV => _resolveDoubleVGtawArea(input, grooveAreaMm2),
       GrooveType.fillet => WeldFormulas.filletPartialAreaFromRootMm2(
         legSizeMm: _requirePositive(input.legSizeMm, 'Leg size'),
         fillHeightMm: transition,
@@ -318,14 +339,16 @@ class WeldCalculator {
     };
   }
 
-  double _resolveDoubleVGtawArea(WeldInputData input, double totalAreaMm2) {
+  double _resolveDoubleVGtawArea(WeldInputData input, double grooveAreaMm2) {
     final thickness = _requirePositive(input.thicknessMm, 'Thickness');
     final transition = _requirePositive(
       input.gtawTransitionMm,
       'GTAW up to thickness',
     );
     final ratio = (transition / thickness).clamp(0.0, 1.0);
-    return totalAreaMm2 * ratio;
+    // groove-only area (cap-reinforcement area is excluded here and added
+    // entirely to the SMAW/final-pass side by the caller).
+    return grooveAreaMm2 * ratio;
   }
 
   double _singleVArea(WeldInputData input) {

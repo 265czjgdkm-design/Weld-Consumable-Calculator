@@ -1039,6 +1039,24 @@ class WeldPdfReportService {
     final geometry = _orderedEntries(entries, geometryOrder);
     final process = _orderedEntries(entries, processOrder);
 
+    // Each entry must be claimed by exactly one of the ordered lists above,
+    // or it silently vanishes from the PDF with no error -- this has bitten
+    // this file before (a new cap-dimension label needed manual patching
+    // into these lists). Fail loudly in debug/test so a future omission is
+    // caught immediately, and fall back to a catch-all section in release
+    // builds so real user data is never just dropped.
+    final claimedKeys = {...setupOrder, ...geometryOrder, ...processOrder};
+    final unclaimed = [
+      for (final entry in entries)
+        if (!claimedKeys.contains(entry.key)) entry,
+    ];
+    assert(
+      unclaimed.isEmpty,
+      'PDF basis entries not claimed by setupOrder/geometryOrder/'
+      'processOrder, would be silently dropped: '
+      '${unclaimed.map((e) => e.key).join(', ')}',
+    );
+
     return [
       if (setup.isNotEmpty)
         _BasisSection(
@@ -1058,6 +1076,13 @@ class WeldPdfReportService {
         _BasisSection(
           title: 'Process Parameters',
           entries: process,
+          accentColor: _brandTeal2,
+          accentBackground: _brandTealSoft,
+        ),
+      if (unclaimed.isNotEmpty)
+        _BasisSection(
+          title: 'Other',
+          entries: unclaimed,
           accentColor: _brandTeal2,
           accentBackground: _brandTealSoft,
         ),

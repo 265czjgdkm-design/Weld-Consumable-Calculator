@@ -2413,6 +2413,11 @@ class _CalculatorPageState extends State<CalculatorPage> {
       data.secondaryBevelAngleDeg,
     );
     _setControllerValue(FieldKey.breakHeightMm, data.breakHeightMm);
+    // Cap fields are optional/nullable and _setControllerValue no-ops on
+    // null, so a preset/template with no cap values (e.g. every built-in
+    // InputPreset) must explicitly clear these, or a stale value typed
+    // before applying the preset survives onto the "clean" template.
+    _clearCapDimensionFields();
     _setControllerValue(FieldKey.capOverlapMm, data.capOverlapMm);
     _setControllerValue(FieldKey.capHeightMm, data.capHeightMm);
     _setControllerValue(FieldKey.legSizeMm, data.legSizeMm);
@@ -2645,8 +2650,16 @@ class _CalculatorPageState extends State<CalculatorPage> {
       'Secondary bevel angle',
     ),
     breakHeightMm: _parsePresetValue(FieldKey.breakHeightMm, 'Break height'),
-    capOverlapMm: _parsePresetValue(FieldKey.capOverlapMm, 'Cap overlap'),
-    capHeightMm: _parsePresetValue(FieldKey.capHeightMm, 'Cap height'),
+    // Fillet has no cap-reinforcement concept (calculator already zeroes
+    // its contribution), but the cap controllers are only hidden -- not
+    // cleared -- for Fillet, so avoid persisting stale values into the
+    // saved preset JSON.
+    capOverlapMm: _grooveType == GrooveType.fillet
+        ? null
+        : _parsePresetValue(FieldKey.capOverlapMm, 'Cap overlap'),
+    capHeightMm: _grooveType == GrooveType.fillet
+        ? null
+        : _parsePresetValue(FieldKey.capHeightMm, 'Cap height'),
     legSizeMm: _parsePresetValue(FieldKey.legSizeMm, 'Leg size'),
     gtawTransitionMm: _parsePresetValue(
       FieldKey.gtawTransitionMm,
@@ -2961,6 +2974,11 @@ class _CalculatorPageState extends State<CalculatorPage> {
         : value.toStringAsFixed(digits);
   }
 
+  void _clearCapDimensionFields() {
+    _controllers[FieldKey.capOverlapMm]!.text = '';
+    _controllers[FieldKey.capHeightMm]!.text = '';
+  }
+
   void _setDiameterPreset(FieldKey key, double value) {
     final token = _diameterValueToken(value);
     _diameterPresetModes[key] = token;
@@ -3199,6 +3217,7 @@ class _CalculatorPageState extends State<CalculatorPage> {
     _controllers[FieldKey.secondaryBevelAngleDeg]!.text = '10';
     _controllers[FieldKey.breakHeightMm]!.text = '4';
     _controllers[FieldKey.legSizeMm]!.text = '6';
+    _clearCapDimensionFields();
     _controllers[FieldKey.gtawTransitionMm]!.text = '3';
     _controllers[FieldKey.wireDiameterMm]!.text = '2.4';
     _controllers[FieldKey.electrodeDiameterMm]!.text = '3.2';

@@ -947,10 +947,17 @@ class _WeldDrawingPainter extends CustomPainter {
     final halfGap = rootGap / 2;
     final halfTop = topWidth / 2;
     final halfBody = math.max(halfTop + (thickness * 1.00), 22.0);
+    // Double V gets a cap-reinforcement dimension pair on BOTH faces (see
+    // _drawCapDimensions below), so with cap values actually set it needs
+    // real extra vertical room above AND below the plate for those two
+    // extra labels, not just the small generic crown buffer every other
+    // groove type's single (top-only) cap already fits inside.
+    final hasCapDimensions =
+        (data.capOverlapMm ?? 0) > 0 || (data.capHeightMm ?? 0) > 0;
     final layout = _createLayout(
       size,
       maxHalfWidthMm: halfBody + 10,
-      heightMm: thickness + 7,
+      heightMm: thickness + 7 + (hasCapDimensions ? 22 : 0),
       topPaddingMm: 4,
       topChipLabel: grooveTypeLabel,
     );
@@ -1160,7 +1167,30 @@ class _WeldDrawingPainter extends CustomPainter {
       upperHalfRectOuter = upperHalfRect;
     }
     final chipRects = _drawTopChips(canvas, size, grooveTypeLabel);
-    _drawCapDimensions(
+    final beforeCapRects = [
+      ...tintRects,
+      commonRects.thickness,
+      ?commonRects.bThickness,
+      commonRects.rootGap,
+      ?commonRects.grooveDepth,
+      totalRootFaceRect,
+      angleRect,
+      ?upperHalfRectOuter,
+      ?lowerHalfRect,
+      chipRects.typeChip,
+      // Slightly inflated: the pipe-OD chip sits at a fixed pixel position
+      // independent of mm-scale, and a few combinations (unequal geometry
+      // + pipe joint) left the top cap-overlap label a couple of pixels
+      // short of fully clearing it without this.
+      if (chipRects.pipeChip != null) chipRects.pipeChip!.inflate(4),
+    ];
+    // Double V is welded from both sides, so it gets a cap-reinforcement
+    // pass on BOTH faces (the entered overlap/height values apply
+    // identically to each, per the user's explicit decision) - draw the
+    // dimension callouts on the top face as usual, then a mirrored set on
+    // the bottom face, each avoiding everything the other has already
+    // placed.
+    final topCap = _drawCapDimensions(
       canvas,
       size,
       guidePaint,
@@ -1168,19 +1198,18 @@ class _WeldDrawingPainter extends CustomPainter {
       halfTop: halfTop,
       topY: math.min(member.leftTop, member.rightTop),
       thickness: thickness,
-      avoidRects: [
-        ...tintRects,
-        commonRects.thickness,
-        ?commonRects.bThickness,
-        commonRects.rootGap,
-        ?commonRects.grooveDepth,
-        totalRootFaceRect,
-        angleRect,
-        ?upperHalfRectOuter,
-        ?lowerHalfRect,
-        chipRects.typeChip,
-        ?chipRects.pipeChip,
-      ],
+      avoidRects: beforeCapRects,
+    );
+    _drawCapDimensions(
+      canvas,
+      size,
+      guidePaint,
+      layout: layout,
+      halfTop: halfTop,
+      topY: math.max(member.leftBottom, member.rightBottom),
+      thickness: thickness,
+      direction: 1,
+      avoidRects: [...beforeCapRects, ?topCap.overlap, ?topCap.height],
     );
   }
 
@@ -1965,6 +1994,12 @@ class _WeldDrawingPainter extends CustomPainter {
     required double topY,
     required double thickness,
     List<Rect> avoidRects = const [],
+    // -1 draws the cap rising upward off `topY` (the normal single-face
+    // groove types, and Double V's top face). +1 draws it rising downward
+    // off `topY` instead (Double V's bottom face, welded from the other
+    // side) - Double V gets a cap pass on BOTH faces per the user's
+    // explicit decision that the cap dimensions apply identically to each.
+    double direction = -1,
   }) {
     final p = layout.point;
     final rawOverlap = data.capOverlapMm;
@@ -1973,15 +2008,19 @@ class _WeldDrawingPainter extends CustomPainter {
     Rect? overlapRect;
     if (rawOverlap != null && rawOverlap > 0) {
       final capOverlap = rawOverlap.clamp(0, math.max(halfTop, 2) * 1.5);
-      final overlapY = topY - 3;
+      final overlapY = topY + (3 * direction);
       overlapRect = _drawDimensionLine(
         canvas,
         guidePaint,
         start: p(halfTop, overlapY),
         end: p(halfTop + capOverlap, overlapY),
-        label: '${_formatValue(capOverlap.toDouble())} mm cap overlap',
+        // Label shows the real entered value, not the drawing's clamped
+        // geometry (the clamp is a visual-sanity bound on the drawn line
+        // only, mirroring the root-face label pattern above) - the
+        // calculation itself always uses the true entered value.
+        label: '${_formatValue(rawOverlap.toDouble())} mm cap overlap',
         labelSize: size,
-        labelOffset: const Offset(6, -10),
+        labelOffset: Offset(6, 10 * direction),
         extensionStart: p(halfTop, topY),
         extensionEnd: p(halfTop + capOverlap, topY),
         fieldKey: FieldKey.capOverlapMm,
@@ -1997,12 +2036,14 @@ class _WeldDrawingPainter extends CustomPainter {
         canvas,
         guidePaint,
         start: p(heightX, topY),
-        end: p(heightX, topY - capHeight),
-        label: '${_formatValue(capHeight.toDouble())} mm cap height',
+        end: p(heightX, topY + (capHeight * direction)),
+        // See the cap-overlap label above: show the real entered value,
+        // only the drawn geometry is clamped for visual sanity.
+        label: '${_formatValue(rawHeight.toDouble())} mm cap height',
         labelSize: size,
-        labelOffset: const Offset(-6, -10),
+        labelOffset: Offset(-6, 10 * direction),
         extensionStart: p(0, topY),
-        extensionEnd: p(0, topY - capHeight),
+        extensionEnd: p(0, topY + (capHeight * direction)),
         fieldKey: FieldKey.capHeightMm,
         avoidRects: [...avoidRects, ?overlapRect],
       );

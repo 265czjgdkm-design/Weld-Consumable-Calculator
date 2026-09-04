@@ -80,17 +80,21 @@ void main() {
     },
   );
 
-  test('an unlisted basis label really is silently dropped (documents the bug '
-      'class the test above guards against)', () async {
-    final baseEntries = [const MapEntry('Process', 'GTAW')];
-    final withUnlistedEntry = [
-      ...baseEntries,
-      const MapEntry('Totally Unlisted Label', 'some value'),
-    ];
+  test(
+    'an unlisted basis label now fails loudly in debug/test mode (Finding '
+    '5 safety net) instead of silently vanishing from the PDF with no '
+    'error - the never-taken "Other" catch-all section below this '
+    'assertion is the release-mode fallback for the same case',
+    () async {
+      final withUnlistedEntry = [
+        const MapEntry('Process', 'GTAW'),
+        const MapEntry('Totally Unlisted Label', 'some value'),
+      ];
 
-    final baseLength = await _buildReportLength(baseEntries);
-    final withUnlistedLength = await _buildReportLength(withUnlistedEntry);
-
-    expect(withUnlistedLength, baseLength);
-  });
+      await expectLater(
+        _buildReportLength(withUnlistedEntry),
+        throwsA(isA<AssertionError>()),
+      );
+    },
+  );
 }
