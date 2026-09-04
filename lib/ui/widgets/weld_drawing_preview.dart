@@ -84,6 +84,8 @@ class WeldDrawingPreview extends StatefulWidget {
     required this.tJointLabel,
     required this.smawFillCapLabel,
     required this.gtawRootLabel,
+    required this.capTopLabel,
+    required this.capBottomLabel,
     this.onFieldTap,
     this.fillAvailableSpace = false,
   });
@@ -101,6 +103,11 @@ class WeldDrawingPreview extends StatefulWidget {
   final String tJointLabel;
   final String smawFillCapLabel;
   final String gtawRootLabel;
+  // Top/bottom-face prefix for Double V's two cap-dimension label pairs
+  // (only groove type with a cap pass on both faces) - distinguishes the
+  // otherwise-identical "X mm cap overlap"/"X mm cap height" pills.
+  final String capTopLabel;
+  final String capBottomLabel;
 
   /// Called with the [FieldKey] of the dimension nearest to a tap on the
   /// drawing, so the caller can scroll to and focus that input field.
@@ -139,6 +146,8 @@ class _WeldDrawingPreviewState extends State<WeldDrawingPreview> {
           tJointLabel: widget.tJointLabel,
           smawFillCapLabel: widget.smawFillCapLabel,
           gtawRootLabel: widget.gtawRootLabel,
+          capTopLabel: widget.capTopLabel,
+          capBottomLabel: widget.capBottomLabel,
           onHotspots: (hotspots) => _hotspots = hotspots,
           fillAvailableSpace: widget.fillAvailableSpace,
         ),
@@ -217,6 +226,8 @@ class _WeldDrawingPainter extends CustomPainter {
     required this.tJointLabel,
     required this.smawFillCapLabel,
     required this.gtawRootLabel,
+    required this.capTopLabel,
+    required this.capBottomLabel,
     this.onHotspots,
     this.fillAvailableSpace = false,
   });
@@ -231,6 +242,8 @@ class _WeldDrawingPainter extends CustomPainter {
   final String tJointLabel;
   final String smawFillCapLabel;
   final String gtawRootLabel;
+  final String capTopLabel;
+  final String capBottomLabel;
   final ValueChanged<List<DrawingHotspot>>? onHotspots;
   final bool fillAvailableSpace;
 
@@ -1235,6 +1248,7 @@ class _WeldDrawingPainter extends CustomPainter {
       topY: math.min(member.leftTop, member.rightTop),
       thickness: thickness,
       avoidRects: beforeCapRects,
+      facePrefix: capTopLabel,
     );
     _drawCapDimensions(
       canvas,
@@ -1246,6 +1260,7 @@ class _WeldDrawingPainter extends CustomPainter {
       thickness: thickness,
       direction: 1,
       avoidRects: [...beforeCapRects, ?topCap.overlap, ?topCap.height],
+      facePrefix: capBottomLabel,
     );
   }
 
@@ -2036,6 +2051,10 @@ class _WeldDrawingPainter extends CustomPainter {
     // side) - Double V gets a cap pass on BOTH faces per the user's
     // explicit decision that the cap dimensions apply identically to each.
     double direction = -1,
+    // Distinguishes Double V's two otherwise-identical cap label pairs
+    // (top vs. bottom face) - empty for every other groove type, which
+    // only ever draws one cap pass.
+    String facePrefix = '',
   }) {
     final p = layout.point;
     final rawOverlap = data.capOverlapMm;
@@ -2054,7 +2073,9 @@ class _WeldDrawingPainter extends CustomPainter {
         // geometry (the clamp is a visual-sanity bound on the drawn line
         // only, mirroring the root-face label pattern above) - the
         // calculation itself always uses the true entered value.
-        label: '${_formatValue(rawOverlap.toDouble())} mm cap overlap',
+        label: facePrefix.isEmpty
+            ? '${_formatValue(rawOverlap.toDouble())} mm cap overlap'
+            : '$facePrefix ${_formatValue(rawOverlap.toDouble())} mm cap overlap',
         labelSize: size,
         labelOffset: Offset(6, 10 * direction),
         extensionStart: p(halfTop, topY),
@@ -2075,7 +2096,9 @@ class _WeldDrawingPainter extends CustomPainter {
         end: p(heightX, topY + (capHeight * direction)),
         // See the cap-overlap label above: show the real entered value,
         // only the drawn geometry is clamped for visual sanity.
-        label: '${_formatValue(rawHeight.toDouble())} mm cap height',
+        label: facePrefix.isEmpty
+            ? '${_formatValue(rawHeight.toDouble())} mm cap height'
+            : '$facePrefix ${_formatValue(rawHeight.toDouble())} mm cap height',
         labelSize: size,
         labelOffset: Offset(-6, 10 * direction),
         extensionStart: p(0, topY),
@@ -2909,6 +2932,8 @@ List<DrawingHotspot> debugWeldDrawingHotspots({
   required String tJointLabel,
   required String smawFillCapLabel,
   required String gtawRootLabel,
+  String capTopLabel = 'Top',
+  String capBottomLabel = 'Bottom',
   required Canvas canvas,
   required Size size,
   bool fillAvailableSpace = true,
@@ -2925,6 +2950,8 @@ List<DrawingHotspot> debugWeldDrawingHotspots({
     tJointLabel: tJointLabel,
     smawFillCapLabel: smawFillCapLabel,
     gtawRootLabel: gtawRootLabel,
+    capTopLabel: capTopLabel,
+    capBottomLabel: capBottomLabel,
     onHotspots: (result) => hotspots = result,
     fillAvailableSpace: fillAvailableSpace,
   ).paint(canvas, size);

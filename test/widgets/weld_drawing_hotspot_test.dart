@@ -115,6 +115,8 @@ void main() {
                 tJointLabel: strings.drawingLabelTJoint,
                 smawFillCapLabel: strings.drawingLabelSmawFillCap,
                 gtawRootLabel: strings.drawingLabelGtawRoot,
+                capTopLabel: strings.drawingLabelCapTop,
+                capBottomLabel: strings.drawingLabelCapBottom,
                 fillAvailableSpace: true,
                 onFieldTap: (key) => tapped = key,
               ),

@@ -51,9 +51,14 @@ class HomeDashboardScreen extends StatelessWidget {
                         constraints: const BoxConstraints(maxWidth: 480),
                         child: Column(
                           children: [
+                            _DashboardSectionTitle(
+                              strings.dashboardCalculatorsSectionTitle,
+                            ),
+                            const SizedBox(height: 10),
                             _DashboardButton(
                               icon: Icons.calculate_outlined,
                               label: strings.dashboardFillerConsumption,
+                              emphasized: true,
                               onPressed: () => Navigator.of(context).push(
                                 MaterialPageRoute(
                                   builder: (context) => CalculatorPage(),
@@ -64,6 +69,7 @@ class HomeDashboardScreen extends StatelessWidget {
                             _DashboardButton(
                               icon: Icons.device_thermostat_outlined,
                               label: strings.dashboardPreheatCalculator,
+                              emphasized: true,
                               onPressed: () => Navigator.of(context).push(
                                 MaterialPageRoute(
                                   builder: (context) =>
@@ -75,6 +81,7 @@ class HomeDashboardScreen extends StatelessWidget {
                             _DashboardButton(
                               icon: Icons.ac_unit_outlined,
                               label: strings.dashboardCoolingTimeCalculator,
+                              emphasized: true,
                               onPressed: () => Navigator.of(context).push(
                                 MaterialPageRoute(
                                   builder: (context) =>
@@ -82,18 +89,11 @@ class HomeDashboardScreen extends StatelessWidget {
                                 ),
                               ),
                             ),
-                            const SizedBox(height: 14),
-                            _DashboardButton(
-                              icon: Icons.bookmark_outline,
-                              label: strings.dashboardSavedCalculations,
-                              onPressed: () => Navigator.of(context).push(
-                                MaterialPageRoute(
-                                  builder: (context) =>
-                                      const SavedCalculationsScreen(),
-                                ),
-                              ),
+                            const SizedBox(height: 28),
+                            _DashboardSectionTitle(
+                              strings.dashboardLibrarySectionTitle,
                             ),
-                            const SizedBox(height: 14),
+                            const SizedBox(height: 10),
                             _DashboardButton(
                               icon: Icons.construction_outlined,
                               label: strings.dashboardBaseMaterial,
@@ -112,6 +112,21 @@ class HomeDashboardScreen extends StatelessWidget {
                                 MaterialPageRoute(
                                   builder: (context) =>
                                       const FillerMaterialScreen(),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 28),
+                            _DashboardSectionTitle(
+                              strings.dashboardHistorySectionTitle,
+                            ),
+                            const SizedBox(height: 10),
+                            _DashboardButton(
+                              icon: Icons.bookmark_outline,
+                              label: strings.dashboardSavedCalculations,
+                              onPressed: () => Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (context) =>
+                                      const SavedCalculationsScreen(),
                                 ),
                               ),
                             ),
@@ -141,33 +156,67 @@ class HomeDashboardScreen extends StatelessWidget {
   }
 }
 
+class _DashboardSectionTitle extends StatelessWidget {
+  const _DashboardSectionTitle(this.title);
+
+  final String title;
+
+  @override
+  Widget build(BuildContext context) {
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: Text(
+        title,
+        style: Theme.of(context).textTheme.titleSmall?.copyWith(
+          fontWeight: FontWeight.w700,
+          color: const Color(0xFF5A6B75),
+          letterSpacing: 0.4,
+        ),
+      ),
+    );
+  }
+}
+
 class _DashboardButton extends StatelessWidget {
   const _DashboardButton({
     required this.icon,
     required this.label,
     required this.onPressed,
+    this.emphasized = false,
   });
 
   final IconData icon;
   final String label;
   final VoidCallback onPressed;
+  final bool emphasized;
 
   @override
   Widget build(BuildContext context) {
+    final textStyle = const TextStyle(
+      fontSize: 16,
+      fontWeight: FontWeight.w700,
+    );
     return SizedBox(
       width: double.infinity,
-      child: FilledButton.icon(
-        onPressed: onPressed,
-        icon: Icon(icon),
-        label: Text(label),
-        style: FilledButton.styleFrom(
-          padding: const EdgeInsets.symmetric(vertical: 18),
-          textStyle: const TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-      ),
+      child: emphasized
+          ? FilledButton.icon(
+              onPressed: onPressed,
+              icon: Icon(icon),
+              label: Text(label),
+              style: FilledButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 18),
+                textStyle: textStyle,
+              ),
+            )
+          : FilledButton.tonalIcon(
+              onPressed: onPressed,
+              icon: Icon(icon),
+              label: Text(label),
+              style: FilledButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 18),
+                textStyle: textStyle,
+              ),
+            ),
     );
   }
 }

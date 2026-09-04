@@ -71,8 +71,8 @@ void main() {
     (tester) async {
       await _pumpToDimensionsStep(tester);
 
-      expect(find.text('Cap Overlap (each edge, mm)'), findsOneWidget);
-      expect(find.text('Cap Height / Reinforcement (mm)'), findsOneWidget);
+      expect(find.text('Cap Overlap (mm)'), findsOneWidget);
+      expect(find.text('Cap Height (mm)'), findsOneWidget);
     },
   );
 
@@ -86,8 +86,8 @@ void main() {
       await tester.tap(find.text('Fillet Weld'));
       await tester.pumpAndSettle();
 
-      expect(find.text('Cap Overlap (each edge, mm)'), findsNothing);
-      expect(find.text('Cap Height / Reinforcement (mm)'), findsNothing);
+      expect(find.text('Cap Overlap (mm)'), findsNothing);
+      expect(find.text('Cap Height (mm)'), findsNothing);
     },
   );
 
@@ -100,13 +100,13 @@ void main() {
       await tester.ensureVisible(find.text('Fillet Weld'));
       await tester.tap(find.text('Fillet Weld'));
       await tester.pumpAndSettle();
-      expect(find.text('Cap Overlap (each edge, mm)'), findsNothing);
+      expect(find.text('Cap Overlap (mm)'), findsNothing);
 
       await tester.ensureVisible(find.text('Plate Butt Weld'));
       await tester.tap(find.text('Plate Butt Weld'));
       await tester.pumpAndSettle();
-      expect(find.text('Cap Overlap (each edge, mm)'), findsOneWidget);
-      expect(find.text('Cap Height / Reinforcement (mm)'), findsOneWidget);
+      expect(find.text('Cap Overlap (mm)'), findsOneWidget);
+      expect(find.text('Cap Height (mm)'), findsOneWidget);
     },
   );
 
@@ -128,9 +128,9 @@ void main() {
       await tester.tap(find.text('Get Started'));
       await tester.pumpAndSettle();
 
-      final capOverlapField = _fieldWithLabel('Cap Overlap (each edge, mm)');
+      final capOverlapField = _fieldWithLabel('Cap Overlap (mm)');
       final capHeightField = _fieldWithLabel(
-        'Cap Height / Reinforcement (mm)',
+        'Cap Height (mm)',
       );
       await tester.ensureVisible(capOverlapField);
       await tester.enterText(capOverlapField, '5');
@@ -170,7 +170,7 @@ void main() {
       // Default groove is Single V - plain helper text, no doubling note.
       expect(
         tester
-            .widget<TextField>(_fieldWithLabel('Cap Overlap (each edge, mm)'))
+            .widget<TextField>(_fieldWithLabel('Cap Overlap (mm)'))
             .decoration
             ?.helperText,
         isNot(contains('counted twice')),
@@ -187,12 +187,12 @@ void main() {
       await tester.pumpAndSettle();
 
       final capOverlapHelper = tester
-          .widget<TextField>(_fieldWithLabel('Cap Overlap (each edge, mm)'))
+          .widget<TextField>(_fieldWithLabel('Cap Overlap (mm)'))
           .decoration
           ?.helperText;
       final capHeightHelper = tester
           .widget<TextField>(
-            _fieldWithLabel('Cap Height / Reinforcement (mm)'),
+            _fieldWithLabel('Cap Height (mm)'),
           )
           .decoration
           ?.helperText;
@@ -221,13 +221,13 @@ void main() {
 
       final capOverlapHelper = tester
           .widget<TextField>(
-            _fieldWithLabel('Kapak Bindirmesi (her kenardan, mm)'),
+            _fieldWithLabel('Kapak Bindirmesi (mm)'),
           )
           .decoration
           ?.helperText;
       final capHeightHelper = tester
           .widget<TextField>(
-            _fieldWithLabel('Kapak Yüksekliği / Takviye (mm)'),
+            _fieldWithLabel('Kapak Yüksekliği (mm)'),
           )
           .decoration
           ?.helperText;
@@ -245,9 +245,9 @@ void main() {
     (tester) async {
       await _pumpToDimensionsStep(tester);
 
-      final capOverlapField = _fieldWithLabel('Cap Overlap (each edge, mm)');
+      final capOverlapField = _fieldWithLabel('Cap Overlap (mm)');
       final capHeightField = _fieldWithLabel(
-        'Cap Height / Reinforcement (mm)',
+        'Cap Height (mm)',
       );
       await tester.ensureVisible(capOverlapField);
       await tester.enterText(capOverlapField, '5');

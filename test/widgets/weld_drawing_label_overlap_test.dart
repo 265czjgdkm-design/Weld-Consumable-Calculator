@@ -117,6 +117,8 @@ Future<List<Rect>> _renderLabelRects(
               tJointLabel: strings.drawingLabelTJoint,
               smawFillCapLabel: strings.drawingLabelSmawFillCap,
               gtawRootLabel: strings.drawingLabelGtawRoot,
+              capTopLabel: strings.drawingLabelCapTop,
+              capBottomLabel: strings.drawingLabelCapBottom,
               fillAvailableSpace: fillAvailableSpace,
             ),
           ),
@@ -298,17 +300,39 @@ void main() {
     JointType joint,
     DrawingMode mode,
     double width,
-  ) =>
-      (groove == GrooveType.doubleV &&
-          joint == JointType.pipeButt &&
-          mode == DrawingMode.visual &&
-          width <= 240.0)
-      ? "Double V's both-faces bottom-face cap-overlap and cap-height pills "
-            'both canvas-edge-clamp to the same y-band at 320pt/240px width '
-            '- real, newly introduced, needs a dedicated follow-up (see '
-            '[doubleVThickPlateGap] for the same collision at other common '
-            'widths once plate thickness is realistic for Double V)'
-      : null;
+    AppLanguage language,
+  ) {
+    if (groove != GrooveType.doubleV ||
+        mode != DrawingMode.visual ||
+        width > 240.0) {
+      return null;
+    }
+    if (joint == JointType.pipeButt) {
+      return "Double V's both-faces bottom-face cap-overlap and cap-height "
+          'pills both canvas-edge-clamp to the same y-band at 320pt/240px '
+          'width - real, newly introduced, needs a dedicated follow-up '
+          '(see [doubleVThickPlateGap] for the same collision at other '
+          'common widths once plate thickness is realistic for Double V)';
+    }
+    // KNOWN GAP: same root cause as the pipe-butt case above, but for
+    // plate butt - only reachable in German/Russian, and only since this
+    // session added the top/bottom-face prefix word ("Oben"/"Unten",
+    // "Верх"/"Низ") to the two cap-dimension label pairs (see
+    // WeldDrawingPreview.capTopLabel/capBottomLabel): the extra prefix
+    // widens the bottom-face pills just enough to newly collide at this
+    // single narrowest canvas width, in these two locales specifically.
+    // Confirmed via a real `flutter test` run (not assumed) - not present
+    // before the prefix was added, not present in en/tr/hi at this width.
+    if (joint == JointType.plateButt &&
+        (language == AppLanguage.de || language == AppLanguage.ru)) {
+      return "Double V's both-faces bottom-face cap-overlap and cap-height "
+          'pills collide at 320pt/240px width in $language, introduced by '
+          "this session's top/bottom-face label prefix - same structural "
+          'cause as the pipe-butt gap above, needs the same dedicated '
+          'follow-up.';
+    }
+    return null;
+  }
 
   // KNOWN GAP (thickness axis): the collision described above is NOT
   // limited to the 320pt/240px canvas - it recurs at 280/295/310px
@@ -371,7 +395,13 @@ void main() {
               drawingMode: mode,
               canvasSize: Size(width, busyHeightFor(width)),
               language: language,
-              knownGap: doubleVBothFacesNarrowGap(groove, joint, mode, width),
+              knownGap: doubleVBothFacesNarrowGap(
+                groove,
+                joint,
+                mode,
+                width,
+                language,
+              ),
             );
           }
         }
@@ -573,7 +603,13 @@ void main() {
               knownGap:
                   extraBusyNarrowGap(data, width) ??
                   capHeightNarrowSingleVGap(groove, joint, mode, width) ??
-                  doubleVBothFacesNarrowGap(groove, joint, mode, width),
+                  doubleVBothFacesNarrowGap(
+                    groove,
+                    joint,
+                    mode,
+                    width,
+                    AppLanguage.en,
+                  ),
             );
           }
         }

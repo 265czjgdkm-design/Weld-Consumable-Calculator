@@ -979,6 +979,8 @@ class _CalculatorPageState extends State<CalculatorPage> {
                 tJointLabel: strings.drawingLabelTJoint,
                 smawFillCapLabel: strings.drawingLabelSmawFillCap,
                 gtawRootLabel: strings.drawingLabelGtawRoot,
+                capTopLabel: strings.drawingLabelCapTop,
+                capBottomLabel: strings.drawingLabelCapBottom,
               )
             : Center(
                 child: FittedBox(
@@ -997,6 +999,8 @@ class _CalculatorPageState extends State<CalculatorPage> {
                       tJointLabel: strings.drawingLabelTJoint,
                       smawFillCapLabel: strings.drawingLabelSmawFillCap,
                       gtawRootLabel: strings.drawingLabelGtawRoot,
+                      capTopLabel: strings.drawingLabelCapTop,
+                      capBottomLabel: strings.drawingLabelCapBottom,
                     ),
                   ),
                 ),

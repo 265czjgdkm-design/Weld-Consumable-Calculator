@@ -56,6 +56,9 @@ class L10nStrings {
     required this.dashboardBaseMaterial,
     required this.dashboardFillerMaterial,
     required this.dashboardSavedReports,
+    required this.dashboardCalculatorsSectionTitle,
+    required this.dashboardLibrarySectionTitle,
+    required this.dashboardHistorySectionTitle,
     required this.commonSave,
     required this.commonCancel,
     required this.commonDelete,
@@ -293,6 +296,8 @@ class L10nStrings {
     required this.drawingLabelTJoint,
     required this.drawingLabelSmawFillCap,
     required this.drawingLabelGtawRoot,
+    required this.drawingLabelCapTop,
+    required this.drawingLabelCapBottom,
     required this.calcSelectedClassificationNote,
     required this.calcTypicalBaseMetalsNote,
     required this.calcRateBasisTitle,
@@ -548,6 +553,9 @@ class L10nStrings {
   final String dashboardBaseMaterial;
   final String dashboardFillerMaterial;
   final String dashboardSavedReports;
+  final String dashboardCalculatorsSectionTitle;
+  final String dashboardLibrarySectionTitle;
+  final String dashboardHistorySectionTitle;
   final String commonSave;
   final String commonCancel;
   final String commonDelete;
@@ -785,6 +793,8 @@ class L10nStrings {
   final String drawingLabelTJoint;
   final String drawingLabelSmawFillCap;
   final String drawingLabelGtawRoot;
+  final String drawingLabelCapTop;
+  final String drawingLabelCapBottom;
   final String calcSelectedClassificationNote;
   final String calcTypicalBaseMetalsNote;
   final String calcRateBasisTitle;
@@ -1052,6 +1062,9 @@ const Map<AppLanguage, L10nStrings> _strings = {
     dashboardBaseMaterial: 'Base Material',
     dashboardFillerMaterial: 'Filler Material',
     dashboardSavedReports: 'Saved Reports',
+    dashboardCalculatorsSectionTitle: 'Calculators',
+    dashboardLibrarySectionTitle: 'Library',
+    dashboardHistorySectionTitle: 'History',
     commonSave: 'Save',
     commonCancel: 'Cancel',
     commonDelete: 'Delete',
@@ -1358,6 +1371,8 @@ const Map<AppLanguage, L10nStrings> _strings = {
     drawingLabelTJoint: 'T-joint',
     drawingLabelSmawFillCap: 'SMAW fill / cap',
     drawingLabelGtawRoot: 'GTAW root',
+    drawingLabelCapTop: 'Top',
+    drawingLabelCapBottom: 'Bottom',
     calcSelectedClassificationNote: 'Selected classification: {value}',
     calcTypicalBaseMetalsNote: 'Typical base metals: {value}',
     calcRateBasisTitle: 'Rate Basis',
@@ -1447,12 +1462,12 @@ const Map<AppLanguage, L10nStrings> _strings = {
     calcFieldSecondaryAngleHelper: 'Upper bevel angle above the break point.',
     calcFieldBreakHeightLabel: 'Break Height h (mm)',
     calcFieldBreakHeightHelper: 'Distance from root face to bevel break point.',
-    calcFieldCapOverlapLabel: 'Cap Overlap (each edge, mm)',
+    calcFieldCapOverlapLabel: 'Cap Overlap (mm)',
     calcFieldCapOverlapHelper:
         'How far the cap pass extends beyond the groove opening, per side (adds to both edges). Optional.',
     calcFieldCapOverlapDoubleVHelper:
         'How far the cap pass extends beyond the groove opening, per side (adds to both edges). For Double V, this value is applied to both faces, so the cap contribution is counted twice. Optional.',
-    calcFieldCapHeightLabel: 'Cap Height / Reinforcement (mm)',
+    calcFieldCapHeightLabel: 'Cap Height (mm)',
     calcFieldCapHeightHelper:
         'How much the cap pass rises above the base metal surface. AWS D1.1 typical reinforcement: up to 3mm for t<=25mm, 5mm for 25-50mm, 6mm for t>50mm. Optional.',
     calcFieldCapHeightDoubleVHelper:
@@ -1665,6 +1680,9 @@ const Map<AppLanguage, L10nStrings> _strings = {
     dashboardBaseMaterial: 'Ana Malzeme',
     dashboardFillerMaterial: 'Dolgu Malzeme',
     dashboardSavedReports: 'Kayıtlı Raporlar',
+    dashboardCalculatorsSectionTitle: 'Hesaplayıcılar',
+    dashboardLibrarySectionTitle: 'Kütüphane',
+    dashboardHistorySectionTitle: 'Geçmiş',
     commonSave: 'Kaydet',
     commonCancel: 'Vazgeç',
     commonDelete: 'Sil',
@@ -1974,6 +1992,8 @@ const Map<AppLanguage, L10nStrings> _strings = {
     drawingLabelTJoint: 'T-birleşimi',
     drawingLabelSmawFillCap: 'SMAW dolgu / kapak',
     drawingLabelGtawRoot: 'GTAW kök',
+    drawingLabelCapTop: 'Üst',
+    drawingLabelCapBottom: 'Alt',
     calcSelectedClassificationNote: 'Seçilen sınıflandırma: {value}',
     calcTypicalBaseMetalsNote: 'Tipik ana malzemeler: {value}',
     calcRateBasisTitle: 'Hız Esası',
@@ -2066,12 +2086,12 @@ const Map<AppLanguage, L10nStrings> _strings = {
     calcFieldBreakHeightLabel: 'Kırılma Yüksekliği h (mm)',
     calcFieldBreakHeightHelper:
         'Kök yüzünden pah kırılma noktasına olan mesafe.',
-    calcFieldCapOverlapLabel: 'Kapak Bindirmesi (her kenardan, mm)',
+    calcFieldCapOverlapLabel: 'Kapak Bindirmesi (mm)',
     calcFieldCapOverlapHelper:
         'Kapak pasosunun kanal ağzının her iki kenarından ne kadar taştığı (her iki kenara ayrı ayrı eklenir). İsteğe bağlı.',
     calcFieldCapOverlapDoubleVHelper:
         'Kapak pasosunun kanal ağzının her iki kenarından ne kadar taştığı (her iki kenara ayrı ayrı eklenir). Çift V kaynağında bu değer her iki yüzeye de uygulanır, yani kapak katkısı hesaplamada iki kez sayılır. İsteğe bağlı.',
-    calcFieldCapHeightLabel: 'Kapak Yüksekliği / Takviye (mm)',
+    calcFieldCapHeightLabel: 'Kapak Yüksekliği (mm)',
     calcFieldCapHeightHelper:
         'Kapak pasosunun ana malzeme yüzeyinden ne kadar yükseldiği. AWS D1.1 tipik takviye: t<=25mm için 3mm, 25-50mm için 5mm, t>50mm için 6mm. İsteğe bağlı.',
     calcFieldCapHeightDoubleVHelper:
@@ -2285,6 +2305,9 @@ const Map<AppLanguage, L10nStrings> _strings = {
     dashboardBaseMaterial: 'Основной металл',
     dashboardFillerMaterial: 'Присадочный материал',
     dashboardSavedReports: 'Сохранённые отчёты',
+    dashboardCalculatorsSectionTitle: 'Калькуляторы',
+    dashboardLibrarySectionTitle: 'Библиотека',
+    dashboardHistorySectionTitle: 'История',
     commonSave: 'Сохранить',
     commonCancel: 'Отмена',
     commonDelete: 'Удалить',
@@ -2602,6 +2625,8 @@ const Map<AppLanguage, L10nStrings> _strings = {
     drawingLabelTJoint: 'Т-образное соединение',
     drawingLabelSmawFillCap: 'SMAW заполнение / облицовка',
     drawingLabelGtawRoot: 'GTAW корень',
+    drawingLabelCapTop: 'Верх',
+    drawingLabelCapBottom: 'Низ',
     calcSelectedClassificationNote: 'Выбранная классификация: {value}',
     calcTypicalBaseMetalsNote: 'Типичные основные металлы: {value}',
     calcRateBasisTitle: 'Основа скорости наплавки',
@@ -2697,8 +2722,7 @@ const Map<AppLanguage, L10nStrings> _strings = {
     // descriptive translation, not a standard GOST/EN term (this dimension
     // is this app's own derived concept, not a named standard parameter).
     // Pending native-speaker/GOST-source confirmation.
-    calcFieldCapOverlapLabel:
-        'Перекрытие облицовочного валика (с каждой стороны, мм)',
+    calcFieldCapOverlapLabel: 'Перекрытие облицовочного валика (мм)',
     calcFieldCapOverlapHelper:
         'Насколько облицовочный валик выходит за пределы разделки с каждой стороны (добавляется к обеим кромкам). Необязательно.',
     // TODO: unverified translation -- the added Double-V clause below is a
@@ -2922,6 +2946,9 @@ const Map<AppLanguage, L10nStrings> _strings = {
     dashboardBaseMaterial: 'Grundwerkstoff',
     dashboardFillerMaterial: 'Zusatzwerkstoff',
     dashboardSavedReports: 'Gespeicherte Berichte',
+    dashboardCalculatorsSectionTitle: 'Rechner',
+    dashboardLibrarySectionTitle: 'Bibliothek',
+    dashboardHistorySectionTitle: 'Verlauf',
     commonSave: 'Speichern',
     commonCancel: 'Abbrechen',
     commonDelete: 'Löschen',
@@ -3236,6 +3263,8 @@ const Map<AppLanguage, L10nStrings> _strings = {
     drawingLabelTJoint: 'T-Verbindung',
     drawingLabelSmawFillCap: 'SMAW Füllung / Decklage',
     drawingLabelGtawRoot: 'GTAW Wurzel',
+    drawingLabelCapTop: 'Oben',
+    drawingLabelCapBottom: 'Unten',
     calcSelectedClassificationNote: 'Ausgewählte Klassifizierung: {value}',
     calcTypicalBaseMetalsNote: 'Typische Grundwerkstoffe: {value}',
     calcRateBasisTitle: 'Abschmelzgrundlage',
@@ -3332,7 +3361,7 @@ const Map<AppLanguage, L10nStrings> _strings = {
     // translation, not an established DIN term (this dimension is this
     // app's own derived concept, not a named standard parameter). Pending
     // native-speaker confirmation.
-    calcFieldCapOverlapLabel: 'Decklagenüberstand (je Kante, mm)',
+    calcFieldCapOverlapLabel: 'Decklagenüberstand (mm)',
     calcFieldCapOverlapHelper:
         'Wie weit die Decklage auf jeder Seite über die Fugenöffnung hinausragt (gilt für beide Kanten). Optional.',
     // TODO: unverified translation -- the added Double-V clause below is a
@@ -3554,6 +3583,9 @@ const Map<AppLanguage, L10nStrings> _strings = {
     dashboardBaseMaterial: 'बेस मटेरियल',
     dashboardFillerMaterial: 'फिलर मटेरियल',
     dashboardSavedReports: 'सेव्ड रिपोर्ट्स',
+    dashboardCalculatorsSectionTitle: 'कैलकुलेटर',
+    dashboardLibrarySectionTitle: 'लाइब्रेरी',
+    dashboardHistorySectionTitle: 'इतिहास',
     commonSave: 'सेव करें',
     commonCancel: 'रद्द करें',
     commonDelete: 'डिलीट करें',
@@ -3861,6 +3893,8 @@ const Map<AppLanguage, L10nStrings> _strings = {
     drawingLabelTJoint: 'T-जॉइंट',
     drawingLabelSmawFillCap: 'SMAW फिल / कैप',
     drawingLabelGtawRoot: 'GTAW रूट',
+    drawingLabelCapTop: 'ऊपर',
+    drawingLabelCapBottom: 'नीचे',
     calcSelectedClassificationNote: 'चयनित क्लासिफिकेशन: {value}',
     calcTypicalBaseMetalsNote: 'टिपिकल बेस मेटल: {value}',
     calcRateBasisTitle: 'रेट बेसिस',
@@ -3952,14 +3986,14 @@ const Map<AppLanguage, L10nStrings> _strings = {
     // TODO: unverified term -- Hindi welding terminology in this file is
     // already low-confidence overall; these are transliterated technical
     // terms, not a confirmed native-speaker/standard translation.
-    calcFieldCapOverlapLabel: 'कैप ओवरलैप (हर किनारे से, mm)',
+    calcFieldCapOverlapLabel: 'कैप ओवरलैप (mm)',
     calcFieldCapOverlapHelper:
         'कैप पास ग्रूव ओपनिंग से हर तरफ कितना आगे बढ़ता है (दोनों किनारों पर जुड़ता है)। वैकल्पिक।',
     // TODO: unverified translation -- the added Double-V clause below is a
     // literal draft, not confirmed by a native Hindi speaker.
     calcFieldCapOverlapDoubleVHelper:
         'कैप पास ग्रूव ओपनिंग से हर तरफ कितना आगे बढ़ता है (दोनों किनारों पर जुड़ता है)। डबल V के लिए, यह मान दोनों सतहों पर लागू होता है, यानी कैप का योगदान दो बार गिना जाता है। वैकल्पिक।',
-    calcFieldCapHeightLabel: 'कैप हाइट / रीइन्फोर्समेंट (mm)',
+    calcFieldCapHeightLabel: 'कैप हाइट (mm)',
     calcFieldCapHeightHelper:
         'कैप पास बेस मेटल की सतह से कितना ऊपर उठता है। AWS D1.1 सामान्य रीइन्फोर्समेंट: t<=25mm के लिए 3mm, 25-50mm के लिए 5mm, t>50mm के लिए 6mm। वैकल्पिक।',
     // TODO: unverified translation -- the added Double-V clause below is a
