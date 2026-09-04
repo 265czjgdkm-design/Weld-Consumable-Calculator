@@ -366,8 +366,10 @@ class L10nStrings {
     required this.calcFieldBreakHeightHelper,
     required this.calcFieldCapOverlapLabel,
     required this.calcFieldCapOverlapHelper,
+    required this.calcFieldCapOverlapDoubleVHelper,
     required this.calcFieldCapHeightLabel,
     required this.calcFieldCapHeightHelper,
+    required this.calcFieldCapHeightDoubleVHelper,
     required this.calcFieldLegSizeLabel,
     required this.calcFieldLegSizeHelper,
     required this.calcFieldGtawWireDiameterLabel,
@@ -856,8 +858,10 @@ class L10nStrings {
   final String calcFieldBreakHeightHelper;
   final String calcFieldCapOverlapLabel;
   final String calcFieldCapOverlapHelper;
+  final String calcFieldCapOverlapDoubleVHelper;
   final String calcFieldCapHeightLabel;
   final String calcFieldCapHeightHelper;
+  final String calcFieldCapHeightDoubleVHelper;
   final String calcFieldLegSizeLabel;
   final String calcFieldLegSizeHelper;
   final String calcFieldGtawWireDiameterLabel;
@@ -1446,9 +1450,13 @@ const Map<AppLanguage, L10nStrings> _strings = {
     calcFieldCapOverlapLabel: 'Cap Overlap (each edge, mm)',
     calcFieldCapOverlapHelper:
         'How far the cap pass extends beyond the groove opening, per side (adds to both edges). Optional.',
+    calcFieldCapOverlapDoubleVHelper:
+        'How far the cap pass extends beyond the groove opening, per side (adds to both edges). For Double V, this value is applied to both faces, so the cap contribution is counted twice. Optional.',
     calcFieldCapHeightLabel: 'Cap Height / Reinforcement (mm)',
     calcFieldCapHeightHelper:
         'How much the cap pass rises above the base metal surface. AWS D1.1 typical reinforcement: up to 3mm for t<=25mm, 5mm for 25-50mm, 6mm for t>50mm. Optional.',
+    calcFieldCapHeightDoubleVHelper:
+        'How much the cap pass rises above the base metal surface. AWS D1.1 typical reinforcement: up to 3mm for t<=25mm, 5mm for 25-50mm, 6mm for t>50mm. For Double V, this value is applied to both faces, so the cap contribution is counted twice. Optional.',
     calcFieldLegSizeLabel: 'Leg Size (mm)',
     calcFieldLegSizeHelper: 'Equal leg size of the fillet weld.',
     calcFieldGtawWireDiameterLabel: 'GTAW Wire Diameter (mm)',
@@ -2061,9 +2069,13 @@ const Map<AppLanguage, L10nStrings> _strings = {
     calcFieldCapOverlapLabel: 'Kapak Bindirmesi (her kenardan, mm)',
     calcFieldCapOverlapHelper:
         'Kapak pasosunun kanal ağzının her iki kenarından ne kadar taştığı (her iki kenara ayrı ayrı eklenir). İsteğe bağlı.',
+    calcFieldCapOverlapDoubleVHelper:
+        'Kapak pasosunun kanal ağzının her iki kenarından ne kadar taştığı (her iki kenara ayrı ayrı eklenir). Çift V kaynağında bu değer her iki yüzeye de uygulanır, yani kapak katkısı hesaplamada iki kez sayılır. İsteğe bağlı.',
     calcFieldCapHeightLabel: 'Kapak Yüksekliği / Takviye (mm)',
     calcFieldCapHeightHelper:
         'Kapak pasosunun ana malzeme yüzeyinden ne kadar yükseldiği. AWS D1.1 tipik takviye: t<=25mm için 3mm, 25-50mm için 5mm, t>50mm için 6mm. İsteğe bağlı.',
+    calcFieldCapHeightDoubleVHelper:
+        'Kapak pasosunun ana malzeme yüzeyinden ne kadar yükseldiği. AWS D1.1 tipik takviye: t<=25mm için 3mm, 25-50mm için 5mm, t>50mm için 6mm. Çift V kaynağında bu değer her iki yüzeye de uygulanır, yani kapak katkısı hesaplamada iki kez sayılır. İsteğe bağlı.',
     calcFieldLegSizeLabel: 'Kenar Ölçüsü (mm)',
     calcFieldLegSizeHelper: 'Köşe kaynağının eşit kenar ölçüsü.',
     calcFieldGtawWireDiameterLabel: 'GTAW Tel Çapı (mm)',
@@ -2689,9 +2701,17 @@ const Map<AppLanguage, L10nStrings> _strings = {
         'Перекрытие облицовочного валика (с каждой стороны, мм)',
     calcFieldCapOverlapHelper:
         'Насколько облицовочный валик выходит за пределы разделки с каждой стороны (добавляется к обеим кромкам). Необязательно.',
+    // TODO: unverified translation -- the added Double-V clause below is a
+    // literal draft, not confirmed by a native Russian speaker.
+    calcFieldCapOverlapDoubleVHelper:
+        'Насколько облицовочный валик выходит за пределы разделки с каждой стороны (добавляется к обеим кромкам). Для двойного V-образного шва это значение применяется к обеим сторонам, поэтому вклад облицовочного валика учитывается дважды. Необязательно.',
     calcFieldCapHeightLabel: 'Высота усиления шва (мм)',
     calcFieldCapHeightHelper:
         'Насколько облицовочный валик возвышается над поверхностью основного металла. Типичное усиление по AWS D1.1: до 3мм при t<=25мм, 5мм при 25-50мм, 6мм при t>50мм. Необязательно.',
+    // TODO: unverified translation -- the added Double-V clause below is a
+    // literal draft, not confirmed by a native Russian speaker.
+    calcFieldCapHeightDoubleVHelper:
+        'Насколько облицовочный валик возвышается над поверхностью основного металла. Типичное усиление по AWS D1.1: до 3мм при t<=25мм, 5мм при 25-50мм, 6мм при t>50мм. Для двойного V-образного шва это значение применяется к обеим сторонам, поэтому вклад облицовочного валика учитывается дважды. Необязательно.',
     calcFieldLegSizeLabel: 'Катет шва (мм)',
     calcFieldLegSizeHelper: 'Равный катет углового шва.',
     calcFieldGtawWireDiameterLabel: 'Диаметр проволоки GTAW (мм)',
@@ -3315,9 +3335,17 @@ const Map<AppLanguage, L10nStrings> _strings = {
     calcFieldCapOverlapLabel: 'Decklagenüberstand (je Kante, mm)',
     calcFieldCapOverlapHelper:
         'Wie weit die Decklage auf jeder Seite über die Fugenöffnung hinausragt (gilt für beide Kanten). Optional.',
+    // TODO: unverified translation -- the added Double-V clause below is a
+    // literal draft, not confirmed by a native German speaker.
+    calcFieldCapOverlapDoubleVHelper:
+        'Wie weit die Decklage auf jeder Seite über die Fugenöffnung hinausragt (gilt für beide Kanten). Bei Doppel-V-Nähten wird dieser Wert auf beide Seiten angewendet, sodass der Decklagen-Beitrag doppelt gezählt wird. Optional.',
     calcFieldCapHeightLabel: 'Nahtüberhöhung (mm)',
     calcFieldCapHeightHelper:
         'Wie stark die Decklage über die Grundwerkstoffoberfläche hinausragt. Typische Überhöhung nach AWS D1.1: bis 3mm bei t<=25mm, 5mm bei 25-50mm, 6mm bei t>50mm. Optional.',
+    // TODO: unverified translation -- the added Double-V clause below is a
+    // literal draft, not confirmed by a native German speaker.
+    calcFieldCapHeightDoubleVHelper:
+        'Wie stark die Decklage über die Grundwerkstoffoberfläche hinausragt. Typische Überhöhung nach AWS D1.1: bis 3mm bei t<=25mm, 5mm bei 25-50mm, 6mm bei t>50mm. Bei Doppel-V-Nähten wird dieser Wert auf beide Seiten angewendet, sodass der Decklagen-Beitrag doppelt gezählt wird. Optional.',
     calcFieldLegSizeLabel: 'Schenkellänge (mm)',
     calcFieldLegSizeHelper: 'Gleichschenklige Schenkellänge der Kehlnaht.',
     calcFieldGtawWireDiameterLabel: 'GTAW-Drahtdurchmesser (mm)',
@@ -3927,9 +3955,17 @@ const Map<AppLanguage, L10nStrings> _strings = {
     calcFieldCapOverlapLabel: 'कैप ओवरलैप (हर किनारे से, mm)',
     calcFieldCapOverlapHelper:
         'कैप पास ग्रूव ओपनिंग से हर तरफ कितना आगे बढ़ता है (दोनों किनारों पर जुड़ता है)। वैकल्पिक।',
+    // TODO: unverified translation -- the added Double-V clause below is a
+    // literal draft, not confirmed by a native Hindi speaker.
+    calcFieldCapOverlapDoubleVHelper:
+        'कैप पास ग्रूव ओपनिंग से हर तरफ कितना आगे बढ़ता है (दोनों किनारों पर जुड़ता है)। डबल V के लिए, यह मान दोनों सतहों पर लागू होता है, यानी कैप का योगदान दो बार गिना जाता है। वैकल्पिक।',
     calcFieldCapHeightLabel: 'कैप हाइट / रीइन्फोर्समेंट (mm)',
     calcFieldCapHeightHelper:
         'कैप पास बेस मेटल की सतह से कितना ऊपर उठता है। AWS D1.1 सामान्य रीइन्फोर्समेंट: t<=25mm के लिए 3mm, 25-50mm के लिए 5mm, t>50mm के लिए 6mm। वैकल्पिक।',
+    // TODO: unverified translation -- the added Double-V clause below is a
+    // literal draft, not confirmed by a native Hindi speaker.
+    calcFieldCapHeightDoubleVHelper:
+        'कैप पास बेस मेटल की सतह से कितना ऊपर उठता है। AWS D1.1 सामान्य रीइन्फोर्समेंट: t<=25mm के लिए 3mm, 25-50mm के लिए 5mm, t>50mm के लिए 6mm। डबल V के लिए, यह मान दोनों सतहों पर लागू होता है, यानी कैप का योगदान दो बार गिना जाता है। वैकल्पिक।',
     calcFieldLegSizeLabel: 'लेग साइज़ (mm)',
     calcFieldLegSizeHelper: 'फिलेट वेल्ड का समान लेग साइज़।',
     calcFieldGtawWireDiameterLabel: 'GTAW वायर डायमीटर (mm)',

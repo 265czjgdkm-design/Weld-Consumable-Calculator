@@ -1916,12 +1916,16 @@ class _CalculatorPageState extends State<CalculatorPage> {
         InputFieldSpec(
           key: FieldKey.capOverlapMm,
           label: strings.calcFieldCapOverlapLabel,
-          helperText: strings.calcFieldCapOverlapHelper,
+          helperText: _grooveType == GrooveType.doubleV
+              ? strings.calcFieldCapOverlapDoubleVHelper
+              : strings.calcFieldCapOverlapHelper,
         ),
         InputFieldSpec(
           key: FieldKey.capHeightMm,
           label: strings.calcFieldCapHeightLabel,
-          helperText: strings.calcFieldCapHeightHelper,
+          helperText: _grooveType == GrooveType.doubleV
+              ? strings.calcFieldCapHeightDoubleVHelper
+              : strings.calcFieldCapHeightHelper,
         ),
       ]);
     }

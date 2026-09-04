@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:weld_consumable_calculator/l10n/app_language.dart';
 import 'package:weld_consumable_calculator/l10n/app_locale.dart';
 import 'package:weld_consumable_calculator/l10n/app_locale_scope.dart';
 import 'package:weld_consumable_calculator/models/weld_models.dart';
@@ -41,6 +43,27 @@ void _setDesktopViewport(WidgetTester tester) {
 Finder _fieldWithLabel(String label) => find.byWidgetPredicate(
   (widget) => widget is TextField && widget.decoration?.labelText == label,
 );
+
+/// Turkish equivalent of [_pumpToDimensionsStep] - used only to confirm the
+/// Double V cap-doubling helper text (Finding 3) actually renders in a
+/// second locale too, not just English.
+Future<void> _pumpToDimensionsStepTr(WidgetTester tester) async {
+  SharedPreferences.setMockInitialValues({});
+  final locale = AppLocale();
+  await locale.setLanguage(AppLanguage.tr);
+  await tester.pumpWidget(
+    AppLocaleScope(locale: locale, child: MaterialApp(home: CalculatorPage())),
+  );
+  await tester.pumpAndSettle();
+
+  await tester.ensureVisible(find.text('Başla'));
+  await tester.tap(find.text('Başla'));
+  await tester.pumpAndSettle();
+
+  await tester.ensureVisible(find.text('Devam Et'));
+  await tester.tap(find.text('Devam Et')); // process -> dimensions
+  await tester.pumpAndSettle();
+}
 
 void main() {
   testWidgets(
@@ -135,6 +158,83 @@ void main() {
         '',
       );
       expect(tester.widget<TextField>(capHeightField).controller?.text, '');
+    },
+  );
+
+  testWidgets(
+    'Cap Overlap/Cap Height helper text discloses the both-faces doubling '
+    'for Double V, but not for other groove types (reviewer Finding 3)',
+    (tester) async {
+      await _pumpToDimensionsStep(tester);
+
+      // Default groove is Single V - plain helper text, no doubling note.
+      expect(
+        tester
+            .widget<TextField>(_fieldWithLabel('Cap Overlap (each edge, mm)'))
+            .decoration
+            ?.helperText,
+        isNot(contains('counted twice')),
+      );
+
+      final grooveDropdown = find.byWidgetPredicate(
+        (widget) => widget is DropdownButtonFormField<GrooveType>,
+      );
+      await tester.ensureVisible(grooveDropdown);
+      await tester.tap(grooveDropdown);
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Double V').last);
+      await tester.pumpAndSettle();
+
+      final capOverlapHelper = tester
+          .widget<TextField>(_fieldWithLabel('Cap Overlap (each edge, mm)'))
+          .decoration
+          ?.helperText;
+      final capHeightHelper = tester
+          .widget<TextField>(
+            _fieldWithLabel('Cap Height / Reinforcement (mm)'),
+          )
+          .decoration
+          ?.helperText;
+      expect(capOverlapHelper, contains('applied to both faces'));
+      expect(capOverlapHelper, contains('counted twice'));
+      expect(capHeightHelper, contains('applied to both faces'));
+      expect(capHeightHelper, contains('counted twice'));
+    },
+  );
+
+  testWidgets(
+    'Cap Overlap/Cap Height helper text discloses the both-faces doubling '
+    'for Double V in Turkish too, not just English (reviewer Finding 3)',
+    (tester) async {
+      await _pumpToDimensionsStepTr(tester);
+
+      final grooveDropdown = find.byWidgetPredicate(
+        (widget) => widget is DropdownButtonFormField<GrooveType>,
+      );
+      await tester.ensureVisible(grooveDropdown);
+      await tester.tap(grooveDropdown);
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Çift V').last);
+      await tester.pumpAndSettle();
+
+      final capOverlapHelper = tester
+          .widget<TextField>(
+            _fieldWithLabel('Kapak Bindirmesi (her kenardan, mm)'),
+          )
+          .decoration
+          ?.helperText;
+      final capHeightHelper = tester
+          .widget<TextField>(
+            _fieldWithLabel('Kapak Yüksekliği / Takviye (mm)'),
+          )
+          .decoration
+          ?.helperText;
+      expect(capOverlapHelper, contains('her iki yüzeye de uygulanır'));
+      expect(capOverlapHelper, contains('iki kez sayılır'));
+      expect(capHeightHelper, contains('her iki yüzeye de uygulanır'));
+      expect(capHeightHelper, contains('iki kez sayılır'));
     },
   );
 

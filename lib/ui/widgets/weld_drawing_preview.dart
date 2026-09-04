@@ -951,15 +951,39 @@ class _WeldDrawingPainter extends CustomPainter {
     // _drawCapDimensions below), so with cap values actually set it needs
     // real extra vertical room above AND below the plate for those two
     // extra labels, not just the small generic crown buffer every other
-    // groove type's single (top-only) cap already fits inside.
+    // groove type's single (top-only) cap already fits inside. Those
+    // labels are fixed-PIXEL-size pills (~28px tall, see
+    // _unclampedMeasurementRect's minHeight) regardless of mm scale, so a
+    // flat mm budget added to `heightMm` reserves a wildly different,
+    // scale-dependent amount of *actual* pixel room depending on plate
+    // thickness - harmless on the fillAvailableSpace/mobile path (verified:
+    // that path is width-bound regardless, per the comment on
+    // `_createLayout`'s `scale`, so the extra mm never touches the scale
+    // that's actually used), but on the fixed 760x400 desktop canvas it's
+    // tight enough on height that the mm budget was flipping the layout
+    // from width-bound to height-bound outright, shrinking the whole
+    // rendered joint 27-31% for cap labels that only need ~60px combined
+    // (see reviewer Finding 2) - and even then landed entirely below the
+    // plate, since `topPaddingMm` is zeroed on that path (see `topPadding`
+    // below). Reserve real pixels directly via `extraTopPx`/`extraBottomPx`
+    // on the desktop path instead, which shrinks `frame` itself by exactly
+    // the pixel amount needed, split top/bottom, regardless of scale.
     final hasCapDimensions =
         (data.capOverlapMm ?? 0) > 0 || (data.capHeightMm ?? 0) > 0;
+    const capLabelReservePx = 32.0;
     final layout = _createLayout(
       size,
       maxHalfWidthMm: halfBody + 10,
-      heightMm: thickness + 7 + (hasCapDimensions ? 22 : 0),
+      heightMm:
+          thickness + 7 + (hasCapDimensions && fillAvailableSpace ? 22 : 0),
       topPaddingMm: 4,
       topChipLabel: grooveTypeLabel,
+      extraTopPx: (hasCapDimensions && !fillAvailableSpace)
+          ? capLabelReservePx
+          : 0.0,
+      extraBottomPx: (hasCapDimensions && !fillAvailableSpace)
+          ? capLabelReservePx
+          : 0.0,
     );
     final p = layout.point;
     final member = _memberExtents(thickness);
@@ -1073,6 +1097,14 @@ class _WeldDrawingPainter extends CustomPainter {
       rootGapLabelY: (leftMid + rightMid) / 2,
       avoidRects: tintRects,
     );
+    // Drawn here (rather than after the labels below, as most other groove
+    // types do) so the root-face label immediately below - the one that
+    // actually collided with the pipe-OD chip on the 760x400 desktop
+    // canvas in Unequal geometry (see reviewer Finding 1/Gap B) - can
+    // include the chip rects in its own avoidRects chain. Chip *drawing*
+    // order doesn't matter here since chips and the joint/labels occupy
+    // separate regions of the canvas.
+    final chipRects = _drawTopChips(canvas, size, grooveTypeLabel);
     final totalRootFaceRect = _drawDimensionLine(
       canvas,
       guidePaint,
@@ -1085,6 +1117,11 @@ class _WeldDrawingPainter extends CustomPainter {
       extensionEnd: p(halfGap, rightLowerRootY),
       fieldKey: FieldKey.rootFaceMm,
       avoidRects: [
+        chipRects.typeChip,
+        // Same inflation as the cap-dimension labels' own avoid list below
+        // - the pipe-OD chip sits at a fixed pixel position independent of
+        // mm-scale and needs a few extra px of clearance to fully clear.
+        if (chipRects.pipeChip != null) chipRects.pipeChip!.inflate(4),
         ...tintRects,
         commonRects.thickness,
         ?commonRects.bThickness,
@@ -1166,7 +1203,6 @@ class _WeldDrawingPainter extends CustomPainter {
       );
       upperHalfRectOuter = upperHalfRect;
     }
-    final chipRects = _drawTopChips(canvas, size, grooveTypeLabel);
     final beforeCapRects = [
       ...tintRects,
       commonRects.thickness,
@@ -2099,6 +2135,18 @@ class _WeldDrawingPainter extends CustomPainter {
     required double heightMm,
     double topPaddingMm = 3.5,
     String topChipLabel = '',
+    // Real screen pixels to reserve above/below the drawn frame, on top of
+    // the usual proportional margins - for callers that need guaranteed
+    // room for a fixed-PIXEL-size label (e.g. Double V's both-faces cap
+    // pills, ~28px tall regardless of mm scale) rather than the geometry's
+    // own mm-scaled crown buffer. Unlike `topPaddingMm` (which is silently
+    // zeroed on the desktop/FittedBox path below - see `topPadding` - and
+    // which reserves room by shrinking centering slack, so it can still
+    // collapse to nothing when the drawing is height-bound), this shrinks
+    // `frame` itself directly, so it's honored in both modes and can never
+    // collapse to zero.
+    double extraTopPx = 0.0,
+    double extraBottomPx = 0.0,
   }) {
     // Margins as a fraction of canvas size (matching the original fixed
     // 50/42/100/92 px margins against the 760x400 reference canvas) so the
@@ -2122,7 +2170,7 @@ class _WeldDrawingPainter extends CustomPainter {
     // size and has no width pressure to relieve.
     final marginX = size.width * (fillAvailableSpace ? 0.038 : 0.0658);
     var marginTop = size.height * 0.105;
-    final marginBottom = size.height * 0.125;
+    var marginBottom = size.height * 0.125;
     if (fillAvailableSpace) {
       // In this mode `size` is the *real* on-screen box - there's no outer
       // FittedBox uniformly re-scaling everything back up - and it can be
@@ -2141,6 +2189,8 @@ class _WeldDrawingPainter extends CustomPainter {
         _stackTopChips(size, topChipLabel) ? 80.0 : 48.0,
       );
     }
+    marginTop += extraTopPx;
+    marginBottom += extraBottomPx;
     final frame = Rect.fromLTWH(
       marginX,
       marginTop,

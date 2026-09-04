@@ -256,11 +256,32 @@ void main() {
   // (320pt/240px, visual mode only) is the one combination where the
   // both-faces cap-reinforcement feature (Double V gets a cap dimension
   // pair on top AND bottom, per the user's explicit "welded from both
-  // sides" decision) doesn't fit alongside the pipe OD chip and every
-  // other pre-existing label - a real gap newly introduced by the
-  // both-faces drawing, in the same family as the other narrow-width gaps
-  // in this file, not attempted here since the fix (a dedicated
-  // narrow-width layout for this specific combination) needs its own pass.
+  // sides" decision) doesn't fit. NOT a collision with the pipe OD chip
+  // (a prior version of this comment claimed that, but re-measuring the
+  // actual rects shows the OD chip isn't involved at all): the real
+  // collision is bottom-face `capOverlapMm` fully overlapping bottom-face
+  // `capHeightMm` by 27.3x28.0px - one pill landing almost entirely on top
+  // of the other. Root cause: both bottom-face pills' resolved (pre-clamp)
+  // positions land past the canvas edge on this short a canvas, so each
+  // independently canvas-edge-clamps (see `_measurementLabelRect`) to the
+  // identical y=312-340 band - the clamp has no knowledge of where a
+  // sibling label already clamped to. This is a real, structural limit of
+  // the shared label-avoidance system, not just an unfixably-tight squeeze:
+  // `_clearLabelPosition` only ever pushes candidates DOWN to clear a
+  // collision (deliberately monotonic - see its doc comment), so once a
+  // bottom-face label is already being pushed toward the bottom canvas
+  // edge, there's no direction left to push it clear of the edge-clamp.
+  // Tried reserving genuine extra pixel room below the plate on this path
+  // too (the same fix that resolved Finding 2/Gap B on desktop) - it made
+  // this narrow-canvas case worse, not better (spread the collision to
+  // technical mode and more locales), since [busyHeightFor]'s per-tier
+  // mobile canvas heights below are already tuned tightly enough that
+  // shrinking the frame further to reserve pixels elsewhere pushes some
+  // other label past its own edge instead. A real fix needs either a wider
+  // dedicated narrow-width layout for this combination or a direction-aware
+  // (not just monotonic-down) push in the shared avoidance system - both
+  // out of scope for a contained fix, so left as an accurately-described
+  // skip rather than a silent regression.
   String? doubleVBothFacesNarrowGap(
     GrooveType groove,
     JointType joint,
@@ -271,9 +292,9 @@ void main() {
           joint == JointType.pipeButt &&
           mode == DrawingMode.visual &&
           width <= 240.0)
-      ? "Double V's both-faces cap labels overlap the pipe OD chip at "
-            '320pt/240px width - real, newly introduced, needs a dedicated '
-            'follow-up'
+      ? "Double V's both-faces bottom-face cap-overlap and cap-height pills "
+            'both canvas-edge-clamp to the same y-band at 320pt/240px width '
+            '- real, newly introduced, needs a dedicated follow-up'
       : null;
 
   for (final language in AppLanguage.values) {
@@ -502,27 +523,6 @@ void main() {
   // fixed 760x400 reference canvas in that mode (see
   // [WeldDrawingPreview.fillAvailableSpace]'s doc), so 760x400 is the
   // correct size to render at here too, matching production exactly.
-  // KNOWN GAP: Double V/pipe butt in Unequal geometry, at the fixed 760x400
-  // desktop FittedBox canvas, is left a few pixels short of fully clearing
-  // the pipe OD chip by the both-faces cap-reinforcement feature's top
-  // cap-overlap label - a real gap newly introduced by the both-faces
-  // drawing (Double V now draws two cap dimension pairs instead of one),
-  // in the same family as the other gaps in this file, not attempted here
-  // since a robust fix (without regressing the many combinations already
-  // fixed) needs its own dedicated pass.
-  String? doubleVBothFacesDesktopPipeGap(
-    GrooveType groove,
-    JointType joint,
-    JointGeometryMode geometryMode,
-  ) =>
-      (groove == GrooveType.doubleV &&
-          joint == JointType.pipeButt &&
-          geometryMode == JointGeometryMode.unequal)
-      ? "Double V's both-faces top cap-overlap label overlaps the pipe OD "
-            'chip at the 760x400 desktop canvas in Unequal geometry - '
-            'real, newly introduced, needs a dedicated follow-up'
-      : null;
-
   for (final process in [WeldingProcess.gtaw, WeldingProcess.gtawSmaw]) {
     for (final geometryMode in JointGeometryMode.values) {
       final data = _buildData(
@@ -541,11 +541,6 @@ void main() {
               language: AppLanguage.en,
               data: data,
               fillAvailableSpace: false,
-              knownGap: doubleVBothFacesDesktopPipeGap(
-                groove,
-                joint,
-                geometryMode,
-              ),
             );
           }
         }
