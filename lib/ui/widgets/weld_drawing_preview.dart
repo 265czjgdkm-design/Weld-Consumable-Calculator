@@ -42,6 +42,8 @@ class WeldDrawingData {
     this.bevelAngleDeg,
     this.secondaryBevelAngleDeg,
     this.breakHeightMm,
+    this.capOverlapMm,
+    this.capHeightMm,
     this.legSizeMm,
     this.pipeOdMm,
     this.pipeOdAMm,
@@ -60,6 +62,8 @@ class WeldDrawingData {
   final double? bevelAngleDeg;
   final double? secondaryBevelAngleDeg;
   final double? breakHeightMm;
+  final double? capOverlapMm;
+  final double? capHeightMm;
   final double? legSizeMm;
   final double? pipeOdMm;
   final double? pipeOdAMm;
@@ -667,7 +671,7 @@ class _WeldDrawingPainter extends CustomPainter {
     // depth, so it rarely collides with them, but root face shares the
     // same right-hand lane as thickness/root gap/groove depth and can
     // still collapse into them at narrow canvas widths.
-    _drawAngleTag(
+    final angleRect = _drawAngleTag(
       canvas,
       guidePaint,
       size,
@@ -690,7 +694,27 @@ class _WeldDrawingPainter extends CustomPainter {
         rootFaceRect,
       ],
     );
-    _drawTopChips(canvas, size, grooveTypeLabel);
+    final chipRects = _drawTopChips(canvas, size, grooveTypeLabel);
+    _drawCapDimensions(
+      canvas,
+      size,
+      guidePaint,
+      layout: layout,
+      halfTop: halfTop,
+      topY: math.min(member.leftTop, member.rightTop),
+      thickness: thickness,
+      avoidRects: [
+        ...tintRects,
+        commonRects.thickness,
+        ?commonRects.bThickness,
+        commonRects.rootGap,
+        ?commonRects.grooveDepth,
+        rootFaceRect,
+        angleRect,
+        chipRects.typeChip,
+        ?chipRects.pipeChip,
+      ],
+    );
   }
 
   void _drawHalfV(
@@ -793,14 +817,8 @@ class _WeldDrawingPainter extends CustomPainter {
         p(halfGap, member.rightBottom).dy,
       )
       ..quadraticBezierTo(
-        p(
-          0,
-          math.max(member.leftBottom, member.rightBottom) + rootCrown,
-        ).dx,
-        p(
-          0,
-          math.max(member.leftBottom, member.rightBottom) + rootCrown,
-        ).dy,
+        p(0, math.max(member.leftBottom, member.rightBottom) + rootCrown).dx,
+        p(0, math.max(member.leftBottom, member.rightBottom) + rootCrown).dy,
         p(-halfGap, member.leftBottom).dx,
         p(-halfGap, member.leftBottom).dy,
       )
@@ -865,7 +883,7 @@ class _WeldDrawingPainter extends CustomPainter {
       fieldKey: FieldKey.rootFaceMm,
       avoidRects: [...tintRects, angleRect],
     );
-    _drawButtCommonMeasurements(
+    final commonRects = _drawButtCommonMeasurements(
       canvas,
       size,
       guidePaint,
@@ -877,7 +895,27 @@ class _WeldDrawingPainter extends CustomPainter {
       rightThicknessLabelX: rightBody + 6,
       avoidRects: [...tintRects, angleRect, rootFaceRect],
     );
-    _drawTopChips(canvas, size, grooveTypeLabel);
+    final chipRects = _drawTopChips(canvas, size, grooveTypeLabel);
+    _drawCapDimensions(
+      canvas,
+      size,
+      guidePaint,
+      layout: layout,
+      halfTop: topRight,
+      topY: math.min(member.leftTop, member.rightTop),
+      thickness: thickness,
+      avoidRects: [
+        ...tintRects,
+        angleRect,
+        rootFaceRect,
+        commonRects.thickness,
+        ?commonRects.bThickness,
+        commonRects.rootGap,
+        ?commonRects.grooveDepth,
+        chipRects.typeChip,
+        ?chipRects.pipeChip,
+      ],
+    );
   }
 
   void _drawDoubleV(
@@ -1070,6 +1108,8 @@ class _WeldDrawingPainter extends CustomPainter {
         totalRootFaceRect,
       ],
     );
+    Rect? upperHalfRectOuter;
+    Rect? lowerHalfRect;
     if (data.geometryMode == JointGeometryMode.equal) {
       // These two half-thickness brackets sit in their own lane, closer to
       // the plate than the main thickness line (`thicknessLabelX`, above).
@@ -1106,7 +1146,7 @@ class _WeldDrawingPainter extends CustomPainter {
         fieldKey: FieldKey.thicknessMm,
         avoidRects: beforeHalves,
       );
-      _drawDimensionLine(
+      lowerHalfRect = _drawDimensionLine(
         canvas,
         guidePaint,
         start: p(-halfBody + 4, halfThickness),
@@ -1117,8 +1157,31 @@ class _WeldDrawingPainter extends CustomPainter {
         fieldKey: FieldKey.thicknessMm,
         avoidRects: [...beforeHalves, upperHalfRect],
       );
+      upperHalfRectOuter = upperHalfRect;
     }
-    _drawTopChips(canvas, size, grooveTypeLabel);
+    final chipRects = _drawTopChips(canvas, size, grooveTypeLabel);
+    _drawCapDimensions(
+      canvas,
+      size,
+      guidePaint,
+      layout: layout,
+      halfTop: halfTop,
+      topY: math.min(member.leftTop, member.rightTop),
+      thickness: thickness,
+      avoidRects: [
+        ...tintRects,
+        commonRects.thickness,
+        ?commonRects.bThickness,
+        commonRects.rootGap,
+        ?commonRects.grooveDepth,
+        totalRootFaceRect,
+        angleRect,
+        ?upperHalfRectOuter,
+        ?lowerHalfRect,
+        chipRects.typeChip,
+        ?chipRects.pipeChip,
+      ],
+    );
   }
 
   void _drawCompoundV(
@@ -1182,10 +1245,7 @@ class _WeldDrawingPainter extends CustomPainter {
     final member = _memberExtents(thickness);
     final leftThickness = member.leftBottom - member.leftTop;
     final rightThickness = member.rightBottom - member.rightTop;
-    final leftRootFace = math.min(
-      rootFace,
-      math.max(leftThickness - 1.2, 0.5),
-    );
+    final leftRootFace = math.min(rootFace, math.max(leftThickness - 1.2, 0.5));
     final rightRootFace = math.min(
       rootFace,
       math.max(rightThickness - 1.2, 0.5),
@@ -1199,7 +1259,10 @@ class _WeldDrawingPainter extends CustomPainter {
     // are already clamped to each member's own actual extent.
     final leftBreakY =
         member.leftTop +
-        math.min(upperHeight, math.max(leftThickness - leftRootFace - 0.8, 0.5));
+        math.min(
+          upperHeight,
+          math.max(leftThickness - leftRootFace - 0.8, 0.5),
+        );
     final rightBreakY =
         member.rightTop +
         math.min(
@@ -1379,20 +1442,11 @@ class _WeldDrawingPainter extends CustomPainter {
     );
     // Secondary angle (beta): drawn last of the six, so it must avoid all
     // five already-placed labels, not a subset.
-    _drawAngleTag(
+    final betaRect = _drawAngleTag(
       canvas,
       guidePaint,
       size,
-      start: p(
-        halfBreak + ((halfTop - halfBreak) * 0.48),
-        rightBreakY * 0.48,
-      ),
-      // `halfBreak + 6`, same reasoning as alpha above - this label's
-      // natural height sits between the root's `halfGap` width and the
-      // break's wider `halfBreak` width, so anchoring off the narrower
-      // `halfGap` (as this did before) risks sitting on the wider part of
-      // the bevel; `halfBreak` is the safe (wider) bound to clear at
-      // either height.
+      start: p(halfBreak + ((halfTop - halfBreak) * 0.48), rightBreakY * 0.48),
       labelCenter: p(halfBreak + 6, (rightBreakY + rightGrooveY) / 2),
       text: 'β ${_formatValue(secondaryAngle)}°',
       fieldKey: FieldKey.secondaryBevelAngleDeg,
@@ -1407,7 +1461,29 @@ class _WeldDrawingPainter extends CustomPainter {
         hRect,
       ],
     );
-    _drawTopChips(canvas, size, grooveTypeLabel);
+    final chipRects = _drawTopChips(canvas, size, grooveTypeLabel);
+    _drawCapDimensions(
+      canvas,
+      size,
+      guidePaint,
+      layout: layout,
+      halfTop: halfTop,
+      topY: math.min(member.leftTop, member.rightTop),
+      thickness: thickness,
+      avoidRects: [
+        ...tintRects,
+        alphaRect,
+        rootFaceRect,
+        commonRects.thickness,
+        ?commonRects.bThickness,
+        commonRects.rootGap,
+        ?commonRects.grooveDepth,
+        hRect,
+        betaRect,
+        chipRects.typeChip,
+        ?chipRects.pipeChip,
+      ],
+    );
   }
 
   void _drawSquare(
@@ -1497,7 +1573,7 @@ class _WeldDrawingPainter extends CustomPainter {
       topLabelCenter: p(halfGap + 8, thickness * 0.18),
       rootLabelCenter: p(halfGap + 5.5, thickness - 0.8),
     );
-    _drawButtCommonMeasurements(
+    final commonRects = _drawButtCommonMeasurements(
       canvas,
       size,
       guidePaint,
@@ -1510,7 +1586,26 @@ class _WeldDrawingPainter extends CustomPainter {
       rootGapLabelY: math.max(member.leftBottom, member.rightBottom),
       avoidRects: [?tint.topLabel, ?tint.rootLabel],
     );
-    _drawTopChips(canvas, size, grooveTypeLabel);
+    final chipRects = _drawTopChips(canvas, size, grooveTypeLabel);
+    _drawCapDimensions(
+      canvas,
+      size,
+      guidePaint,
+      layout: layout,
+      halfTop: halfGap,
+      topY: math.min(member.leftTop, member.rightTop),
+      thickness: thickness,
+      avoidRects: [
+        ?tint.topLabel,
+        ?tint.rootLabel,
+        commonRects.thickness,
+        ?commonRects.bThickness,
+        commonRects.rootGap,
+        ?commonRects.grooveDepth,
+        chipRects.typeChip,
+        ?chipRects.pipeChip,
+      ],
+    );
   }
 
   void _drawFillet(
@@ -1846,6 +1941,76 @@ class _WeldDrawingPainter extends CustomPainter {
     );
   }
 
+  // Cap overlap/height are optional (null/zero means "no reinforcement
+  // counted" in the calculation, the default for every pre-existing saved
+  // calculation) - unlike every other dimension in this file, this one only
+  // draws when the user has actually entered a positive value, rather than
+  // always showing an illustrative fallback. These are the first genuinely
+  // optional dimensions in this drawing (every other field is either always
+  // required for its groove type or already has a meaningful non-zero
+  // fallback), so always-on illustrative lines would add two new labels to
+  // every existing drawing regardless of whether this feature is used at
+  // all, which is both visually misleading (implying reinforcement that
+  // isn't there) and a backward-compatibility break for every existing
+  // combination this file's overlap/hotspot tests already cover.
+  // `halfTop` is the groove opening's half-width at the top surface (the x
+  // where cap overlap starts extending outward); `topY` is that surface's
+  // y-coordinate (where cap height starts rising from).
+  ({Rect? overlap, Rect? height}) _drawCapDimensions(
+    Canvas canvas,
+    Size size,
+    Paint guidePaint, {
+    required _SectionLayout layout,
+    required double halfTop,
+    required double topY,
+    required double thickness,
+    List<Rect> avoidRects = const [],
+  }) {
+    final p = layout.point;
+    final rawOverlap = data.capOverlapMm;
+    final rawHeight = data.capHeightMm;
+
+    Rect? overlapRect;
+    if (rawOverlap != null && rawOverlap > 0) {
+      final capOverlap = rawOverlap.clamp(0, math.max(halfTop, 2) * 1.5);
+      final overlapY = topY - 3;
+      overlapRect = _drawDimensionLine(
+        canvas,
+        guidePaint,
+        start: p(halfTop, overlapY),
+        end: p(halfTop + capOverlap, overlapY),
+        label: '${_formatValue(capOverlap.toDouble())} mm cap overlap',
+        labelSize: size,
+        labelOffset: const Offset(6, -10),
+        extensionStart: p(halfTop, topY),
+        extensionEnd: p(halfTop + capOverlap, topY),
+        fieldKey: FieldKey.capOverlapMm,
+        avoidRects: avoidRects,
+      );
+    }
+
+    Rect? heightRect;
+    if (rawHeight != null && rawHeight > 0) {
+      final capHeight = rawHeight.clamp(0, math.max(thickness * 0.4, 1));
+      final heightX = -(halfTop + 10);
+      heightRect = _drawDimensionLine(
+        canvas,
+        guidePaint,
+        start: p(heightX, topY),
+        end: p(heightX, topY - capHeight),
+        label: '${_formatValue(capHeight.toDouble())} mm cap height',
+        labelSize: size,
+        labelOffset: const Offset(-6, -10),
+        extensionStart: p(0, topY),
+        extensionEnd: p(0, topY - capHeight),
+        fieldKey: FieldKey.capHeightMm,
+        avoidRects: [...avoidRects, ?overlapRect],
+      );
+    }
+
+    return (overlap: overlapRect, height: heightRect);
+  }
+
   _MemberExtents _memberExtents(double governingThickness) {
     if (data.geometryMode != JointGeometryMode.unequal) {
       return _MemberExtents(
@@ -2017,19 +2182,24 @@ class _WeldDrawingPainter extends CustomPainter {
   // the type chip's clamping pulls it right), so on canvases where the two
   // chips' real measured rects would actually collide the OD chip stacks
   // directly below the type chip instead - see [_stackTopChips].
-  void _drawTopChips(Canvas canvas, Size size, String typeLabel) {
-    _drawTypeChip(canvas, size, typeLabel);
-    _drawPipeChip(
+  ({Rect typeChip, Rect? pipeChip}) _drawTopChips(
+    Canvas canvas,
+    Size size,
+    String typeLabel,
+  ) {
+    final typeChipRect = _drawTypeChip(canvas, size, typeLabel);
+    final pipeChipRect = _drawPipeChip(
       canvas,
       size,
       center: _stackTopChips(size, typeLabel)
           ? Offset(size.width * 0.5, 60)
           : Offset(size.width - 82, 28),
     );
+    return (typeChip: typeChipRect, pipeChip: pipeChipRect);
   }
 
-  void _drawTypeChip(Canvas canvas, Size size, String label) {
-    _drawAnnotationLabel(
+  Rect _drawTypeChip(Canvas canvas, Size size, String label) {
+    return _drawAnnotationLabel(
       canvas,
       size,
       label,
@@ -2039,8 +2209,10 @@ class _WeldDrawingPainter extends CustomPainter {
     );
   }
 
-  void _drawPipeChip(Canvas canvas, Size size, {Offset? center}) {
-    if (!_isPipeButt || data.pipeOdMm == null || data.pipeOdMm! <= 0) return;
+  Rect? _drawPipeChip(Canvas canvas, Size size, {Offset? center}) {
+    if (!_isPipeButt || data.pipeOdMm == null || data.pipeOdMm! <= 0) {
+      return null;
+    }
     final rect = _drawAnnotationLabel(
       canvas,
       size,
@@ -2049,6 +2221,7 @@ class _WeldDrawingPainter extends CustomPainter {
       fontSize: 10.5,
     );
     _hotspot(FieldKey.pipeOdMm, rect);
+    return rect;
   }
 
   void _drawWeldHatch(Canvas canvas, Path path, Size size) {

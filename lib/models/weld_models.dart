@@ -732,6 +732,8 @@ class WeldInputPresetData {
     this.bevelAngleDeg,
     this.secondaryBevelAngleDeg,
     this.breakHeightMm,
+    this.capOverlapMm,
+    this.capHeightMm,
     this.legSizeMm,
     this.gtawTransitionMm,
     this.wireDiameterMm,
@@ -765,6 +767,8 @@ class WeldInputPresetData {
   final double? bevelAngleDeg;
   final double? secondaryBevelAngleDeg;
   final double? breakHeightMm;
+  final double? capOverlapMm;
+  final double? capHeightMm;
   final double? legSizeMm;
   final double? gtawTransitionMm;
   final double? wireDiameterMm;
@@ -805,6 +809,8 @@ class WeldInputPresetData {
     if (secondaryBevelAngleDeg != null)
       'secondaryBevelAngleDeg': secondaryBevelAngleDeg,
     if (breakHeightMm != null) 'breakHeightMm': breakHeightMm,
+    if (capOverlapMm != null) 'capOverlapMm': capOverlapMm,
+    if (capHeightMm != null) 'capHeightMm': capHeightMm,
     if (legSizeMm != null) 'legSizeMm': legSizeMm,
     if (gtawTransitionMm != null) 'gtawTransitionMm': gtawTransitionMm,
     if (wireDiameterMm != null) 'wireDiameterMm': wireDiameterMm,
@@ -864,6 +870,8 @@ class WeldInputPresetData {
     bevelAngleDeg: _nullableDouble(json['bevelAngleDeg']),
     secondaryBevelAngleDeg: _nullableDouble(json['secondaryBevelAngleDeg']),
     breakHeightMm: _nullableDouble(json['breakHeightMm']),
+    capOverlapMm: _nullableDouble(json['capOverlapMm']),
+    capHeightMm: _nullableDouble(json['capHeightMm']),
     legSizeMm: _nullableDouble(json['legSizeMm']),
     gtawTransitionMm: _nullableDouble(json['gtawTransitionMm']),
     wireDiameterMm: _nullableDouble(json['wireDiameterMm']),
@@ -938,6 +946,8 @@ class WeldInputData {
     this.bevelAngleDeg,
     this.secondaryBevelAngleDeg,
     this.breakHeightMm,
+    this.capOverlapMm,
+    this.capHeightMm,
     this.legSizeMm,
     this.gtawTransitionMm,
     this.wireDiameterMm,
@@ -964,6 +974,8 @@ class WeldInputData {
   final double? bevelAngleDeg;
   final double? secondaryBevelAngleDeg;
   final double? breakHeightMm;
+  final double? capOverlapMm;
+  final double? capHeightMm;
   final double? legSizeMm;
   final double? gtawTransitionMm;
   final double? wireDiameterMm;

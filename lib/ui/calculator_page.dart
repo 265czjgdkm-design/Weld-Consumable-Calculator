@@ -1670,6 +1670,8 @@ class _CalculatorPageState extends State<CalculatorPage> {
     FieldKey.bevelAngleDeg,
     FieldKey.secondaryBevelAngleDeg,
     FieldKey.breakHeightMm,
+    FieldKey.capOverlapMm,
+    FieldKey.capHeightMm,
     FieldKey.legSizeMm,
   };
 
@@ -1710,6 +1712,8 @@ class _CalculatorPageState extends State<CalculatorPage> {
     BasisKey.primaryBevelAngle,
     BasisKey.secondaryBevelAngle,
     BasisKey.breakHeight,
+    BasisKey.capOverlap,
+    BasisKey.capHeight,
     BasisKey.filletLegSize,
   };
 
@@ -1899,6 +1903,25 @@ class _CalculatorPageState extends State<CalculatorPage> {
           key: FieldKey.breakHeightMm,
           label: strings.calcFieldBreakHeightLabel,
           helperText: strings.calcFieldBreakHeightHelper,
+        ),
+      ]);
+    }
+
+    if (_grooveType == GrooveType.square ||
+        _grooveType == GrooveType.singleV ||
+        _grooveType == GrooveType.halfV ||
+        _grooveType == GrooveType.compoundV ||
+        _grooveType == GrooveType.doubleV) {
+      specs.addAll([
+        InputFieldSpec(
+          key: FieldKey.capOverlapMm,
+          label: strings.calcFieldCapOverlapLabel,
+          helperText: strings.calcFieldCapOverlapHelper,
+        ),
+        InputFieldSpec(
+          key: FieldKey.capHeightMm,
+          label: strings.calcFieldCapHeightLabel,
+          helperText: strings.calcFieldCapHeightHelper,
         ),
       ]);
     }
@@ -2390,6 +2413,8 @@ class _CalculatorPageState extends State<CalculatorPage> {
       data.secondaryBevelAngleDeg,
     );
     _setControllerValue(FieldKey.breakHeightMm, data.breakHeightMm);
+    _setControllerValue(FieldKey.capOverlapMm, data.capOverlapMm);
+    _setControllerValue(FieldKey.capHeightMm, data.capHeightMm);
     _setControllerValue(FieldKey.legSizeMm, data.legSizeMm);
     _setControllerValue(FieldKey.gtawTransitionMm, data.gtawTransitionMm);
     _setControllerValue(
@@ -2620,6 +2645,8 @@ class _CalculatorPageState extends State<CalculatorPage> {
       'Secondary bevel angle',
     ),
     breakHeightMm: _parsePresetValue(FieldKey.breakHeightMm, 'Break height'),
+    capOverlapMm: _parsePresetValue(FieldKey.capOverlapMm, 'Cap overlap'),
+    capHeightMm: _parsePresetValue(FieldKey.capHeightMm, 'Cap height'),
     legSizeMm: _parsePresetValue(FieldKey.legSizeMm, 'Leg size'),
     gtawTransitionMm: _parsePresetValue(
       FieldKey.gtawTransitionMm,
@@ -2719,6 +2746,8 @@ class _CalculatorPageState extends State<CalculatorPage> {
     bevelAngleDeg: _parsePreviewValue(FieldKey.bevelAngleDeg),
     secondaryBevelAngleDeg: _parsePreviewValue(FieldKey.secondaryBevelAngleDeg),
     breakHeightMm: _parsePreviewValue(FieldKey.breakHeightMm),
+    capOverlapMm: _parsePreviewValue(FieldKey.capOverlapMm),
+    capHeightMm: _parsePreviewValue(FieldKey.capHeightMm),
     legSizeMm: _parsePreviewValue(FieldKey.legSizeMm),
     pipeOdMm: _governingPipeOdPreview,
     pipeOdAMm: _pipeOdAPreview,
@@ -2983,6 +3012,8 @@ class _CalculatorPageState extends State<CalculatorPage> {
         bevelAngleDeg: _parseOptional(FieldKey.bevelAngleDeg),
         secondaryBevelAngleDeg: _parseOptional(FieldKey.secondaryBevelAngleDeg),
         breakHeightMm: _parseOptional(FieldKey.breakHeightMm),
+        capOverlapMm: _parseOptional(FieldKey.capOverlapMm),
+        capHeightMm: _parseOptional(FieldKey.capHeightMm),
         legSizeMm: _parseOptional(FieldKey.legSizeMm),
         gtawTransitionMm: _parseOptional(FieldKey.gtawTransitionMm),
         wireDiameterMm: _parseOptional(FieldKey.wireDiameterMm),
@@ -3525,6 +3556,33 @@ class _CalculatorPageState extends State<CalculatorPage> {
           '${_controllers[FieldKey.legSizeMm]!.text} mm',
         ),
       );
+    }
+
+    if (_grooveType == GrooveType.square ||
+        _grooveType == GrooveType.singleV ||
+        _grooveType == GrooveType.halfV ||
+        _grooveType == GrooveType.doubleV ||
+        _grooveType == GrooveType.compoundV) {
+      final capOverlap = _parsePreviewValue(FieldKey.capOverlapMm);
+      final capHeight = _parsePreviewValue(FieldKey.capHeightMm);
+      if (capOverlap != null) {
+        items.add(
+          CalculationBasisItem(
+            BasisKey.capOverlap,
+            'Cap Overlap (each edge)',
+            '${_controllers[FieldKey.capOverlapMm]!.text} mm',
+          ),
+        );
+      }
+      if (capHeight != null) {
+        items.add(
+          CalculationBasisItem(
+            BasisKey.capHeight,
+            'Cap Height',
+            '${_controllers[FieldKey.capHeightMm]!.text} mm',
+          ),
+        );
+      }
     }
 
     if (_weldingProcess == WeldingProcess.gtaw) {

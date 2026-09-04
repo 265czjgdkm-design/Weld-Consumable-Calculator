@@ -45,6 +45,8 @@ WeldDrawingData _buildData({
     bevelAngleDeg: 30,
     secondaryBevelAngleDeg: 10,
     breakHeightMm: 4,
+    capOverlapMm: 2,
+    capHeightMm: 2,
     legSizeMm: 6,
     pipeOdMm: 168.3,
     gtawTransitionMm: weldingProcess == WeldingProcess.gtawSmaw ? 3 : null,
@@ -149,8 +151,12 @@ void main() {
       // is what Finding 1 was actually about - a hotspot recorded at an
       // unclamped, possibly off-canvas position is what made labels dead).
       expect(
-        Rect.fromLTWH(0, 0, canvasSize.width, canvasSize.height)
-            .contains(hotspot.rect.center),
+        Rect.fromLTWH(
+          0,
+          0,
+          canvasSize.width,
+          canvasSize.height,
+        ).contains(hotspot.rect.center),
         isTrue,
         reason:
             '$description: ${hotspot.fieldKey} hotspot rect '

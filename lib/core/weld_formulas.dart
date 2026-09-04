@@ -35,7 +35,7 @@ class WeldFormulas {
     required double fillHeightMm,
   }) => rootGapMm * fillHeightMm.clamp(0, thicknessMm).toDouble();
 
-  static double singleVAreaMm2({
+  static double singleVTopWidthMm({
     required double thicknessMm,
     required double rootFaceMm,
     required double rootGapMm,
@@ -43,7 +43,22 @@ class WeldFormulas {
   }) {
     final grooveHeight = thicknessMm - rootFaceMm;
     final angleRad = bevelAngleDeg * math.pi / 180;
-    final topWidth = rootGapMm + (2 * grooveHeight * math.tan(angleRad));
+    return rootGapMm + (2 * grooveHeight * math.tan(angleRad));
+  }
+
+  static double singleVAreaMm2({
+    required double thicknessMm,
+    required double rootFaceMm,
+    required double rootGapMm,
+    required double bevelAngleDeg,
+  }) {
+    final grooveHeight = thicknessMm - rootFaceMm;
+    final topWidth = singleVTopWidthMm(
+      thicknessMm: thicknessMm,
+      rootFaceMm: rootFaceMm,
+      rootGapMm: rootGapMm,
+      bevelAngleDeg: bevelAngleDeg,
+    );
 
     return (rootGapMm * rootFaceMm) +
         (((rootGapMm + topWidth) / 2) * grooveHeight);
@@ -66,7 +81,7 @@ class WeldFormulas {
         (((rootGapMm + widthAtTop) / 2) * upperHeight);
   }
 
-  static double halfVAreaMm2({
+  static double halfVTopWidthMm({
     required double thicknessMm,
     required double rootFaceMm,
     required double rootGapMm,
@@ -74,7 +89,22 @@ class WeldFormulas {
   }) {
     final grooveHeight = thicknessMm - rootFaceMm;
     final angleRad = bevelAngleDeg * math.pi / 180;
-    final topWidth = rootGapMm + (grooveHeight * math.tan(angleRad));
+    return rootGapMm + (grooveHeight * math.tan(angleRad));
+  }
+
+  static double halfVAreaMm2({
+    required double thicknessMm,
+    required double rootFaceMm,
+    required double rootGapMm,
+    required double bevelAngleDeg,
+  }) {
+    final grooveHeight = thicknessMm - rootFaceMm;
+    final topWidth = halfVTopWidthMm(
+      thicknessMm: thicknessMm,
+      rootFaceMm: rootFaceMm,
+      rootGapMm: rootGapMm,
+      bevelAngleDeg: bevelAngleDeg,
+    );
 
     return (rootGapMm * rootFaceMm) +
         (((rootGapMm + topWidth) / 2) * grooveHeight);
@@ -97,6 +127,18 @@ class WeldFormulas {
         (((rootGapMm + widthAtTop) / 2) * upperHeight);
   }
 
+  static double doubleVTopWidthMm({
+    required double thicknessMm,
+    required double rootFaceMm,
+    required double rootGapMm,
+    required double bevelAngleDeg,
+  }) => singleVTopWidthMm(
+    thicknessMm: thicknessMm / 2,
+    rootFaceMm: rootFaceMm,
+    rootGapMm: rootGapMm,
+    bevelAngleDeg: bevelAngleDeg,
+  );
+
   static double doubleVAreaMm2({
     required double thicknessMm,
     required double rootFaceMm,
@@ -113,7 +155,7 @@ class WeldFormulas {
         2;
   }
 
-  static double compoundVAreaMm2({
+  static double compoundVTopWidthMm({
     required double thicknessMm,
     required double rootFaceMm,
     required double rootGapMm,
@@ -127,8 +169,30 @@ class WeldFormulas {
     final secondaryAngleRad = secondaryBevelAngleDeg * math.pi / 180;
     final widthAtBreak =
         rootGapMm + (2 * lowerHeight * math.tan(primaryAngleRad));
-    final topWidth =
-        widthAtBreak + (2 * upperHeight * math.tan(secondaryAngleRad));
+    return widthAtBreak + (2 * upperHeight * math.tan(secondaryAngleRad));
+  }
+
+  static double compoundVAreaMm2({
+    required double thicknessMm,
+    required double rootFaceMm,
+    required double rootGapMm,
+    required double primaryBevelAngleDeg,
+    required double secondaryBevelAngleDeg,
+    required double breakHeightMm,
+  }) {
+    final lowerHeight = breakHeightMm;
+    final upperHeight = thicknessMm - rootFaceMm - breakHeightMm;
+    final primaryAngleRad = primaryBevelAngleDeg * math.pi / 180;
+    final widthAtBreak =
+        rootGapMm + (2 * lowerHeight * math.tan(primaryAngleRad));
+    final topWidth = compoundVTopWidthMm(
+      thicknessMm: thicknessMm,
+      rootFaceMm: rootFaceMm,
+      rootGapMm: rootGapMm,
+      primaryBevelAngleDeg: primaryBevelAngleDeg,
+      secondaryBevelAngleDeg: secondaryBevelAngleDeg,
+      breakHeightMm: breakHeightMm,
+    );
 
     return (rootGapMm * rootFaceMm) +
         (((rootGapMm + widthAtBreak) / 2) * lowerHeight) +
@@ -164,6 +228,12 @@ class WeldFormulas {
         (((rootGapMm + widthAtLowerBreak) / 2) * lowerSegmentHeight) +
         (((widthAtLowerBreak + widthAtTop) / 2) * upperSegmentHeight);
   }
+
+  static double capReinforcementAreaMm2({
+    required double grooveTopWidthMm,
+    required double capOverlapMm,
+    required double capHeightMm,
+  }) => (grooveTopWidthMm + 2 * capOverlapMm) * capHeightMm;
 
   static double filletAreaMm2({required double legSizeMm}) =>
       0.5 * math.pow(legSizeMm, 2);

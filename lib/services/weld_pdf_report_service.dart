@@ -813,10 +813,7 @@ class WeldPdfReportService {
         ),
         rowDecoration: pw.BoxDecoration(color: section.accentBackground),
         cellStyle: const pw.TextStyle(color: _ink, fontSize: 9.4),
-        cellPadding: const pw.EdgeInsets.symmetric(
-          horizontal: 8,
-          vertical: 7,
-        ),
+        cellPadding: const pw.EdgeInsets.symmetric(horizontal: 8, vertical: 7),
         headers: const ['Parameter', 'Value'],
         data: [
           for (final entry in section.entries) [entry.key, entry.value],
@@ -1023,6 +1020,8 @@ class WeldPdfReportService {
       'Primary Bevel Angle',
       'Secondary Bevel Angle',
       'Break Height',
+      'Cap Overlap (each edge)',
+      'Cap Height',
       'Fillet Leg Size',
     ];
     const processOrder = [

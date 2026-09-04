@@ -364,6 +364,10 @@ class L10nStrings {
     required this.calcFieldSecondaryAngleHelper,
     required this.calcFieldBreakHeightLabel,
     required this.calcFieldBreakHeightHelper,
+    required this.calcFieldCapOverlapLabel,
+    required this.calcFieldCapOverlapHelper,
+    required this.calcFieldCapHeightLabel,
+    required this.calcFieldCapHeightHelper,
     required this.calcFieldLegSizeLabel,
     required this.calcFieldLegSizeHelper,
     required this.calcFieldGtawWireDiameterLabel,
@@ -415,6 +419,8 @@ class L10nStrings {
     required this.basisPrimaryBevelAngle,
     required this.basisSecondaryBevelAngle,
     required this.basisBreakHeight,
+    required this.basisCapOverlap,
+    required this.basisCapHeight,
     required this.basisFilletLegSize,
     required this.basisUserDefinedRate,
     required this.basisWireDiameter,
@@ -848,6 +854,10 @@ class L10nStrings {
   final String calcFieldSecondaryAngleHelper;
   final String calcFieldBreakHeightLabel;
   final String calcFieldBreakHeightHelper;
+  final String calcFieldCapOverlapLabel;
+  final String calcFieldCapOverlapHelper;
+  final String calcFieldCapHeightLabel;
+  final String calcFieldCapHeightHelper;
   final String calcFieldLegSizeLabel;
   final String calcFieldLegSizeHelper;
   final String calcFieldGtawWireDiameterLabel;
@@ -899,6 +909,8 @@ class L10nStrings {
   final String basisPrimaryBevelAngle;
   final String basisSecondaryBevelAngle;
   final String basisBreakHeight;
+  final String basisCapOverlap;
+  final String basisCapHeight;
   final String basisFilletLegSize;
   final String basisUserDefinedRate;
   final String basisWireDiameter;
@@ -1431,6 +1443,12 @@ const Map<AppLanguage, L10nStrings> _strings = {
     calcFieldSecondaryAngleHelper: 'Upper bevel angle above the break point.',
     calcFieldBreakHeightLabel: 'Break Height h (mm)',
     calcFieldBreakHeightHelper: 'Distance from root face to bevel break point.',
+    calcFieldCapOverlapLabel: 'Cap Overlap (each edge, mm)',
+    calcFieldCapOverlapHelper:
+        'How far the cap pass extends beyond the groove opening, per side (adds to both edges). Optional.',
+    calcFieldCapHeightLabel: 'Cap Height / Reinforcement (mm)',
+    calcFieldCapHeightHelper:
+        'How much the cap pass rises above the base metal surface. AWS D1.1 typical reinforcement: up to 3mm for t<=25mm, 5mm for 25-50mm, 6mm for t>50mm. Optional.',
     calcFieldLegSizeLabel: 'Leg Size (mm)',
     calcFieldLegSizeHelper: 'Equal leg size of the fillet weld.',
     calcFieldGtawWireDiameterLabel: 'GTAW Wire Diameter (mm)',
@@ -1491,6 +1509,8 @@ const Map<AppLanguage, L10nStrings> _strings = {
     basisPrimaryBevelAngle: 'Primary Bevel Angle',
     basisSecondaryBevelAngle: 'Secondary Bevel Angle',
     basisBreakHeight: 'Break Height',
+    basisCapOverlap: 'Cap Overlap (each edge)',
+    basisCapHeight: 'Cap Height',
     basisFilletLegSize: 'Fillet Leg Size',
     basisUserDefinedRate: 'User-defined Rate',
     basisWireDiameter: 'Wire Diameter',
@@ -2038,6 +2058,12 @@ const Map<AppLanguage, L10nStrings> _strings = {
     calcFieldBreakHeightLabel: 'Kırılma Yüksekliği h (mm)',
     calcFieldBreakHeightHelper:
         'Kök yüzünden pah kırılma noktasına olan mesafe.',
+    calcFieldCapOverlapLabel: 'Kapak Bindirmesi (her kenardan, mm)',
+    calcFieldCapOverlapHelper:
+        'Kapak pasosunun kanal ağzının her iki kenarından ne kadar taştığı (her iki kenara ayrı ayrı eklenir). İsteğe bağlı.',
+    calcFieldCapHeightLabel: 'Kapak Yüksekliği / Takviye (mm)',
+    calcFieldCapHeightHelper:
+        'Kapak pasosunun ana malzeme yüzeyinden ne kadar yükseldiği. AWS D1.1 tipik takviye: t<=25mm için 3mm, 25-50mm için 5mm, t>50mm için 6mm. İsteğe bağlı.',
     calcFieldLegSizeLabel: 'Kenar Ölçüsü (mm)',
     calcFieldLegSizeHelper: 'Köşe kaynağının eşit kenar ölçüsü.',
     calcFieldGtawWireDiameterLabel: 'GTAW Tel Çapı (mm)',
@@ -2098,6 +2124,8 @@ const Map<AppLanguage, L10nStrings> _strings = {
     basisPrimaryBevelAngle: 'Birincil Pah Açısı',
     basisSecondaryBevelAngle: 'İkincil Pah Açısı',
     basisBreakHeight: 'Kırılma Yüksekliği',
+    basisCapOverlap: 'Kapak Bindirmesi (her kenardan)',
+    basisCapHeight: 'Kapak Yüksekliği',
     basisFilletLegSize: 'Köşe Kaynağı Kenar Ölçüsü',
     basisUserDefinedRate: 'Kullanıcı Tanımlı Hız',
     basisWireDiameter: 'Tel Çapı',
@@ -2653,6 +2681,17 @@ const Map<AppLanguage, L10nStrings> _strings = {
     calcFieldBreakHeightLabel: 'Высота излома h (мм)',
     calcFieldBreakHeightHelper:
         'Расстояние от притупления корня до точки излома скоса.',
+    // TODO: unverified term -- "перекрытие облицовочного валика" is a
+    // descriptive translation, not a standard GOST/EN term (this dimension
+    // is this app's own derived concept, not a named standard parameter).
+    // Pending native-speaker/GOST-source confirmation.
+    calcFieldCapOverlapLabel:
+        'Перекрытие облицовочного валика (с каждой стороны, мм)',
+    calcFieldCapOverlapHelper:
+        'Насколько облицовочный валик выходит за пределы разделки с каждой стороны (добавляется к обеим кромкам). Необязательно.',
+    calcFieldCapHeightLabel: 'Высота усиления шва (мм)',
+    calcFieldCapHeightHelper:
+        'Насколько облицовочный валик возвышается над поверхностью основного металла. Типичное усиление по AWS D1.1: до 3мм при t<=25мм, 5мм при 25-50мм, 6мм при t>50мм. Необязательно.',
     calcFieldLegSizeLabel: 'Катет шва (мм)',
     calcFieldLegSizeHelper: 'Равный катет углового шва.',
     calcFieldGtawWireDiameterLabel: 'Диаметр проволоки GTAW (мм)',
@@ -2714,6 +2753,8 @@ const Map<AppLanguage, L10nStrings> _strings = {
     basisPrimaryBevelAngle: 'Первичный угол скоса',
     basisSecondaryBevelAngle: 'Вторичный угол скоса',
     basisBreakHeight: 'Высота излома',
+    basisCapOverlap: 'Перекрытие облицовочного валика (с каждой стороны)',
+    basisCapHeight: 'Высота усиления шва',
     basisFilletLegSize: 'Катет углового шва',
     basisUserDefinedRate: 'Заданная пользователем скорость',
     basisWireDiameter: 'Диаметр проволоки',
@@ -3267,6 +3308,16 @@ const Map<AppLanguage, L10nStrings> _strings = {
         'Oberer Anfaswinkel oberhalb des Knickpunkts.',
     calcFieldBreakHeightLabel: 'Knickhöhe h (mm)',
     calcFieldBreakHeightHelper: 'Abstand vom Steg zum Anfasenknickpunkt.',
+    // TODO: unverified term -- "Decklagenüberstand" is a descriptive
+    // translation, not an established DIN term (this dimension is this
+    // app's own derived concept, not a named standard parameter). Pending
+    // native-speaker confirmation.
+    calcFieldCapOverlapLabel: 'Decklagenüberstand (je Kante, mm)',
+    calcFieldCapOverlapHelper:
+        'Wie weit die Decklage auf jeder Seite über die Fugenöffnung hinausragt (gilt für beide Kanten). Optional.',
+    calcFieldCapHeightLabel: 'Nahtüberhöhung (mm)',
+    calcFieldCapHeightHelper:
+        'Wie stark die Decklage über die Grundwerkstoffoberfläche hinausragt. Typische Überhöhung nach AWS D1.1: bis 3mm bei t<=25mm, 5mm bei 25-50mm, 6mm bei t>50mm. Optional.',
     calcFieldLegSizeLabel: 'Schenkellänge (mm)',
     calcFieldLegSizeHelper: 'Gleichschenklige Schenkellänge der Kehlnaht.',
     calcFieldGtawWireDiameterLabel: 'GTAW-Drahtdurchmesser (mm)',
@@ -3328,6 +3379,8 @@ const Map<AppLanguage, L10nStrings> _strings = {
     basisPrimaryBevelAngle: 'Primärer Anfaswinkel',
     basisSecondaryBevelAngle: 'Sekundärer Anfaswinkel',
     basisBreakHeight: 'Knickhöhe',
+    basisCapOverlap: 'Decklagenüberstand (je Kante)',
+    basisCapHeight: 'Nahtüberhöhung',
     basisFilletLegSize: 'Kehlnahtschenkellänge',
     basisUserDefinedRate: 'Benutzerdefinierte Leistung',
     basisWireDiameter: 'Drahtdurchmesser',
@@ -3868,6 +3921,15 @@ const Map<AppLanguage, L10nStrings> _strings = {
     calcFieldSecondaryAngleHelper: 'ब्रेक पॉइंट के ऊपर वाला बेवल एंगल।',
     calcFieldBreakHeightLabel: 'ब्रेक हाइट h (mm)',
     calcFieldBreakHeightHelper: 'रूट फेस से बेवल ब्रेक पॉइंट तक की दूरी।',
+    // TODO: unverified term -- Hindi welding terminology in this file is
+    // already low-confidence overall; these are transliterated technical
+    // terms, not a confirmed native-speaker/standard translation.
+    calcFieldCapOverlapLabel: 'कैप ओवरलैप (हर किनारे से, mm)',
+    calcFieldCapOverlapHelper:
+        'कैप पास ग्रूव ओपनिंग से हर तरफ कितना आगे बढ़ता है (दोनों किनारों पर जुड़ता है)। वैकल्पिक।',
+    calcFieldCapHeightLabel: 'कैप हाइट / रीइन्फोर्समेंट (mm)',
+    calcFieldCapHeightHelper:
+        'कैप पास बेस मेटल की सतह से कितना ऊपर उठता है। AWS D1.1 सामान्य रीइन्फोर्समेंट: t<=25mm के लिए 3mm, 25-50mm के लिए 5mm, t>50mm के लिए 6mm। वैकल्पिक।',
     calcFieldLegSizeLabel: 'लेग साइज़ (mm)',
     calcFieldLegSizeHelper: 'फिलेट वेल्ड का समान लेग साइज़।',
     calcFieldGtawWireDiameterLabel: 'GTAW वायर डायमीटर (mm)',
@@ -3928,6 +3990,8 @@ const Map<AppLanguage, L10nStrings> _strings = {
     basisPrimaryBevelAngle: 'प्राइमरी बेवल एंगल',
     basisSecondaryBevelAngle: 'सेकेंडरी बेवल एंगल',
     basisBreakHeight: 'ब्रेक हाइट',
+    basisCapOverlap: 'कैप ओवरलैप (हर किनारे से)',
+    basisCapHeight: 'कैप हाइट',
     basisFilletLegSize: 'फिलेट लेग साइज़',
     basisUserDefinedRate: 'यूज़र-डिफाइंड रेट',
     basisWireDiameter: 'वायर डायमीटर',

@@ -10,7 +10,11 @@ class WeldCalculator {
     _validateCompatibility(input);
 
     final lengthMm = _resolveLength(input);
-    final areaMm2 = _resolveArea(input);
+    final grooveAreaMm2 = _resolveArea(input);
+    final capAreaMm2 = input.grooveType == GrooveType.fillet
+        ? 0.0
+        : _resolveCapAreaMm2(input, _resolveGrooveTopWidthMm(input));
+    final areaMm2 = grooveAreaMm2 + capAreaMm2;
     final volumeCm3 = WeldFormulas.volumeCm3(
       areaMm2: areaMm2,
       lengthMm: lengthMm,
@@ -208,6 +212,62 @@ class WeldCalculator {
       legSizeMm: _requirePositive(input.legSizeMm, 'Leg size'),
     ),
   };
+
+  double _resolveGrooveTopWidthMm(WeldInputData input) =>
+      switch (input.grooveType) {
+        GrooveType.square => _requireZeroOrPositive(
+          input.rootGapMm,
+          'Root gap',
+        ),
+        GrooveType.singleV => WeldFormulas.singleVTopWidthMm(
+          thicknessMm: _requirePositive(input.thicknessMm, 'Thickness'),
+          rootFaceMm: _requireZeroOrPositive(input.rootFaceMm, 'Root face'),
+          rootGapMm: _requireZeroOrPositive(input.rootGapMm, 'Root gap'),
+          bevelAngleDeg: _requirePositive(input.bevelAngleDeg, 'Bevel angle'),
+        ),
+        GrooveType.halfV => WeldFormulas.halfVTopWidthMm(
+          thicknessMm: _requirePositive(input.thicknessMm, 'Thickness'),
+          rootFaceMm: _requireZeroOrPositive(input.rootFaceMm, 'Root face'),
+          rootGapMm: _requireZeroOrPositive(input.rootGapMm, 'Root gap'),
+          bevelAngleDeg: _requirePositive(input.bevelAngleDeg, 'Bevel angle'),
+        ),
+        GrooveType.doubleV => WeldFormulas.doubleVTopWidthMm(
+          thicknessMm: _requirePositive(input.thicknessMm, 'Thickness'),
+          rootFaceMm: _requireZeroOrPositive(input.rootFaceMm, 'Root face'),
+          rootGapMm: _requireZeroOrPositive(input.rootGapMm, 'Root gap'),
+          bevelAngleDeg: _requirePositive(input.bevelAngleDeg, 'Bevel angle'),
+        ),
+        GrooveType.compoundV => WeldFormulas.compoundVTopWidthMm(
+          thicknessMm: _requirePositive(input.thicknessMm, 'Thickness'),
+          rootFaceMm: _requireZeroOrPositive(input.rootFaceMm, 'Root face'),
+          rootGapMm: _requireZeroOrPositive(input.rootGapMm, 'Root gap'),
+          primaryBevelAngleDeg: _requirePositive(
+            input.bevelAngleDeg,
+            'Primary bevel angle',
+          ),
+          secondaryBevelAngleDeg: _requirePositive(
+            input.secondaryBevelAngleDeg,
+            'Secondary bevel angle',
+          ),
+          breakHeightMm: _requirePositive(input.breakHeightMm, 'Break height'),
+        ),
+        GrooveType.fillet => 0,
+      };
+
+  double _resolveCapAreaMm2(WeldInputData input, double grooveTopWidthMm) {
+    if (input.capOverlapMm != null) {
+      _requireZeroOrPositive(input.capOverlapMm, 'Cap overlap');
+    }
+    if (input.capHeightMm != null) {
+      _requireZeroOrPositive(input.capHeightMm, 'Cap height');
+    }
+
+    return WeldFormulas.capReinforcementAreaMm2(
+      grooveTopWidthMm: grooveTopWidthMm,
+      capOverlapMm: input.capOverlapMm ?? 0,
+      capHeightMm: input.capHeightMm ?? 0,
+    );
+  }
 
   double _resolveGtawAreaForCombined(WeldInputData input, double totalAreaMm2) {
     final transition = _requirePositive(
