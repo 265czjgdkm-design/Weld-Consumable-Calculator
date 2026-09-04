@@ -2143,8 +2143,22 @@ class _WeldDrawingPainter extends CustomPainter {
     // zeroed on the desktop/FittedBox path below - see `topPadding` - and
     // which reserves room by shrinking centering slack, so it can still
     // collapse to nothing when the drawing is height-bound), this shrinks
-    // `frame` itself directly, so it's honored in both modes and can never
-    // collapse to zero.
+    // `frame` itself directly rather than just centering slack. BUT when
+    // `extraTopPx == extraBottomPx` (true at every call site today) and the
+    // layout is width-bound - i.e. `scale` below is set by `frame.width`,
+    // not `frame.height`, which is the common case at thin/moderate plate
+    // thickness - shrinking `frame.height` symmetrically only eats into
+    // `slack` (both margins grow by the same amount, so the extra top and
+    // extra bottom cancel in `topY`'s `slack / 2` term) and has ZERO effect
+    // on scale or actual label position; verified bit-identical drawn joint
+    // bounds with `extraTopPx=32` vs `0` at thickness 4/8/12 on the 760x400
+    // desktop canvas. It only does real work once the reservation is large
+    // enough to flip the layout from width- to height-bound (thicker
+    // plates, roughly t>=25mm here), where it costs the intended, expected
+    // 1.7-3.3% size reduction instead of colliding with the cap labels. So:
+    // guarantees pixel headroom exists whenever the drawing is
+    // height-bound, but is a no-op in the (more common) width-bound case -
+    // not "honored in both modes" the way that sounds.
     double extraTopPx = 0.0,
     double extraBottomPx = 0.0,
   }) {

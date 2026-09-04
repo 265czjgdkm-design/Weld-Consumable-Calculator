@@ -64,12 +64,13 @@ WeldDrawingData _buildData({
   required WeldingProcess weldingProcess,
   JointGeometryMode geometryMode = JointGeometryMode.equal,
   JointAlignment alignment = JointAlignment.centerline,
+  double thicknessMm = 12,
 }) {
   return WeldDrawingData(
     weldingProcess: weldingProcess,
     geometryMode: geometryMode,
     alignment: alignment,
-    thicknessMm: 12,
+    thicknessMm: thicknessMm,
     thicknessAMm: geometryMode == JointGeometryMode.unequal ? 14 : null,
     thicknessBMm: geometryMode == JointGeometryMode.unequal ? 10 : null,
     rootGapMm: 3,
@@ -253,35 +254,45 @@ void main() {
       : null;
 
   // KNOWN GAP: Double V/pipe butt at the narrowest real device width
-  // (320pt/240px, visual mode only) is the one combination where the
+  // (320pt/240px, visual mode) is one of SEVERAL combinations where the
   // both-faces cap-reinforcement feature (Double V gets a cap dimension
   // pair on top AND bottom, per the user's explicit "welded from both
-  // sides" decision) doesn't fit. NOT a collision with the pipe OD chip
-  // (a prior version of this comment claimed that, but re-measuring the
-  // actual rects shows the OD chip isn't involved at all): the real
-  // collision is bottom-face `capOverlapMm` fully overlapping bottom-face
-  // `capHeightMm` by 27.3x28.0px - one pill landing almost entirely on top
-  // of the other. Root cause: both bottom-face pills' resolved (pre-clamp)
-  // positions land past the canvas edge on this short a canvas, so each
-  // independently canvas-edge-clamps (see `_measurementLabelRect`) to the
-  // identical y=312-340 band - the clamp has no knowledge of where a
-  // sibling label already clamped to. This is a real, structural limit of
-  // the shared label-avoidance system, not just an unfixably-tight squeeze:
-  // `_clearLabelPosition` only ever pushes candidates DOWN to clear a
-  // collision (deliberately monotonic - see its doc comment), so once a
-  // bottom-face label is already being pushed toward the bottom canvas
-  // edge, there's no direction left to push it clear of the edge-clamp.
-  // Tried reserving genuine extra pixel room below the plate on this path
-  // too (the same fix that resolved Finding 2/Gap B on desktop) - it made
-  // this narrow-canvas case worse, not better (spread the collision to
-  // technical mode and more locales), since [busyHeightFor]'s per-tier
-  // mobile canvas heights below are already tuned tightly enough that
-  // shrinking the frame further to reserve pixels elsewhere pushes some
-  // other label past its own edge instead. A real fix needs either a wider
-  // dedicated narrow-width layout for this combination or a direction-aware
-  // (not just monotonic-down) push in the shared avoidance system - both
-  // out of scope for a contained fix, so left as an accurately-described
-  // skip rather than a silent regression.
+  // sides" decision) doesn't fit - see [doubleVThickPlateGap] below for the
+  // rest of the real scope, which a reviewer found this comment previously
+  // understated: the SAME collision also fires at 280/295/310px canvases
+  // (360/375/412pt phones - common widths, not rare ones) once plate
+  // thickness is in the realistic range for a Double V groove (t>=~50mm;
+  // Double V is specifically the groove type used on THICK plate in real
+  // practice, so this was invisible while every matrix in this file
+  // hardcoded thicknessMm: 12). Measured examples confirmed by re-running
+  // this suite's own width mapping: t=50/310px -> 14.1x3.3px overlap;
+  // t=60/295px -> 19.8x5.3px; t=60/280px -> 23.4x2.4px. NOT a collision
+  // with the pipe OD chip (a prior version of this comment claimed that,
+  // but re-measuring the actual rects shows the OD chip isn't involved at
+  // all): the real collision is bottom-face `capOverlapMm` fully or
+  // partially overlapping bottom-face `capHeightMm` - one pill landing on
+  // top of the other. Root cause: both bottom-face pills' resolved
+  // (pre-clamp) positions land past the canvas edge on a short/narrow
+  // canvas, so each independently canvas-edge-clamps (see
+  // `_measurementLabelRect`) to the same y-band - the clamp has no
+  // knowledge of where a sibling label already clamped to. This is a real,
+  // structural limit of the shared label-avoidance system, not just an
+  // unfixably-tight squeeze: `_clearLabelPosition` only ever pushes
+  // candidates DOWN to clear a collision (deliberately monotonic - see its
+  // doc comment), so once a bottom-face label is already being pushed
+  // toward the bottom canvas edge, there's no direction left to push it
+  // clear of the edge-clamp. Tried reserving genuine extra pixel room below
+  // the plate on this path too (the same fix that resolved Finding 2/Gap B
+  // on desktop) - it made the narrow-canvas case worse, not better (spread
+  // the collision to technical mode and more locales), since
+  // [busyHeightFor]'s per-tier mobile canvas heights below are already
+  // tuned tightly enough that shrinking the frame further to reserve
+  // pixels elsewhere pushes some other label past its own edge instead. A
+  // real fix needs either a wider dedicated narrow-width/thick-plate layout
+  // for this combination or a direction-aware (not just monotonic-down)
+  // push in the shared avoidance system - both out of scope for a
+  // contained fix, so left as an accurately-described skip rather than a
+  // silent regression.
   String? doubleVBothFacesNarrowGap(
     GrooveType groove,
     JointType joint,
@@ -294,8 +305,59 @@ void main() {
           width <= 240.0)
       ? "Double V's both-faces bottom-face cap-overlap and cap-height pills "
             'both canvas-edge-clamp to the same y-band at 320pt/240px width '
-            '- real, newly introduced, needs a dedicated follow-up'
+            '- real, newly introduced, needs a dedicated follow-up (see '
+            '[doubleVThickPlateGap] for the same collision at other common '
+            'widths once plate thickness is realistic for Double V)'
       : null;
+
+  // KNOWN GAP (thickness axis): the collision described above is NOT
+  // limited to the 320pt/240px canvas - it recurs at 280/295/310px
+  // (360/375/412pt phones) once thicknessMm is in the realistic range for
+  // a Double V groove, which no matrix in this file exercised before (every
+  // one hardcoded thicknessMm: 12). Exact set below was measured directly
+  // by rendering this suite's own painter at each width/joint/mode with
+  // thicknessMm swept across 12/40/50/60 (12 matches every other matrix in
+  // this file; 40/50/60 span the realistic Double V range a reviewer
+  // flagged as the untested axis hiding this collision) - not a broad
+  // over-cautious skip, only the combinations that actually collide are
+  // marked, everything else in the matrix below is expected to (and does)
+  // pass.
+  const doubleVCollisions = {
+    '240|plateButt|visual|50',
+    '240|plateButt|visual|60',
+    '240|pipeButt|visual|12',
+    '240|pipeButt|visual|40',
+    '240|pipeButt|visual|50',
+    '240|pipeButt|visual|60',
+    '240|pipeButt|technical|40',
+    '240|pipeButt|technical|50',
+    '240|pipeButt|technical|60',
+    '280|pipeButt|visual|60',
+    '295|pipeButt|visual|50',
+    '295|pipeButt|visual|60',
+    '310|pipeButt|visual|50',
+    '310|pipeButt|visual|60',
+    '310|pipeButt|technical|60',
+  };
+  String? doubleVThickPlateGap(
+    GrooveType groove,
+    JointType joint,
+    DrawingMode mode,
+    double width,
+    double thicknessMm,
+  ) {
+    if (groove != GrooveType.doubleV) return null;
+    final key = '${width.toInt()}|$joint|$mode|${thicknessMm.toInt()}'
+        .replaceFirst('JointType.', '')
+        .replaceFirst('DrawingMode.', '');
+    if (!doubleVCollisions.contains(key)) return null;
+    return "Double V's both-faces bottom-face cap-overlap and cap-height "
+        'pills collide at ${width.toInt()}px/${thicknessMm.toInt()}mm '
+        '($joint, $mode) - same root cause as the narrowest-width gap above, '
+        'measured to also occur at common mobile widths once plate '
+        'thickness is realistic for Double V; needs the same dedicated '
+        'follow-up.';
+  }
 
   for (final language in AppLanguage.values) {
     for (final width in widths) {
@@ -348,6 +410,43 @@ void main() {
                     'pre-existing, needs a dedicated follow-up'
               : null,
         );
+      }
+    }
+  }
+
+  // Thickness axis for Double V (this round's fix - see [doubleVThickPlateGap]
+  // above): every matrix above/below builds its `WeldDrawingData` via
+  // `_buildData`'s default `thicknessMm: 12`, so the bottom-face
+  // cap-overlap/cap-height collision never got exercised at the thicker
+  // plate values realistic for a Double V groove. Single language (en) -
+  // this collision is driven by fixed-pixel-size label geometry, not label
+  // text width/length, so locale isn't the relevant axis here (locale
+  // coverage for Double V already exists above at thicknessMm: 12).
+  const doubleVThicknesses = [12.0, 40.0, 50.0, 60.0];
+  for (final width in widths) {
+    for (final joint in joints) {
+      for (final mode in DrawingMode.values) {
+        for (final thicknessMm in doubleVThicknesses) {
+          _expectNoOverlap(
+            'doubleV/$joint/$mode @${width.toInt()} t=${thicknessMm.toInt()}mm [en]',
+            jointType: joint,
+            grooveType: GrooveType.doubleV,
+            drawingMode: mode,
+            canvasSize: Size(width, busyHeightFor(width)),
+            language: AppLanguage.en,
+            data: _buildData(
+              weldingProcess: WeldingProcess.gtaw,
+              thicknessMm: thicknessMm,
+            ),
+            knownGap: doubleVThickPlateGap(
+              GrooveType.doubleV,
+              joint,
+              mode,
+              width,
+              thicknessMm,
+            ),
+          );
+        }
       }
     }
   }
