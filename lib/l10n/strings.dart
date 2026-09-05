@@ -507,6 +507,30 @@ class L10nStrings {
     required this.engineeringNote2,
     required this.engineeringNote3,
     required this.engineeringNote4,
+    required this.legalPrivacyPolicyLinkLabel,
+    required this.legalTermsOfUseLinkLabel,
+    required this.legalLinkOpenError,
+    required this.accountScreenTitle,
+    required this.accountNoPasswordNotice,
+    required this.accountSignOutButton,
+    required this.accountSignOutSuccess,
+    required this.accountDeleteAccountButton,
+    required this.accountGuestStateTitle,
+    required this.accountGuestStateBody,
+    required this.accountSignInEmailLabel,
+    required this.accountSignInButton,
+    required this.accountSignInSuccess,
+    required this.accountDeleteConfirmTitle,
+    required this.accountDeleteConfirmBody,
+    required this.accountDeletingMessage,
+    required this.accountDeleteSuccessTitle,
+    required this.accountDeleteSuccessBody,
+    required this.accountDeletePartialFailureBody,
+    required this.dashboardAccountCardLabel,
+    required this.dashboardAccountCardGuestValue,
+    required this.authFormConsentPrefix,
+    required this.authFormConsentConnector,
+    required this.authFormConsentSuffix,
   });
 
   final String navBrand;
@@ -1016,6 +1040,30 @@ class L10nStrings {
   final String engineeringNote2;
   final String engineeringNote3;
   final String engineeringNote4;
+  final String legalPrivacyPolicyLinkLabel;
+  final String legalTermsOfUseLinkLabel;
+  final String legalLinkOpenError;
+  final String accountScreenTitle;
+  final String accountNoPasswordNotice;
+  final String accountSignOutButton;
+  final String accountSignOutSuccess;
+  final String accountDeleteAccountButton;
+  final String accountGuestStateTitle;
+  final String accountGuestStateBody;
+  final String accountSignInEmailLabel;
+  final String accountSignInButton;
+  final String accountSignInSuccess;
+  final String accountDeleteConfirmTitle;
+  final String accountDeleteConfirmBody;
+  final String accountDeletingMessage;
+  final String accountDeleteSuccessTitle;
+  final String accountDeleteSuccessBody;
+  final String accountDeletePartialFailureBody;
+  final String dashboardAccountCardLabel;
+  final String dashboardAccountCardGuestValue;
+  final String authFormConsentPrefix;
+  final String authFormConsentConnector;
+  final String authFormConsentSuffix;
 }
 
 const Map<AppLanguage, L10nStrings> _strings = {
@@ -1642,6 +1690,35 @@ const Map<AppLanguage, L10nStrings> _strings = {
         'Consumable classification provides material family and density reference. Final project or client requirements should always govern.',
     engineeringNote4:
         'This report is suitable for estimation and planning. It is not an approved WPS, PQR, welder qualification, or release document.',
+    legalPrivacyPolicyLinkLabel: 'Privacy Policy',
+    legalTermsOfUseLinkLabel: 'Terms of Use',
+    legalLinkOpenError: "Couldn't open the link.",
+    accountScreenTitle: 'Account',
+    accountNoPasswordNotice:
+        "There is no password in this app -- your email is simply what identifies your account.",
+    accountSignOutButton: 'Sign Out',
+    accountSignOutSuccess: 'Signed out.',
+    accountDeleteAccountButton: 'Delete Account',
+    accountGuestStateTitle: "You're using this app as a guest.",
+    accountGuestStateBody:
+        'Sign in with an existing account email to sync your saved calculations to this device.',
+    accountSignInEmailLabel: 'Email',
+    accountSignInButton: 'Sign In',
+    accountSignInSuccess: 'Signed in as {email}.',
+    accountDeleteConfirmTitle: 'Delete account?',
+    accountDeleteConfirmBody:
+        'This will sign you out and permanently delete your saved calculations from this device and from the cloud. Your registration record (name and email) will also be removed from our systems -- this part is handled manually and may take up to 30 days to complete.',
+    accountDeletingMessage: 'Deleting your account...',
+    accountDeleteSuccessTitle: 'Account Deleted',
+    accountDeleteSuccessBody:
+        'Your local data and cloud-synced saved calculations have been removed.',
+    accountDeletePartialFailureBody:
+        "You've been signed out and local data was cleared, but some cloud-synced data may not have been fully removed. Please check your connection and try again, or contact support.",
+    dashboardAccountCardLabel: 'Account',
+    dashboardAccountCardGuestValue: 'Guest',
+    authFormConsentPrefix: 'By registering, you agree to our',
+    authFormConsentConnector: 'and',
+    authFormConsentSuffix: '.',
   ),
   AppLanguage.tr: L10nStrings(
     navBrand: 'Varyos Weld',
@@ -2272,6 +2349,35 @@ const Map<AppLanguage, L10nStrings> _strings = {
         'Sarf malzeme sınıflandırması, malzeme ailesi ve yoğunluk referansı sağlar. Nihai proje veya müşteri gereksinimleri her zaman esas alınmalıdır.',
     engineeringNote4:
         'Bu rapor tahmin ve planlama için uygundur. Onaylı bir WPS, PQR, kaynakçı kalifikasyonu veya serbest bırakma belgesi değildir.',
+    legalPrivacyPolicyLinkLabel: 'Gizlilik Politikası',
+    legalTermsOfUseLinkLabel: 'Kullanım Koşulları',
+    legalLinkOpenError: 'Bağlantı açılamadı.',
+    accountScreenTitle: 'Hesap',
+    accountNoPasswordNotice:
+        'Bu uygulamada şifre yoktur -- e-postanız yalnızca hesabınızı tanımlar.',
+    accountSignOutButton: 'Çıkış Yap',
+    accountSignOutSuccess: 'Çıkış yapıldı.',
+    accountDeleteAccountButton: 'Hesabı Sil',
+    accountGuestStateTitle: 'Bu uygulamayı misafir olarak kullanıyorsunuz.',
+    accountGuestStateBody:
+        'Kaydedilmiş hesaplamalarınızı bu cihaza eşitlemek için mevcut hesap e-postanızla giriş yapın.',
+    accountSignInEmailLabel: 'E-posta',
+    accountSignInButton: 'Giriş Yap',
+    accountSignInSuccess: '{email} olarak giriş yapıldı.',
+    accountDeleteConfirmTitle: 'Hesap silinsin mi?',
+    accountDeleteConfirmBody:
+        'Bu işlem sizi çıkış yaptıracak ve kayıtlı hesaplamalarınızı hem bu cihazdan hem de buluttan kalıcı olarak silecektir. Kayıt bilgileriniz (ad ve e-posta) de sistemlerimizden kaldırılacaktır -- bu kısım manuel olarak işlenir ve tamamlanması en fazla 30 gün sürebilir.',
+    accountDeletingMessage: 'Hesabınız siliniyor...',
+    accountDeleteSuccessTitle: 'Hesap Silindi',
+    accountDeleteSuccessBody:
+        'Yerel verileriniz ve bulutla eşitlenen kayıtlı hesaplamalarınız kaldırıldı.',
+    accountDeletePartialFailureBody:
+        'Çıkış yapıldı ve yerel veriler temizlendi, ancak buluttaki bazı veriler tam olarak kaldırılamamış olabilir. Bağlantınızı kontrol edip tekrar deneyin veya destek ile iletişime geçin.',
+    dashboardAccountCardLabel: 'Hesap',
+    dashboardAccountCardGuestValue: 'Misafir',
+    authFormConsentPrefix: 'Kayıt olarak',
+    authFormConsentConnector: 've',
+    authFormConsentSuffix: "'nı kabul etmiş olursunuz.",
   ),
   AppLanguage.ru: L10nStrings(
     navBrand: 'Varyos Weld',
@@ -2926,6 +3032,42 @@ const Map<AppLanguage, L10nStrings> _strings = {
         'Классификация присадочного материала даёт справочную информацию о группе материала и плотности. Итоговые требования проекта или заказчика всегда имеют приоритет.',
     engineeringNote4:
         'Этот отчёт подходит для оценки и планирования. Он не является утверждённой технологической картой (WPS), протоколом аттестации (PQR), документом аттестации сварщика или разрешительным документом.',
+    legalPrivacyPolicyLinkLabel: 'Политика конфиденциальности',
+    legalTermsOfUseLinkLabel: 'Условия использования',
+    legalLinkOpenError: 'Не удалось открыть ссылку.',
+    accountScreenTitle: 'Аккаунт',
+    accountNoPasswordNotice:
+        'В этом приложении нет пароля -- ваш email просто идентифицирует ваш аккаунт.',
+    accountSignOutButton: 'Выйти',
+    accountSignOutSuccess: 'Вы вышли из аккаунта.',
+    accountDeleteAccountButton: 'Удалить аккаунт',
+    accountGuestStateTitle: 'Вы используете приложение как гость.',
+    accountGuestStateBody:
+        'Войдите с существующим email аккаунта, чтобы синхронизировать сохранённые расчёты на этом устройстве.',
+    accountSignInEmailLabel: 'Email',
+    accountSignInButton: 'Войти',
+    accountSignInSuccess: 'Вы вошли как {email}.',
+    accountDeleteConfirmTitle: 'Удалить аккаунт?',
+    // TODO: unverified translation -- legal/formal phrasing, needs
+    // native-speaker review.
+    accountDeleteConfirmBody:
+        'Это приведёт к выходу из аккаунта и безвозвратному удалению ваших сохранённых расчётов с этого устройства и из облака. Данные вашей регистрации (имя и email) также будут удалены из наших систем -- это делается вручную и может занять до 30 дней.',
+    accountDeletingMessage: 'Удаление аккаунта...',
+    accountDeleteSuccessTitle: 'Аккаунт удалён',
+    accountDeleteSuccessBody:
+        'Ваши локальные данные и синхронизированные с облаком расчёты были удалены.',
+    // TODO: unverified translation -- legal/formal phrasing, needs
+    // native-speaker review.
+    accountDeletePartialFailureBody:
+        'Вы вышли из аккаунта, и локальные данные были очищены, но некоторые облачные данные могли быть удалены не полностью. Проверьте подключение и повторите попытку или обратитесь в поддержку.',
+    dashboardAccountCardLabel: 'Аккаунт',
+    dashboardAccountCardGuestValue: 'Гость',
+    // TODO: unverified translation -- grammatical case may not fully match
+    // when combined with the linked labels above, needs native-speaker
+    // review.
+    authFormConsentPrefix: 'Регистрируясь, вы соглашаетесь с нашими',
+    authFormConsentConnector: 'и',
+    authFormConsentSuffix: '.',
   ),
   AppLanguage.de: L10nStrings(
     navBrand: 'Varyos Weld',
@@ -3571,6 +3713,39 @@ const Map<AppLanguage, L10nStrings> _strings = {
         'Die Zusatzwerkstoffklassifizierung liefert Werkstoffgruppen- und Dichtereferenz. Endgültige Projekt- oder Kundenanforderungen sind stets maßgeblich.',
     engineeringNote4:
         'Dieser Bericht eignet sich für Schätzung und Planung. Er ist kein freigegebenes WPS, PQR, keine Schweißerqualifikation und kein Freigabedokument.',
+    legalPrivacyPolicyLinkLabel: 'Datenschutzerklärung',
+    legalTermsOfUseLinkLabel: 'Nutzungsbedingungen',
+    legalLinkOpenError: 'Der Link konnte nicht geöffnet werden.',
+    accountScreenTitle: 'Konto',
+    accountNoPasswordNotice:
+        'Diese App hat kein Passwort -- Ihre E-Mail-Adresse identifiziert lediglich Ihr Konto.',
+    accountSignOutButton: 'Abmelden',
+    accountSignOutSuccess: 'Abgemeldet.',
+    accountDeleteAccountButton: 'Konto löschen',
+    accountGuestStateTitle: 'Sie nutzen diese App als Gast.',
+    accountGuestStateBody:
+        'Melden Sie sich mit einer vorhandenen Konto-E-Mail an, um Ihre gespeicherten Berechnungen mit diesem Gerät zu synchronisieren.',
+    accountSignInEmailLabel: 'E-Mail',
+    accountSignInButton: 'Anmelden',
+    accountSignInSuccess: 'Angemeldet als {email}.',
+    accountDeleteConfirmTitle: 'Konto löschen?',
+    // TODO: unverified translation -- legal/formal phrasing, needs
+    // native-speaker review.
+    accountDeleteConfirmBody:
+        'Dadurch werden Sie abgemeldet und Ihre gespeicherten Berechnungen werden dauerhaft von diesem Gerät und aus der Cloud gelöscht. Ihre Registrierungsdaten (Name und E-Mail) werden ebenfalls aus unseren Systemen entfernt -- dies erfolgt manuell und kann bis zu 30 Tage dauern.',
+    accountDeletingMessage: 'Konto wird gelöscht...',
+    accountDeleteSuccessTitle: 'Konto gelöscht',
+    accountDeleteSuccessBody:
+        'Ihre lokalen Daten und mit der Cloud synchronisierten gespeicherten Berechnungen wurden entfernt.',
+    // TODO: unverified translation -- legal/formal phrasing, needs
+    // native-speaker review.
+    accountDeletePartialFailureBody:
+        'Sie wurden abgemeldet und lokale Daten wurden gelöscht, aber einige Cloud-Daten wurden möglicherweise nicht vollständig entfernt. Bitte prüfen Sie Ihre Verbindung und versuchen Sie es erneut, oder kontaktieren Sie den Support.',
+    dashboardAccountCardLabel: 'Konto',
+    dashboardAccountCardGuestValue: 'Gast',
+    authFormConsentPrefix: 'Mit der Registrierung stimmen Sie unserer',
+    authFormConsentConnector: 'und unseren',
+    authFormConsentSuffix: 'zu.',
   ),
   AppLanguage.hi: L10nStrings(
     navBrand: 'Varyos Weld',
@@ -4205,6 +4380,41 @@ const Map<AppLanguage, L10nStrings> _strings = {
         'कंज़्यूमेबल क्लासिफिकेशन मटीरियल फैमिली और डेंसिटी रेफरेंस देता है। फाइनल प्रोजेक्ट या क्लाइंट रिक्वायरमेंट हमेशा गवर्न करनी चाहिए।',
     engineeringNote4:
         'यह रिपोर्ट एस्टिमेशन और प्लानिंग के लिए उपयुक्त है। यह कोई अप्रूव्ड WPS, PQR, वेल्डर क्वालिफिकेशन, या रिलीज़ डॉक्यूमेंट नहीं है।',
+    legalPrivacyPolicyLinkLabel: 'प्राइवेसी पॉलिसी',
+    legalTermsOfUseLinkLabel: 'टर्म्स ऑफ यूज़',
+    legalLinkOpenError: 'लिंक नहीं खोला जा सका।',
+    accountScreenTitle: 'अकाउंट',
+    accountNoPasswordNotice:
+        'इस ऐप में कोई पासवर्ड नहीं है -- आपका ईमेल बस आपके अकाउंट की पहचान करता है।',
+    accountSignOutButton: 'साइन आउट',
+    accountSignOutSuccess: 'साइन आउट हो गया।',
+    accountDeleteAccountButton: 'अकाउंट डिलीट करें',
+    accountGuestStateTitle: 'आप इस ऐप को गेस्ट के रूप में इस्तेमाल कर रहे हैं।',
+    accountGuestStateBody:
+        'अपनी सेव की गई कैलकुलेशन इस डिवाइस पर सिंक करने के लिए मौजूदा अकाउंट ईमेल से साइन इन करें।',
+    accountSignInEmailLabel: 'ईमेल',
+    accountSignInButton: 'साइन इन',
+    accountSignInSuccess: '{email} के रूप में साइन इन हुआ।',
+    accountDeleteConfirmTitle: 'अकाउंट डिलीट करें?',
+    // TODO: unverified translation -- legal/formal phrasing, needs
+    // native-speaker review.
+    accountDeleteConfirmBody:
+        'इससे आप साइन आउट हो जाएंगे और आपकी सेव की गई कैलकुलेशन इस डिवाइस और क्लाउड दोनों से स्थायी रूप से डिलीट हो जाएंगी। आपका रजिस्ट्रेशन रिकॉर्ड (नाम और ईमेल) भी हमारे सिस्टम से हटा दिया जाएगा -- यह हिस्सा मैन्युअल रूप से किया जाता है और पूरा होने में 30 दिन तक लग सकते हैं।',
+    accountDeletingMessage: 'आपका अकाउंट डिलीट किया जा रहा है...',
+    accountDeleteSuccessTitle: 'अकाउंट डिलीट हो गया',
+    accountDeleteSuccessBody:
+        'आपका लोकल डेटा और क्लाउड-सिंक्ड सेव की गई कैलकुलेशन हटा दी गई हैं।',
+    // TODO: unverified translation -- legal/formal phrasing, needs
+    // native-speaker review.
+    accountDeletePartialFailureBody:
+        'आपको साइन आउट कर दिया गया है और लोकल डेटा साफ़ कर दिया गया है, लेकिन हो सकता है कुछ क्लाउड डेटा पूरी तरह से न हटा हो। कृपया अपना कनेक्शन जांचें और फिर से कोशिश करें, या सपोर्ट से संपर्क करें।',
+    dashboardAccountCardLabel: 'अकाउंट',
+    dashboardAccountCardGuestValue: 'गेस्ट',
+    // TODO: unverified translation -- needs native-speaker review of the
+    // consent-sentence structure.
+    authFormConsentPrefix: 'रजिस्टर करके, आप हमारी',
+    authFormConsentConnector: 'और',
+    authFormConsentSuffix: 'से सहमत होते हैं।',
   ),
 };
 

@@ -4,20 +4,44 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:purchases_flutter/purchases_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:url_launcher_platform_interface/link.dart';
+import 'package:url_launcher_platform_interface/url_launcher_platform_interface.dart';
 
 import 'package:weld_consumable_calculator/app.dart';
+import 'package:weld_consumable_calculator/l10n/app_language.dart';
 import 'package:weld_consumable_calculator/l10n/app_locale.dart';
 import 'package:weld_consumable_calculator/l10n/app_locale_scope.dart';
+import 'package:weld_consumable_calculator/l10n/strings.dart';
 import 'package:weld_consumable_calculator/models/weld_models.dart';
 import 'package:weld_consumable_calculator/services/entitlement_service.dart';
 import 'package:weld_consumable_calculator/services/purchases_config.dart';
 import 'package:weld_consumable_calculator/ui/calculator_page.dart';
 import 'package:weld_consumable_calculator/ui/calculator_page/wizard/process_icons.dart';
 
+/// Mocks url_launcher at the platform-interface level (the recommended way
+/// to test call sites without opening a real browser) -- see
+/// test/services/legal_links_test.dart for the first use of this pattern.
+class _MockUrlLauncherPlatform extends UrlLauncherPlatform {
+  String? lastLaunchedUrl;
+
+  @override
+  LinkDelegate? get linkDelegate => null;
+
+  @override
+  Future<bool> launchUrl(String url, LaunchOptions options) async {
+    lastLaunchedUrl = url;
+    return true;
+  }
+}
+
 /// Fake [EntitlementService] so paywall tests never touch the real
 /// RevenueCat SDK -- see lib/services/entitlement_service.dart.
 class _FakeEntitlementService extends EntitlementService {
-  _FakeEntitlementService({this.offering, this.purchaseResult, this.restoreFuture});
+  _FakeEntitlementService({
+    this.offering,
+    this.purchaseResult,
+    this.restoreFuture,
+  });
 
   final Offering? offering;
   final CustomerInfo? purchaseResult;
@@ -76,9 +100,10 @@ CustomerInfo _activeCustomerInfo() {
     false,
   );
   return CustomerInfo(
-    EntitlementInfos({
-      PurchasesConfig.entitlementId: entitlement,
-    }, {PurchasesConfig.entitlementId: entitlement}),
+    EntitlementInfos(
+      {PurchasesConfig.entitlementId: entitlement},
+      {PurchasesConfig.entitlementId: entitlement},
+    ),
     const {},
     [PurchasesConfig.monthlyPackageId],
     [PurchasesConfig.monthlyPackageId],
@@ -176,9 +201,7 @@ void main() {
     SharedPreferences.setMockInitialValues({});
   });
 
-  testWidgets('wizard walks through every step to the summary', (
-    tester,
-  ) async {
+  testWidgets('wizard walks through every step to the summary', (tester) async {
     await _pumpPastIntro(tester);
 
     // Step 1: Welding Process.
@@ -213,9 +236,7 @@ void main() {
     expect(find.text('Reset'), findsOneWidget);
   });
 
-  testWidgets('input preset applies pipe joint starter values', (
-    tester,
-  ) async {
+  testWidgets('input preset applies pipe joint starter values', (tester) async {
     await _pumpPastIntro(tester);
 
     // Step 2's starter-template dropdown is now filtered to the process
@@ -558,6 +579,41 @@ void main() {
   );
 
   testWidgets(
+    'the paywall shows tappable Privacy Policy / Terms of Use links next to '
+    'the subscription disclosure (Apple guideline 3.1.2(c))',
+    (tester) async {
+      final mockPlatform = _MockUrlLauncherPlatform();
+      UrlLauncherPlatform.instance = mockPlatform;
+      final strings = stringsFor(AppLanguage.en);
+
+      await _pumpCalculatorToSummary(
+        tester,
+        _FakeEntitlementService(offering: null),
+      );
+
+      await tester.ensureVisible(find.text('Calculate'));
+      await tester.tap(find.text('Calculate'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Unlock PDF'));
+      await tester.pumpAndSettle();
+
+      expect(find.text(strings.legalPrivacyPolicyLinkLabel), findsOneWidget);
+      expect(find.text(strings.legalTermsOfUseLinkLabel), findsOneWidget);
+
+      await tester.tap(find.text(strings.legalPrivacyPolicyLinkLabel));
+      await tester.pumpAndSettle();
+      expect(
+        mockPlatform.lastLaunchedUrl,
+        'https://varyosweld.com/privacy.html',
+      );
+
+      await tester.tap(find.text(strings.legalTermsOfUseLinkLabel));
+      await tester.pumpAndSettle();
+      expect(mockPlatform.lastLaunchedUrl, 'https://varyosweld.com/terms.html');
+    },
+  );
+
+  testWidgets(
     'pdf export unlocks after purchasing a package from a real offering',
     (tester) async {
       await _pumpCalculatorToSummary(
@@ -783,86 +839,83 @@ void main() {
     },
   );
 
-  testWidgets(
-    'continuing to the next wizard step resets scroll to the top',
-    (tester) async {
-      await _pumpPastIntro(tester);
-      await _continueWizardStep(tester); // process -> dimensions
+  testWidgets('continuing to the next wizard step resets scroll to the top', (
+    tester,
+  ) async {
+    await _pumpPastIntro(tester);
+    await _continueWizardStep(tester); // process -> dimensions
 
-      await tester.drag(
-        find.byType(SingleChildScrollView),
-        const Offset(0, -400),
-      );
-      await tester.pumpAndSettle();
+    await tester.drag(
+      find.byType(SingleChildScrollView),
+      const Offset(0, -400),
+    );
+    await tester.pumpAndSettle();
 
-      final scrolledView = tester.widget<SingleChildScrollView>(
-        find.byType(SingleChildScrollView),
-      );
-      expect(scrolledView.controller!.position.pixels, greaterThan(0));
+    final scrolledView = tester.widget<SingleChildScrollView>(
+      find.byType(SingleChildScrollView),
+    );
+    expect(scrolledView.controller!.position.pixels, greaterThan(0));
 
-      await _continueWizardStep(tester); // dimensions -> consumable
+    await _continueWizardStep(tester); // dimensions -> consumable
 
-      final resetView = tester.widget<SingleChildScrollView>(
-        find.byType(SingleChildScrollView),
-      );
-      expect(resetView.controller!.position.pixels, lessThan(5.0));
-    },
-  );
+    final resetView = tester.widget<SingleChildScrollView>(
+      find.byType(SingleChildScrollView),
+    );
+    expect(resetView.controller!.position.pixels, lessThan(5.0));
+  });
 
-  testWidgets(
-    'going back a wizard step resets scroll to the top',
-    (tester) async {
-      await _pumpPastIntro(tester);
-      await _continueWizardStep(tester); // process -> dimensions
+  testWidgets('going back a wizard step resets scroll to the top', (
+    tester,
+  ) async {
+    await _pumpPastIntro(tester);
+    await _continueWizardStep(tester); // process -> dimensions
 
-      await tester.drag(
-        find.byType(SingleChildScrollView),
-        const Offset(0, -400),
-      );
-      await tester.pumpAndSettle();
+    await tester.drag(
+      find.byType(SingleChildScrollView),
+      const Offset(0, -400),
+    );
+    await tester.pumpAndSettle();
 
-      final scrolledView = tester.widget<SingleChildScrollView>(
-        find.byType(SingleChildScrollView),
-      );
-      expect(scrolledView.controller!.position.pixels, greaterThan(0));
+    final scrolledView = tester.widget<SingleChildScrollView>(
+      find.byType(SingleChildScrollView),
+    );
+    expect(scrolledView.controller!.position.pixels, greaterThan(0));
 
-      await tester.ensureVisible(find.text('Back'));
-      await tester.tap(find.text('Back'));
-      await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('Back'));
+    await tester.tap(find.text('Back'));
+    await tester.pumpAndSettle();
 
-      final resetView = tester.widget<SingleChildScrollView>(
-        find.byType(SingleChildScrollView),
-      );
-      expect(resetView.controller!.position.pixels, lessThan(5.0));
-    },
-  );
+    final resetView = tester.widget<SingleChildScrollView>(
+      find.byType(SingleChildScrollView),
+    );
+    expect(resetView.controller!.position.pixels, lessThan(5.0));
+  });
 
-  testWidgets(
-    'tapping Edit from the summary step resets scroll to the top',
-    (tester) async {
-      await _pumpToWizardSummary(tester);
+  testWidgets('tapping Edit from the summary step resets scroll to the top', (
+    tester,
+  ) async {
+    await _pumpToWizardSummary(tester);
 
-      await tester.drag(
-        find.byType(SingleChildScrollView),
-        const Offset(0, -400),
-      );
-      await tester.pumpAndSettle();
+    await tester.drag(
+      find.byType(SingleChildScrollView),
+      const Offset(0, -400),
+    );
+    await tester.pumpAndSettle();
 
-      final scrolledView = tester.widget<SingleChildScrollView>(
-        find.byType(SingleChildScrollView),
-      );
-      expect(scrolledView.controller!.position.pixels, greaterThan(0));
+    final scrolledView = tester.widget<SingleChildScrollView>(
+      find.byType(SingleChildScrollView),
+    );
+    expect(scrolledView.controller!.position.pixels, greaterThan(0));
 
-      await tester.ensureVisible(find.text('Edit').first);
-      await tester.tap(find.text('Edit').first);
-      await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('Edit').first);
+    await tester.tap(find.text('Edit').first);
+    await tester.pumpAndSettle();
 
-      final resetView = tester.widget<SingleChildScrollView>(
-        find.byType(SingleChildScrollView),
-      );
-      expect(resetView.controller!.position.pixels, lessThan(5.0));
-    },
-  );
+    final resetView = tester.widget<SingleChildScrollView>(
+      find.byType(SingleChildScrollView),
+    );
+    expect(resetView.controller!.position.pixels, lessThan(5.0));
+  });
 
   testWidgets(
     'desktop width still shows Joint Type and Technical Drawing together',

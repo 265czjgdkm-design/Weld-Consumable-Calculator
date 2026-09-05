@@ -15,6 +15,7 @@ import '../models/saved_report.dart';
 import '../models/weld_models.dart';
 import '../services/custom_filler_material_store.dart';
 import '../services/entitlement_service.dart';
+import '../services/legal_links.dart';
 import '../services/pdf_report_exporter.dart';
 import '../services/preset_sync_service.dart';
 import '../services/purchases_config.dart';
@@ -1467,10 +1468,14 @@ class _CalculatorPageState extends State<CalculatorPage> {
                   }
 
                   final capFields = visibleFields
-                      .where((spec) => _capDimensionFieldKeys.contains(spec.key))
+                      .where(
+                        (spec) => _capDimensionFieldKeys.contains(spec.key),
+                      )
                       .toList();
                   final otherFields = visibleFields
-                      .where((spec) => !_capDimensionFieldKeys.contains(spec.key))
+                      .where(
+                        (spec) => !_capDimensionFieldKeys.contains(spec.key),
+                      )
                       .toList();
 
                   return Column(
@@ -4104,10 +4109,52 @@ class _PaywallSheetState extends State<_PaywallSheet> {
                 context,
               ).textTheme.bodySmall?.copyWith(color: const Color(0xFF8398A5)),
             ),
+            const SizedBox(height: 6),
+            _buildPaywallLegalLinks(context),
           ],
         ),
       ),
     );
+  }
+
+  Widget _buildPaywallLegalLinks(BuildContext context) {
+    final strings = AppLocaleScope.stringsOf(context);
+    return Wrap(
+      alignment: WrapAlignment.center,
+      children: [
+        GestureDetector(
+          onTap: () =>
+              _openPaywallLegalLink(context, LegalLinks.privacyPolicyUrl),
+          child: Text(
+            strings.legalPrivacyPolicyLinkLabel,
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              color: const Color(0xFF12191B),
+              decoration: TextDecoration.underline,
+            ),
+          ),
+        ),
+        const Text('  ·  ', style: TextStyle(color: Color(0xFF8398A5))),
+        GestureDetector(
+          onTap: () => _openPaywallLegalLink(context, LegalLinks.termsOfUseUrl),
+          child: Text(
+            strings.legalTermsOfUseLinkLabel,
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              color: const Color(0xFF12191B),
+              decoration: TextDecoration.underline,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Future<void> _openPaywallLegalLink(BuildContext context, String url) async {
+    try {
+      await LegalLinks.open(url);
+    } catch (_) {
+      if (!context.mounted) return;
+      widget.onMessage(AppLocaleScope.stringsOf(context).legalLinkOpenError);
+    }
   }
 }
 

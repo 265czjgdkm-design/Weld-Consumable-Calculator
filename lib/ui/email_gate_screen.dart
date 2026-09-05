@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../l10n/app_locale_scope.dart';
+import '../services/legal_links.dart';
 import '../services/signup_gate_store.dart';
 import '../services/signup_submitter.dart';
 import '../services/user_account_store.dart';
@@ -216,7 +217,9 @@ class _RegistrationFormState extends State<_RegistrationForm> {
           : strings.emailGateInvalidEmail;
     });
 
-    if (_firstNameError != null || _lastNameError != null || _emailError != null) {
+    if (_firstNameError != null ||
+        _lastNameError != null ||
+        _emailError != null) {
       return;
     }
 
@@ -275,7 +278,9 @@ class _RegistrationFormState extends State<_RegistrationForm> {
           errorText: _emailError,
           onSubmitted: (_) => _submit(),
         ),
-        const SizedBox(height: 20),
+        const SizedBox(height: 16),
+        const _RegistrationConsentText(),
+        const SizedBox(height: 16),
         SizedBox(
           width: double.infinity,
           child: FilledButton(
@@ -352,6 +357,53 @@ class _AuthTextField extends StatelessWidget {
           vertical: 16,
         ),
       ),
+    );
+  }
+}
+
+/// "By registering, you agree to our Privacy Policy and Terms of Use" with
+/// the two link segments tappable -- required for Apple guideline 5.1.1(i)
+/// (the app must present a Privacy Policy link wherever an account is
+/// created).
+class _RegistrationConsentText extends StatelessWidget {
+  const _RegistrationConsentText();
+
+  Future<void> _openLink(BuildContext context, String url) async {
+    final strings = AppLocaleScope.stringsOf(context);
+    try {
+      await LegalLinks.open(url);
+    } catch (_) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(SnackBar(content: Text(strings.legalLinkOpenError)));
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final strings = AppLocaleScope.stringsOf(context);
+    const textStyle = TextStyle(color: Color(0xFFAEB8BB), fontSize: 12.5);
+    const linkStyle = TextStyle(
+      color: Color(0xFFAEB8BB),
+      fontSize: 12.5,
+      decoration: TextDecoration.underline,
+      fontWeight: FontWeight.w600,
+    );
+    return Wrap(
+      children: [
+        Text('${strings.authFormConsentPrefix} ', style: textStyle),
+        GestureDetector(
+          onTap: () => _openLink(context, LegalLinks.privacyPolicyUrl),
+          child: Text(strings.legalPrivacyPolicyLinkLabel, style: linkStyle),
+        ),
+        Text(' ${strings.authFormConsentConnector} ', style: textStyle),
+        GestureDetector(
+          onTap: () => _openLink(context, LegalLinks.termsOfUseUrl),
+          child: Text(strings.legalTermsOfUseLinkLabel, style: linkStyle),
+        ),
+        Text(strings.authFormConsentSuffix, style: textStyle),
+      ],
     );
   }
 }

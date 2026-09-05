@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:weld_consumable_calculator/app.dart';
 import 'package:weld_consumable_calculator/l10n/app_language.dart';
 import 'package:weld_consumable_calculator/l10n/strings.dart';
+import 'package:weld_consumable_calculator/ui/account_screen.dart';
 import 'package:weld_consumable_calculator/ui/base_material_screen.dart';
 import 'package:weld_consumable_calculator/ui/calculator_page.dart';
 import 'package:weld_consumable_calculator/ui/cooling_time_calculator_screen.dart';
@@ -163,4 +164,31 @@ void main() {
       expect(emphasizedColors.first, isNot(equals(tonalColors.first)));
     },
   );
+
+  testWidgets('account entry card shows Guest when signed out, and '
+      'navigates to AccountScreen on tap', (tester) async {
+    await _gotoDashboard(tester);
+
+    expect(find.text(strings.dashboardAccountCardGuestValue), findsOneWidget);
+
+    await tester.tap(find.text(strings.dashboardAccountCardGuestValue));
+    await tester.pumpAndSettle();
+    expect(find.byType(AccountScreen), findsOneWidget);
+  });
+
+  testWidgets('account entry card shows the signed-in email instead of '
+      'Guest', (tester) async {
+    SharedPreferences.setMockInitialValues({
+      'signup_gate_resolved_v1': true,
+      'app_language_code': AppLanguage.en.code,
+      'user_account_email_v1': 'user@example.com',
+    });
+    await tester.pumpWidget(const WeldConsumableCalculatorApp());
+    await tester.pump(const Duration(milliseconds: 2200));
+    await tester.pumpAndSettle();
+    expect(find.byType(HomeDashboardScreen), findsOneWidget);
+
+    expect(find.text('user@example.com'), findsOneWidget);
+    expect(find.text(strings.dashboardAccountCardGuestValue), findsNothing);
+  });
 }
