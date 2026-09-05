@@ -400,7 +400,7 @@ class _CalculatorPageState extends State<CalculatorPage> {
           context,
           filterByCurrentProcess: true,
         ),
-        jointTypeSection: _buildJointTypeSection(context),
+        jointTypeSection: _buildJointTypeSection(context, compactTitle: true),
         memberGeometrySection: _buildMemberGeometrySection(context),
         grooveTypeDropdown: _buildGrooveTypeDropdown(context),
         primaryDimensionFields: [
@@ -734,17 +734,26 @@ class _CalculatorPageState extends State<CalculatorPage> {
 
   /// Extracted so the mobile wizard's dimensions step can reuse the exact
   /// same "Joint Type" chips as the desktop [_buildJointConfigurationCard].
-  Widget _buildJointTypeSection(BuildContext context) {
+  /// [compactTitle] shrinks the section's own "Joint Type" heading down from
+  /// the desktop card's top-level size to `titleMedium` -- used by the mobile
+  /// wizard, where this section is now nested under its own larger
+  /// "Joint Type & Geometry" group heading and would otherwise tie with it.
+  Widget _buildJointTypeSection(
+    BuildContext context, {
+    bool compactTitle = false,
+  }) {
     final strings = AppLocaleScope.stringsOf(context);
+    final titleStyle = compactTitle
+        ? Theme.of(
+            context,
+          ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800)
+        : Theme.of(
+            context,
+          ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          strings.calcJointTypeSectionTitle,
-          style: Theme.of(
-            context,
-          ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
-        ),
+        Text(strings.calcJointTypeSectionTitle, style: titleStyle),
         const SizedBox(height: 14),
         Wrap(
           spacing: 10,

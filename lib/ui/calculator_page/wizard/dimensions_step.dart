@@ -54,9 +54,13 @@ class WizardDimensionsStep extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final strings = AppLocaleScope.stringsOf(context);
+    // Sized between the card's own top-level title (titleLarge, 24px) and
+    // the largest content each group holds (Joint Type/Member Geometry
+    // sub-headings and field labels, all <=18px) so the heading actually
+    // reads as the biggest thing within its own group's scope.
     final groupTitleStyle = Theme.of(
       context,
-    ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800);
+    ).textTheme.titleLarge?.copyWith(fontSize: 20);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -75,10 +79,10 @@ class WizardDimensionsStep extends StatelessWidget {
                   ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
                 ),
                 const SizedBox(height: 14),
-                Text(strings.calcJointGeometryGroupTitle, style: groupTitleStyle),
-                const SizedBox(height: 10),
                 starterPresetSection,
                 const SizedBox(height: 18),
+                Text(strings.calcJointGeometryGroupTitle, style: groupTitleStyle),
+                const SizedBox(height: 10),
                 jointTypeSection,
                 memberGeometrySection,
                 const SizedBox(height: 18),

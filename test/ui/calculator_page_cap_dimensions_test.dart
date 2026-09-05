@@ -101,8 +101,7 @@ void main() {
       await tester.tap(find.text('Fillet Weld'));
       await tester.pumpAndSettle();
 
-      expect(find.text('Cap Overlap (mm)'), findsNothing);
-      expect(find.text('Cap Height (mm)'), findsNothing);
+      expect(find.text('Cap Dimensions (optional)'), findsNothing);
     },
   );
 
@@ -115,7 +114,7 @@ void main() {
       await tester.ensureVisible(find.text('Fillet Weld'));
       await tester.tap(find.text('Fillet Weld'));
       await tester.pumpAndSettle();
-      expect(find.text('Cap Overlap (mm)'), findsNothing);
+      expect(find.text('Cap Dimensions (optional)'), findsNothing);
 
       await tester.ensureVisible(find.text('Plate Butt Weld'));
       await tester.tap(find.text('Plate Butt Weld'));
