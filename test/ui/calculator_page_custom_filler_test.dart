@@ -74,7 +74,7 @@ void main() {
 
       await _pumpToConsumableStep(tester);
 
-      expect(find.text('Consumable Classification'), findsOneWidget);
+      expect(find.text('AWS Classification'), findsOneWidget);
 
       await tester.tap(
         find.byWidgetPredicate(

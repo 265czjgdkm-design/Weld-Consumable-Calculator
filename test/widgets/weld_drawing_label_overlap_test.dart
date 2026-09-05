@@ -327,13 +327,18 @@ void main() {
     // is a full 66.7x17.6px pill-on-pill overlap (one label sitting
     // directly on top of the other), not a marginal squeeze - re-measured
     // directly via this suite's own painter, not assumed. German was ALSO
-    // affected before this session's Finding 4 fix (which fully localized
-    // the "mm cap overlap"/"mm cap height" suffix instead of concatenating
-    // a localized prefix onto hardcoded English) shortened Überstand's/
-    // Überhöhung's pills enough to clear this collision as a side effect -
-    // confirmed via a real `flutter test` run, not assumed. Russian's
-    // shortened suffix (see drawingLabelCapOverlapValue/
-    // drawingLabelCapHeightValue) is still too wide to clear it.
+    // affected before a prior session's Finding 4 fix (which fully
+    // localized the "mm cap overlap"/"mm cap height" suffix instead of
+    // concatenating a localized prefix onto hardcoded English); that fix's
+    // German replacement text (Überstand's/Überhöhung's) happened to be
+    // short enough to clear the collision as a side effect - confirmed via
+    // a real `flutter test` run, not assumed. Russian's fully-localized
+    // suffix (see drawingLabelCapOverlapValue/drawingLabelCapHeightValue)
+    // is longer than the hardcoded-English suffix it replaced, so that same
+    // fix made the overlap on this path WORSE, not better - the pill grew
+    // from 55.5x17.6px to the 66.7x17.6px measured above as a direct side
+    // effect of fully localizing the suffix text, a regression that went
+    // undisclosed in that fix's own summary.
     if (joint == JointType.plateButt && language == AppLanguage.ru) {
       return "Double V's both-faces bottom-face cap-overlap and cap-height "
           'pills fully overlap (66.7x17.6px) at 320pt/240px width in '

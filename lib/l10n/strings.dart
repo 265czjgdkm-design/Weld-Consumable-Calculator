@@ -1371,7 +1371,7 @@ const Map<AppLanguage, L10nStrings> _strings = {
     calcConsumableDensityTitle: 'Consumable & Density',
     calcConsumableDensitySubtitle:
         'AWS filler selection, family information, and weld metal density basis.',
-    calcConsumableClassificationLabel: 'Consumable Classification',
+    calcConsumableClassificationLabel: 'AWS Classification',
     calcConsumableClassificationHelper:
         'Select an AWS filler metal classification. Density is populated automatically and can still be adjusted.',
     calcMyMaterialsHeader: 'My Materials',
@@ -1485,19 +1485,19 @@ const Map<AppLanguage, L10nStrings> _strings = {
         'How much the cap pass rises above the base metal surface. AWS D1.1 typical reinforcement: up to 3mm for t<=25mm, 5mm for 25-50mm, 6mm for t>50mm. For Double V, this value is applied to both faces, so the cap contribution is counted twice. Optional.',
     calcFieldLegSizeLabel: 'Leg Size (mm)',
     calcFieldLegSizeHelper: 'Equal leg size of the fillet weld.',
-    calcFieldGtawWireDiameterLabel: 'Diameter (mm)',
+    calcFieldGtawWireDiameterLabel: 'GTAW Ø (mm)',
     calcFieldGtawWireDiameterHelper:
-        'GTAW filler wire diameter. Common sizes: 1.6, 2.0, 2.4, 3.2 mm.',
-    calcFieldSmawElectrodeDiameterLabel: 'Diameter (mm)',
+        'GTAW filler wire diameter. Sizes: 1.6, 2.0, 2.4, 3.2 mm.',
+    calcFieldSmawElectrodeDiameterLabel: 'SMAW Ø (mm)',
     calcFieldSmawElectrodeDiameterHelper:
-        'SMAW electrode diameter. Common sizes: 2.5, 3.2, 4.0, 5.0 mm.',
+        'SMAW electrode diameter. Sizes: 2.5, 3.2, 4.0, 5.0 mm.',
     calcFieldGmawWireDiameterLabel: 'Diameter (mm)',
     calcFieldGmawWireDiameterHelper:
         'GMAW filler wire diameter. Common sizes: 0.8, 1.0, 1.2, 1.6 mm.',
     calcFieldFcawWireDiameterLabel: 'Diameter (mm)',
     calcFieldFcawWireDiameterHelper:
         'FCAW filler wire diameter. Common sizes: 1.2, 1.6, 2.0 mm.',
-    calcFieldGtawTransitionLabel: 'GTAW Transition Depth (mm)',
+    calcFieldGtawTransitionLabel: 'GTAW Depth (mm)',
     calcFieldGtawTransitionHelper:
         'Depth deposited by GTAW from the root side before switching to SMAW.',
     calcFieldGtawDepositionRateLabel: 'GTAW Deposition Rate (kg/h)',
@@ -1995,7 +1995,7 @@ const Map<AppLanguage, L10nStrings> _strings = {
     calcConsumableDensityTitle: 'Sarf Malzeme ve Yoğunluk',
     calcConsumableDensitySubtitle:
         'AWS dolgu seçimi, aile bilgisi ve kaynak metali yoğunluk esası.',
-    calcConsumableClassificationLabel: 'Sarf Malzeme Sınıflandırması',
+    calcConsumableClassificationLabel: 'AWS Sınıflandırması',
     calcConsumableClassificationHelper:
         'Bir AWS dolgu metali sınıflandırması seçin. Yoğunluk otomatik olarak doldurulur ve yine de ayarlanabilir.',
     calcMyMaterialsHeader: 'Malzemelerim',
@@ -2100,22 +2100,22 @@ const Map<AppLanguage, L10nStrings> _strings = {
     calcFieldBreakHeightLabel: 'Kırılma Yüksekliği h (mm)',
     calcFieldBreakHeightHelper:
         'Kök yüzünden pah kırılma noktasına olan mesafe.',
-    calcFieldCapOverlapLabel: 'Bindirme (mm)',
+    calcFieldCapOverlapLabel: 'Kapak Bind. (mm)',
     calcFieldCapOverlapHelper:
         'Kapak pasosunun kanal ağzının her iki kenarından ne kadar taştığı (her iki kenara ayrı ayrı eklenir). İsteğe bağlı.',
     calcFieldCapOverlapDoubleVHelper:
         'Kapak pasosunun kanal ağzının her iki kenarından ne kadar taştığı (her iki kenara ayrı ayrı eklenir). Çift V kaynağında bu değer her iki yüzeye de uygulanır, yani kapak katkısı hesaplamada iki kez sayılır. İsteğe bağlı.',
-    calcFieldCapHeightLabel: 'Yükseklik (mm)',
+    calcFieldCapHeightLabel: 'Kapak Yük. (mm)',
     calcFieldCapHeightHelper:
         'Kapak pasosunun ana malzeme yüzeyinden ne kadar yükseldiği. AWS D1.1 tipik takviye: t<=25mm için 3mm, 25-50mm için 5mm, t>50mm için 6mm. İsteğe bağlı.',
     calcFieldCapHeightDoubleVHelper:
         'Kapak pasosunun ana malzeme yüzeyinden ne kadar yükseldiği. AWS D1.1 tipik takviye: t<=25mm için 3mm, 25-50mm için 5mm, t>50mm için 6mm. Çift V kaynağında bu değer her iki yüzeye de uygulanır, yani kapak katkısı hesaplamada iki kez sayılır. İsteğe bağlı.',
     calcFieldLegSizeLabel: 'Kenar Ölçüsü (mm)',
     calcFieldLegSizeHelper: 'Köşe kaynağının eşit kenar ölçüsü.',
-    calcFieldGtawWireDiameterLabel: 'Çap (mm)',
+    calcFieldGtawWireDiameterLabel: 'GTAW Ø (mm)',
     calcFieldGtawWireDiameterHelper:
         'GTAW dolgu teli çapı. Yaygın ölçüler: 1.6, 2.0, 2.4, 3.2 mm.',
-    calcFieldSmawElectrodeDiameterLabel: 'Çap (mm)',
+    calcFieldSmawElectrodeDiameterLabel: 'SMAW Ø (mm)',
     calcFieldSmawElectrodeDiameterHelper:
         'SMAW elektrot çapı. Yaygın ölçüler: 2.5, 3.2, 4.0, 5.0 mm.',
     calcFieldGmawWireDiameterLabel: 'Çap (mm)',
@@ -2631,7 +2631,7 @@ const Map<AppLanguage, L10nStrings> _strings = {
     calcConsumableDensityTitle: 'Присадочный материал и плотность',
     calcConsumableDensitySubtitle:
         'Выбор присадочного металла по AWS, информация о группе и основа плотности наплавленного металла.',
-    calcConsumableClassificationLabel: 'Классификация присадочного материала',
+    calcConsumableClassificationLabel: 'Классификация AWS',
     calcConsumableClassificationHelper:
         'Выберите классификацию присадочного металла по AWS. Плотность заполняется автоматически, но её можно изменить.',
     calcMyMaterialsHeader: 'Мои материалы',
@@ -2759,19 +2759,23 @@ const Map<AppLanguage, L10nStrings> _strings = {
         'Насколько облицовочный валик возвышается над поверхностью основного металла. Типичное усиление по AWS D1.1: до 3мм при t<=25мм, 5мм при 25-50мм, 6мм при t>50мм. Для двойного V-образного шва это значение применяется к обеим сторонам, поэтому вклад облицовочного валика учитывается дважды. Необязательно.',
     calcFieldLegSizeLabel: 'Катет шва (мм)',
     calcFieldLegSizeHelper: 'Равный катет углового шва.',
-    calcFieldGtawWireDiameterLabel: 'Диаметр (мм)',
+    // TODO: unverified symbol choice -- GOST 2.307 drawings conventionally
+    // use the dedicated diameter sign "⌀" (U+2300), not the Latin letter
+    // "Ø" used here to match the other locales; pending native-speaker/
+    // GOST-source confirmation on whether "Ø" reads as intended here.
+    calcFieldGtawWireDiameterLabel: 'GTAW Ø (мм)',
     calcFieldGtawWireDiameterHelper:
-        'Диаметр присадочной проволоки GTAW. Распространённые размеры: 1.6, 2.0, 2.4, 3.2 мм.',
-    calcFieldSmawElectrodeDiameterLabel: 'Диаметр (мм)',
+        'Проволока GTAW. Размеры: 1.6, 2.0, 2.4, 3.2 мм.',
+    calcFieldSmawElectrodeDiameterLabel: 'SMAW Ø (мм)',
     calcFieldSmawElectrodeDiameterHelper:
-        'Диаметр электрода SMAW. Распространённые размеры: 2.5, 3.2, 4.0, 5.0 мм.',
+        'Диаметр электрода SMAW. Размеры: 2.5, 3.2, 4.0, 5.0 мм.',
     calcFieldGmawWireDiameterLabel: 'Диаметр (мм)',
     calcFieldGmawWireDiameterHelper:
         'Диаметр проволоки GMAW. Распространённые размеры: 0.8, 1.0, 1.2, 1.6 мм.',
     calcFieldFcawWireDiameterLabel: 'Диаметр (мм)',
     calcFieldFcawWireDiameterHelper:
         'Диаметр проволоки FCAW. Распространённые размеры: 1.2, 1.6, 2.0 мм.',
-    calcFieldGtawTransitionLabel: 'Глубина перехода GTAW (мм)',
+    calcFieldGtawTransitionLabel: 'Глубина GTAW (мм)',
     calcFieldGtawTransitionHelper:
         'Глубина, наплавляемая GTAW со стороны корня перед переходом на SMAW.',
     calcFieldGtawDepositionRateLabel: 'Скорость наплавки GTAW (кг/ч)',
@@ -3275,7 +3279,7 @@ const Map<AppLanguage, L10nStrings> _strings = {
     calcConsumableDensityTitle: 'Zusatzwerkstoff & Dichte',
     calcConsumableDensitySubtitle:
         'AWS-Zusatzwerkstoffauswahl, Werkstoffgruppe und Dichtegrundlage des Schweißguts.',
-    calcConsumableClassificationLabel: 'Zusatzwerkstoffklassifizierung',
+    calcConsumableClassificationLabel: 'AWS-Klassifizierung',
     calcConsumableClassificationHelper:
         'Wählen Sie eine AWS-Zusatzwerkstoffklassifizierung. Die Dichte wird automatisch übernommen und kann weiterhin angepasst werden.',
     calcMyMaterialsHeader: 'Meine Materialien',
@@ -3401,19 +3405,19 @@ const Map<AppLanguage, L10nStrings> _strings = {
         'Wie stark die Decklage über die Grundwerkstoffoberfläche hinausragt. Typische Überhöhung nach AWS D1.1: bis 3mm bei t<=25mm, 5mm bei 25-50mm, 6mm bei t>50mm. Bei Doppel-V-Nähten wird dieser Wert auf beide Seiten angewendet, sodass der Decklagen-Beitrag doppelt gezählt wird. Optional.',
     calcFieldLegSizeLabel: 'Schenkellänge (mm)',
     calcFieldLegSizeHelper: 'Gleichschenklige Schenkellänge der Kehlnaht.',
-    calcFieldGtawWireDiameterLabel: 'Durchmesser (mm)',
+    calcFieldGtawWireDiameterLabel: 'GTAW Ø (mm)',
     calcFieldGtawWireDiameterHelper:
-        'GTAW-Zusatzwerkstoffdurchmesser. Gängige Größen: 1.6, 2.0, 2.4, 3.2 mm.',
-    calcFieldSmawElectrodeDiameterLabel: 'Durchmesser (mm)',
+        'GTAW-Zusatzwerkstoffdurchmesser. Größen: 1.6, 2.0, 2.4, 3.2 mm.',
+    calcFieldSmawElectrodeDiameterLabel: 'SMAW Ø (mm)',
     calcFieldSmawElectrodeDiameterHelper:
-        'SMAW-Elektrodendurchmesser. Gängige Größen: 2.5, 3.2, 4.0, 5.0 mm.',
+        'SMAW-Elektrode. Größen: 2.5, 3.2, 4.0, 5.0 mm.',
     calcFieldGmawWireDiameterLabel: 'Durchmesser (mm)',
     calcFieldGmawWireDiameterHelper:
         'GMAW-Drahtdurchmesser. Gängige Größen: 0.8, 1.0, 1.2, 1.6 mm.',
     calcFieldFcawWireDiameterLabel: 'Durchmesser (mm)',
     calcFieldFcawWireDiameterHelper:
         'FCAW-Drahtdurchmesser. Gängige Größen: 1.2, 1.6, 2.0 mm.',
-    calcFieldGtawTransitionLabel: 'GTAW-Übergangstiefe (mm)',
+    calcFieldGtawTransitionLabel: 'GTAW-Tiefe (mm)',
     calcFieldGtawTransitionHelper:
         'Von der Wurzelseite mit GTAW abgeschmolzene Tiefe, bevor auf SMAW gewechselt wird.',
     calcFieldGtawDepositionRateLabel: 'GTAW-Abschmelzleistung (kg/h)',
@@ -4028,10 +4032,14 @@ const Map<AppLanguage, L10nStrings> _strings = {
         'कैप पास बेस मेटल की सतह से कितना ऊपर उठता है। AWS D1.1 सामान्य रीइन्फोर्समेंट: t<=25mm के लिए 3mm, 25-50mm के लिए 5mm, t>50mm के लिए 6mm। डबल V के लिए, यह मान दोनों सतहों पर लागू होता है, यानी कैप का योगदान दो बार गिना जाता है। वैकल्पिक।',
     calcFieldLegSizeLabel: 'लेग साइज़ (mm)',
     calcFieldLegSizeHelper: 'फिलेट वेल्ड का समान लेग साइज़।',
-    calcFieldGtawWireDiameterLabel: 'डायमीटर (mm)',
+    // TODO: unverified symbol choice -- this file otherwise transliterates
+    // technical terms phonetically into Devanagari (e.g. "डायमीटर") rather
+    // than using symbols; pending native-speaker confirmation that mixing
+    // in the Latin/ISO diameter symbol "Ø" here still reads naturally.
+    calcFieldGtawWireDiameterLabel: 'GTAW Ø (mm)',
     calcFieldGtawWireDiameterHelper:
         'GTAW फिलर वायर डायमीटर। सामान्य साइज़: 1.6, 2.0, 2.4, 3.2 mm.',
-    calcFieldSmawElectrodeDiameterLabel: 'डायमीटर (mm)',
+    calcFieldSmawElectrodeDiameterLabel: 'SMAW Ø (mm)',
     calcFieldSmawElectrodeDiameterHelper:
         'SMAW इलेक्ट्रोड डायमीटर। सामान्य साइज़: 2.5, 3.2, 4.0, 5.0 mm.',
     calcFieldGmawWireDiameterLabel: 'डायमीटर (mm)',
@@ -4040,7 +4048,7 @@ const Map<AppLanguage, L10nStrings> _strings = {
     calcFieldFcawWireDiameterLabel: 'डायमीटर (mm)',
     calcFieldFcawWireDiameterHelper:
         'FCAW वायर डायमीटर। सामान्य साइज़: 1.2, 1.6, 2.0 mm.',
-    calcFieldGtawTransitionLabel: 'GTAW ट्रांज़िशन डेप्थ (mm)',
+    calcFieldGtawTransitionLabel: 'GTAW डेप्थ (mm)',
     calcFieldGtawTransitionHelper:
         'SMAW पर स्विच करने से पहले रूट साइड से GTAW द्वारा डिपॉज़िट की गई डेप्थ।',
     calcFieldGtawDepositionRateLabel: 'GTAW डिपॉज़िशन रेट (kg/h)',

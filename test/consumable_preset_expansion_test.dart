@@ -94,7 +94,7 @@ void main() {
     await _continueWizardStep(tester); // process -> dimensions
     await _continueWizardStep(tester); // dimensions -> consumable
 
-    expect(find.text('Consumable Classification'), findsOneWidget);
+    expect(find.text('AWS Classification'), findsOneWidget);
 
     await tester.tap(
       find.byWidgetPredicate(

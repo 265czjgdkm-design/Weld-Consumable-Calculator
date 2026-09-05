@@ -203,7 +203,7 @@ void main() {
 
     // Step 3: Consumable.
     expect(find.text('Step 3 of 4'), findsOneWidget);
-    expect(find.text('Consumable Classification'), findsOneWidget);
+    expect(find.text('AWS Classification'), findsOneWidget);
 
     await _continueWizardStep(tester);
 
@@ -244,7 +244,7 @@ void main() {
 
     await _continueWizardStep(tester); // dimensions -> consumable
 
-    expect(find.text('GTAW Transition Depth (mm)'), findsOneWidget);
+    expect(find.text('GTAW Depth (mm)'), findsOneWidget);
   });
 
   testWidgets(
@@ -285,7 +285,7 @@ void main() {
       expect(find.text('GTAW + SMAW'), findsWidgets);
       expect(find.text('Pipe OD (mm)'), findsOneWidget);
       expect(find.text('Root Face per Side (mm)'), findsOneWidget);
-      expect(find.text('GTAW Transition Depth (mm)'), findsOneWidget);
+      expect(find.text('GTAW Depth (mm)'), findsOneWidget);
     },
   );
 
