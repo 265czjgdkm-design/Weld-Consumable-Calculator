@@ -370,22 +370,16 @@ void main() {
   // leader route itself checked against avoidRects, out of scope for this
   // round, which targeted dimension-line collisions specifically.
   //
-  // 2026-09-05: the same underlying elbow-routing gap now also reaches
-  // Compound V's alpha ("α") angle tag at 3 more combinations, added by
-  // that round's primary/secondary label-hierarchy pass - alpha is now a
-  // primary-styled label (bolder, larger, more padding, per explicit
-  // product decision), so clearing the same tint-label collision it always
-  // avoided needs a bigger push, which crosses the `pushedFar` (>6px)
-  // threshold a few more times than before and routes through the
-  // GTAW-root label on the way. Same structural cause as the Half V entry
-  // above, not a new bug class - the real fix is the same one already
-  // described (route the elbow itself through avoidRects, not just its
-  // destination).
+  // 2026-09-05: the primary/secondary label-hierarchy pass (c7f1baf)
+  // briefly made alpha's bigger push cross the `pushedFar` threshold at 3
+  // more Compound V combinations, routing through the GTAW-root label the
+  // same way - but 3c7748f's reduced size bump (the same fix that cleared
+  // the Double V collisions above) brought alpha's push back under that
+  // threshold at all 3: re-measured directly via this suite's own painter,
+  // they're genuinely clear again, so this set is back to just the
+  // pre-existing Half V entry.
   const angleLeaderGaps = <String>{
     'GrooveType.halfV|JointGeometryMode.unequal|390.0|25.0',
-    'GrooveType.compoundV|JointGeometryMode.equal|346.0|50.0',
-    'GrooveType.compoundV|JointGeometryMode.equal|390.0|60.0',
-    'GrooveType.compoundV|JointGeometryMode.unequal|390.0|40.0',
   };
   for (final groove in grooves) {
     for (final geometryMode in geometryModes) {

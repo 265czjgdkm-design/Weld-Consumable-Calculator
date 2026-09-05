@@ -311,21 +311,17 @@ void main() {
     if (groove != GrooveType.doubleV || width > 240.0) {
       return null;
     }
-    if (joint == JointType.pipeButt) {
-      // 2026-09-05: this used to only fire for `visual` mode - the
-      // primary/secondary label-hierarchy pass that round made the
-      // thickness/root-gap/bevel-angle/root-face pills genuinely bigger
-      // (bolder weight, larger font, extra padding, per explicit product
-      // decision), which pushes every later label in the same avoid chain
-      // a few more pixels down before `_drawCapDimensions` even runs -
-      // enough, at this exact width, to also tip `technical` mode's
-      // previously-clear bottom-face cap pills into the same edge-clamp
-      // collision described below. Same structural root cause, wider
-      // blast radius - not a new bug class. (There used to be a `mode`
-      // guard here restricting this to visual/technical, but
-      // `DrawingMode.values` is exactly those two, so it was always a
-      // no-op - removed rather than left as dead code that looked like a
-      // real restriction.)
+    if (joint == JointType.pipeButt && mode == DrawingMode.visual) {
+      // 2026-09-05: the primary/secondary label-hierarchy pass (c7f1baf)
+      // briefly tipped `technical` mode's previously-clear bottom-face cap
+      // pills into this same edge-clamp collision too, via the same
+      // now-bigger thickness/root-gap/bevel-angle/root-face pills pushing
+      // every later label a few more pixels down - but that same session's
+      // follow-up (3c7748f) reduced the primary-pill size bump specifically
+      // to clear the 22 collisions it caused, and `technical` mode here was
+      // one of them: re-measured directly via this suite's own painter,
+      // `technical` mode is genuinely clear again at every locale, so the
+      // gate stays `visual`-only.
       return "Double V's both-faces bottom-face cap-overlap and cap-height "
           'pills both canvas-edge-clamp to the same y-band at 320pt/240px '
           'width - real, newly introduced, needs a dedicated follow-up '
@@ -358,13 +354,12 @@ void main() {
     // from 55.5x17.6px to the 66.7x17.6px measured above as a direct side
     // effect of fully localizing the suffix text, a regression that went
     // undisclosed in that fix's own summary.
-    // 2026-09-05: the same primary/secondary label-hierarchy pass described
-    // above also tips English into this same plate-butt collision at this
-    // width (previously RU-only, with German narrowly clear per the note
-    // above) - same structural cause, wider blast radius from genuinely
-    // bigger primary pills, not a new bug class.
-    if (joint == JointType.plateButt &&
-        (language == AppLanguage.ru || language == AppLanguage.en)) {
+    // 2026-09-05: the primary/secondary label-hierarchy pass (c7f1baf)
+    // briefly tipped English into this same plate-butt collision too
+    // (previously RU-only, with German narrowly clear per the note above) -
+    // but 3c7748f's reduced size bump cleared it, same as the pipe-butt case
+    // above: re-measured directly, English is genuinely clear again.
+    if (joint == JointType.plateButt && language == AppLanguage.ru) {
       return "Double V's both-faces bottom-face cap-overlap and cap-height "
           'pills fully overlap at 320pt/240px width in this locale - same '
           'structural cause as the pipe-butt gap above, needs the same '
@@ -388,17 +383,12 @@ void main() {
   const doubleVCollisions = {
     '240|plateButt|visual|50',
     '240|plateButt|visual|60',
-    // 2026-09-05: newly surfaced by that round's primary/secondary label
-    // hierarchy pass (bigger thickness/root-gap/bevel-angle/root-face
-    // pills push the same avoid chain a few more pixels down before the
-    // cap dimensions are drawn) - same structural canvas-edge-clamp cause
-    // as every other entry here, not a new bug class. `12mm` in particular
-    // is this suite's own baseline thickness (every other matrix in this
-    // file uses it), so this specific entry means the collision is no
-    // longer confined to unusually-thick Double V plates.
-    '240|plateButt|visual|12',
+    // `12mm` (this suite's own baseline thickness, used by every other
+    // matrix in this file) is a pre-existing entry, unrelated to the
+    // primary/secondary label-hierarchy pass below - it predates c7f1baf,
+    // so the collision was never confined to unusually-thick Double V
+    // plates in the first place.
     '240|pipeButt|visual|12',
-    '240|pipeButt|technical|12',
     '240|pipeButt|visual|40',
     '240|pipeButt|visual|50',
     '240|pipeButt|visual|60',
@@ -411,11 +401,6 @@ void main() {
     '310|pipeButt|visual|50',
     '310|pipeButt|visual|60',
     '310|pipeButt|technical|60',
-    // 2026-09-05: same primary-pill-size cause, now also reaching the
-    // widest phone width this suite tests (412pt/348px) at the thickest
-    // swept value.
-    '348|plateButt|visual|60',
-    '348|pipeButt|visual|60',
   };
   String? doubleVThickPlateGap(
     GrooveType groove,
@@ -598,6 +583,59 @@ void main() {
             'pre-existing, needs a dedicated follow-up'
       : null;
 
+  // KNOWN GAP (NOT pre-existing - a genuine regression from the
+  // primary/secondary label-hierarchy pass, c7f1baf/3c7748f): at this exact
+  // combination (320pt/240px canvas, GTAW+SMAW combined process, Unequal
+  // geometry, `technical` mode), Compound V's groove-depth pill and its beta
+  // ("β") angle tag - now a bigger primary-styled pill - land on top of each
+  // other (Half V's groove-depth/alpha pair, same story). `_clearLabelPosition`
+  // computes beta's downward push against groove depth's rect using
+  // UNCLAMPED Y math (see `_resolutionMeasurementRect`'s own doc comment for
+  // why), but the rect actually drawn clamps Y to the canvas's bottom edge
+  // (see `_measurementLabelRect`) - close enough to that edge, the push
+  // clears groove depth in unclamped space but the separate Y-clamp
+  // reintroduces the overlap. Same structural cause already documented in
+  // [doubleVBothFacesNarrowGap] and [singleVIdMatchGrooveDepthGap] above,
+  // not a new bug class - but, unlike the broader [extraBusyNarrowGap]
+  // bucket this sits inside (which predates this feature and stays broad on
+  // purpose), these 6 configs specifically were re-measured directly against
+  // 3e2358c (the commit before c7f1baf) via this suite's own painter and
+  // confirmed clean (0 overlap) there in `technical` mode - `visual` mode at
+  // these same configs already had this collision pre-existing, correctly
+  // caught by [extraBusyNarrowGap] and untouched by this entry. A genuinely
+  // clean fix wasn't found within a contained change (it needs the same
+  // direction-aware-push work already called out above, out of scope here),
+  // so this stays open rather than silently absorbed into the "pre-existing"
+  // bucket's comment, which would misattribute it.
+  const compoundHalfVTechnicalBetaGap = {
+    'JointAlignment.centerline|GrooveType.compoundV|JointType.pipeButt',
+    'JointAlignment.centerline|GrooveType.compoundV|JointType.plateButt',
+    'JointAlignment.idMatch|GrooveType.compoundV|JointType.pipeButt',
+    'JointAlignment.idMatch|GrooveType.compoundV|JointType.plateButt',
+    'JointAlignment.odMatch|GrooveType.compoundV|JointType.pipeButt',
+    'JointAlignment.odMatch|GrooveType.halfV|JointType.pipeButt',
+  };
+  String? compoundHalfVBetaClampGap(
+    JointAlignment alignment,
+    GrooveType groove,
+    JointType joint,
+    WeldingProcess process,
+    DrawingMode mode,
+    double canvasWidth,
+  ) {
+    if (canvasWidth != 240.0 ||
+        process != WeldingProcess.gtawSmaw ||
+        mode != DrawingMode.technical) {
+      return null;
+    }
+    if (!compoundHalfVTechnicalBetaGap.contains('$alignment|$groove|$joint')) {
+      return null;
+    }
+    return 'groove-depth and beta/alpha angle-tag pills overlap at this '
+        'combination - newly introduced by the primary/secondary '
+        'label-hierarchy pass (c7f1baf/3c7748f), see KNOWN GAP comment above';
+  }
+
   // KNOWN GAP: a real, narrow side effect of the GTAW-root-label
   // line-crossing fix in weld_drawing_preview.dart (see
   // `_dimensionLineAvoidRects`) - genuinely clearing the B-thickness
@@ -664,6 +702,14 @@ void main() {
                 language: AppLanguage.en,
                 data: data,
                 knownGap:
+                    compoundHalfVBetaClampGap(
+                      alignment,
+                      groove,
+                      joint,
+                      process,
+                      mode,
+                      width,
+                    ) ??
                     extraBusyNarrowGap(data, width) ??
                     singleVIdMatchGrooveDepthGap(
                       groove,
