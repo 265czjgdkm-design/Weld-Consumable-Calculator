@@ -21,17 +21,21 @@ import 'package:weld_consumable_calculator/ui/widgets/weld_drawing_preview.dart'
 
 /// Captures every label-pill background the painter draws (see
 /// `_drawTechnicalLabel`/`_drawSoftLabel` in weld_drawing_preview.dart -
-/// their fill colors, 0xF2FFFFFF and 0xCCFFFFFF, are what this filters on;
-/// other drawRRect calls in that file are the canvas backdrop frame, not
+/// their fill colors, 0xF2FFFFFF and 0xCCFFFFFF for secondary pills and
+/// 0xFF2B3538 for primary pills (`_primaryFillColor`), are what this filters
+/// on; other drawRRect calls in that file are the canvas backdrop frame, not
 /// labels) and no-ops every other canvas call - this only needs the real
-/// geometry, not real pixels.
+/// geometry, not real pixels. Was missing the primary color until a reviewer
+/// caught it: without it this test was blind to every primary (bigger, since
+/// the primary/secondary hierarchy pass) label pill, exactly the ones most
+/// likely to newly collide with something after growing in size.
 class _RecordingCanvas implements Canvas {
   final List<Rect> fillRects = [];
 
   @override
   void drawRRect(RRect rrect, Paint paint) {
     final argb = paint.color.toARGB32();
-    if (argb == 0xF2FFFFFF || argb == 0xCCFFFFFF) {
+    if (argb == 0xF2FFFFFF || argb == 0xCCFFFFFF || argb == 0xFF2B3538) {
       fillRects.add(rrect.outerRect);
     }
   }
@@ -317,10 +321,11 @@ void main() {
       // enough, at this exact width, to also tip `technical` mode's
       // previously-clear bottom-face cap pills into the same edge-clamp
       // collision described below. Same structural root cause, wider
-      // blast radius - not a new bug class.
-      if (mode != DrawingMode.visual && mode != DrawingMode.technical) {
-        return null;
-      }
+      // blast radius - not a new bug class. (There used to be a `mode`
+      // guard here restricting this to visual/technical, but
+      // `DrawingMode.values` is exactly those two, so it was always a
+      // no-op - removed rather than left as dead code that looked like a
+      // real restriction.)
       return "Double V's both-faces bottom-face cap-overlap and cap-height "
           'pills both canvas-edge-clamp to the same y-band at 320pt/240px '
           'width - real, newly introduced, needs a dedicated follow-up '
@@ -602,14 +607,24 @@ void main() {
   // close to the root label's natural Y) that push cascades through every
   // later label that in turn avoids the one before it (root face ->
   // thickness/root gap -> groove depth), landing root gap and groove
-  // depth's pills a hair (14.4x1.9px) into each other at this single
-  // width/alignment/groove/joint combination. Root cause is the same
-  // pre-existing structural limit already documented in
-  // [doubleVBothFacesNarrowGap] above (`_clearLabelPosition` only ever
-  // pushes labels DOWN, so a label already this close to the next one's
-  // edge has nowhere left to go) - not a new architectural problem, just a
-  // new specific combination that now reaches it. A real fix needs that
-  // same broader direction-aware-push work, out of scope here.
+  // depth's pills into each other at this single width/alignment/groove/
+  // joint combination. Root cause is the same pre-existing structural limit
+  // already documented in [doubleVBothFacesNarrowGap] above
+  // (`_clearLabelPosition` only ever pushes labels DOWN, so a label already
+  // this close to the next one's edge has nowhere left to go) - not a new
+  // architectural problem, just a new specific combination that now reaches
+  // it. A real fix needs that same broader direction-aware-push work, out
+  // of scope here.
+  // 2026-09-05: the primary/secondary label-hierarchy pass made this worse
+  // (14.4x1.9px -> 21.6x5.9px with that round's original size bump) since
+  // the now-bigger root-gap pill pushes groove depth further into the same
+  // edge before it clamps; reducing the primary-pill size bump (see
+  // `_primaryFontBump`/`_primary*PadBump`/`_primaryMin*Bump` in
+  // weld_drawing_preview.dart) to keep the hierarchy readable without
+  // reintroducing the 22 new collisions that round's full-size bump caused
+  // elsewhere brought this back down to 18.6x1.9px - still worse than the
+  // pre-hierarchy baseline (same root cause, a still-slightly-bigger primary
+  // pill), so left as the same known gap rather than claimed fixed.
   String? singleVIdMatchGrooveDepthGap(
     GrooveType groove,
     JointAlignment alignment,
@@ -622,9 +637,10 @@ void main() {
           joint == JointType.pipeButt &&
           mode == DrawingMode.visual &&
           width == 310.0)
-      ? 'root gap/groove depth pills overlap by 14.4x1.9px at this '
+      ? 'root gap/groove depth pills overlap by 18.6x1.9px at this '
             'combination - real, newly surfaced by the GTAW-root '
-            'line-crossing fix, see KNOWN GAP comment above'
+            'line-crossing fix and slightly worsened by the primary/'
+            'secondary label-hierarchy pass, see KNOWN GAP comment above'
       : null;
 
   for (final alignment in JointAlignment.values) {

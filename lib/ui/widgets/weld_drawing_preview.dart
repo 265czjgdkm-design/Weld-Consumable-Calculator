@@ -374,11 +374,11 @@ class _WeldDrawingPainter extends CustomPainter {
   static const _primaryFillColor = Color(0xFF2B3538);
   static const _primaryTextColor = Color(0xFFFFFFFF);
   static const _primaryStrokeColor = Color(0x33FFFFFF);
-  static const _primaryFontBump = 1.6;
-  static const _primaryHorizontalPadBump = 4.0;
-  static const _primaryVerticalPadBump = 2.0;
-  static const _primaryMinWidthBump = 6.0;
-  static const _primaryMinHeightBump = 2.0;
+  static const _primaryFontBump = 1.0;
+  static const _primaryHorizontalPadBump = 2.0;
+  static const _primaryVerticalPadBump = 1.0;
+  static const _primaryMinWidthBump = 0.0;
+  static const _primaryMinHeightBump = 0.0;
 
   @override
   void paint(Canvas canvas, Size size) {
