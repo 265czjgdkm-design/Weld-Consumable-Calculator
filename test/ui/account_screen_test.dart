@@ -294,6 +294,147 @@ void main() {
     );
 
     testWidgets(
+      'Sign out then sign in as a different email does not upload the '
+      "previous account's local presets into the new account's cloud "
+      '(reviewer finding #1 -- HIGH: cross-account data leak)',
+      (tester) async {
+        final alicePreset = UserWeldPreset(
+          id: 'alice-1',
+          name: 'Alice Confidential Joint',
+          updatedAtEpochMs: 1000,
+          data: InputPreset.csPlateSingleVGmaw.data!,
+        );
+        SharedPreferences.setMockInitialValues({
+          'user_weld_presets_v1': jsonEncode([alicePreset.toJson()]),
+        });
+
+        // Keyed by email, like the real Apps Script backend -- so a leak
+        // would actually show up as bob's cloud list gaining alice's row.
+        final cloudByEmail = <String, List<Map<String, dynamic>>>{};
+        final savedIdsByEmail = <String, List<String>>{};
+
+        await http.runWithClient(
+          () async {
+            await _pumpAccountScreen(tester);
+
+            // Sign in as alice: her pre-existing local preset gets
+            // uploaded and the local cache gets tagged as hers.
+            await tester.enterText(
+              find.byType(TextField),
+              'alice@example.com',
+            );
+            await tester.tap(find.text(strings.accountSignInButton));
+            await tester.pumpAndSettle();
+            expect(find.text('alice@example.com'), findsOneWidget);
+
+            // Sign Out deliberately leaves local presets in place.
+            await tester.tap(find.text(strings.accountSignOutButton));
+            await tester.pumpAndSettle();
+            expect(find.text(strings.accountGuestStateTitle), findsOneWidget);
+
+            // Bob signs in on the same device.
+            await tester.enterText(find.byType(TextField), 'bob@example.com');
+            await tester.tap(find.text(strings.accountSignInButton));
+            await tester.pumpAndSettle();
+            expect(find.text('bob@example.com'), findsOneWidget);
+          },
+          () => MockClient((request) async {
+            if (request.method == 'GET') {
+              final email = request.url.queryParameters['email']!;
+              return http.Response(
+                jsonEncode({
+                  'ok': true,
+                  'presets': cloudByEmail[email] ?? const [],
+                }),
+                200,
+              );
+            }
+            final body = jsonDecode(request.body) as Map<String, dynamic>;
+            if (body['action'] == 'save') {
+              final email = body['email'] as String;
+              final preset = body['preset'] as Map<String, dynamic>;
+              savedIdsByEmail
+                  .putIfAbsent(email, () => [])
+                  .add(preset['id'] as String);
+              cloudByEmail.putIfAbsent(email, () => []).add(preset);
+            }
+            return http.Response(jsonEncode({'ok': true}), 200);
+          }),
+        );
+
+        expect(
+          savedIdsByEmail['bob@example.com'] ?? const <String>[],
+          isNot(contains('alice-1')),
+          reason: "alice's preset must never be uploaded under bob's account",
+        );
+        expect(savedIdsByEmail['alice@example.com'], contains('alice-1'));
+
+        // Bob's local cache reflects bob's (empty) cloud data, not
+        // alice's leftover local preset.
+        const presetStore = UserPresetStore();
+        expect((await presetStore.load()).presets, isEmpty);
+      },
+    );
+
+    testWidgets(
+      'Sign in: a failed preset upload during migration skips the '
+      'cloud-authoritative refresh instead of wiping local presets with a '
+      'stale empty cloud list (reviewer finding #2)',
+      (tester) async {
+        final localPreset = UserWeldPreset(
+          id: 'local-1',
+          name: 'Local Preset',
+          updatedAtEpochMs: 1000,
+          data: InputPreset.csPlateSingleVGmaw.data!,
+        );
+        SharedPreferences.setMockInitialValues({
+          'user_weld_presets_v1': jsonEncode([localPreset.toJson()]),
+        });
+
+        var listCalled = false;
+        await http.runWithClient(
+          () async {
+            await _pumpAccountScreen(tester);
+
+            await tester.enterText(
+              find.byType(TextField),
+              'existing@example.com',
+            );
+            await tester.tap(find.text(strings.accountSignInButton));
+            await tester.pumpAndSettle();
+          },
+          () => MockClient((request) async {
+            if (request.method == 'GET') {
+              // Reads still work -- only the write side is down (e.g.
+              // quota exceeded or a revoked write permission).
+              listCalled = true;
+              return http.Response(
+                jsonEncode({'ok': true, 'presets': []}),
+                200,
+              );
+            }
+            return http.Response('Internal error', 500);
+          }),
+        );
+
+        expect(
+          listCalled,
+          isFalse,
+          reason:
+              'the cloud-authoritative refresh must be skipped entirely '
+              'after a failed migration upload, or it would wipe local '
+              'data with a cloud list that does not reflect the failed '
+              'upload',
+        );
+
+        const presetStore = UserPresetStore();
+        final survivingPresets = (await presetStore.load()).presets;
+        expect(survivingPresets, hasLength(1));
+        expect(survivingPresets.single.id, 'local-1');
+      },
+    );
+
+    testWidgets(
       'an invalid email shows a validation error and does not sign in',
       (tester) async {
         SharedPreferences.setMockInitialValues({});

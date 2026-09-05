@@ -10,6 +10,30 @@ class UserPresetStore {
 
   static const _storageKey = 'user_weld_presets_v1';
 
+  /// Which account's data the local cache above currently holds -- unset
+  /// (null) means the cache is either genuinely guest-created (never
+  /// synced under any account) or predates this key, both of which are
+  /// safe to migrate to whichever account signs in first. See
+  /// `migrateLocalPresetsToAccount` in user_preset_sync.dart, the only
+  /// place this distinction matters: it must never upload one account's
+  /// local cache into a *different* account's cloud data.
+  static const _ownerEmailKey = 'user_weld_presets_owner_email_v1';
+
+  Future<String?> getOwnerEmail() async {
+    final preferences = await SharedPreferences.getInstance();
+    final email = preferences.getString(_ownerEmailKey);
+    return (email == null || email.isEmpty) ? null : email;
+  }
+
+  Future<void> setOwnerEmail(String? email) async {
+    final preferences = await SharedPreferences.getInstance();
+    if (email == null || email.isEmpty) {
+      await preferences.remove(_ownerEmailKey);
+    } else {
+      await preferences.setString(_ownerEmailKey, email);
+    }
+  }
+
   /// [skippedCount] is how many local rows were dropped for being
   /// individually unreadable, mirroring `PresetSyncService.list`'s
   /// `skippedCount` (see finding #1 of the second reviewer pass) so a

@@ -2577,12 +2577,28 @@ class _CalculatorPageState extends State<CalculatorPage> {
       name = result.name;
       await _accountStore.setEmail(email);
       _accountEmail = email;
-      await migrateLocalPresetsToAccount(
+      // No-op (uploads nothing) if the local cache belongs to a different,
+      // previously signed-in account -- see the doc comment on
+      // migrateLocalPresetsToAccount. A failed upload must not be followed
+      // by _loadUserPresets' cloud-authoritative refresh, or the
+      // not-yet-uploaded local presets would be wiped by a cloud list that
+      // doesn't reflect them yet.
+      final migrated = await migrateLocalPresetsToAccount(
         email: email,
         presetSyncService: _presetSyncService,
         userPresetStore: _userPresetStore,
       );
-      await _loadUserPresets();
+      if (migrated) {
+        await _loadUserPresets();
+      } else {
+        // A failed upload means the cloud list doesn't yet reflect these
+        // presets -- seed from the local cache directly (not
+        // _loadUserPresets, which would fetch the cloud-authoritative list
+        // and wipe out anything not yet uploaded) so the save below
+        // preserves what's already on disk instead of overwriting it with
+        // just the new preset.
+        _userPresets = (await _userPresetStore.load()).presets;
+      }
     } else {
       final promptedName = await _promptPresetName();
       if (promptedName == null || promptedName.trim().isEmpty) return;

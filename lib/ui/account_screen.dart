@@ -97,20 +97,28 @@ class _AccountScreenState extends State<AccountScreen> {
     // A device that already has local-only presets must have them uploaded
     // to the cloud under this email BEFORE the cloud-authoritative refresh
     // below, or an empty/partial cloud list would silently wipe them (see
-    // the same guest->account sequence in calculator_page.dart).
-    await migrateLocalPresetsToAccount(
+    // the same guest->account sequence in calculator_page.dart). This is a
+    // no-op (and uploads nothing) if the local cache belongs to a
+    // different, previously signed-in account -- see the doc comment on
+    // migrateLocalPresetsToAccount.
+    final migrated = await migrateLocalPresetsToAccount(
       email: email,
       presetSyncService: _presetSyncService,
       userPresetStore: _presetStore,
     );
-    // Reuse the same refresh mechanism the calculator/saved-calculations
-    // screens use after an account's email becomes available, so this
-    // screen's sign-in has the same effect as signing in anywhere else.
-    await loadSyncedUserPresets(
-      email: email,
-      presetSyncService: _presetSyncService,
-      userPresetStore: _presetStore,
-    );
+    // A failed upload must not be followed by the cloud-authoritative
+    // refresh below, or the not-yet-uploaded local presets would be wiped
+    // by a cloud list that doesn't reflect them yet.
+    if (migrated) {
+      // Reuse the same refresh mechanism the calculator/saved-calculations
+      // screens use after an account's email becomes available, so this
+      // screen's sign-in has the same effect as signing in anywhere else.
+      await loadSyncedUserPresets(
+        email: email,
+        presetSyncService: _presetSyncService,
+        userPresetStore: _presetStore,
+      );
+    }
     if (!mounted) return;
     setState(() {
       _email = email;
