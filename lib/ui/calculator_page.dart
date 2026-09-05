@@ -403,10 +403,15 @@ class _CalculatorPageState extends State<CalculatorPage> {
         jointTypeSection: _buildJointTypeSection(context),
         memberGeometrySection: _buildMemberGeometrySection(context),
         grooveTypeDropdown: _buildGrooveTypeDropdown(context),
-        dimensionFields: [
-          for (final field in _wizardDimensionFields(strings))
+        primaryDimensionFields: [
+          for (final field in _primaryDimensionFields(strings))
             _buildFieldInput(field),
         ],
+        capDimensionFields: [
+          for (final field in _capDimensionFields(strings))
+            _buildFieldInput(field),
+        ],
+        initiallyExpandCapSection: _hasCapDimensionValues,
         onBack: () {
           setState(() => _wizardStep = WizardStep.process);
           _resetWizardScroll();
@@ -1430,24 +1435,59 @@ class _CalculatorPageState extends State<CalculatorPage> {
                       ? (constraints.maxWidth - 16) / 2
                       : constraints.maxWidth;
 
-                  return Container(
-                    padding: const EdgeInsets.all(14),
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(20),
-                      color: const Color(0xFFF7FBFD),
-                      border: Border.all(color: const Color(0xFFDCE5EB)),
-                    ),
-                    child: Wrap(
-                      spacing: 16,
-                      runSpacing: 16,
-                      children: [
-                        for (final field in visibleFields)
-                          SizedBox(
-                            width: fieldWidth,
-                            child: _buildFieldInput(field),
+                  Widget buildFieldsContainer(List<InputFieldSpec> fields) {
+                    return Container(
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(20),
+                        color: const Color(0xFFF7FBFD),
+                        border: Border.all(color: const Color(0xFFDCE5EB)),
+                      ),
+                      child: Wrap(
+                        spacing: 16,
+                        runSpacing: 16,
+                        children: [
+                          for (final field in fields)
+                            SizedBox(
+                              width: fieldWidth,
+                              child: _buildFieldInput(field),
+                            ),
+                        ],
+                      ),
+                    );
+                  }
+
+                  final capFields = visibleFields
+                      .where((spec) => _capDimensionFieldKeys.contains(spec.key))
+                      .toList();
+                  final otherFields = visibleFields
+                      .where((spec) => !_capDimensionFieldKeys.contains(spec.key))
+                      .toList();
+
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      buildFieldsContainer(otherFields),
+                      if (capFields.isNotEmpty) ...[
+                        const SizedBox(height: 14),
+                        Theme(
+                          data: Theme.of(
+                            context,
+                          ).copyWith(dividerColor: Colors.transparent),
+                          child: ExpansionTile(
+                            initiallyExpanded: _hasCapDimensionValues,
+                            tilePadding: EdgeInsets.zero,
+                            childrenPadding: const EdgeInsets.only(top: 10),
+                            title: Text(
+                              strings.calcCapDimensionsGroupTitle,
+                              style: Theme.of(context).textTheme.titleSmall
+                                  ?.copyWith(fontWeight: FontWeight.w800),
+                            ),
+                            children: [buildFieldsContainer(capFields)],
                           ),
+                        ),
                       ],
-                    ),
+                    ],
                   );
                 },
               ),
@@ -1692,6 +1732,31 @@ class _CalculatorPageState extends State<CalculatorPage> {
       _visibleFieldSpecs(
         strings,
       ).where((spec) => !_wizardDimensionFieldKeys.contains(spec.key)).toList();
+
+  // Cap-pass fields ("Kapak Ölçüleri") get their own collapsible sub-section
+  // within the Dimensions step/card -- they're optional and contribute
+  // nothing to the calculation when empty, unlike every other dimension.
+  static const Set<FieldKey> _capDimensionFieldKeys = {
+    FieldKey.capOverlapMm,
+    FieldKey.capHeightMm,
+  };
+
+  List<InputFieldSpec> _primaryDimensionFields(L10nStrings strings) =>
+      _wizardDimensionFields(
+        strings,
+      ).where((spec) => !_capDimensionFieldKeys.contains(spec.key)).toList();
+
+  List<InputFieldSpec> _capDimensionFields(L10nStrings strings) =>
+      _wizardDimensionFields(
+        strings,
+      ).where((spec) => _capDimensionFieldKeys.contains(spec.key)).toList();
+
+  // Auto-expand the collapsed-by-default cap section when a loaded saved
+  // calculation (or a starter template) already carries cap values -- so
+  // the user isn't left wondering "where did my cap values go".
+  bool get _hasCapDimensionValues =>
+      _controllers[FieldKey.capOverlapMm]!.text.trim().isNotEmpty ||
+      _controllers[FieldKey.capHeightMm]!.text.trim().isNotEmpty;
 
   // Which _buildCalculationBasis() labels recap under the wizard's summary
   // "Dimensions" card. Anything not in this set (besides 'Process', which

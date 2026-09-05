@@ -44,6 +44,20 @@ Finder _fieldWithLabel(String label) => find.byWidgetPredicate(
   (widget) => widget is TextField && widget.decoration?.labelText == label,
 );
 
+/// The cap-dimensions sub-section is collapsed by default (see the mobile
+/// wizard's Dimensions step and the desktop Input Parameters card) -- most
+/// existing tests here predate that grouping and need it expanded first to
+/// reach the Cap Overlap/Cap Height fields inside.
+Future<void> _expandCapSection(
+  WidgetTester tester, {
+  String label = 'Cap Dimensions (optional)',
+}) async {
+  final header = find.text(label);
+  await tester.ensureVisible(header);
+  await tester.tap(header);
+  await tester.pumpAndSettle();
+}
+
 /// Turkish equivalent of [_pumpToDimensionsStep] - used only to confirm the
 /// Double V cap-doubling helper text (Finding 3) actually renders in a
 /// second locale too, not just English.
@@ -70,6 +84,7 @@ void main() {
     'Cap Overlap/Cap Height fields appear for the default Single V groove',
     (tester) async {
       await _pumpToDimensionsStep(tester);
+      await _expandCapSection(tester);
 
       expect(find.text('Cap Overlap (mm)'), findsOneWidget);
       expect(find.text('Cap Height (mm)'), findsOneWidget);
@@ -105,6 +120,7 @@ void main() {
       await tester.ensureVisible(find.text('Plate Butt Weld'));
       await tester.tap(find.text('Plate Butt Weld'));
       await tester.pumpAndSettle();
+      await _expandCapSection(tester);
       expect(find.text('Cap Overlap (mm)'), findsOneWidget);
       expect(find.text('Cap Height (mm)'), findsOneWidget);
     },
@@ -127,6 +143,7 @@ void main() {
       await tester.ensureVisible(find.text('Get Started'));
       await tester.tap(find.text('Get Started'));
       await tester.pumpAndSettle();
+      await _expandCapSection(tester);
 
       final capOverlapField = _fieldWithLabel('Cap Overlap (mm)');
       final capHeightField = _fieldWithLabel(
@@ -166,6 +183,7 @@ void main() {
     'for Double V, but not for other groove types (reviewer Finding 3)',
     (tester) async {
       await _pumpToDimensionsStep(tester);
+      await _expandCapSection(tester);
 
       // Default groove is Single V - plain helper text, no doubling note.
       expect(
@@ -208,6 +226,7 @@ void main() {
     'for Double V in Turkish too, not just English (reviewer Finding 3)',
     (tester) async {
       await _pumpToDimensionsStepTr(tester);
+      await _expandCapSection(tester, label: 'Kapak Ölçüleri (opsiyonel)');
 
       final grooveDropdown = find.byWidgetPredicate(
         (widget) => widget is DropdownButtonFormField<GrooveType>,
@@ -244,6 +263,7 @@ void main() {
     'Cap Overlap 5 / Cap Height 4, then apply "SS Pipe Single V / GTAW")',
     (tester) async {
       await _pumpToDimensionsStep(tester);
+      await _expandCapSection(tester);
 
       final capOverlapField = _fieldWithLabel('Cap Overlap (mm)');
       final capHeightField = _fieldWithLabel(
@@ -270,6 +290,69 @@ void main() {
         '',
       );
       expect(tester.widget<TextField>(capHeightField).controller?.text, '');
+    },
+  );
+
+  testWidgets(
+    'Cap Dimensions section starts collapsed on the mobile wizard, and '
+    'tapping it reveals the Cap Overlap/Cap Height fields underneath',
+    (tester) async {
+      await _pumpToDimensionsStep(tester);
+
+      // Collapsed by default: the fields aren't even built into the tree
+      // yet (ExpansionTile's default maintainState: false).
+      expect(find.text('Cap Overlap (mm)'), findsNothing);
+      expect(find.text('Cap Height (mm)'), findsNothing);
+
+      await _expandCapSection(tester);
+
+      final capOverlapField = _fieldWithLabel('Cap Overlap (mm)');
+      final capHeightField = _fieldWithLabel('Cap Height (mm)');
+      expect(capOverlapField, findsOneWidget);
+      expect(capHeightField, findsOneWidget);
+
+      await tester.ensureVisible(capOverlapField);
+      await tester.enterText(capOverlapField, '5');
+      await tester.ensureVisible(capHeightField);
+      await tester.enterText(capHeightField, '4');
+      await tester.pumpAndSettle();
+
+      expect(tester.widget<TextField>(capOverlapField).controller?.text, '5');
+      expect(tester.widget<TextField>(capHeightField).controller?.text, '4');
+    },
+  );
+
+  testWidgets(
+    'Cap Dimensions section auto-expands on re-entering the Dimensions step '
+    'once cap values are already set, instead of hiding them again',
+    (tester) async {
+      await _pumpToDimensionsStep(tester);
+      await _expandCapSection(tester);
+
+      final capOverlapField = _fieldWithLabel('Cap Overlap (mm)');
+      final capHeightField = _fieldWithLabel('Cap Height (mm)');
+      await tester.ensureVisible(capOverlapField);
+      await tester.enterText(capOverlapField, '5');
+      await tester.ensureVisible(capHeightField);
+      await tester.enterText(capHeightField, '4');
+      await tester.pumpAndSettle();
+
+      await tester.ensureVisible(find.text('Back'));
+      await tester.tap(find.text('Back')); // dimensions -> process
+      await tester.pumpAndSettle();
+
+      await tester.ensureVisible(find.text('Continue'));
+      await tester.tap(find.text('Continue')); // process -> dimensions
+      await tester.pumpAndSettle();
+
+      // Re-built fresh with non-empty cap values -- should already be
+      // expanded, no tap required.
+      expect(find.text('Cap Overlap (mm)'), findsOneWidget);
+      expect(find.text('Cap Height (mm)'), findsOneWidget);
+      expect(
+        tester.widget<TextField>(_fieldWithLabel('Cap Overlap (mm)')).controller?.text,
+        '5',
+      );
     },
   );
 }

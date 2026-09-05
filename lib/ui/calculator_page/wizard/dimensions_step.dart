@@ -14,7 +14,9 @@ class WizardDimensionsStep extends StatelessWidget {
     required this.jointTypeSection,
     required this.memberGeometrySection,
     required this.grooveTypeDropdown,
-    required this.dimensionFields,
+    required this.primaryDimensionFields,
+    required this.capDimensionFields,
+    required this.initiallyExpandCapSection,
     required this.onBack,
     required this.onContinue,
   });
@@ -24,13 +26,37 @@ class WizardDimensionsStep extends StatelessWidget {
   final Widget jointTypeSection;
   final Widget memberGeometrySection;
   final Widget grooveTypeDropdown;
-  final List<Widget> dimensionFields;
+  final List<Widget> primaryDimensionFields;
+  final List<Widget> capDimensionFields;
+  final bool initiallyExpandCapSection;
   final VoidCallback onBack;
   final VoidCallback onContinue;
+
+  Widget _buildFieldsContainer(List<Widget> fields) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(20),
+        color: const Color(0xFFF7FBFD),
+        border: Border.all(color: const Color(0xFFDCE5EB)),
+      ),
+      child: Wrap(
+        spacing: 16,
+        runSpacing: 16,
+        children: [
+          for (final field in fields)
+            SizedBox(width: double.infinity, child: field),
+        ],
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     final strings = AppLocaleScope.stringsOf(context);
+    final groupTitleStyle = Theme.of(
+      context,
+    ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -49,29 +75,36 @@ class WizardDimensionsStep extends StatelessWidget {
                   ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
                 ),
                 const SizedBox(height: 14),
+                Text(strings.calcJointGeometryGroupTitle, style: groupTitleStyle),
+                const SizedBox(height: 10),
                 starterPresetSection,
                 const SizedBox(height: 18),
                 jointTypeSection,
                 memberGeometrySection,
                 const SizedBox(height: 18),
                 grooveTypeDropdown,
-                const SizedBox(height: 14),
-                Container(
-                  padding: const EdgeInsets.all(14),
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(20),
-                    color: const Color(0xFFF7FBFD),
-                    border: Border.all(color: const Color(0xFFDCE5EB)),
+                const SizedBox(height: 22),
+                Text(strings.calcMainDimensionsGroupTitle, style: groupTitleStyle),
+                const SizedBox(height: 10),
+                _buildFieldsContainer(primaryDimensionFields),
+                if (capDimensionFields.isNotEmpty) ...[
+                  const SizedBox(height: 14),
+                  Theme(
+                    data: Theme.of(
+                      context,
+                    ).copyWith(dividerColor: Colors.transparent),
+                    child: ExpansionTile(
+                      initiallyExpanded: initiallyExpandCapSection,
+                      tilePadding: EdgeInsets.zero,
+                      childrenPadding: const EdgeInsets.only(top: 10),
+                      title: Text(
+                        strings.calcCapDimensionsGroupTitle,
+                        style: groupTitleStyle,
+                      ),
+                      children: [_buildFieldsContainer(capDimensionFields)],
+                    ),
                   ),
-                  child: Wrap(
-                    spacing: 16,
-                    runSpacing: 16,
-                    children: [
-                      for (final field in dimensionFields)
-                        SizedBox(width: double.infinity, child: field),
-                    ],
-                  ),
-                ),
+                ],
               ],
             ),
           ),

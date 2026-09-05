@@ -312,6 +312,9 @@ class L10nStrings {
     required this.calcInputParametersSubtitle,
     required this.calcDimensionalInputsTitle,
     required this.calcDimensionalInputsSubtitle,
+    required this.calcJointGeometryGroupTitle,
+    required this.calcMainDimensionsGroupTitle,
+    required this.calcCapDimensionsGroupTitle,
     required this.calcRunEstimateTitle,
     required this.calcRunEstimateSubtitle,
     required this.calcSaveAsPresetLabel,
@@ -816,6 +819,9 @@ class L10nStrings {
   final String calcInputParametersSubtitle;
   final String calcDimensionalInputsTitle;
   final String calcDimensionalInputsSubtitle;
+  final String calcJointGeometryGroupTitle;
+  final String calcMainDimensionsGroupTitle;
+  final String calcCapDimensionsGroupTitle;
   final String calcRunEstimateTitle;
   final String calcRunEstimateSubtitle;
   final String calcSaveAsPresetLabel;
@@ -1403,6 +1409,9 @@ const Map<AppLanguage, L10nStrings> _strings = {
     calcDimensionalInputsTitle: 'Dimensional Inputs',
     calcDimensionalInputsSubtitle:
         'Enter weld geometry, member size, process diameter, and calculation assumptions.',
+    calcJointGeometryGroupTitle: 'Joint Type & Geometry',
+    calcMainDimensionsGroupTitle: 'Main Dimensions',
+    calcCapDimensionsGroupTitle: 'Cap Dimensions (optional)',
     calcRunEstimateTitle: 'Run Estimate',
     calcRunEstimateSubtitle:
         'Use calculate for live estimate refresh. Reset restores the default engineering starter values.',
@@ -2027,6 +2036,9 @@ const Map<AppLanguage, L10nStrings> _strings = {
     calcDimensionalInputsTitle: 'Boyutsal Girişler',
     calcDimensionalInputsSubtitle:
         'Kaynak geometrisi, eleman boyutu, yöntem çapı ve hesaplama kabullerini girin.',
+    calcJointGeometryGroupTitle: 'Birleşim Tipi ve Geometri',
+    calcMainDimensionsGroupTitle: 'Ana Ölçüler',
+    calcCapDimensionsGroupTitle: 'Kapak Ölçüleri (opsiyonel)',
     calcRunEstimateTitle: 'Hesaplamayı Çalıştır',
     calcRunEstimateSubtitle:
         "Canlı tahmini yenilemek için Hesapla'yı kullanın. Sıfırla, varsayılan mühendislik başlangıç değerlerini geri yükler.",
@@ -2666,6 +2678,9 @@ const Map<AppLanguage, L10nStrings> _strings = {
     calcDimensionalInputsTitle: 'Размерные параметры',
     calcDimensionalInputsSubtitle:
         'Введите геометрию шва, размер элемента, диаметр для процесса и допущения расчёта.',
+    calcJointGeometryGroupTitle: 'Тип соединения и геометрия',
+    calcMainDimensionsGroupTitle: 'Основные размеры',
+    calcCapDimensionsGroupTitle: 'Размеры валика усиления (опционально)',
     calcRunEstimateTitle: 'Выполнить расчёт',
     calcRunEstimateSubtitle:
         'Используйте «Рассчитать» для обновления расчёта. «Сбросить» восстанавливает исходные инженерные значения по умолчанию.',
@@ -3311,6 +3326,9 @@ const Map<AppLanguage, L10nStrings> _strings = {
     calcDimensionalInputsTitle: 'Maßliche Eingaben',
     calcDimensionalInputsSubtitle:
         'Geben Sie Nahtgeometrie, Bauteilgröße, Verfahrensdurchmesser und Berechnungsannahmen ein.',
+    calcJointGeometryGroupTitle: 'Verbindungsart und Geometrie',
+    calcMainDimensionsGroupTitle: 'Hauptabmessungen',
+    calcCapDimensionsGroupTitle: 'Decklagenmaße (optional)',
     calcRunEstimateTitle: 'Schätzung ausführen',
     calcRunEstimateSubtitle:
         'Verwenden Sie Berechnen, um die Live-Schätzung zu aktualisieren. Zurücksetzen stellt die technischen Standardausgangswerte wieder her.',
@@ -3944,6 +3962,9 @@ const Map<AppLanguage, L10nStrings> _strings = {
     calcDimensionalInputsTitle: 'डाइमेंशनल इनपुट',
     calcDimensionalInputsSubtitle:
         'वेल्ड ज्यामिति, मेंबर साइज़, प्रोसेस डायमीटर, और कैलकुलेशन असम्पशन दर्ज करें।',
+    calcJointGeometryGroupTitle: 'जॉइंट टाइप और ज्यामिति',
+    calcMainDimensionsGroupTitle: 'मुख्य डाइमेंशन',
+    calcCapDimensionsGroupTitle: 'कैप डाइमेंशन (वैकल्पिक)',
     calcRunEstimateTitle: 'एस्टिमेट चलाएं',
     calcRunEstimateSubtitle:
         'लाइव एस्टिमेट रिफ्रेश के लिए गणना करें का उपयोग करें। रीसेट डिफॉल्ट इंजीनियरिंग स्टार्टर वैल्यू को वापस लाता है।',
