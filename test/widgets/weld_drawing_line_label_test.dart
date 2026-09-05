@@ -235,81 +235,172 @@ void main() {
     GrooveType.compoundV,
     GrooveType.square,
   ];
+  const geometryModes = [
+    JointGeometryMode.equal,
+    JointGeometryMode.unequal,
+  ];
 
+  // Equal AND Unequal geometry both matter here: a fix that only nudges the
+  // GTAW-root label's fixed mm coordinate can clear whichever line the
+  // reporting bug happened to hit, but Unequal geometry draws an additional
+  // B-thickness dimension line (see _dimensionLineAvoidRects in
+  // weld_drawing_preview.dart) that a coordinate nudge tuned against Equal
+  // geometry's root-face line alone has no reason to also clear - this is
+  // exactly the gap a previous round of this fix left open (see
+  // TEAM_LEARNINGS.md).
   for (final groove in grooves) {
     for (final joint in [JointType.plateButt, JointType.pipeButt]) {
       for (final mode in DrawingMode.values) {
         for (final width in widths) {
-          testWidgets(
-            'GTAW-root label clear of lines: $groove/$joint/$mode @${width.toInt()}',
-            (tester) => checkRootLabelClear(
-              tester,
-              groove: groove,
-              joint: joint,
-              mode: mode,
-              width: width,
-              height: height,
-              data: _buildData(),
-            ),
-          );
+          for (final geometryMode in geometryModes) {
+            testWidgets(
+              'GTAW-root label clear of lines: '
+              '$groove/$joint/$mode/$geometryMode @${width.toInt()}',
+              (tester) => checkRootLabelClear(
+                tester,
+                groove: groove,
+                joint: joint,
+                mode: mode,
+                width: width,
+                height: height,
+                data: _buildData(geometryMode: geometryMode),
+              ),
+            );
+          }
         }
       }
     }
   }
 
-  // Unequal geometry and GTAW alone (no combined tint - the GTAW-root label
-  // simply isn't drawn) aren't this bug's axis - the collision is purely
-  // about `_drawCombinedProcessTint`'s two fixed geometry-relative label
-  // positions vs. each groove's own root-face/groove-depth line, unaffected
-  // by A/B thickness split or joint type (verified above across both joint
-  // types already). What DOES matter, and isn't covered above, is plate
-  // thickness: every case above uses the suite-wide default (12mm), but
-  // Double V and Square are the two groove types realistically welded at
-  // much greater thickness, where the joint geometry occupies proportionally
-  // more of a fixed-size canvas and the mm-to-px scale shrinks - shrinking
-  // right along with it the real pixel separation a fixed-mm nudge (this
-  // fix's own technique, matching the rest of this file) buys the label.
-  const thicknesses = [12.0, 40.0, 50.0, 60.0];
-  // KNOWN GAP: measured directly by running this suite's own check - Double
-  // V and Square both still cross the root-face/root-gap line at very thick
-  // plate (t>=50) on the narrowest real phone canvases, because the fixed
-  // `halfGap + 16` clearance this fix uses (same technique as every other
-  // nudge in this file) buys progressively fewer real pixels as scale drops
-  // with increasing thickness - same structural shape as the already-known,
-  // already-skipped Double V thick-plate gaps in
-  // weld_drawing_label_overlap_test.dart (`doubleVThickPlateGap`), not a
-  // regression introduced by this fix. A real fix needs a scale-aware (not
-  // fixed-mm) clearance, out of scope for this targeted round.
-  const thickPlateNarrowGaps = {
-    'GrooveType.doubleV|316.0|50.0',
-    'GrooveType.doubleV|316.0|60.0',
-    'GrooveType.doubleV|346.0|60.0',
-    'GrooveType.doubleV|390.0|60.0',
-    'GrooveType.square|316.0|50.0',
-    'GrooveType.square|316.0|60.0',
-    'GrooveType.square|346.0|60.0',
+  // Plate thickness is a second, independent axis from geometry mode: every
+  // case above uses the suite-wide default (12mm), but as plate gets
+  // thicker the joint geometry occupies proportionally more of a
+  // fixed-size canvas and the mm-to-px scale shrinks - shrinking right
+  // along with it the real pixel separation a fixed-mm nudge buys a label
+  // positioned before its nearby lines are actually drawn (see
+  // _dimensionLineAvoidRects). Previously only swept Double V/Square here
+  // on the claim that Single V/Half V/Compound V aren't "realistically
+  // welded at much greater thickness" - independently verified false (all
+  // three fail the same way, starting at t=40) - so this now covers all 5
+  // groove types, both geometry modes, not just Double V/Square/Equal.
+  const thicknesses = [12.0, 25.0, 40.0, 50.0, 60.0];
+  // KNOWN GAP (re-measured after the _dimensionLineAvoidRects fix in
+  // weld_drawing_preview.dart, which closed the root-face-line and, in
+  // Unequal geometry, B-thickness-line collisions this file used to hit
+  // across nearly every groove type/geometry combination - see
+  // TEAM_LEARNINGS.md): every remaining case here still crosses the SAME
+  // groove-depth line _dimensionLineAvoidRects doesn't check (its own
+  // horizontal extension stub sits at `halfGap + 20`, overlapping the root
+  // label's `halfGap + 16` X by construction - see the comment on that
+  // constant), and only ever at very thick plate (t>=40) on a narrow
+  // canvas, where the mm-to-px scale has shrunk enough that the label's
+  // `rightGrooveY + 2.6`/`thickness - 1.0` fallback Y offset from that
+  // stub no longer buys enough real pixels - the same structural shape as
+  // the already-known, already-skipped Double V thick-plate gaps in
+  // weld_drawing_label_overlap_test.dart (`doubleVThickPlateGap`), now
+  // shown (by widening this sweep to all 5 groove types instead of just
+  // Double V/Square) to affect all of them, not just those two. A real fix
+  // needs the groove-depth line added to _dimensionLineAvoidRects' callers
+  // too; out of scope for this round, which targeted the reported
+  // B-thickness/root-face-line collision specifically.
+  const thickPlateNarrowGaps = <String>{
+    'GrooveType.singleV|JointGeometryMode.equal|316.0|40.0',
+    'GrooveType.singleV|JointGeometryMode.equal|316.0|50.0',
+    'GrooveType.singleV|JointGeometryMode.equal|316.0|60.0',
+    'GrooveType.singleV|JointGeometryMode.equal|346.0|50.0',
+    'GrooveType.singleV|JointGeometryMode.equal|346.0|60.0',
+    'GrooveType.singleV|JointGeometryMode.equal|390.0|50.0',
+    'GrooveType.singleV|JointGeometryMode.equal|390.0|60.0',
+    'GrooveType.singleV|JointGeometryMode.equal|480.0|60.0',
+    'GrooveType.singleV|JointGeometryMode.unequal|316.0|40.0',
+    'GrooveType.singleV|JointGeometryMode.unequal|316.0|50.0',
+    'GrooveType.singleV|JointGeometryMode.unequal|316.0|60.0',
+    'GrooveType.singleV|JointGeometryMode.unequal|346.0|50.0',
+    'GrooveType.singleV|JointGeometryMode.unequal|346.0|60.0',
+    'GrooveType.singleV|JointGeometryMode.unequal|390.0|50.0',
+    'GrooveType.singleV|JointGeometryMode.unequal|390.0|60.0',
+    'GrooveType.singleV|JointGeometryMode.unequal|480.0|60.0',
+    'GrooveType.halfV|JointGeometryMode.equal|316.0|40.0',
+    'GrooveType.halfV|JointGeometryMode.equal|316.0|50.0',
+    'GrooveType.halfV|JointGeometryMode.equal|316.0|60.0',
+    'GrooveType.halfV|JointGeometryMode.equal|346.0|50.0',
+    'GrooveType.halfV|JointGeometryMode.equal|346.0|60.0',
+    'GrooveType.halfV|JointGeometryMode.equal|390.0|50.0',
+    'GrooveType.halfV|JointGeometryMode.equal|390.0|60.0',
+    'GrooveType.halfV|JointGeometryMode.equal|480.0|60.0',
+    'GrooveType.doubleV|JointGeometryMode.equal|316.0|50.0',
+    'GrooveType.doubleV|JointGeometryMode.equal|316.0|60.0',
+    'GrooveType.doubleV|JointGeometryMode.equal|346.0|60.0',
+    'GrooveType.doubleV|JointGeometryMode.equal|390.0|60.0',
+    'GrooveType.doubleV|JointGeometryMode.unequal|316.0|50.0',
+    'GrooveType.doubleV|JointGeometryMode.unequal|316.0|60.0',
+    'GrooveType.doubleV|JointGeometryMode.unequal|346.0|60.0',
+    'GrooveType.doubleV|JointGeometryMode.unequal|390.0|60.0',
+    'GrooveType.compoundV|JointGeometryMode.equal|316.0|50.0',
+    'GrooveType.compoundV|JointGeometryMode.equal|316.0|60.0',
+    'GrooveType.compoundV|JointGeometryMode.equal|346.0|60.0',
+    'GrooveType.compoundV|JointGeometryMode.equal|760.0|60.0',
+    'GrooveType.compoundV|JointGeometryMode.unequal|316.0|40.0',
+    'GrooveType.compoundV|JointGeometryMode.unequal|316.0|50.0',
+    'GrooveType.compoundV|JointGeometryMode.unequal|316.0|60.0',
+    'GrooveType.compoundV|JointGeometryMode.unequal|346.0|40.0',
+    'GrooveType.compoundV|JointGeometryMode.unequal|346.0|50.0',
+    'GrooveType.compoundV|JointGeometryMode.unequal|346.0|60.0',
+    'GrooveType.compoundV|JointGeometryMode.unequal|390.0|50.0',
+    'GrooveType.compoundV|JointGeometryMode.unequal|390.0|60.0',
+    'GrooveType.compoundV|JointGeometryMode.unequal|480.0|60.0',
+    'GrooveType.square|JointGeometryMode.equal|316.0|50.0',
+    'GrooveType.square|JointGeometryMode.equal|316.0|60.0',
+    'GrooveType.square|JointGeometryMode.equal|346.0|60.0',
+    'GrooveType.square|JointGeometryMode.unequal|316.0|50.0',
+    'GrooveType.square|JointGeometryMode.unequal|316.0|60.0',
+    'GrooveType.square|JointGeometryMode.unequal|346.0|60.0',
   };
-  for (final groove in [GrooveType.doubleV, GrooveType.square]) {
-    for (final width in widths) {
-      for (final thicknessMm in thicknesses) {
-        final key = '$groove|$width|$thicknessMm';
-        testWidgets(
-          'GTAW-root label clear of lines: $groove thickness sweep '
-          '@${width.toInt()} t=${thicknessMm.toInt()}',
-          (tester) => checkRootLabelClear(
-            tester,
-            groove: groove,
-            joint: JointType.plateButt,
-            mode: DrawingMode.visual,
-            width: width,
-            height: height,
-            data: _buildData(thicknessMm: thicknessMm),
-            knownGap: thickPlateNarrowGaps.contains(key)
-                ? 'fixed-mm clearance shrinks to nothing at this '
-                      'thickness/width - see KNOWN GAP comment above'
-                : null,
-          ),
-        );
+  // KNOWN GAP (distinct root cause from the thick-plate/narrow-canvas set
+  // above - a single, narrow case, not a systematic pattern): Half V's
+  // bevel-angle tag routes its leader line as a vertical-then-horizontal
+  // "elbow" once collision-avoidance has pushed its own label far enough
+  // from its natural position (see the `pushedFar` branch of
+  // `_drawAngleTag` in weld_drawing_preview.dart) - that elbow route isn't
+  // itself checked against other labels' rects (only the *label*
+  // position is), so at this specific thickness/width/geometry
+  // combination the elbow's vertical run happens to pass through the
+  // GTAW-root label. `_dimensionLineAvoidRects` doesn't apply here since
+  // this isn't a fixed dimension line - a real fix needs `_drawAngleTag`'s
+  // leader route itself checked against avoidRects, out of scope for this
+  // round, which targeted dimension-line collisions specifically.
+  const angleLeaderGaps = <String>{
+    'GrooveType.halfV|JointGeometryMode.unequal|390.0|25.0',
+  };
+  for (final groove in grooves) {
+    for (final geometryMode in geometryModes) {
+      for (final width in widths) {
+        for (final thicknessMm in thicknesses) {
+          final key = '$groove|$geometryMode|$width|$thicknessMm';
+          testWidgets(
+            'GTAW-root label clear of lines: $groove/$geometryMode '
+            'thickness sweep @${width.toInt()} t=${thicknessMm.toInt()}',
+            (tester) => checkRootLabelClear(
+              tester,
+              groove: groove,
+              joint: JointType.plateButt,
+              mode: DrawingMode.visual,
+              width: width,
+              height: height,
+              data: _buildData(
+                geometryMode: geometryMode,
+                thicknessMm: thicknessMm,
+              ),
+              knownGap: thickPlateNarrowGaps.contains(key)
+                  ? 'fixed-mm clearance shrinks to nothing at this '
+                        'thickness/width - see KNOWN GAP comment above'
+                  : angleLeaderGaps.contains(key)
+                  ? 'bevel-angle leader elbow route crosses the root label '
+                        'at this combination - see KNOWN GAP comment above'
+                  : null,
+            ),
+          );
+        }
       }
     }
   }

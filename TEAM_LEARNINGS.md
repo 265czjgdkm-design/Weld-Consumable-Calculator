@@ -621,6 +621,97 @@ Double V thick-plate gaps in `weld_drawing_label_overlap_test.dart`. A
 real fix needs a scale-aware (not fixed-mm) clearance; out of scope for
 this targeted round.**
 
+### 2026-09-05 (round 2) — [coder] The line-vs-label fix above only covered Equal geometry - Unequal's B-thickness line was the exact "fourth collision" it warned about
+
+A reviewer reproduced the identical class of bug the entry above just
+closed, but for Unequal geometry specifically: Double V, GTAW+SMAW,
+centerline, t=12, A=14/B=10, 760x460 - the root-face-line fix (moving the
+label to `halfGap + 16`) never considered that Unequal geometry draws an
+*additional* line, `_drawButtCommonMeasurements`'s B-thickness dimension
+line, whose own bottom extension stub reaches all the way to
+`rightThicknessLabelX` (`halfBody + 6`, or more) - sweeping straight back
+across the exact X the previous fix had just nudged the label to. Also
+confirmed: the previous round's "not realistically welded at greater
+thickness" exclusion of Single V/Half V/Compound V from the thickness
+sweep was itself wrong - independently verified all three fail the same
+way starting at t=40, not just Double V/Square.
+
+**Root lesson, now proven twice in a row: a fixed-mm coordinate nudge only
+ever clears the ONE line it was measured against. Every groove/geometry
+combination that draws a *different* nearby line needs its own separate
+nudge, and nothing stops a third one from being missed next time either.**
+Fixed properly this round by making the label's placement genuinely
+geometry-aware instead: added `_dimensionLineAvoidRects`, which turns a
+dimension line's real drawn shape (its two extension stubs plus the line
+itself - the exact geometry `_drawDimensionLine` uses) into thin rects,
+fed into the *same* `_clearLabelPosition` push-down mechanism every other
+label-vs-label collision in this file already uses. Necessary because
+`_drawCombinedProcessTint`'s GTAW-root label draws before the lines it
+needs to avoid (unlike every other label here, which avoids real,
+already-drawn rects) - so it has to know a line's geometry in advance,
+which `_dimensionLineAvoidRects` computes from each groove function's own
+already-known geometry (root-face-type line's `rightGrooveY`/`rightUpperRootY`
+etc., B-thickness line's `member.rightTop`/`rightBottom`), not a guess.
+
+Real side effect this fix caused and then fixed within the same round: the
+first version passed this new avoid list to *both* the GTAW-root label and
+the top ("SMAW fill/cap") label (they shared one `avoidRects` param on
+`_drawCombinedProcessTint`) - the top label sits nowhere near these lines
+at its natural position, so subjecting it to the same avoid list pushed it
+down for no reason, which cascaded into new pill-vs-pill overlaps in
+`weld_drawing_label_overlap_test.dart` on already-tight extraBusy canvases
+(Compound V/Unequal/pipeButt @280, 4 cases) that hadn't existed before.
+Fixed by splitting the parameter into a `rootLabelAvoidRects` that only
+ever reaches the root label's own `_drawAnnotationLabel` call, not the top
+label's - a good reminder that a shared "avoid" list parameter used by two
+sibling draws can leak an intended fix for one onto the other.
+
+One more real, smaller side effect from the *necessary* part of the fix
+(pushing the root label down when it's genuinely about to cross the
+B-thickness line) not fully eliminable by that scoping: Single
+V/Unequal/idMatch/pipeButt/visual @310, across every locale (6 cases) -
+the push cascades through root face -> thickness/root gap -> groove depth
+(each avoiding the one before it, as designed) far enough that root gap
+and groove depth land a hair into each other (14.4x1.9px) at this one
+already-cramped combination. Root cause is the same pre-existing
+structural limit already documented for `doubleVBothFacesNarrowGap` in
+`weld_drawing_label_overlap_test.dart`: `_clearLabelPosition` only ever
+pushes labels DOWN (deliberately monotonic), so a label already this close
+to the next one's edge on a tight canvas has nowhere left to go. Documented
+as a new `knownGap` there rather than silently regressing it - a real fix
+needs the same broader direction-aware-push work already called out as
+out of scope in that comment.
+
+Also widened `weld_drawing_line_label_test.dart`'s coverage per the
+reviewer's finding: the main sweep now crosses geometry mode (Equal AND
+Unequal) at every groove/joint/mode/width combination (240 cases, all
+clean), and the thickness sweep now covers all 5 groove types x both
+geometry modes x widths 316-760 x thicknesses 12/25/40/50/60 (300 cases).
+Final honest count after this round's fix: 52 real remaining collisions
+(all `knownGap`, none silent) - 51 are the same fixed-mm-clearance-vs-
+shrinking-scale shape as the pre-existing Double V/Square thick-plate gap,
+now shown to affect all 5 groove types at t>=40 on narrow canvases (driven
+by the groove-depth line's own extension stub, which
+`_dimensionLineAvoidRects` doesn't check since it wasn't this round's
+reported collision); 1 is a narrow, distinct root cause - Half V's
+bevel-angle leader routes an "elbow" (vertical-then-horizontal) path once
+its own label is pushed far enough, and that route isn't itself checked
+against other labels' rects, only the label position is - real, but a
+single case, not a systematic pattern.
+
+**Takeaway for next time this file's dimension-line code is touched:
+"line crosses label" bugs need genuine geometric avoidance
+(`_dimensionLineAvoidRects` + `_clearLabelPosition`), not a fixed-mm
+coordinate nudge measured against whichever single line happened to be
+reported - a nudge only ever proves it clears the one line it was tuned
+against, and this bug class has now cost two rounds to actually close
+because each nudge collided with a different line the previous round's
+config didn't happen to exercise. Also: when two sibling draws share one
+`avoidRects` parameter, check whether the avoidance actually intended for
+one is leaking onto the other before shipping - it cascades into
+pill-vs-pill regressions on the tightest canvases, which look unrelated to
+the actual change until traced back.**
+
 ## Archive
 
 (nothing yet)

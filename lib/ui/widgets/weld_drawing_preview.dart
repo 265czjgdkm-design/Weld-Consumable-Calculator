@@ -654,6 +654,29 @@ class _WeldDrawingPainter extends CustomPainter {
       weldPaint,
       outlinePaint,
     );
+    // See _dimensionLineAvoidRects: the root-face line always sits nearby
+    // (its short extension stubs reach `halfGap + 5`), and Unequal geometry
+    // additionally draws a B-thickness line whose own stub reaches much
+    // further out (`halfBody + 6`) - both computed here, before either line
+    // is actually drawn below, so the GTAW-root label can genuinely avoid
+    // them rather than relying on a fixed mm nudge that only clears one.
+    final rootLabelLineAvoidRects = [
+      ..._dimensionLineAvoidRects(
+        layout,
+        nearX: halfGap,
+        farX: halfGap + 5,
+        topY: rightGrooveY,
+        bottomY: member.rightBottom,
+      ),
+      if (data.geometryMode == JointGeometryMode.unequal)
+        ..._dimensionLineAvoidRects(
+          layout,
+          nearX: halfGap,
+          farX: halfBody + 6,
+          topY: member.rightTop,
+          bottomY: member.rightBottom,
+        ),
+    ];
     final tint = _drawCombinedProcessTint(
       canvas,
       size,
@@ -662,18 +685,12 @@ class _WeldDrawingPainter extends CustomPainter {
       totalHeightMm: thickness,
       rootHeightMm: data.gtawTransitionMm,
       topLabelCenter: p(halfTop * 0.48, thickness * 0.18),
-      // The root-face dimension line's own stroke sits at `halfGap + 5` and
-      // the groove-depth line's stroke sits at `halfGap + 20` (see the
-      // `_drawDimensionLine` calls below/in `_drawButtCommonMeasurements`) -
-      // both close enough to this label's old `halfGap + 6` that the line
-      // ran straight through the label text instead of past it (see
-      // TEAM_LEARNINGS.md). `halfGap + 16` clears the root-face line by a
-      // real margin without reaching the groove-depth line's own lane;
-      // `rightGrooveY + 2.6` (rather than a fixed offset from `thickness`)
-      // keeps the label below the groove-depth line's horizontal stub
-      // regardless of how large `rootFace` is, since that stub always sits
-      // exactly at `rightGrooveY`, not at a fixed distance from `thickness`.
+      // `halfGap + 16`/`rightGrooveY + 2.6` starts the label clear of the
+      // groove-depth line's own vertical lane (`halfGap + 20`) - the
+      // avoidRects below then push it clear of the root-face and (Unequal)
+      // B-thickness lines' real drawn shapes, whatever they turn out to be.
       rootLabelCenter: p(halfGap + 16, rightGrooveY + 2.6),
+      rootLabelAvoidRects: rootLabelLineAvoidRects,
     );
     final tintRects = [?tint.topLabel, ?tint.rootLabel];
     // Root face is drawn before common measurements (unlike its natural
@@ -875,6 +892,26 @@ class _WeldDrawingPainter extends CustomPainter {
       weldPaint,
       outlinePaint,
     );
+    // See _dimensionLineAvoidRects on Single V's identical block above -
+    // Half V's B-thickness line stub reaches `rightBody + 6`, not
+    // `halfBody + 6` (Half V has separate left/right body widths).
+    final rootLabelLineAvoidRects = [
+      ..._dimensionLineAvoidRects(
+        layout,
+        nearX: halfGap,
+        farX: halfGap + 5,
+        topY: rightGrooveY,
+        bottomY: member.rightBottom,
+      ),
+      if (data.geometryMode == JointGeometryMode.unequal)
+        ..._dimensionLineAvoidRects(
+          layout,
+          nearX: halfGap,
+          farX: rightBody + 6,
+          topY: member.rightTop,
+          bottomY: member.rightBottom,
+        ),
+    ];
     final tint = _drawCombinedProcessTint(
       canvas,
       size,
@@ -883,18 +920,8 @@ class _WeldDrawingPainter extends CustomPainter {
       totalHeightMm: thickness,
       rootHeightMm: data.gtawTransitionMm,
       topLabelCenter: p(topRight * 0.72, thickness * 0.18),
-      // The root-face dimension line's own stroke sits at `halfGap + 5` and
-      // the groove-depth line's stroke sits at `halfGap + 20` (see the
-      // `_drawDimensionLine` calls below/in `_drawButtCommonMeasurements`) -
-      // both close enough to this label's old `halfGap + 6` that the line
-      // ran straight through the label text instead of past it (see
-      // TEAM_LEARNINGS.md). `halfGap + 16` clears the root-face line by a
-      // real margin without reaching the groove-depth line's own lane;
-      // `rightGrooveY + 2.6` (rather than a fixed offset from `thickness`)
-      // keeps the label below the groove-depth line's horizontal stub
-      // regardless of how large `rootFace` is, since that stub always sits
-      // exactly at `rightGrooveY`, not at a fixed distance from `thickness`.
       rootLabelCenter: p(halfGap + 16, rightGrooveY + 2.6),
+      rootLabelAvoidRects: rootLabelLineAvoidRects,
     );
     final tintRects = [?tint.topLabel, ?tint.rootLabel];
     // Unlike Single V/Double V (whose single angle tag sits on the opposite
@@ -1132,10 +1159,30 @@ class _WeldDrawingPainter extends CustomPainter {
         ..lineTo(p(-halfGap, leftLowerRootY).dx, p(-halfGap, leftLowerRootY).dy)
         ..close(),
       topLabelCenter: p(halfTop * 0.45, thickness * 0.16),
-      // Same `halfGap + 5`-vs-label collision as Single/Half/Compound V
-      // above (Double V's line here is `totalRootFaceRect`, drawn below),
-      // moved clear the same way.
       rootLabelCenter: p(halfGap + 16, thickness - 1.0),
+      // See _dimensionLineAvoidRects on Single V's identical block - Double
+      // V's root-face-type line here is `totalRootFaceRect` (drawn below,
+      // spanning `rightUpperRootY`..`rightLowerRootY` rather than
+      // `rightGrooveY`..`member.rightBottom`, since Double V roots from
+      // both faces), plus, in Unequal geometry, the same B-thickness line
+      // every other groove type draws.
+      rootLabelAvoidRects: [
+        ..._dimensionLineAvoidRects(
+          layout,
+          nearX: halfGap,
+          farX: halfGap + 5,
+          topY: rightUpperRootY,
+          bottomY: rightLowerRootY,
+        ),
+        if (data.geometryMode == JointGeometryMode.unequal)
+          ..._dimensionLineAvoidRects(
+            layout,
+            nearX: halfGap,
+            farX: halfBody + 6,
+            topY: member.rightTop,
+            bottomY: member.rightBottom,
+          ),
+      ],
     );
     final tintRects = [?tint.topLabel, ?tint.rootLabel];
     final commonRects = _drawButtCommonMeasurements(
@@ -1463,18 +1510,25 @@ class _WeldDrawingPainter extends CustomPainter {
       totalHeightMm: thickness,
       rootHeightMm: data.gtawTransitionMm,
       topLabelCenter: p(halfTop * 0.48, thickness * 0.16),
-      // The root-face dimension line's own stroke sits at `halfGap + 5` and
-      // the groove-depth line's stroke sits at `halfGap + 20` (see the
-      // `_drawDimensionLine` calls below/in `_drawButtCommonMeasurements`) -
-      // both close enough to this label's old `halfGap + 6` that the line
-      // ran straight through the label text instead of past it (see
-      // TEAM_LEARNINGS.md). `halfGap + 16` clears the root-face line by a
-      // real margin without reaching the groove-depth line's own lane;
-      // `rightGrooveY + 2.6` (rather than a fixed offset from `thickness`)
-      // keeps the label below the groove-depth line's horizontal stub
-      // regardless of how large `rootFace` is, since that stub always sits
-      // exactly at `rightGrooveY`, not at a fixed distance from `thickness`.
       rootLabelCenter: p(halfGap + 16, rightGrooveY + 2.6),
+      // See _dimensionLineAvoidRects on Single V's identical block above.
+      rootLabelAvoidRects: [
+        ..._dimensionLineAvoidRects(
+          layout,
+          nearX: halfGap,
+          farX: halfGap + 5,
+          topY: rightGrooveY,
+          bottomY: member.rightBottom,
+        ),
+        if (data.geometryMode == JointGeometryMode.unequal)
+          ..._dimensionLineAvoidRects(
+            layout,
+            nearX: halfGap,
+            farX: halfBody + 6,
+            topY: member.rightTop,
+            bottomY: member.rightBottom,
+          ),
+      ],
     );
     final tintRects = [?tint.topLabel, ?tint.rootLabel];
     // Compound V carries six callouts (thickness, root gap, groove depth,
@@ -1703,12 +1757,23 @@ class _WeldDrawingPainter extends CustomPainter {
       totalHeightMm: thickness,
       rootHeightMm: data.gtawTransitionMm,
       topLabelCenter: p(halfGap + 8, thickness * 0.18),
-      // Square has no bevel/root-face dimension line, but the root-gap
+      // Square has no bevel/root-face dimension line - its root-gap
       // extension stub (drawn in `_drawButtCommonMeasurements` below) sits
-      // right at `halfGap`, close enough to this label's old
-      // `halfGap + 5.5` that it ran through the label the same way as the
-      // other groove types' root-face line.
+      // right at `halfGap`, short of this label's `halfGap + 16` X by
+      // construction. Unequal geometry still draws the same B-thickness
+      // line every other groove type does, though - see
+      // _dimensionLineAvoidRects on Single V's identical block above.
       rootLabelCenter: p(halfGap + 16, thickness + 0.6),
+      rootLabelAvoidRects: [
+        if (data.geometryMode == JointGeometryMode.unequal)
+          ..._dimensionLineAvoidRects(
+            layout,
+            nearX: halfGap,
+            farX: halfBody + 6,
+            topY: member.rightTop,
+            bottomY: member.rightBottom,
+          ),
+      ],
     );
     final commonRects = _drawButtCommonMeasurements(
       canvas,
@@ -1912,7 +1977,14 @@ class _WeldDrawingPainter extends CustomPainter {
     Path? extraRootZone,
     required Offset topLabelCenter,
     required Offset rootLabelCenter,
-    List<Rect> avoidRects = const [],
+    // Only applied to the root label below, not the top ("SMAW fill/cap")
+    // label - the top label sits well clear of the lines this exists to
+    // avoid (see _dimensionLineAvoidRects) at its own natural position, and
+    // needlessly subjecting it to the same avoid list too pushes it down
+    // for no reason, cascading into every later label that avoids IT in
+    // turn on an already-tight canvas (a real regression an earlier version
+    // of this fix caused - see TEAM_LEARNINGS.md).
+    List<Rect> rootLabelAvoidRects = const [],
   }) {
     if (!_isCombinedProcess || rootHeightMm == null) {
       return (topLabel: null, rootLabel: null);
@@ -1955,7 +2027,6 @@ class _WeldDrawingPainter extends CustomPainter {
       smawFillCapLabel,
       topLabelCenter,
       fontSize: 10,
-      avoidRects: avoidRects,
     );
     // Both labels mark the same user-editable boundary (the fill/cap zone
     // is simply the complement of the GTAW root zone), so both jump to the
@@ -1967,7 +2038,7 @@ class _WeldDrawingPainter extends CustomPainter {
       gtawRootLabel,
       rootLabelCenter,
       fontSize: 10,
-      avoidRects: [...avoidRects, topLabelRect],
+      avoidRects: [...rootLabelAvoidRects, topLabelRect],
     );
     _hotspot(FieldKey.gtawTransitionMm, rootLabelRect);
     return (topLabel: topLabelRect, rootLabel: rootLabelRect);
@@ -2736,6 +2807,48 @@ class _WeldDrawingPainter extends CustomPainter {
       if (!moved) break;
     }
     return center;
+  }
+
+  // Turns a dimension line's own drawn shape (its two extension stubs plus
+  // the dimension line itself - the exact three segments _drawDimensionLine
+  // draws) into thin "avoid" rects, so a label positioned BEFORE that line
+  // is actually drawn can still be pushed clear of it via [_clearLabelPosition]
+  // - the same mechanism every other label-vs-label collision in this file
+  // already uses. This exists because `_drawCombinedProcessTint`'s GTAW-root
+  // label is drawn up front (before the root-face/total-root-face line and,
+  // in Unequal geometry, the B-thickness line that both follow it in draw
+  // order), so unlike every other label in this file it can't avoid a real,
+  // already-drawn rect - it has to know a line's geometry in advance. A line
+  // has zero visual area, so `avoidRects`' rect/rect overlap check can never
+  // "see" a line unless it's first turned into a rect of its own here -
+  // inflated by [margin] to guarantee the check catches it even when a
+  // label's edge would otherwise land exactly on the line's coordinate.
+  //
+  // Fixes a real bug: the previous fix for this (see TEAM_LEARNINGS.md,
+  // 2026-09-05) only nudged the label's fixed coordinate far enough right in
+  // mm-space to clear the SHORT root-face extension stub (which only ever
+  // reaches `halfGap + 5`) - but Unequal geometry additionally draws a
+  // B-thickness dimension line whose own bottom extension stub reaches all
+  // the way to `rightThicknessLabelX` (`halfBody + 6` or more), sweeping
+  // straight back across that same nudged position. A fixed-mm nudge can
+  // only ever clear the ONE line it was measured against; genuine geometric
+  // avoidance (checking the label's real rect against each line's real
+  // shape) clears all of them regardless of which lines a given groove
+  // type/geometry mode happens to draw nearby.
+  List<Rect> _dimensionLineAvoidRects(
+    _SectionLayout layout, {
+    required double nearX,
+    required double farX,
+    required double topY,
+    required double bottomY,
+    double margin = 3.0,
+  }) {
+    final p = layout.point;
+    return [
+      Rect.fromPoints(p(nearX, topY), p(farX, topY)).inflate(margin),
+      Rect.fromPoints(p(farX, topY), p(farX, bottomY)).inflate(margin),
+      Rect.fromPoints(p(nearX, bottomY), p(farX, bottomY)).inflate(margin),
+    ];
   }
 
   Rect _drawAnnotationLabel(
