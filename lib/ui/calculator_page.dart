@@ -2577,7 +2577,11 @@ class _CalculatorPageState extends State<CalculatorPage> {
       name = result.name;
       await _accountStore.setEmail(email);
       _accountEmail = email;
-      await _migrateLocalPresetsToAccount(email);
+      await migrateLocalPresetsToAccount(
+        email: email,
+        presetSyncService: _presetSyncService,
+        userPresetStore: _userPresetStore,
+      );
       await _loadUserPresets();
     } else {
       final promptedName = await _promptPresetName();
@@ -2686,22 +2690,6 @@ class _CalculatorPageState extends State<CalculatorPage> {
     } finally {
       if (mounted) {
         setState(() => _isUserPresetBusy = false);
-      }
-    }
-  }
-
-  /// A device that already had local-only presets before accounts existed
-  /// shouldn't lose them the first time it logs in -- upload each one
-  /// under the new account so they show up alongside (or merge with)
-  /// whatever that email already has saved in the cloud.
-  Future<void> _migrateLocalPresetsToAccount(String email) async {
-    final localPresets = (await _userPresetStore.load()).presets;
-    for (final preset in localPresets) {
-      try {
-        await _presetSyncService.save(email, preset);
-      } catch (_) {
-        // Best-effort: a failed upload just leaves that preset local-only
-        // until the next successful sync.
       }
     }
   }
@@ -4119,32 +4107,35 @@ class _PaywallSheetState extends State<_PaywallSheet> {
 
   Widget _buildPaywallLegalLinks(BuildContext context) {
     final strings = AppLocaleScope.stringsOf(context);
-    return Wrap(
-      alignment: WrapAlignment.center,
-      children: [
-        GestureDetector(
-          onTap: () =>
-              _openPaywallLegalLink(context, LegalLinks.privacyPolicyUrl),
-          child: Text(
-            strings.legalPrivacyPolicyLinkLabel,
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: const Color(0xFF12191B),
-              decoration: TextDecoration.underline,
+    return Center(
+      child: Wrap(
+        alignment: WrapAlignment.center,
+        children: [
+          GestureDetector(
+            onTap: () =>
+                _openPaywallLegalLink(context, LegalLinks.privacyPolicyUrl),
+            child: Text(
+              strings.legalPrivacyPolicyLinkLabel,
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: const Color(0xFF12191B),
+                decoration: TextDecoration.underline,
+              ),
             ),
           ),
-        ),
-        const Text('  ·  ', style: TextStyle(color: Color(0xFF8398A5))),
-        GestureDetector(
-          onTap: () => _openPaywallLegalLink(context, LegalLinks.termsOfUseUrl),
-          child: Text(
-            strings.legalTermsOfUseLinkLabel,
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: const Color(0xFF12191B),
-              decoration: TextDecoration.underline,
+          const Text('  ·  ', style: TextStyle(color: Color(0xFF8398A5))),
+          GestureDetector(
+            onTap: () =>
+                _openPaywallLegalLink(context, LegalLinks.termsOfUseUrl),
+            child: Text(
+              strings.legalTermsOfUseLinkLabel,
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: const Color(0xFF12191B),
+                decoration: TextDecoration.underline,
+              ),
             ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 

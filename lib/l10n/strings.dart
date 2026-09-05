@@ -1707,7 +1707,7 @@ const Map<AppLanguage, L10nStrings> _strings = {
     accountSignInSuccess: 'Signed in as {email}.',
     accountDeleteConfirmTitle: 'Delete account?',
     accountDeleteConfirmBody:
-        'This will sign you out and permanently delete your saved calculations from this device and from the cloud. Your registration record (name and email) will also be removed from our systems -- this part is handled manually and may take up to 30 days to complete.',
+        'This will sign you out and permanently delete your saved calculations from this device and from the cloud. Your registered email will also be removed from our systems -- this part is handled manually and may take up to 30 days to complete. Your name, if you entered one, was never sent anywhere and stays on this device only.',
     accountDeletingMessage: 'Deleting your account...',
     accountDeleteSuccessTitle: 'Account Deleted',
     accountDeleteSuccessBody:
@@ -2366,7 +2366,7 @@ const Map<AppLanguage, L10nStrings> _strings = {
     accountSignInSuccess: '{email} olarak giriş yapıldı.',
     accountDeleteConfirmTitle: 'Hesap silinsin mi?',
     accountDeleteConfirmBody:
-        'Bu işlem sizi çıkış yaptıracak ve kayıtlı hesaplamalarınızı hem bu cihazdan hem de buluttan kalıcı olarak silecektir. Kayıt bilgileriniz (ad ve e-posta) de sistemlerimizden kaldırılacaktır -- bu kısım manuel olarak işlenir ve tamamlanması en fazla 30 gün sürebilir.',
+        'Bu işlem sizi çıkış yaptıracak ve kayıtlı hesaplamalarınızı hem bu cihazdan hem de buluttan kalıcı olarak silecektir. Kayıtlı e-posta adresiniz de sistemlerimizden kaldırılacaktır -- bu kısım manuel olarak işlenir ve tamamlanması en fazla 30 gün sürebilir. Adınız girildiyse yalnızca bu cihazda saklanır ve hiçbir yere gönderilmez.',
     accountDeletingMessage: 'Hesabınız siliniyor...',
     accountDeleteSuccessTitle: 'Hesap Silindi',
     accountDeleteSuccessBody:
@@ -3051,7 +3051,7 @@ const Map<AppLanguage, L10nStrings> _strings = {
     // TODO: unverified translation -- legal/formal phrasing, needs
     // native-speaker review.
     accountDeleteConfirmBody:
-        'Это приведёт к выходу из аккаунта и безвозвратному удалению ваших сохранённых расчётов с этого устройства и из облака. Данные вашей регистрации (имя и email) также будут удалены из наших систем -- это делается вручную и может занять до 30 дней.',
+        'Это приведёт к выходу из аккаунта и безвозвратному удалению ваших сохранённых расчётов с этого устройства и из облака. Ваш зарегистрированный email также будет удалён из наших систем -- это делается вручную и может занять до 30 дней. Ваше имя, если вы его указали, хранится только на этом устройстве и никуда не передаётся.',
     accountDeletingMessage: 'Удаление аккаунта...',
     accountDeleteSuccessTitle: 'Аккаунт удалён',
     accountDeleteSuccessBody:
@@ -3732,7 +3732,7 @@ const Map<AppLanguage, L10nStrings> _strings = {
     // TODO: unverified translation -- legal/formal phrasing, needs
     // native-speaker review.
     accountDeleteConfirmBody:
-        'Dadurch werden Sie abgemeldet und Ihre gespeicherten Berechnungen werden dauerhaft von diesem Gerät und aus der Cloud gelöscht. Ihre Registrierungsdaten (Name und E-Mail) werden ebenfalls aus unseren Systemen entfernt -- dies erfolgt manuell und kann bis zu 30 Tage dauern.',
+        'Dadurch werden Sie abgemeldet und Ihre gespeicherten Berechnungen werden dauerhaft von diesem Gerät und aus der Cloud gelöscht. Ihre registrierte E-Mail-Adresse wird ebenfalls aus unseren Systemen entfernt -- dies erfolgt manuell und kann bis zu 30 Tage dauern. Ihr Name, falls angegeben, wird nur auf diesem Gerät gespeichert und niemals übertragen.',
     accountDeletingMessage: 'Konto wird gelöscht...',
     accountDeleteSuccessTitle: 'Konto gelöscht',
     accountDeleteSuccessBody:
@@ -3745,7 +3745,7 @@ const Map<AppLanguage, L10nStrings> _strings = {
     dashboardAccountCardGuestValue: 'Gast',
     authFormConsentPrefix: 'Mit der Registrierung stimmen Sie unserer',
     authFormConsentConnector: 'und unseren',
-    authFormConsentSuffix: 'zu.',
+    authFormConsentSuffix: ' zu.',
   ),
   AppLanguage.hi: L10nStrings(
     navBrand: 'Varyos Weld',
@@ -4399,7 +4399,7 @@ const Map<AppLanguage, L10nStrings> _strings = {
     // TODO: unverified translation -- legal/formal phrasing, needs
     // native-speaker review.
     accountDeleteConfirmBody:
-        'इससे आप साइन आउट हो जाएंगे और आपकी सेव की गई कैलकुलेशन इस डिवाइस और क्लाउड दोनों से स्थायी रूप से डिलीट हो जाएंगी। आपका रजिस्ट्रेशन रिकॉर्ड (नाम और ईमेल) भी हमारे सिस्टम से हटा दिया जाएगा -- यह हिस्सा मैन्युअल रूप से किया जाता है और पूरा होने में 30 दिन तक लग सकते हैं।',
+        'इससे आप साइन आउट हो जाएंगे और आपकी सेव की गई कैलकुलेशन इस डिवाइस और क्लाउड दोनों से स्थायी रूप से डिलीट हो जाएंगी। आपका रजिस्टर्ड ईमेल भी हमारे सिस्टम से हटा दिया जाएगा -- यह हिस्सा मैन्युअल रूप से किया जाता है और पूरा होने में 30 दिन तक लग सकते हैं। आपका नाम, अगर आपने डाला है, केवल इस डिवाइस पर सेव रहता है और कभी कहीं नहीं भेजा जाता।',
     accountDeletingMessage: 'आपका अकाउंट डिलीट किया जा रहा है...',
     accountDeleteSuccessTitle: 'अकाउंट डिलीट हो गया',
     accountDeleteSuccessBody:
@@ -4414,7 +4414,7 @@ const Map<AppLanguage, L10nStrings> _strings = {
     // consent-sentence structure.
     authFormConsentPrefix: 'रजिस्टर करके, आप हमारी',
     authFormConsentConnector: 'और',
-    authFormConsentSuffix: 'से सहमत होते हैं।',
+    authFormConsentSuffix: ' से सहमत होते हैं।',
   ),
 };
 

@@ -84,7 +84,7 @@ class _AccountScreenState extends State<AccountScreen> {
 
   Future<void> _signIn() async {
     final strings = AppLocaleScope.stringsOf(context);
-    final email = _emailController.text.trim();
+    final email = _emailController.text.trim().toLowerCase();
     setState(() {
       _emailError = _emailPattern.hasMatch(email)
           ? null
@@ -94,6 +94,15 @@ class _AccountScreenState extends State<AccountScreen> {
 
     setState(() => _busy = true);
     await _accountStore.setEmail(email);
+    // A device that already has local-only presets must have them uploaded
+    // to the cloud under this email BEFORE the cloud-authoritative refresh
+    // below, or an empty/partial cloud list would silently wipe them (see
+    // the same guest->account sequence in calculator_page.dart).
+    await migrateLocalPresetsToAccount(
+      email: email,
+      presetSyncService: _presetSyncService,
+      userPresetStore: _presetStore,
+    );
     // Reuse the same refresh mechanism the calculator/saved-calculations
     // screens use after an account's email becomes available, so this
     // screen's sign-in has the same effect as signing in anywhere else.
@@ -145,6 +154,11 @@ class _AccountScreenState extends State<AccountScreen> {
     var cloudFullyDeleted = true;
     try {
       final result = await _presetSyncService.list(email);
+      if (result.skippedCount > 0) {
+        // Rows the cloud response couldn't parse are never reached by the
+        // delete loop below -- claiming full success would be dishonest.
+        cloudFullyDeleted = false;
+      }
       for (final preset in result.presets) {
         try {
           await _presetSyncService.delete(email, preset.id);

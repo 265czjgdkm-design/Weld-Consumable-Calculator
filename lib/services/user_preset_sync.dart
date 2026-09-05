@@ -45,3 +45,25 @@ loadSyncedUserPresets({
   }
   return (presets: presets, skippedCount: skippedCount);
 }
+
+/// A device that already had local-only presets before accounts existed
+/// shouldn't lose them the first time it signs in -- upload each one under
+/// the new account so they show up alongside (or merge with) whatever that
+/// email already has saved in the cloud. Must run before any cloud-
+/// authoritative refresh (like [loadSyncedUserPresets]), which overwrites
+/// the local cache with whatever the cloud returns.
+Future<void> migrateLocalPresetsToAccount({
+  required String email,
+  required PresetSyncService presetSyncService,
+  required UserPresetStore userPresetStore,
+}) async {
+  final localPresets = (await userPresetStore.load()).presets;
+  for (final preset in localPresets) {
+    try {
+      await presetSyncService.save(email, preset);
+    } catch (_) {
+      // Best-effort: a failed upload just leaves that preset local-only
+      // until the next successful sync.
+    }
+  }
+}

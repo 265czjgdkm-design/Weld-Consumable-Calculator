@@ -308,5 +308,202 @@ void main() {
         expect(await accountStore.getEmail(), isNull);
       },
     );
+
+    testWidgets(
+      'Sign in uploads local presets to the cloud BEFORE refreshing, so an '
+      'empty cloud list does not wipe local saved calculations '
+      '(reviewer finding #1)',
+      (tester) async {
+        final localPreset = UserWeldPreset(
+          id: 'local-1',
+          name: 'Local Preset',
+          updatedAtEpochMs: 1000,
+          data: InputPreset.csPlateSingleVGmaw.data!,
+        );
+        SharedPreferences.setMockInitialValues({
+          'user_weld_presets_v1': jsonEncode([localPreset.toJson()]),
+        });
+
+        var saveCalled = false;
+        // The cloud starts out empty for this email -- a stateful mock so
+        // the GET after migrate-upload reflects what was just saved,
+        // matching how the real Apps Script backend behaves.
+        final cloudPresets = <Map<String, dynamic>>[];
+
+        await http.runWithClient(
+          () async {
+            await _pumpAccountScreen(tester);
+
+            await tester.enterText(
+              find.byType(TextField),
+              'existing@example.com',
+            );
+            await tester.tap(find.text(strings.accountSignInButton));
+            await tester.pumpAndSettle();
+          },
+          () => MockClient((request) async {
+            if (request.method == 'GET') {
+              return http.Response(
+                jsonEncode({'ok': true, 'presets': cloudPresets}),
+                200,
+              );
+            }
+            final body = jsonDecode(request.body) as Map<String, dynamic>;
+            if (body['action'] == 'save') {
+              saveCalled = true;
+              cloudPresets.add(body['preset'] as Map<String, dynamic>);
+            }
+            return http.Response(jsonEncode({'ok': true}), 200);
+          }),
+        );
+
+        expect(
+          saveCalled,
+          isTrue,
+          reason:
+              'local preset must be uploaded to the cloud before the '
+              'cloud-authoritative refresh happens',
+        );
+
+        const presetStore = UserPresetStore();
+        final survivingPresets = (await presetStore.load()).presets;
+        expect(
+          survivingPresets,
+          hasLength(1),
+          reason: 'local preset must not be wiped by an empty cloud list',
+        );
+        expect(survivingPresets.single.id, 'local-1');
+      },
+    );
+
+    testWidgets(
+      'Sign in normalizes a mixed-case email, and Delete Account reuses the '
+      'same normalized email for the cloud list/delete calls '
+      '(reviewer finding #2)',
+      (tester) async {
+        SharedPreferences.setMockInitialValues({});
+
+        final cloudPreset = UserWeldPreset(
+          id: 'cloud-1',
+          name: 'Cloud Preset',
+          updatedAtEpochMs: 1000,
+          data: InputPreset.csPlateSingleVGmaw.data!,
+        );
+
+        final requestedEmails = <String>[];
+
+        await http.runWithClient(
+          () async {
+            await _pumpAccountScreen(tester);
+
+            await tester.enterText(
+              find.byType(TextField),
+              'User@Example.com',
+            );
+            await tester.tap(find.text(strings.accountSignInButton));
+            await tester.pumpAndSettle();
+
+            expect(find.text('user@example.com'), findsOneWidget);
+
+            await tester.tap(find.text(strings.accountDeleteAccountButton));
+            await tester.pumpAndSettle();
+            await tester.tap(find.text(strings.commonDelete));
+            await tester.pumpAndSettle();
+
+            await tester.tap(find.text(strings.commonContinue));
+            await tester.pumpAndSettle();
+          },
+          () => MockClient((request) async {
+            if (request.method == 'GET') {
+              requestedEmails.add(request.url.queryParameters['email']!);
+              return http.Response(
+                jsonEncode({
+                  'ok': true,
+                  'presets': [cloudPreset.toJson()],
+                }),
+                200,
+              );
+            }
+            final body = jsonDecode(request.body) as Map<String, dynamic>;
+            requestedEmails.add(body['email'] as String);
+            return http.Response(jsonEncode({'ok': true}), 200);
+          }),
+        );
+
+        expect(requestedEmails, isNotEmpty);
+        expect(
+          requestedEmails.every((email) => email == 'user@example.com'),
+          isTrue,
+          reason:
+              'every cloud call must use the lowercased email, not the '
+              'raw-typed "User@Example.com": $requestedEmails',
+        );
+      },
+    );
+
+    testWidgets(
+      'Delete Account: skippedCount > 0 from list() is treated as a '
+      'partial failure even when every returned preset deletes fine '
+      '(reviewer finding #3)',
+      (tester) async {
+        SharedPreferences.setMockInitialValues({
+          'user_account_email_v1': 'user@example.com',
+          'user_weld_presets_v1': jsonEncode([]),
+        });
+
+        final goodPreset = UserWeldPreset(
+          id: 'cloud-good',
+          name: 'Cloud Good',
+          updatedAtEpochMs: 1000,
+          data: InputPreset.csPlateSingleVGmaw.data!,
+        );
+
+        await http.runWithClient(
+          () async {
+            await _pumpAccountScreen(tester);
+
+            await tester.tap(find.text(strings.accountDeleteAccountButton));
+            await tester.pumpAndSettle();
+            await tester.tap(find.text(strings.commonDelete));
+            await tester.pumpAndSettle();
+
+            // One row was unparseable (skippedCount: 1 in list()'s
+            // response) even though the one returned preset's delete()
+            // call below succeeds -- this must still show the honest
+            // partial-failure message, not full success.
+            expect(
+              find.text(strings.accountDeletePartialFailureBody),
+              findsOneWidget,
+            );
+            expect(
+              find.text(strings.accountDeleteSuccessBody),
+              findsNothing,
+            );
+
+            await tester.tap(find.text(strings.commonContinue));
+            await tester.pumpAndSettle();
+          },
+          () => MockClient((request) async {
+            if (request.method == 'GET') {
+              return http.Response(
+                jsonEncode({
+                  'ok': true,
+                  'presets': [
+                    goodPreset.toJson(),
+                    // Unparseable: missing required 'data' field, so
+                    // PresetSyncService.list counts it in skippedCount
+                    // instead of returning it in `presets`.
+                    {'id': 'unparseable-1', 'name': 'Broken'},
+                  ],
+                }),
+                200,
+              );
+            }
+            // Every delete() call succeeds.
+            return http.Response(jsonEncode({'ok': true}), 200);
+          }),
+        );
+      },
+    );
   });
 }
