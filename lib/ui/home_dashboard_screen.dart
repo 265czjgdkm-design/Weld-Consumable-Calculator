@@ -213,6 +213,12 @@ class _DashboardButton extends StatelessWidget {
               icon: Icon(icon),
               label: Text(label),
               style: FilledButton.styleFrom(
+                backgroundColor: Theme.of(
+                  context,
+                ).colorScheme.secondaryContainer,
+                foregroundColor: Theme.of(
+                  context,
+                ).colorScheme.onSecondaryContainer,
                 padding: const EdgeInsets.symmetric(vertical: 18),
                 textStyle: textStyle,
               ),

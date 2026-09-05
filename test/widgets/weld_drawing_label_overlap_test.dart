@@ -119,6 +119,8 @@ Future<List<Rect>> _renderLabelRects(
               gtawRootLabel: strings.drawingLabelGtawRoot,
               capTopLabel: strings.drawingLabelCapTop,
               capBottomLabel: strings.drawingLabelCapBottom,
+              capOverlapValueLabel: strings.drawingLabelCapOverlapValue,
+              capHeightValueLabel: strings.drawingLabelCapHeightValue,
               fillAvailableSpace: fillAvailableSpace,
             ),
           ),
@@ -315,21 +317,28 @@ void main() {
           'common widths once plate thickness is realistic for Double V)';
     }
     // KNOWN GAP: same root cause as the pipe-butt case above, but for
-    // plate butt - only reachable in German/Russian, and only since this
-    // session added the top/bottom-face prefix word ("Oben"/"Unten",
-    // "Верх"/"Низ") to the two cap-dimension label pairs (see
+    // plate butt - only reachable in Russian, and only since a previous
+    // session added the top/bottom-face prefix word ("Верх"/"Низ") to the
+    // two cap-dimension label pairs (see
     // WeldDrawingPreview.capTopLabel/capBottomLabel): the extra prefix
-    // widens the bottom-face pills just enough to newly collide at this
-    // single narrowest canvas width, in these two locales specifically.
-    // Confirmed via a real `flutter test` run (not assumed) - not present
-    // before the prefix was added, not present in en/tr/hi at this width.
-    if (joint == JointType.plateButt &&
-        (language == AppLanguage.de || language == AppLanguage.ru)) {
+    // widens the bottom-face pills just enough to collide at this single
+    // narrowest canvas width. A reviewer flagged this comment's previous
+    // wording ("collide"/"just enough") as understating the severity: this
+    // is a full 66.7x17.6px pill-on-pill overlap (one label sitting
+    // directly on top of the other), not a marginal squeeze - re-measured
+    // directly via this suite's own painter, not assumed. German was ALSO
+    // affected before this session's Finding 4 fix (which fully localized
+    // the "mm cap overlap"/"mm cap height" suffix instead of concatenating
+    // a localized prefix onto hardcoded English) shortened Überstand's/
+    // Überhöhung's pills enough to clear this collision as a side effect -
+    // confirmed via a real `flutter test` run, not assumed. Russian's
+    // shortened suffix (see drawingLabelCapOverlapValue/
+    // drawingLabelCapHeightValue) is still too wide to clear it.
+    if (joint == JointType.plateButt && language == AppLanguage.ru) {
       return "Double V's both-faces bottom-face cap-overlap and cap-height "
-          'pills collide at 320pt/240px width in $language, introduced by '
-          "this session's top/bottom-face label prefix - same structural "
-          'cause as the pipe-butt gap above, needs the same dedicated '
-          'follow-up.';
+          'pills fully overlap (66.7x17.6px) at 320pt/240px width in '
+          'Russian - same structural cause as the pipe-butt gap above, '
+          'needs the same dedicated follow-up.';
     }
     return null;
   }

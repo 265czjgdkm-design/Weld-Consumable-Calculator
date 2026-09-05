@@ -221,13 +221,13 @@ void main() {
 
       final capOverlapHelper = tester
           .widget<TextField>(
-            _fieldWithLabel('Kapak Bindirmesi (mm)'),
+            _fieldWithLabel('Bindirme (mm)'),
           )
           .decoration
           ?.helperText;
       final capHeightHelper = tester
           .widget<TextField>(
-            _fieldWithLabel('Kapak Yüksekliği (mm)'),
+            _fieldWithLabel('Yükseklik (mm)'),
           )
           .decoration
           ?.helperText;

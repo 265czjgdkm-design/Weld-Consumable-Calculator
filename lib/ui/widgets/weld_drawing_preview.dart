@@ -86,6 +86,8 @@ class WeldDrawingPreview extends StatefulWidget {
     required this.gtawRootLabel,
     required this.capTopLabel,
     required this.capBottomLabel,
+    required this.capOverlapValueLabel,
+    required this.capHeightValueLabel,
     this.onFieldTap,
     this.fillAvailableSpace = false,
   });
@@ -108,6 +110,14 @@ class WeldDrawingPreview extends StatefulWidget {
   // otherwise-identical "X mm cap overlap"/"X mm cap height" pills.
   final String capTopLabel;
   final String capBottomLabel;
+  // Full localized "<value> mm cap overlap"/"<value> mm cap height" suffix
+  // (see L10nStrings.drawingLabelCapOverlapValue/drawingLabelCapHeightValue)
+  // -- concatenated after the numeric value (and, for Double V, the
+  // capTopLabel/capBottomLabel prefix above) so the pill reads as a single
+  // coherent language per locale instead of a localized prefix word glued
+  // onto hardcoded English.
+  final String capOverlapValueLabel;
+  final String capHeightValueLabel;
 
   /// Called with the [FieldKey] of the dimension nearest to a tap on the
   /// drawing, so the caller can scroll to and focus that input field.
@@ -148,6 +158,8 @@ class _WeldDrawingPreviewState extends State<WeldDrawingPreview> {
           gtawRootLabel: widget.gtawRootLabel,
           capTopLabel: widget.capTopLabel,
           capBottomLabel: widget.capBottomLabel,
+          capOverlapValueLabel: widget.capOverlapValueLabel,
+          capHeightValueLabel: widget.capHeightValueLabel,
           onHotspots: (hotspots) => _hotspots = hotspots,
           fillAvailableSpace: widget.fillAvailableSpace,
         ),
@@ -228,6 +240,8 @@ class _WeldDrawingPainter extends CustomPainter {
     required this.gtawRootLabel,
     required this.capTopLabel,
     required this.capBottomLabel,
+    required this.capOverlapValueLabel,
+    required this.capHeightValueLabel,
     this.onHotspots,
     this.fillAvailableSpace = false,
   });
@@ -244,6 +258,8 @@ class _WeldDrawingPainter extends CustomPainter {
   final String gtawRootLabel;
   final String capTopLabel;
   final String capBottomLabel;
+  final String capOverlapValueLabel;
+  final String capHeightValueLabel;
   final ValueChanged<List<DrawingHotspot>>? onHotspots;
   final bool fillAvailableSpace;
 
@@ -2115,8 +2131,9 @@ class _WeldDrawingPainter extends CustomPainter {
         // only, mirroring the root-face label pattern above) - the
         // calculation itself always uses the true entered value.
         label: facePrefix.isEmpty
-            ? '${_formatValue(rawOverlap.toDouble())} mm cap overlap'
-            : '$facePrefix ${_formatValue(rawOverlap.toDouble())} mm cap overlap',
+            ? '${_formatValue(rawOverlap.toDouble())} $capOverlapValueLabel'
+            : '$facePrefix ${_formatValue(rawOverlap.toDouble())} '
+                  '$capOverlapValueLabel',
         labelSize: size,
         labelOffset: Offset(6, 10 * direction),
         extensionStart: p(halfTop, topY),
@@ -2138,8 +2155,9 @@ class _WeldDrawingPainter extends CustomPainter {
         // See the cap-overlap label above: show the real entered value,
         // only the drawn geometry is clamped for visual sanity.
         label: facePrefix.isEmpty
-            ? '${_formatValue(rawHeight.toDouble())} mm cap height'
-            : '$facePrefix ${_formatValue(rawHeight.toDouble())} mm cap height',
+            ? '${_formatValue(rawHeight.toDouble())} $capHeightValueLabel'
+            : '$facePrefix ${_formatValue(rawHeight.toDouble())} '
+                  '$capHeightValueLabel',
         labelSize: size,
         labelOffset: Offset(-6, 10 * direction),
         extensionStart: p(0, topY),
@@ -2973,8 +2991,10 @@ List<DrawingHotspot> debugWeldDrawingHotspots({
   required String tJointLabel,
   required String smawFillCapLabel,
   required String gtawRootLabel,
-  String capTopLabel = 'Top',
-  String capBottomLabel = 'Bottom',
+  required String capTopLabel,
+  required String capBottomLabel,
+  required String capOverlapValueLabel,
+  required String capHeightValueLabel,
   required Canvas canvas,
   required Size size,
   bool fillAvailableSpace = true,
@@ -2993,6 +3013,8 @@ List<DrawingHotspot> debugWeldDrawingHotspots({
     gtawRootLabel: gtawRootLabel,
     capTopLabel: capTopLabel,
     capBottomLabel: capBottomLabel,
+    capOverlapValueLabel: capOverlapValueLabel,
+    capHeightValueLabel: capHeightValueLabel,
     onHotspots: (result) => hotspots = result,
     fillAvailableSpace: fillAvailableSpace,
   ).paint(canvas, size);

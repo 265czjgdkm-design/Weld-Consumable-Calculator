@@ -981,6 +981,8 @@ class _CalculatorPageState extends State<CalculatorPage> {
                 gtawRootLabel: strings.drawingLabelGtawRoot,
                 capTopLabel: strings.drawingLabelCapTop,
                 capBottomLabel: strings.drawingLabelCapBottom,
+                capOverlapValueLabel: strings.drawingLabelCapOverlapValue,
+                capHeightValueLabel: strings.drawingLabelCapHeightValue,
               )
             : Center(
                 child: FittedBox(
@@ -1001,6 +1003,8 @@ class _CalculatorPageState extends State<CalculatorPage> {
                       gtawRootLabel: strings.drawingLabelGtawRoot,
                       capTopLabel: strings.drawingLabelCapTop,
                       capBottomLabel: strings.drawingLabelCapBottom,
+                      capOverlapValueLabel: strings.drawingLabelCapOverlapValue,
+                      capHeightValueLabel: strings.drawingLabelCapHeightValue,
                     ),
                   ),
                 ),
