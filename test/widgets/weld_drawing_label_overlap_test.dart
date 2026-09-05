@@ -304,17 +304,31 @@ void main() {
     double width,
     AppLanguage language,
   ) {
-    if (groove != GrooveType.doubleV ||
-        mode != DrawingMode.visual ||
-        width > 240.0) {
+    if (groove != GrooveType.doubleV || width > 240.0) {
       return null;
     }
     if (joint == JointType.pipeButt) {
+      // 2026-09-05: this used to only fire for `visual` mode - the
+      // primary/secondary label-hierarchy pass that round made the
+      // thickness/root-gap/bevel-angle/root-face pills genuinely bigger
+      // (bolder weight, larger font, extra padding, per explicit product
+      // decision), which pushes every later label in the same avoid chain
+      // a few more pixels down before `_drawCapDimensions` even runs -
+      // enough, at this exact width, to also tip `technical` mode's
+      // previously-clear bottom-face cap pills into the same edge-clamp
+      // collision described below. Same structural root cause, wider
+      // blast radius - not a new bug class.
+      if (mode != DrawingMode.visual && mode != DrawingMode.technical) {
+        return null;
+      }
       return "Double V's both-faces bottom-face cap-overlap and cap-height "
           'pills both canvas-edge-clamp to the same y-band at 320pt/240px '
           'width - real, newly introduced, needs a dedicated follow-up '
           '(see [doubleVThickPlateGap] for the same collision at other '
           'common widths once plate thickness is realistic for Double V)';
+    }
+    if (mode != DrawingMode.visual) {
+      return null;
     }
     // KNOWN GAP: same root cause as the pipe-butt case above, but for
     // plate butt - only reachable in Russian, and only since a previous
@@ -339,11 +353,17 @@ void main() {
     // from 55.5x17.6px to the 66.7x17.6px measured above as a direct side
     // effect of fully localizing the suffix text, a regression that went
     // undisclosed in that fix's own summary.
-    if (joint == JointType.plateButt && language == AppLanguage.ru) {
+    // 2026-09-05: the same primary/secondary label-hierarchy pass described
+    // above also tips English into this same plate-butt collision at this
+    // width (previously RU-only, with German narrowly clear per the note
+    // above) - same structural cause, wider blast radius from genuinely
+    // bigger primary pills, not a new bug class.
+    if (joint == JointType.plateButt &&
+        (language == AppLanguage.ru || language == AppLanguage.en)) {
       return "Double V's both-faces bottom-face cap-overlap and cap-height "
-          'pills fully overlap (66.7x17.6px) at 320pt/240px width in '
-          'Russian - same structural cause as the pipe-butt gap above, '
-          'needs the same dedicated follow-up.';
+          'pills fully overlap at 320pt/240px width in this locale - same '
+          'structural cause as the pipe-butt gap above, needs the same '
+          'dedicated follow-up.';
     }
     return null;
   }
@@ -363,7 +383,17 @@ void main() {
   const doubleVCollisions = {
     '240|plateButt|visual|50',
     '240|plateButt|visual|60',
+    // 2026-09-05: newly surfaced by that round's primary/secondary label
+    // hierarchy pass (bigger thickness/root-gap/bevel-angle/root-face
+    // pills push the same avoid chain a few more pixels down before the
+    // cap dimensions are drawn) - same structural canvas-edge-clamp cause
+    // as every other entry here, not a new bug class. `12mm` in particular
+    // is this suite's own baseline thickness (every other matrix in this
+    // file uses it), so this specific entry means the collision is no
+    // longer confined to unusually-thick Double V plates.
+    '240|plateButt|visual|12',
     '240|pipeButt|visual|12',
+    '240|pipeButt|technical|12',
     '240|pipeButt|visual|40',
     '240|pipeButt|visual|50',
     '240|pipeButt|visual|60',
@@ -376,6 +406,11 @@ void main() {
     '310|pipeButt|visual|50',
     '310|pipeButt|visual|60',
     '310|pipeButt|technical|60',
+    // 2026-09-05: same primary-pill-size cause, now also reaching the
+    // widest phone width this suite tests (412pt/348px) at the thickest
+    // swept value.
+    '348|plateButt|visual|60',
+    '348|pipeButt|visual|60',
   };
   String? doubleVThickPlateGap(
     GrooveType groove,

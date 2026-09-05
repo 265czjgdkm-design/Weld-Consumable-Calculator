@@ -365,6 +365,20 @@ class _WeldDrawingPainter extends CustomPainter {
   static const _labelColor = Color(0xFF22343D);
   static const _softLabelFill = Color(0xCCFFFFFF);
   static const _softLabelStroke = Color(0x335A7280);
+  // Primary-label styling (joint-prep numbers a welding engineer looks for
+  // first: thickness, root gap, bevel/groove angle, root face, fillet leg)
+  // reuses the app's own brand dark tone (`#2B3538`, the same neutral used
+  // in the PDF report's dark cover/header), not the brand orange - orange
+  // already means something else in this drawing (the "Başla" button, the
+  // GTAW-root process tint), so reusing it here would create ambiguity.
+  static const _primaryFillColor = Color(0xFF2B3538);
+  static const _primaryTextColor = Color(0xFFFFFFFF);
+  static const _primaryStrokeColor = Color(0x33FFFFFF);
+  static const _primaryFontBump = 1.6;
+  static const _primaryHorizontalPadBump = 4.0;
+  static const _primaryVerticalPadBump = 2.0;
+  static const _primaryMinWidthBump = 6.0;
+  static const _primaryMinHeightBump = 2.0;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -709,6 +723,7 @@ class _WeldDrawingPainter extends CustomPainter {
       extensionEnd: p(halfGap, member.rightBottom),
       fieldKey: FieldKey.rootFaceMm,
       avoidRects: tintRects,
+      primary: true,
     );
     final commonRects = _drawButtCommonMeasurements(
       canvas,
@@ -750,6 +765,7 @@ class _WeldDrawingPainter extends CustomPainter {
         ?commonRects.grooveDepth,
         rootFaceRect,
       ],
+      primary: true,
     );
     final chipRects = _drawTopChips(canvas, size, grooveTypeLabel);
     _drawCapDimensions(
@@ -947,6 +963,7 @@ class _WeldDrawingPainter extends CustomPainter {
       text: '${_formatValue(bevelAngle)}°',
       fieldKey: FieldKey.bevelAngleDeg,
       avoidRects: tintRects,
+      primary: true,
     );
     final rootFaceRect = _drawDimensionLine(
       canvas,
@@ -960,6 +977,7 @@ class _WeldDrawingPainter extends CustomPainter {
       extensionEnd: p(halfGap, member.rightBottom),
       fieldKey: FieldKey.rootFaceMm,
       avoidRects: [...tintRects, angleRect],
+      primary: true,
     );
     final commonRects = _drawButtCommonMeasurements(
       canvas,
@@ -1229,6 +1247,7 @@ class _WeldDrawingPainter extends CustomPainter {
         commonRects.rootGap,
         ?commonRects.grooveDepth,
       ],
+      primary: true,
     );
     final angleRect = _drawAngleTag(
       canvas,
@@ -1252,6 +1271,7 @@ class _WeldDrawingPainter extends CustomPainter {
         ?commonRects.grooveDepth,
         totalRootFaceRect,
       ],
+      primary: true,
     );
     Rect? upperHalfRectOuter;
     Rect? lowerHalfRect;
@@ -1569,6 +1589,7 @@ class _WeldDrawingPainter extends CustomPainter {
       text: 'α ${_formatValue(primaryAngle)}°',
       fieldKey: FieldKey.bevelAngleDeg,
       avoidRects: tintRects,
+      primary: true,
     );
     // Root face: bottom, inner-right lane, close to the joint. Drawn before
     // groove depth (unlike its natural top-to-bottom reading order) so its
@@ -1585,6 +1606,7 @@ class _WeldDrawingPainter extends CustomPainter {
       extensionEnd: p(halfGap, member.rightBottom),
       fieldKey: FieldKey.rootFaceMm,
       avoidRects: [...tintRects, alphaRect],
+      primary: true,
     );
     final commonRects = _drawButtCommonMeasurements(
       canvas,
@@ -1646,6 +1668,7 @@ class _WeldDrawingPainter extends CustomPainter {
         ?commonRects.grooveDepth,
         hRect,
       ],
+      primary: true,
     );
     final chipRects = _drawTopChips(canvas, size, grooveTypeLabel);
     _drawCapDimensions(
@@ -1901,6 +1924,7 @@ class _WeldDrawingPainter extends CustomPainter {
       extensionStart: p(webHalfThickness, baseTopY),
       extensionEnd: p(toeX, baseTopY),
       fieldKey: FieldKey.legSizeMm,
+      primary: true,
     );
     final leg2Rect = _drawDimensionLine(
       canvas,
@@ -1920,6 +1944,7 @@ class _WeldDrawingPainter extends CustomPainter {
       extensionEnd: p(webHalfThickness, baseTopY),
       fieldKey: FieldKey.legSizeMm,
       avoidRects: [leg1Rect],
+      primary: true,
     );
     // Leaders are drawn last, so they nudge clear of the leg labels rather
     // than the other way around - reordering the leg labels after the
@@ -2076,6 +2101,7 @@ class _WeldDrawingPainter extends CustomPainter {
       extensionEnd: p(-halfGap, memberExtents.leftBottom),
       fieldKey: unequal ? FieldKey.thicknessAMm : FieldKey.thicknessMm,
       avoidRects: avoidRects,
+      primary: true,
     );
     Rect? bThicknessRect;
     if (unequal && rightThicknessLabelX != null) {
@@ -2092,6 +2118,7 @@ class _WeldDrawingPainter extends CustomPainter {
         extensionEnd: p(halfGap, memberExtents.rightBottom),
         fieldKey: FieldKey.thicknessBMm,
         avoidRects: [...avoidRects, thicknessRect],
+        primary: true,
       );
     }
     final rootGapRect = _drawDimensionLine(
@@ -2106,6 +2133,7 @@ class _WeldDrawingPainter extends CustomPainter {
       extensionEnd: p(halfGap, rootGapLabelY ?? thickness),
       fieldKey: FieldKey.rootGapMm,
       avoidRects: [...avoidRects, thicknessRect, ?bThicknessRect],
+      primary: true,
     );
     if (grooveY > 0) {
       final grooveDepthRect = _drawDimensionLine(
@@ -2529,6 +2557,7 @@ class _WeldDrawingPainter extends CustomPainter {
     Offset? extensionEnd,
     FieldKey? fieldKey,
     List<Rect> avoidRects = const [],
+    bool primary = false,
   }) {
     if (extensionStart != null) {
       canvas.drawLine(extensionStart, start, paint);
@@ -2552,6 +2581,7 @@ class _WeldDrawingPainter extends CustomPainter {
         labelCenter,
         fontSize,
         avoidRects,
+        primary: primary,
       );
     }
     _drawAnnotationLabel(
@@ -2561,8 +2591,15 @@ class _WeldDrawingPainter extends CustomPainter {
       labelCenter,
       fontSize: fontSize,
       technicalDimension: true,
+      primary: primary,
     );
-    final rect = _measurementLabelRect(labelSize, label, labelCenter, fontSize);
+    final rect = _measurementLabelRect(
+      labelSize,
+      label,
+      labelCenter,
+      fontSize,
+      primary: primary,
+    );
     _hotspot(fieldKey, rect);
     return rect;
   }
@@ -2604,6 +2641,7 @@ class _WeldDrawingPainter extends CustomPainter {
     required String text,
     FieldKey? fieldKey,
     List<Rect> avoidRects = const [],
+    bool primary = false,
   }) {
     final fontSize = _measurementFontSize(size);
     var resolvedCenter = labelCenter;
@@ -2614,6 +2652,7 @@ class _WeldDrawingPainter extends CustomPainter {
         labelCenter,
         fontSize,
         avoidRects,
+        primary: primary,
       );
     }
     canvas.drawCircle(start, 2.6, Paint()..color = paint.color);
@@ -2665,8 +2704,15 @@ class _WeldDrawingPainter extends CustomPainter {
       resolvedCenter,
       fontSize: fontSize,
       technicalDimension: true,
+      primary: primary,
     );
-    final rect = _measurementLabelRect(size, text, resolvedCenter, fontSize);
+    final rect = _measurementLabelRect(
+      size,
+      text,
+      resolvedCenter,
+      fontSize,
+      primary: primary,
+    );
     _hotspot(fieldKey, rect);
     return rect;
   }
@@ -2687,26 +2733,36 @@ class _WeldDrawingPainter extends CustomPainter {
     Size size,
     String text,
     Offset center,
-    double fontSize,
-  ) {
+    double fontSize, {
+    bool primary = false,
+  }) {
+    final resolvedFontSize = primary ? fontSize + _primaryFontBump : fontSize;
     final painter = TextPainter(
       text: TextSpan(
         text: text,
         style: TextStyle(
           fontFamily: 'Roboto',
-          fontSize: _annotationFontSize(size, fontSize),
-          fontWeight: _isTechnical ? FontWeight.w500 : FontWeight.w600,
+          fontSize: _annotationFontSize(size, resolvedFontSize),
+          fontWeight: primary
+              ? FontWeight.w700
+              : (_isTechnical ? FontWeight.w500 : FontWeight.w600),
           letterSpacing: _isTechnical ? 0.04 : 0.06,
         ),
       ),
       textDirection: TextDirection.ltr,
     )..layout();
-    final verticalPadding = _isTechnical ? 10.0 : 11.0;
-    final minWidth = _isTechnical ? 56.0 : 62.0;
-    final minHeight = _isTechnical ? 26.0 : 28.0;
+    final verticalPadding =
+        (_isTechnical ? 10.0 : 11.0) + (primary ? _primaryVerticalPadBump : 0);
+    final minWidth =
+        (_isTechnical ? 56.0 : 62.0) + (primary ? _primaryMinWidthBump : 0);
+    final minHeight =
+        (_isTechnical ? 26.0 : 28.0) + (primary ? _primaryMinHeightBump : 0);
     return Rect.fromCenter(
       center: center,
-      width: math.max(painter.width + 18.0, minWidth),
+      width: math.max(
+        painter.width + 18.0 + (primary ? _primaryHorizontalPadBump : 0),
+        minWidth,
+      ),
       height: math.max(painter.height + verticalPadding, minHeight),
     );
   }
@@ -2728,9 +2784,16 @@ class _WeldDrawingPainter extends CustomPainter {
     Size size,
     String text,
     Offset center,
-    double fontSize,
-  ) {
-    final rect = _unclampedMeasurementRect(size, text, center, fontSize);
+    double fontSize, {
+    bool primary = false,
+  }) {
+    final rect = _unclampedMeasurementRect(
+      size,
+      text,
+      center,
+      fontSize,
+      primary: primary,
+    );
     return Rect.fromLTWH(
       _safeClamp(rect.left, 10, size.width - rect.width - 10),
       rect.top,
@@ -2753,9 +2816,16 @@ class _WeldDrawingPainter extends CustomPainter {
     Size size,
     String text,
     Offset center,
-    double fontSize,
-  ) {
-    final rect = _unclampedMeasurementRect(size, text, center, fontSize);
+    double fontSize, {
+    bool primary = false,
+  }) {
+    final rect = _unclampedMeasurementRect(
+      size,
+      text,
+      center,
+      fontSize,
+      primary: primary,
+    );
     return Rect.fromLTWH(
       _safeClamp(rect.left, 10, size.width - rect.width - 10),
       _safeClamp(rect.top, 10, size.height - rect.height - 10),
@@ -2792,13 +2862,20 @@ class _WeldDrawingPainter extends CustomPainter {
     double fontSize,
     List<Rect> avoidRects, {
     double gap = 4.0,
+    bool primary = false,
   }) {
     var center = candidateCenter;
     for (var pass = 0; pass < avoidRects.length + 2; pass++) {
       var moved = false;
       for (final raw in avoidRects) {
         final avoid = raw.inflate(gap);
-        final rect = _resolutionMeasurementRect(size, text, center, fontSize);
+        final rect = _resolutionMeasurementRect(
+          size,
+          text,
+          center,
+          fontSize,
+          primary: primary,
+        );
         if (!rect.overlaps(avoid)) continue;
         final delta = avoid.bottom - rect.top;
         center = Offset(center.dx, center.dy + delta);
@@ -2860,6 +2937,7 @@ class _WeldDrawingPainter extends CustomPainter {
     FontWeight weight = FontWeight.w600,
     bool technicalDimension = false,
     List<Rect> avoidRects = const [],
+    bool primary = false,
   }) {
     var resolvedCenter = center;
     if (avoidRects.isNotEmpty) {
@@ -2869,6 +2947,7 @@ class _WeldDrawingPainter extends CustomPainter {
         center,
         fontSize,
         avoidRects,
+        primary: primary,
       );
     }
     if (_isTechnical) {
@@ -2880,6 +2959,7 @@ class _WeldDrawingPainter extends CustomPainter {
         fontSize: fontSize,
         weight: technicalDimension ? FontWeight.w500 : weight,
         square: technicalDimension,
+        primary: primary,
       );
     }
 
@@ -2890,9 +2970,21 @@ class _WeldDrawingPainter extends CustomPainter {
       resolvedCenter,
       fontSize: fontSize,
       weight: weight,
+      primary: primary,
     );
   }
 
+  // Primary labels (the joint-prep numbers a welding engineer looks for
+  // first - thickness, root gap, bevel/groove angle, root face, fillet leg)
+  // reuse this same pill shape/clamping machinery as every other label, but
+  // swap the white-on-dark-text soft styling for a dark-filled, bold,
+  // slightly larger chip - a visual hierarchy on top of secondary/derived
+  // readings (groove depth, cap dimensions, process-tint annotations) that
+  // applies identically in both DrawingMode.visual and DrawingMode.technical.
+  // The size deltas here (`_primary*Bump` constants) MUST stay mirrored in
+  // [_unclampedMeasurementRect] - that function is what avoidRects/hotspots
+  // are computed from, so a mismatch here would silently desync the
+  // collision-avoidance/tap-target rect from what's actually painted.
   Rect _drawTechnicalLabel(
     Canvas canvas,
     Size size,
@@ -2901,24 +2993,30 @@ class _WeldDrawingPainter extends CustomPainter {
     double fontSize = 12,
     FontWeight weight = FontWeight.w600,
     bool square = false,
+    bool primary = false,
   }) {
+    final resolvedFontSize = primary ? fontSize + _primaryFontBump : fontSize;
     final painter = TextPainter(
       text: TextSpan(
         text: text,
         style: TextStyle(
           fontFamily: 'Roboto',
-          color: _labelColor,
-          fontSize: _annotationFontSize(size, fontSize),
-          fontWeight: weight,
+          color: primary ? _primaryTextColor : _labelColor,
+          fontSize: _annotationFontSize(size, resolvedFontSize),
+          fontWeight: primary ? FontWeight.w700 : weight,
           letterSpacing: 0.04,
         ),
       ),
       textDirection: TextDirection.ltr,
     )..layout();
-    final horizontalPadding = square ? 18.0 : 20.0;
-    final verticalPadding = square ? 10.0 : 11.0;
-    final minWidth = square ? 56.0 : 66.0;
-    final minHeight = square ? 26.0 : 28.0;
+    final horizontalPadding =
+        (square ? 18.0 : 20.0) + (primary ? _primaryHorizontalPadBump : 0);
+    final verticalPadding =
+        (square ? 10.0 : 11.0) + (primary ? _primaryVerticalPadBump : 0);
+    final minWidth =
+        (square ? 56.0 : 66.0) + (primary ? _primaryMinWidthBump : 0);
+    final minHeight =
+        (square ? 26.0 : 28.0) + (primary ? _primaryMinHeightBump : 0);
     final rect = Rect.fromCenter(
       center: center,
       width: math.max(painter.width + horizontalPadding, minWidth),
@@ -2931,11 +3029,11 @@ class _WeldDrawingPainter extends CustomPainter {
       rect.height,
     );
     final fillPaint = Paint()
-      ..color = const Color(0xF2FFFFFF)
+      ..color = primary ? _primaryFillColor : const Color(0xF2FFFFFF)
       ..style = PaintingStyle.fill
       ..isAntiAlias = true;
     final strokePaint = Paint()
-      ..color = const Color(0x8878909C)
+      ..color = primary ? _primaryStrokeColor : const Color(0x8878909C)
       ..style = PaintingStyle.stroke
       ..strokeWidth = square ? 0.72 : 0.82
       ..isAntiAlias = true;
@@ -2973,26 +3071,34 @@ class _WeldDrawingPainter extends CustomPainter {
     Offset center, {
     double fontSize = 12,
     FontWeight weight = FontWeight.w600,
+    bool primary = false,
   }) {
+    final resolvedFontSize = primary ? fontSize + _primaryFontBump : fontSize;
     final painter = TextPainter(
       text: TextSpan(
         text: text,
         style: TextStyle(
           fontFamily: 'Roboto',
-          color: _labelColor,
-          fontSize: _annotationFontSize(size, fontSize),
-          fontWeight: weight,
+          color: primary ? _primaryTextColor : _labelColor,
+          fontSize: _annotationFontSize(size, resolvedFontSize),
+          fontWeight: primary ? FontWeight.w700 : weight,
           letterSpacing: 0.06,
         ),
       ),
       textDirection: TextDirection.ltr,
     )..layout();
-    final horizontalPadding = 18.0;
-    final verticalPadding = 11.0;
+    final horizontalPadding = 18.0 + (primary ? _primaryHorizontalPadBump : 0);
+    final verticalPadding = 11.0 + (primary ? _primaryVerticalPadBump : 0);
     final rect = Rect.fromCenter(
       center: center,
-      width: math.max(painter.width + horizontalPadding, 62.0),
-      height: math.max(painter.height + verticalPadding, 28.0),
+      width: math.max(
+        painter.width + horizontalPadding,
+        62.0 + (primary ? _primaryMinWidthBump : 0),
+      ),
+      height: math.max(
+        painter.height + verticalPadding,
+        28.0 + (primary ? _primaryMinHeightBump : 0),
+      ),
     );
     final safeRect = Rect.fromLTWH(
       _safeClamp(rect.left, 10, size.width - rect.width - 10),
@@ -3004,13 +3110,13 @@ class _WeldDrawingPainter extends CustomPainter {
     canvas.drawRRect(
       rrect,
       Paint()
-        ..color = _softLabelFill
+        ..color = primary ? _primaryFillColor : _softLabelFill
         ..style = PaintingStyle.fill,
     );
     canvas.drawRRect(
       rrect,
       Paint()
-        ..color = _softLabelStroke
+        ..color = primary ? _primaryStrokeColor : _softLabelStroke
         ..style = PaintingStyle.stroke
         ..strokeWidth = 1,
     );
