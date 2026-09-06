@@ -4,9 +4,12 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:weld_consumable_calculator/app.dart';
 import 'package:weld_consumable_calculator/core/welding_defaults.dart';
+import 'package:weld_consumable_calculator/l10n/app_language.dart';
+import 'package:weld_consumable_calculator/l10n/strings.dart';
 import 'package:weld_consumable_calculator/models/consumable_selection.dart';
 import 'package:weld_consumable_calculator/models/weld_models.dart';
 import 'package:weld_consumable_calculator/services/weld_pdf_report_service.dart';
+import 'package:weld_consumable_calculator/ui/calculator_page/calculator_page_models.dart';
 
 Future<void> _pumpPastSplash(WidgetTester tester) async {
   await tester.pumpWidget(const WeldConsumableCalculatorApp());
@@ -40,6 +43,10 @@ Future<void> _continueWizardStep(WidgetTester tester) async {
 }
 
 void main() {
+  // buildReportBytes loads bundled fonts via rootBundle, which needs a
+  // Flutter binding even for the plain (non-testWidgets) PDF test below.
+  TestWidgetsFlutterBinding.ensureInitialized();
+
   setUp(() {
     SharedPreferences.setMockInitialValues({});
   });
@@ -145,7 +152,10 @@ void main() {
           ConsumablePreset.e7018a1,
         ),
         result: result,
-        basisEntries: const [MapEntry('Density', '7.85 g/cm3')],
+        basisEntries: const [
+          CalculationBasisItem(BasisKey.density, 'Density', '7.85 g/cm3'),
+        ],
+        strings: stringsFor(AppLanguage.en),
       );
 
       expect(bytes, isNotEmpty);

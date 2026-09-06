@@ -1,11 +1,20 @@
 import 'dart:io';
 
+import 'package:flutter_test/flutter_test.dart';
 import 'package:weld_consumable_calculator/core/weld_calculator.dart';
+import 'package:weld_consumable_calculator/l10n/app_language.dart';
+import 'package:weld_consumable_calculator/l10n/strings.dart';
 import 'package:weld_consumable_calculator/models/consumable_selection.dart';
 import 'package:weld_consumable_calculator/models/weld_models.dart';
 import 'package:weld_consumable_calculator/services/weld_pdf_report_service.dart';
+import 'package:weld_consumable_calculator/ui/calculator_page/calculator_page_models.dart';
 
 Future<void> main() async {
+  // buildReportBytes now loads bundled fonts via rootBundle, which requires
+  // a Flutter binding -- this script is invoked with `flutter test
+  // work/generate_report_preview.dart` rather than plain `dart run` for
+  // that reason.
+  TestWidgetsFlutterBinding.ensureInitialized();
   const calculator = WeldCalculator();
   const reportService = WeldPdfReportService();
 
@@ -37,25 +46,50 @@ Future<void> main() async {
     ),
     result: result,
     basisEntries: const [
-      MapEntry('Process', 'GTAW + SMAW'),
-      MapEntry('Rate Basis', 'Estimated'),
-      MapEntry('Joint', 'Pipe Butt Weld'),
-      MapEntry('Geometry', 'Equal'),
-      MapEntry('Groove', 'Double V'),
-      MapEntry('Classification', 'AWS A5.18 + AWS A5.1 ER70S-2 + E7018'),
-      MapEntry('Filler Metal Family', 'Carbon Steel'),
-      MapEntry('Density', '7.85 g/cm3'),
-      MapEntry('Waste Allowance', '10%'),
-      MapEntry('Quantity', '4'),
-      MapEntry('Pipe OD', '323.9 mm'),
-      MapEntry('Thickness', '16 mm'),
-      MapEntry('Root Gap', '3 mm'),
-      MapEntry('Root Face per Side', '2 mm'),
-      MapEntry('Bevel Angle', '30 deg'),
-      MapEntry('GTAW Transition Depth', '4 mm'),
-      MapEntry('GTAW Wire Diameter', '2.4 mm'),
-      MapEntry('SMAW Electrode Diameter', '4.0 mm'),
+      CalculationBasisItem(BasisKey.process, 'Process', 'GTAW + SMAW'),
+      CalculationBasisItem(BasisKey.rateBasis, 'Rate Basis', 'Estimated'),
+      CalculationBasisItem(BasisKey.joint, 'Joint', 'Pipe Butt Weld'),
+      CalculationBasisItem(BasisKey.geometry, 'Geometry', 'Equal'),
+      CalculationBasisItem(BasisKey.groove, 'Groove', 'Double V'),
+      CalculationBasisItem(
+        BasisKey.classification,
+        'Classification',
+        'AWS A5.18 + AWS A5.1 ER70S-2 + E7018',
+      ),
+      CalculationBasisItem(
+        BasisKey.fillerMetalFamily,
+        'Filler Metal Family',
+        'Carbon Steel',
+      ),
+      CalculationBasisItem(BasisKey.density, 'Density', '7.85 g/cm3'),
+      CalculationBasisItem(BasisKey.wasteAllowance, 'Waste Allowance', '10%'),
+      CalculationBasisItem(BasisKey.quantity, 'Quantity', '4'),
+      CalculationBasisItem(BasisKey.pipeOd, 'Pipe OD', '323.9 mm'),
+      CalculationBasisItem(BasisKey.thickness, 'Thickness', '16 mm'),
+      CalculationBasisItem(BasisKey.rootGap, 'Root Gap', '3 mm'),
+      CalculationBasisItem(
+        BasisKey.rootFacePerSide,
+        'Root Face per Side',
+        '2 mm',
+      ),
+      CalculationBasisItem(BasisKey.bevelAngle, 'Bevel Angle', '30 deg'),
+      CalculationBasisItem(
+        BasisKey.gtawTransitionDepth,
+        'GTAW Transition Depth',
+        '4 mm',
+      ),
+      CalculationBasisItem(
+        BasisKey.gtawWireDiameter,
+        'GTAW Wire Diameter',
+        '2.4 mm',
+      ),
+      CalculationBasisItem(
+        BasisKey.smawElectrodeDiameter,
+        'SMAW Electrode Diameter',
+        '4.0 mm',
+      ),
     ],
+    strings: stringsFor(AppLanguage.en),
   );
 
   final outputDir = Directory(

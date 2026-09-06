@@ -1,11 +1,14 @@
 import 'dart:typed_data';
 
+import 'package:flutter/services.dart' show rootBundle;
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 
 import '../core/basis_value_parsing.dart';
+import '../l10n/strings.dart';
 import '../models/consumable_selection.dart';
 import '../models/weld_models.dart';
+import '../ui/calculator_page/calculator_page_models.dart';
 
 class WeldPdfReportService {
   const WeldPdfReportService();
@@ -20,31 +23,55 @@ class WeldPdfReportService {
   static const _line = PdfColor.fromInt(0xFFD7E1E7);
   static const _panel = PdfColor.fromInt(0xFFF6FAFC);
 
+  /// Loaded once per report build (rather than cached at the class level) so
+  /// the service stays a stateless `const` -- the font bytes are small
+  /// enough that re-loading per export is not a meaningful cost.
+  Future<pw.ThemeData> _buildTheme() async {
+    final notoRegular = pw.Font.ttf(
+      await rootBundle.load('assets/fonts/NotoSans-Regular.ttf'),
+    );
+    final notoBold = pw.Font.ttf(
+      await rootBundle.load('assets/fonts/NotoSans-Bold.ttf'),
+    );
+    final notoDevanagari = pw.Font.ttf(
+      await rootBundle.load('assets/fonts/NotoSansDevanagari-Regular.ttf'),
+    );
+    return pw.ThemeData.withFont(
+      base: notoRegular,
+      bold: notoBold,
+      fontFallback: [notoDevanagari],
+    );
+  }
+
   Future<Uint8List> buildReportBytes({
     required JointType jointType,
     required GrooveType grooveType,
     required WeldingProcess weldingProcess,
     required ConsumableSelection consumableSelection,
     required WeldCalculationResult result,
-    required List<MapEntry<String, String>> basisEntries,
+    required List<CalculationBasisItem> basisEntries,
+    required L10nStrings strings,
   }) async {
     final generatedAt = DateTime.now();
+    final theme = await _buildTheme();
     final document = pw.Document(
-      title: 'Weld Estimation Report',
+      title: strings.pdfDocTitle,
       author: 'Varyos Weld',
       creator: 'Varyos Weld',
-      subject: 'Weld consumable estimation report',
+      subject: strings.pdfDocSubject,
+      theme: theme,
     );
 
     final reportId =
         'VW-${generatedAt.year}${_two(generatedAt.month)}${_two(generatedAt.day)}-${_two(generatedAt.hour)}${_two(generatedAt.minute)}${_two(generatedAt.second)}';
-    final indicators = _buildIndicators(result, basisEntries);
-    final basisSections = _groupBasisEntries(basisEntries);
+    final indicators = _buildIndicators(result, basisEntries, strings);
+    final basisSections = _groupBasisEntries(basisEntries, strings);
 
     document.addPage(
       pw.Page(
         pageFormat: PdfPageFormat.a4,
         margin: pw.EdgeInsets.zero,
+        theme: theme,
         build: (context) => _buildCoverPage(
           reportId: reportId,
           jointType: jointType,
@@ -53,6 +80,7 @@ class WeldPdfReportService {
           consumableSelection: consumableSelection,
           generatedAt: generatedAt,
           result: result,
+          strings: strings,
         ),
       ),
     );
@@ -62,6 +90,7 @@ class WeldPdfReportService {
         pageTheme: pw.PageTheme(
           pageFormat: PdfPageFormat.a4,
           margin: const pw.EdgeInsets.fromLTRB(28, 28, 28, 32),
+          theme: theme,
         ),
         footer: (context) => pw.Container(
           margin: const pw.EdgeInsets.only(top: 14),
@@ -81,7 +110,9 @@ class WeldPdfReportService {
                 ),
               ),
               pw.Text(
-                'Page ${context.pageNumber} / ${context.pagesCount}',
+                strings.pdfFooterPage
+                    .replaceFirst('{current}', '${context.pageNumber}')
+                    .replaceFirst('{total}', '${context.pagesCount}'),
                 style: const pw.TextStyle(color: _muted, fontSize: 9),
               ),
             ],
@@ -95,56 +126,57 @@ class WeldPdfReportService {
             weldingProcess: weldingProcess,
             consumableSelection: consumableSelection,
             generatedAt: generatedAt,
+            strings: strings,
           ),
           pw.SizedBox(height: 16),
-          _buildReadinessBanner(result, indicators),
+          _buildReadinessBanner(result, indicators, strings),
           pw.SizedBox(height: 18),
           _buildSectionTitle(
-            'Executive Summary',
-            'Primary estimate outputs prepared for engineering review and shop planning.',
+            strings.pdfSectionExecutiveSummaryTitle,
+            strings.pdfSectionExecutiveSummarySubtitle,
           ),
           pw.SizedBox(height: 10),
-          _buildMetricGrid(result),
+          _buildMetricGrid(result, strings),
           pw.SizedBox(height: 18),
           _buildSectionTitle(
-            'Planning Indicators',
-            'Normalized performance indicators for comparing joints, labor load, and consumable demand.',
+            strings.pdfSectionPlanningIndicatorsTitle,
+            strings.pdfSectionPlanningIndicatorsSubtitle,
           ),
           pw.SizedBox(height: 10),
           _buildIndicatorGrid(indicators),
           pw.SizedBox(height: 18),
           if (result.processBreakdowns.length > 1) ...[
             _buildSectionTitle(
-              'Process Breakdown',
-              'Split estimate showing deposited weld metal, filler demand, and arc-on time by process segment.',
+              strings.pdfSectionProcessBreakdownTitle,
+              strings.pdfSectionProcessBreakdownSubtitle,
             ),
             pw.SizedBox(height: 10),
-            _buildProcessBreakdownTable(result.processBreakdowns),
+            _buildProcessBreakdownTable(result.processBreakdowns, strings),
             pw.SizedBox(height: 18),
           ],
           _buildSectionTitle(
-            'Engineering Basis',
-            'Input selections and governing geometry used to calculate the estimate.',
+            strings.pdfSectionEngineeringBasisTitle,
+            strings.pdfSectionEngineeringBasisSubtitle,
           ),
           pw.SizedBox(height: 10),
           for (final section in basisSections) ...[
-            ..._buildBasisSectionWidgets(section),
+            ..._buildBasisSectionWidgets(section, strings),
             pw.SizedBox(height: 12),
           ],
           pw.NewPage(),
           _buildSectionTitle(
-            'Calculation Method',
-            'Formula basis used in the application for weld volume, weld metal, filler consumption, and arc-on time.',
+            strings.pdfSectionCalculationMethodTitle,
+            strings.pdfSectionCalculationMethodSubtitle,
           ),
           pw.SizedBox(height: 10),
-          _buildMethodologyPanel(),
+          _buildMethodologyPanel(strings),
           pw.SizedBox(height: 18),
           _buildSectionTitle(
-            'Engineering Notes',
-            'Practical interpretation notes for planning, estimating, and report handoff.',
+            strings.pdfSectionEngineeringNotesTitle,
+            strings.pdfSectionEngineeringNotesSubtitle,
           ),
           pw.SizedBox(height: 10),
-          _buildEngineeringNotes(),
+          _buildEngineeringNotes(strings),
         ],
       ),
     );
@@ -161,7 +193,8 @@ class WeldPdfReportService {
     required WeldingProcess weldingProcess,
     required ConsumableSelection consumableSelection,
     required WeldCalculationResult result,
-    required List<MapEntry<String, String>> basisEntries,
+    required List<CalculationBasisItem> basisEntries,
+    required L10nStrings strings,
   }) async {
     final generatedAt = DateTime.now();
     final bytes = await buildReportBytes(
@@ -171,6 +204,7 @@ class WeldPdfReportService {
       consumableSelection: consumableSelection,
       result: result,
       basisEntries: basisEntries,
+      strings: strings,
     );
     final fileName = _buildFileName(
       jointType: jointType,
@@ -190,6 +224,7 @@ class WeldPdfReportService {
     required ConsumableSelection consumableSelection,
     required DateTime generatedAt,
     required WeldCalculationResult result,
+    required L10nStrings strings,
   }) {
     return pw.Container(
       width: double.infinity,
@@ -239,7 +274,7 @@ class WeldPdfReportService {
             ),
             pw.Spacer(flex: 2),
             pw.Text(
-              'Weld Engineering Report',
+              strings.pdfReportTitle,
               style: pw.TextStyle(
                 color: PdfColors.white,
                 fontSize: 34,
@@ -248,7 +283,7 @@ class WeldPdfReportService {
             ),
             pw.SizedBox(height: 10),
             pw.Text(
-              'Professional estimate of weld geometry, weld metal, filler metal consumption, and process-based arc-on time, prepared for engineering review and shop planning.',
+              strings.pdfCoverSubtitle,
               style: const pw.TextStyle(
                 color: PdfColors.white,
                 fontSize: 12,
@@ -260,11 +295,14 @@ class WeldPdfReportService {
               spacing: 10,
               runSpacing: 10,
               children: [
-                _summaryChip('Joint', jointType.label),
-                _summaryChip('Groove', grooveType.label),
-                _summaryChip('Process', weldingProcess.label),
+                _summaryChip(strings.basisJoint, jointType.labelFor(strings)),
                 _summaryChip(
-                  'Classification',
+                  strings.basisGroove,
+                  grooveType.labelFor(strings),
+                ),
+                _summaryChip(strings.basisProcess, weldingProcess.label),
+                _summaryChip(
+                  strings.basisClassification,
                   _classificationLabel(consumableSelection),
                 ),
               ],
@@ -281,15 +319,15 @@ class WeldPdfReportService {
                 mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                 children: [
                   _coverHeadline(
-                    'Filler Metal Consumption',
+                    strings.metricFillerMetalConsumption,
                     '${_number(result.fillerKg, 3)} kg',
                   ),
                   _coverHeadline(
-                    'Estimated Arc-On Time',
+                    strings.metricEstimatedArcOnTime,
                     '${_number(result.arcTimeHours, 3)} h',
                   ),
                   _coverHeadline(
-                    'Effective Deposition Rate',
+                    strings.metricEffectiveDepositionRate,
                     '${_number(result.depositionRateKgPerHour, 2)} kg/h',
                   ),
                 ],
@@ -310,14 +348,17 @@ class WeldPdfReportService {
                 mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                 children: [
                   pw.Text(
-                    'Report ID: $reportId',
+                    strings.pdfReportIdLabel.replaceFirst('{id}', reportId),
                     style: const pw.TextStyle(
                       color: PdfColors.white,
                       fontSize: 9.5,
                     ),
                   ),
                   pw.Text(
-                    'Generated ${generatedAt.year}-${_two(generatedAt.month)}-${_two(generatedAt.day)} ${_two(generatedAt.hour)}:${_two(generatedAt.minute)}',
+                    strings.pdfCoverGenerated.replaceFirst(
+                      '{date}',
+                      '${generatedAt.year}-${_two(generatedAt.month)}-${_two(generatedAt.day)} ${_two(generatedAt.hour)}:${_two(generatedAt.minute)}',
+                    ),
                     style: const pw.TextStyle(
                       color: PdfColors.white,
                       fontSize: 9.5,
@@ -415,6 +456,7 @@ class WeldPdfReportService {
     required WeldingProcess weldingProcess,
     required ConsumableSelection consumableSelection,
     required DateTime generatedAt,
+    required L10nStrings strings,
   }) {
     return pw.Container(
       padding: const pw.EdgeInsets.all(22),
@@ -469,7 +511,7 @@ class WeldPdfReportService {
                     ),
                     pw.SizedBox(height: 14),
                     pw.Text(
-                      'Weld Engineering Report',
+                      strings.pdfReportTitle,
                       style: pw.TextStyle(
                         color: PdfColors.white,
                         fontSize: 24,
@@ -478,7 +520,7 @@ class WeldPdfReportService {
                     ),
                     pw.SizedBox(height: 8),
                     pw.Text(
-                      'Professional estimate of weld geometry, weld metal, filler metal consumption, and process-based arc-on time for planning and review.',
+                      strings.pdfHeaderSubtitle,
                       style: const pw.TextStyle(
                         color: PdfColors.white,
                         fontSize: 10.5,
@@ -499,7 +541,7 @@ class WeldPdfReportService {
                   crossAxisAlignment: pw.CrossAxisAlignment.start,
                   children: [
                     pw.Text(
-                      'REPORT ID',
+                      strings.pdfReportIdCaption,
                       style: pw.TextStyle(
                         color: PdfColors.white,
                         fontSize: 8.5,
@@ -526,16 +568,19 @@ class WeldPdfReportService {
             spacing: 10,
             runSpacing: 10,
             children: [
-              _summaryChip('Joint', jointType.label),
-              _summaryChip('Groove', grooveType.label),
-              _summaryChip('Process', weldingProcess.label),
+              _summaryChip(strings.basisJoint, jointType.labelFor(strings)),
+              _summaryChip(strings.basisGroove, grooveType.labelFor(strings)),
+              _summaryChip(strings.basisProcess, weldingProcess.label),
               _summaryChip(
-                'Classification',
+                strings.basisClassification,
                 _classificationLabel(consumableSelection),
               ),
-              _summaryChip('Family', consumableSelection.family.label),
               _summaryChip(
-                'Generated',
+                strings.fillerMaterialFieldFamily,
+                consumableSelection.family.labelFor(strings),
+              ),
+              _summaryChip(
+                strings.pdfChipGenerated,
                 '${generatedAt.year}-${_two(generatedAt.month)}-${_two(generatedAt.day)} ${_two(generatedAt.hour)}:${_two(generatedAt.minute)}',
               ),
             ],
@@ -548,12 +593,13 @@ class WeldPdfReportService {
   pw.Widget _buildReadinessBanner(
     WeldCalculationResult result,
     List<_ReportIndicator> indicators,
+    L10nStrings strings,
   ) {
     final fillerPerMeter = indicators
-        .firstWhere((item) => item.label == 'Filler per Meter')
+        .firstWhere((item) => item.kind == _IndicatorKind.fillerPerMeter)
         .formatted;
     final arcPerMeter = indicators
-        .firstWhere((item) => item.label == 'Arc-On per Meter')
+        .firstWhere((item) => item.kind == _IndicatorKind.arcOnPerMeter)
         .formatted;
 
     return pw.Container(
@@ -574,7 +620,7 @@ class WeldPdfReportService {
               borderRadius: pw.BorderRadius.circular(8),
             ),
             child: pw.Text(
-              'ESTIMATE READY',
+              strings.resultsEstimateReadyBadge,
               style: pw.TextStyle(
                 color: PdfColors.white,
                 fontSize: 9,
@@ -585,7 +631,9 @@ class WeldPdfReportService {
           ),
           pw.SizedBox(height: 10),
           pw.Text(
-            'Estimated filler metal consumption is ${_number(result.fillerKg, 3)} kg with ${_number(result.arcTimeHours, 3)} h of arc-on time.',
+            strings.resultsHighlightSentence
+                .replaceFirst('{filler}', _number(result.fillerKg, 3))
+                .replaceFirst('{arcTime}', _number(result.arcTimeHours, 3)),
             style: pw.TextStyle(
               color: _ink,
               fontSize: 13.2,
@@ -598,11 +646,11 @@ class WeldPdfReportService {
             runSpacing: 8,
             children: [
               _miniChip(
-                'Effective Deposition Rate',
+                strings.metricEffectiveDepositionRate,
                 '${_number(result.depositionRateKgPerHour, 2)} kg/h',
               ),
-              _miniChip('Filler per Meter', fillerPerMeter),
-              _miniChip('Arc-On per Meter', arcPerMeter),
+              _miniChip(strings.resultsHighlightFillerPerMeter, fillerPerMeter),
+              _miniChip(strings.resultsHighlightArcOnPerMeter, arcPerMeter),
             ],
           ),
         ],
@@ -610,21 +658,29 @@ class WeldPdfReportService {
     );
   }
 
-  pw.Widget _buildMetricGrid(WeldCalculationResult result) {
+  pw.Widget _buildMetricGrid(WeldCalculationResult result, L10nStrings strings) {
     final metrics = [
-      ('Weld Area', _number(result.areaMm2, 2), 'mm2'),
-      ('Weld Length', _number(result.lengthMm, 2), 'mm'),
-      ('Weld Metal Volume', _number(result.volumeCm3, 3), 'cm3'),
-      ('Weld Metal Weight', _number(result.weldMetalKg, 3), 'kg'),
-      ('Filler Metal Consumption', _number(result.fillerKg, 3), 'kg'),
-      ('Estimated Arc-On Time', _number(result.arcTimeHours, 3), 'h'),
+      (strings.metricWeldArea, _number(result.areaMm2, 2), 'mm2'),
+      (strings.metricWeldLength, _number(result.lengthMm, 2), 'mm'),
+      (strings.metricWeldMetalVolume, _number(result.volumeCm3, 3), 'cm3'),
+      (strings.metricWeldMetalWeight, _number(result.weldMetalKg, 3), 'kg'),
       (
-        'Effective Deposition Efficiency',
+        strings.metricFillerMetalConsumption,
+        _number(result.fillerKg, 3),
+        'kg',
+      ),
+      (
+        strings.metricEstimatedArcOnTime,
+        _number(result.arcTimeHours, 3),
+        'h',
+      ),
+      (
+        strings.metricEffectiveDepositionEfficiency,
         _percent(result.depositionEfficiency),
         '',
       ),
       (
-        'Effective Deposition Rate',
+        strings.metricEffectiveDepositionRate,
         _number(result.depositionRateKgPerHour, 2),
         'kg/h',
       ),
@@ -734,7 +790,10 @@ class WeldPdfReportService {
     );
   }
 
-  pw.Widget _buildProcessBreakdownTable(List<ProcessBreakdown> breakdowns) {
+  pw.Widget _buildProcessBreakdownTable(
+    List<ProcessBreakdown> breakdowns,
+    L10nStrings strings,
+  ) {
     return pw.TableHelper.fromTextArray(
       border: pw.TableBorder.all(color: _line, width: 0.7),
       headerDecoration: const pw.BoxDecoration(color: _brandTealSoft),
@@ -745,14 +804,14 @@ class WeldPdfReportService {
       ),
       cellStyle: const pw.TextStyle(color: _ink, fontSize: 9.2),
       cellPadding: const pw.EdgeInsets.symmetric(horizontal: 8, vertical: 7),
-      headers: const [
-        'Process',
-        'Area Share',
-        'Weld Metal (kg)',
-        'Filler (kg)',
-        'Arc-On Time (h)',
-        'Rate (kg/h)',
-        'Efficiency',
+      headers: [
+        strings.basisProcess,
+        strings.pdfBreakdownColAreaShare,
+        strings.pdfBreakdownColWeldMetalKg,
+        strings.pdfBreakdownColFillerKg,
+        strings.pdfBreakdownColArcOnTimeH,
+        strings.pdfBreakdownColRateKgPerH,
+        strings.pdfBreakdownColEfficiency,
       ],
       data: [
         for (final breakdown in breakdowns)
@@ -776,7 +835,10 @@ class WeldPdfReportService {
   /// border, and all) gets pushed as one unit, leaving an empty decorated
   /// box behind and the table orphaned on the next page. Two independent
   /// top-level widgets, by contrast, each break cleanly on their own.
-  List<pw.Widget> _buildBasisSectionWidgets(_BasisSection section) {
+  List<pw.Widget> _buildBasisSectionWidgets(
+    _BasisSection section,
+    L10nStrings strings,
+  ) {
     return [
       pw.Container(
         width: double.infinity,
@@ -814,20 +876,21 @@ class WeldPdfReportService {
         rowDecoration: pw.BoxDecoration(color: section.accentBackground),
         cellStyle: const pw.TextStyle(color: _ink, fontSize: 9.4),
         cellPadding: const pw.EdgeInsets.symmetric(horizontal: 8, vertical: 7),
-        headers: const ['Parameter', 'Value'],
+        headers: [strings.pdfBasisColParameter, strings.pdfBasisColValue],
         data: [
-          for (final entry in section.entries) [entry.key, entry.value],
+          for (final item in section.entries)
+            [item.key.labelFor(strings), item.localizedValue],
         ],
       ),
     ];
   }
 
-  pw.Widget _buildMethodologyPanel() {
+  pw.Widget _buildMethodologyPanel(L10nStrings strings) {
     final formulas = [
-      'Volume (cm3) = Area (mm2) x Length (mm) / 1000',
-      'Weld Metal (kg) = Volume (cm3) x Density (g/cm3) / 1000',
-      'Filler Consumption (kg) = Weld Metal / Deposition Efficiency x (1 + Waste / 100)',
-      'Arc-On Time (h) = Filler Consumption / Deposition Rate',
+      strings.pdfFormulaVolume,
+      strings.pdfFormulaWeldMetal,
+      strings.pdfFormulaFillerConsumption,
+      strings.pdfFormulaArcOnTime,
     ];
 
     return pw.Container(
@@ -870,14 +933,14 @@ class WeldPdfReportService {
     );
   }
 
-  pw.Widget _buildEngineeringNotes() {
+  pw.Widget _buildEngineeringNotes(L10nStrings strings) {
     final notes = [
-      'Arc-on time covers active welding time only. Fit-up, tacking, interpass cleaning, repositioning, and inspection time are excluded.',
-      'Filler metal consumption includes deposition efficiency loss and the entered waste allowance. It should be treated as planning consumption, not exact issued weight.',
-      'Combined GTAW + SMAW output distributes weld metal and time by calculated process share using the entered transition depth.',
-      'Deposition efficiency factors used above (SMAW ~65%, FCAW ~85%, GMAW ~90%, GTAW ~95%) reflect typical industry ranges, consistent with figures published in Lincoln Electric\'s Procedure Handbook of Arc Welding.',
-      'This report is intended for estimating and engineering planning. Approved project documentation, client specifications, and production controls must always take precedence.',
-      'This is a first-pass planning estimate - confirm against your qualified WPS and a test coupon before production use.',
+      strings.pdfNote1,
+      strings.pdfNote2,
+      strings.pdfNote3,
+      strings.pdfNote4,
+      strings.pdfNote5,
+      strings.pdfNote6,
     ];
 
     return pw.Container(
@@ -926,9 +989,11 @@ class WeldPdfReportService {
 
   List<_ReportIndicator> _buildIndicators(
     WeldCalculationResult result,
-    List<MapEntry<String, String>> basisEntries,
+    List<CalculationBasisItem> basisEntries,
+    L10nStrings strings,
   ) {
-    final quantity = _basisValueAsDouble(basisEntries, 'Quantity') ?? 1.0;
+    final quantity =
+        _basisValueAsDouble(basisEntries, BasisKey.quantity) ?? 1.0;
     final totalLengthMeters = result.lengthMm / 1000;
     final fillerPerMeter = totalLengthMeters > 0
         ? result.fillerKg / totalLengthMeters
@@ -954,85 +1019,97 @@ class WeldPdfReportService {
 
     return [
       _ReportIndicator(
-        'Filler per Meter',
+        _IndicatorKind.fillerPerMeter,
+        strings.resultsHighlightFillerPerMeter,
         '${_number(fillerPerMeter, 3)} kg/m',
       ),
       _ReportIndicator(
-        'Weld Metal per Meter',
+        _IndicatorKind.weldMetalPerMeter,
+        strings.insightWeldMetalPerMeter,
         '${_number(weldMetalPerMeter, 3)} kg/m',
       ),
       _ReportIndicator(
-        'Arc-On per Meter',
+        _IndicatorKind.arcOnPerMeter,
+        strings.resultsHighlightArcOnPerMeter,
         '${_number(arcMinutesPerMeter, 2)} min/m',
       ),
       _ReportIndicator(
-        'Filler per Joint',
+        _IndicatorKind.fillerPerJoint,
+        strings.insightFillerPerJoint,
         '${_number(fillerPerJoint, 3)} kg/joint',
       ),
       _ReportIndicator(
-        'Arc-On per Joint',
+        _IndicatorKind.arcOnPerJoint,
+        strings.insightArcOnPerJoint,
         '${_number(arcMinutesPerJoint, 2)} min/joint',
       ),
       _ReportIndicator(
-        'Efficiency Loss Basis',
+        _IndicatorKind.efficiencyLossBasis,
+        strings.insightEfficiencyLossBasis,
         '${_number(efficiencyLossKg, 3)} kg',
       ),
       _ReportIndicator(
-        'Waste Allowance Basis',
+        _IndicatorKind.wasteAllowanceBasis,
+        strings.insightWasteAllowanceBasis,
         '${_number(wasteAllowanceKg, 3)} kg',
       ),
-      _ReportIndicator('Consumption Multiplier', '${_number(multiplier, 3)} x'),
+      _ReportIndicator(
+        _IndicatorKind.consumptionMultiplier,
+        strings.insightConsumptionMultiplier,
+        '${_number(multiplier, 3)} x',
+      ),
     ];
   }
 
   List<_BasisSection> _groupBasisEntries(
-    List<MapEntry<String, String>> entries,
+    List<CalculationBasisItem> entries,
+    L10nStrings strings,
   ) {
     const setupOrder = [
-      'Process',
-      'Rate Basis',
-      'Input Preset',
-      'Saved Preset',
-      'Joint',
-      'Geometry',
-      'Alignment',
-      'Groove',
-      'Classification',
-      'Filler Metal Family',
-      'Density',
-      'Waste Allowance',
-      'Quantity',
+      BasisKey.process,
+      BasisKey.rateBasis,
+      BasisKey.inputPreset,
+      BasisKey.savedPreset,
+      BasisKey.joint,
+      BasisKey.geometry,
+      BasisKey.alignment,
+      BasisKey.groove,
+      BasisKey.classification,
+      BasisKey.fillerMetalFamily,
+      BasisKey.density,
+      BasisKey.wasteAllowance,
+      BasisKey.quantity,
     ];
     const geometryOrder = [
-      'Weld Length per Piece',
-      'Pipe OD',
-      'OD A',
-      'OD B',
-      'Reference OD',
-      'Thickness',
-      'Thickness A',
-      'Thickness B',
-      'Controlling Thickness',
-      'Root Gap',
-      'Root Face',
-      'Root Face per Side',
-      'Bevel Angle',
-      'Primary Bevel Angle',
-      'Secondary Bevel Angle',
-      'Break Height',
-      'Cap Overlap (each edge)',
-      'Cap Height',
-      'Fillet Leg Size',
+      BasisKey.weldLengthPerPiece,
+      BasisKey.pipeOd,
+      BasisKey.odA,
+      BasisKey.odB,
+      BasisKey.referenceOd,
+      BasisKey.thickness,
+      BasisKey.thicknessA,
+      BasisKey.thicknessB,
+      BasisKey.controllingThickness,
+      BasisKey.rootGap,
+      BasisKey.rootFace,
+      BasisKey.rootFacePerSide,
+      BasisKey.bevelAngle,
+      BasisKey.primaryBevelAngle,
+      BasisKey.secondaryBevelAngle,
+      BasisKey.breakHeight,
+      BasisKey.capOverlap,
+      BasisKey.capHeight,
+      BasisKey.filletLegSize,
     ];
     const processOrder = [
-      'User-defined Rate',
-      'Wire Diameter',
-      'Electrode Diameter',
-      'GTAW Transition Depth',
-      'GTAW Wire Diameter',
-      'SMAW Electrode Diameter',
-      'GTAW Deposition Rate',
-      'SMAW Deposition Rate',
+      BasisKey.userDefinedRate,
+      BasisKey.wireDiameter,
+      BasisKey.electrodeDiameter,
+      BasisKey.gtawTransitionDepth,
+      BasisKey.gtawWireDiameter,
+      BasisKey.smawElectrodeDiameter,
+      BasisKey.gtawDepositionRate,
+      BasisKey.smawDepositionRate,
     ];
 
     final setup = _orderedEntries(entries, setupOrder);
@@ -1060,28 +1137,28 @@ class WeldPdfReportService {
     return [
       if (setup.isNotEmpty)
         _BasisSection(
-          title: 'Setup and Assumptions',
+          title: strings.pdfBasisGroupSetup,
           entries: setup,
           accentColor: _brandTeal,
           accentBackground: _panel,
         ),
       if (geometry.isNotEmpty)
         _BasisSection(
-          title: 'Joint Geometry',
+          title: strings.pdfBasisGroupGeometry,
           entries: geometry,
           accentColor: _brandOrange,
           accentBackground: _brandOrangeSoft,
         ),
       if (process.isNotEmpty)
         _BasisSection(
-          title: 'Process Parameters',
+          title: strings.pdfBasisGroupProcess,
           entries: process,
           accentColor: _brandTeal2,
           accentBackground: _brandTealSoft,
         ),
       if (unclaimed.isNotEmpty)
         _BasisSection(
-          title: 'Other',
+          title: strings.pdfBasisGroupOther,
           entries: unclaimed,
           accentColor: _brandTeal2,
           accentBackground: _brandTealSoft,
@@ -1089,24 +1166,24 @@ class WeldPdfReportService {
     ];
   }
 
-  List<MapEntry<String, String>> _orderedEntries(
-    List<MapEntry<String, String>> source,
-    List<String> order,
+  List<CalculationBasisItem> _orderedEntries(
+    List<CalculationBasisItem> source,
+    List<BasisKey> order,
   ) {
-    final byKey = {for (final entry in source) entry.key: entry.value};
+    final byKey = {for (final item in source) item.key: item};
     return [
       for (final key in order)
-        if (byKey.containsKey(key)) MapEntry(key, byKey[key]!),
+        if (byKey.containsKey(key)) byKey[key]!,
     ];
   }
 
   double? _basisValueAsDouble(
-    List<MapEntry<String, String>> entries,
-    String label,
+    List<CalculationBasisItem> entries,
+    BasisKey key,
   ) {
-    for (final entry in entries) {
-      if (entry.key != label) continue;
-      return parseBasisNumber(entry.value);
+    for (final item in entries) {
+      if (item.key != key) continue;
+      return parseBasisNumber(item.value);
     }
     return null;
   }
@@ -1234,9 +1311,24 @@ class WeldPdfReportService {
   }
 }
 
-class _ReportIndicator {
-  const _ReportIndicator(this.label, this.formatted);
+// Identifies a [_ReportIndicator] independent of its (now localized) display
+// label, so lookups elsewhere (e.g. the readiness banner's mini chips) don't
+// have to match on translated text.
+enum _IndicatorKind {
+  fillerPerMeter,
+  weldMetalPerMeter,
+  arcOnPerMeter,
+  fillerPerJoint,
+  arcOnPerJoint,
+  efficiencyLossBasis,
+  wasteAllowanceBasis,
+  consumptionMultiplier,
+}
 
+class _ReportIndicator {
+  const _ReportIndicator(this.kind, this.label, this.formatted);
+
+  final _IndicatorKind kind;
   final String label;
   final String formatted;
 }
@@ -1250,7 +1342,7 @@ class _BasisSection {
   });
 
   final String title;
-  final List<MapEntry<String, String>> entries;
+  final List<CalculationBasisItem> entries;
   final PdfColor accentColor;
   final PdfColor accentBackground;
 }

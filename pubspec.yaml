@@ -95,3 +95,24 @@ flutter:
   #
   # For details regarding fonts from package dependencies,
   # see https://flutter.dev/to/font-from-package
+
+  # Bundled offline (rather than printing's PdfGoogleFonts, which fetches
+  # over network on first use) so the PDF report renders Cyrillic/Devanagari
+  # text without a network dependency. Noto Sans carries both Regular and
+  # Bold because it's the report's *base* font (covers Latin + Cyrillic), and
+  # the pdf package's bold fallback without a registered bold font is the
+  # Latin-only built-in Helvetica-Bold, which would tofu Cyrillic bold text.
+  # Noto Sans Devanagari is only ever used as a fontFallback substitute for
+  # individual unsupported runes (Devanagari isn't in Noto Sans), and that
+  # substitution mechanism always uses one fixed font regardless of the
+  # requested weight -- so a separate bold Devanagari file would never
+  # actually get used and is skipped.
+  fonts:
+    - family: Noto Sans
+      fonts:
+        - asset: assets/fonts/NotoSans-Regular.ttf
+        - asset: assets/fonts/NotoSans-Bold.ttf
+          weight: 700
+    - family: Noto Sans Devanagari
+      fonts:
+        - asset: assets/fonts/NotoSansDevanagari-Regular.ttf

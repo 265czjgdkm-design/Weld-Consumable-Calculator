@@ -3400,9 +3400,8 @@ class _CalculatorPageState extends State<CalculatorPage> {
     final result = _result;
     if (result == null || _isExportingPdf) return;
 
-    final basisEntries = _buildCalculationBasis()
-        .map((item) => MapEntry(item.label, item.value))
-        .toList();
+    final strings = AppLocaleScope.stringsOf(context);
+    final basisEntries = _buildCalculationBasis();
 
     setState(() => _isExportingPdf = true);
     try {
@@ -3413,6 +3412,7 @@ class _CalculatorPageState extends State<CalculatorPage> {
         consumableSelection: _consumableSelection,
         result: result,
         basisEntries: basisEntries,
+        strings: strings,
       );
       await exportPdfReport(report.bytes, report.fileName);
       // Persisting the report to local history is best-effort and must
@@ -3430,10 +3430,10 @@ class _CalculatorPageState extends State<CalculatorPage> {
         debugPrint('Failed to save PDF report to history: $error');
       }
       if (!mounted) return;
-      _showMessage('PDF report exported successfully.');
+      _showMessage(strings.pdfExportSuccessToast);
     } catch (_) {
       if (!mounted) return;
-      _showMessage('PDF export failed. Please try again.');
+      _showMessage(strings.pdfExportFailureToast);
     } finally {
       if (mounted) {
         setState(() => _isExportingPdf = false);

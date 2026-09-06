@@ -10,6 +10,7 @@ import 'package:weld_consumable_calculator/l10n/strings.dart';
 import 'package:weld_consumable_calculator/services/custom_filler_material_store.dart';
 import 'package:weld_consumable_calculator/services/user_preset_store.dart';
 import 'package:weld_consumable_calculator/services/weld_pdf_report_service.dart';
+import 'package:weld_consumable_calculator/ui/calculator_page/calculator_page_models.dart';
 
 final _strings = stringsFor(AppLanguage.en);
 
@@ -34,6 +35,10 @@ WeldInputPresetData _presetDataWith(ConsumableSelection selection) =>
     );
 
 void main() {
+  // buildReportBytes loads bundled fonts via rootBundle, which needs a
+  // Flutter binding even for the plain (non-testWidgets) PDF test below.
+  TestWidgetsFlutterBinding.ensureInitialized();
+
   setUp(() {
     SharedPreferences.setMockInitialValues({});
   });
@@ -199,7 +204,10 @@ void main() {
         weldingProcess: WeldingProcess.gmaw,
         consumableSelection: const CustomConsumableSelection(_customMaterial),
         result: result,
-        basisEntries: const [MapEntry('Density', '7.9 g/cm3')],
+        basisEntries: const [
+          CalculationBasisItem(BasisKey.density, 'Density', '7.9 g/cm3'),
+        ],
+        strings: _strings,
       );
 
       expect(bytes, isNotEmpty);

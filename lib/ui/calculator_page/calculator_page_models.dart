@@ -172,10 +172,10 @@ class CalculationBasisItem {
   ]) : localizedValue = localizedValue ?? value;
 
   final BasisKey key;
-  // Plain English -- weld_pdf_report_service.dart's PDF export consumes
-  // this directly (via _exportPdf's basisEntries), which is out of scope
-  // for this localization pass. UI call sites display
-  // `key.labelFor(strings)` instead of this field.
+  // Plain English identifier, kept for readability at call sites
+  // (_buildCalculationBasis) and in tests. Display code -- both the UI and
+  // weld_pdf_report_service.dart's PDF export -- uses `key.labelFor(strings)`
+  // instead of this field.
   final String label;
   final String value;
   // Localized display value for UI call sites (wizard recap, results

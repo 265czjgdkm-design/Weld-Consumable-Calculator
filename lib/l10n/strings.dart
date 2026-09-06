@@ -1,10 +1,9 @@
 import 'app_language.dart';
 
 /// Static copy for the app, translated into every language it supports --
-/// intro/splash screen, and the calculator input panel, results screen,
-/// and wizard (field-by-field labels, helper text, results, paywall).
-/// The PDF report (weld_pdf_report_service.dart) is a separately scoped
-/// follow-up and remains English-only for now.
+/// intro/splash screen, the calculator input panel, results screen, wizard
+/// (field-by-field labels, helper text, results, paywall), and the PDF
+/// report (weld_pdf_report_service.dart, prefix `pdfXxx`).
 class L10nStrings {
   const L10nStrings({
     required this.navBrand,
@@ -531,6 +530,52 @@ class L10nStrings {
     required this.authFormConsentPrefix,
     required this.authFormConsentConnector,
     required this.authFormConsentSuffix,
+    required this.pdfDocTitle,
+    required this.pdfDocSubject,
+    required this.pdfFooterPage,
+    required this.pdfSectionExecutiveSummaryTitle,
+    required this.pdfSectionExecutiveSummarySubtitle,
+    required this.pdfSectionPlanningIndicatorsTitle,
+    required this.pdfSectionPlanningIndicatorsSubtitle,
+    required this.pdfSectionProcessBreakdownTitle,
+    required this.pdfSectionProcessBreakdownSubtitle,
+    required this.pdfSectionEngineeringBasisTitle,
+    required this.pdfSectionEngineeringBasisSubtitle,
+    required this.pdfSectionCalculationMethodTitle,
+    required this.pdfSectionCalculationMethodSubtitle,
+    required this.pdfSectionEngineeringNotesTitle,
+    required this.pdfSectionEngineeringNotesSubtitle,
+    required this.pdfReportTitle,
+    required this.pdfCoverSubtitle,
+    required this.pdfReportIdLabel,
+    required this.pdfCoverGenerated,
+    required this.pdfHeaderSubtitle,
+    required this.pdfReportIdCaption,
+    required this.pdfChipGenerated,
+    required this.pdfBreakdownColAreaShare,
+    required this.pdfBreakdownColWeldMetalKg,
+    required this.pdfBreakdownColFillerKg,
+    required this.pdfBreakdownColArcOnTimeH,
+    required this.pdfBreakdownColRateKgPerH,
+    required this.pdfBreakdownColEfficiency,
+    required this.pdfBasisColParameter,
+    required this.pdfBasisColValue,
+    required this.pdfFormulaVolume,
+    required this.pdfFormulaWeldMetal,
+    required this.pdfFormulaFillerConsumption,
+    required this.pdfFormulaArcOnTime,
+    required this.pdfNote1,
+    required this.pdfNote2,
+    required this.pdfNote3,
+    required this.pdfNote4,
+    required this.pdfNote5,
+    required this.pdfNote6,
+    required this.pdfBasisGroupSetup,
+    required this.pdfBasisGroupGeometry,
+    required this.pdfBasisGroupProcess,
+    required this.pdfBasisGroupOther,
+    required this.pdfExportSuccessToast,
+    required this.pdfExportFailureToast,
   });
 
   final String navBrand;
@@ -1064,6 +1109,56 @@ class L10nStrings {
   final String authFormConsentPrefix;
   final String authFormConsentConnector;
   final String authFormConsentSuffix;
+  // PDF report export (weld_pdf_report_service.dart) -- kept as a separate
+  // pdfXxx-prefixed block rather than interleaved with the UI keys above
+  // since these are the only strings consumed outside calculator_page.dart's
+  // widget tree.
+  final String pdfDocTitle;
+  final String pdfDocSubject;
+  final String pdfFooterPage;
+  final String pdfSectionExecutiveSummaryTitle;
+  final String pdfSectionExecutiveSummarySubtitle;
+  final String pdfSectionPlanningIndicatorsTitle;
+  final String pdfSectionPlanningIndicatorsSubtitle;
+  final String pdfSectionProcessBreakdownTitle;
+  final String pdfSectionProcessBreakdownSubtitle;
+  final String pdfSectionEngineeringBasisTitle;
+  final String pdfSectionEngineeringBasisSubtitle;
+  final String pdfSectionCalculationMethodTitle;
+  final String pdfSectionCalculationMethodSubtitle;
+  final String pdfSectionEngineeringNotesTitle;
+  final String pdfSectionEngineeringNotesSubtitle;
+  final String pdfReportTitle;
+  final String pdfCoverSubtitle;
+  final String pdfReportIdLabel;
+  final String pdfCoverGenerated;
+  final String pdfHeaderSubtitle;
+  final String pdfReportIdCaption;
+  final String pdfChipGenerated;
+  final String pdfBreakdownColAreaShare;
+  final String pdfBreakdownColWeldMetalKg;
+  final String pdfBreakdownColFillerKg;
+  final String pdfBreakdownColArcOnTimeH;
+  final String pdfBreakdownColRateKgPerH;
+  final String pdfBreakdownColEfficiency;
+  final String pdfBasisColParameter;
+  final String pdfBasisColValue;
+  final String pdfFormulaVolume;
+  final String pdfFormulaWeldMetal;
+  final String pdfFormulaFillerConsumption;
+  final String pdfFormulaArcOnTime;
+  final String pdfNote1;
+  final String pdfNote2;
+  final String pdfNote3;
+  final String pdfNote4;
+  final String pdfNote5;
+  final String pdfNote6;
+  final String pdfBasisGroupSetup;
+  final String pdfBasisGroupGeometry;
+  final String pdfBasisGroupProcess;
+  final String pdfBasisGroupOther;
+  final String pdfExportSuccessToast;
+  final String pdfExportFailureToast;
 }
 
 const Map<AppLanguage, L10nStrings> _strings = {
@@ -1719,6 +1814,69 @@ const Map<AppLanguage, L10nStrings> _strings = {
     authFormConsentPrefix: 'By registering, you agree to our',
     authFormConsentConnector: 'and',
     authFormConsentSuffix: '.',
+    pdfDocTitle: 'Weld Estimation Report',
+    pdfDocSubject: 'Weld consumable estimation report',
+    pdfFooterPage: 'Page {current} / {total}',
+    pdfSectionExecutiveSummaryTitle: 'Executive Summary',
+    pdfSectionExecutiveSummarySubtitle:
+        'Primary estimate outputs prepared for engineering review and shop planning.',
+    pdfSectionPlanningIndicatorsTitle: 'Planning Indicators',
+    pdfSectionPlanningIndicatorsSubtitle:
+        'Normalized performance indicators for comparing joints, labor load, and consumable demand.',
+    pdfSectionProcessBreakdownTitle: 'Process Breakdown',
+    pdfSectionProcessBreakdownSubtitle:
+        'Split estimate showing deposited weld metal, filler demand, and arc-on time by process segment.',
+    pdfSectionEngineeringBasisTitle: 'Engineering Basis',
+    pdfSectionEngineeringBasisSubtitle:
+        'Input selections and governing geometry used to calculate the estimate.',
+    pdfSectionCalculationMethodTitle: 'Calculation Method',
+    pdfSectionCalculationMethodSubtitle:
+        'Formula basis used in the application for weld volume, weld metal, filler consumption, and arc-on time.',
+    pdfSectionEngineeringNotesTitle: 'Engineering Notes',
+    pdfSectionEngineeringNotesSubtitle:
+        'Practical interpretation notes for planning, estimating, and report handoff.',
+    pdfReportTitle: 'Weld Engineering Report',
+    pdfCoverSubtitle:
+        'Professional estimate of weld geometry, weld metal, filler metal consumption, and process-based arc-on time, prepared for engineering review and shop planning.',
+    pdfReportIdLabel: 'Report ID: {id}',
+    pdfCoverGenerated: 'Generated {date}',
+    pdfHeaderSubtitle:
+        'Professional estimate of weld geometry, weld metal, filler metal consumption, and process-based arc-on time for planning and review.',
+    pdfReportIdCaption: 'REPORT ID',
+    pdfChipGenerated: 'Generated',
+    pdfBreakdownColAreaShare: 'Area Share',
+    pdfBreakdownColWeldMetalKg: 'Weld Metal (kg)',
+    pdfBreakdownColFillerKg: 'Filler (kg)',
+    pdfBreakdownColArcOnTimeH: 'Arc-On Time (h)',
+    pdfBreakdownColRateKgPerH: 'Rate (kg/h)',
+    pdfBreakdownColEfficiency: 'Efficiency',
+    pdfBasisColParameter: 'Parameter',
+    pdfBasisColValue: 'Value',
+    pdfFormulaVolume: 'Volume (cm3) = Area (mm2) x Length (mm) / 1000',
+    pdfFormulaWeldMetal:
+        'Weld Metal (kg) = Volume (cm3) x Density (g/cm3) / 1000',
+    pdfFormulaFillerConsumption:
+        'Filler Consumption (kg) = Weld Metal / Deposition Efficiency x (1 + Waste / 100)',
+    pdfFormulaArcOnTime:
+        'Arc-On Time (h) = Filler Consumption / Deposition Rate',
+    pdfNote1:
+        'Arc-on time covers active welding time only. Fit-up, tacking, interpass cleaning, repositioning, and inspection time are excluded.',
+    pdfNote2:
+        'Filler metal consumption includes deposition efficiency loss and the entered waste allowance. It should be treated as planning consumption, not exact issued weight.',
+    pdfNote3:
+        'Combined GTAW + SMAW output distributes weld metal and time by calculated process share using the entered transition depth.',
+    pdfNote4:
+        'Deposition efficiency factors used above (SMAW ~65%, FCAW ~85%, GMAW ~90%, GTAW ~95%) reflect typical industry ranges, consistent with figures published in Lincoln Electric\'s Procedure Handbook of Arc Welding.',
+    pdfNote5:
+        'This report is intended for estimating and engineering planning. Approved project documentation, client specifications, and production controls must always take precedence.',
+    pdfNote6:
+        'This is a first-pass planning estimate - confirm against your qualified WPS and a test coupon before production use.',
+    pdfBasisGroupSetup: 'Setup and Assumptions',
+    pdfBasisGroupGeometry: 'Joint Geometry',
+    pdfBasisGroupProcess: 'Process Parameters',
+    pdfBasisGroupOther: 'Other',
+    pdfExportSuccessToast: 'PDF report exported successfully.',
+    pdfExportFailureToast: 'PDF export failed. Please try again.',
   ),
   AppLanguage.tr: L10nStrings(
     navBrand: 'Varyos Weld',
@@ -2378,6 +2536,68 @@ const Map<AppLanguage, L10nStrings> _strings = {
     authFormConsentPrefix: 'Kayıt olarak',
     authFormConsentConnector: 've',
     authFormConsentSuffix: "'nı kabul etmiş olursunuz.",
+    pdfDocTitle: 'Kaynak Tahmin Raporu',
+    pdfDocSubject: 'Kaynak sarf malzemesi tahmin raporu',
+    pdfFooterPage: 'Sayfa {current} / {total}',
+    pdfSectionExecutiveSummaryTitle: 'Yönetici Özeti',
+    pdfSectionExecutiveSummarySubtitle:
+        'Mühendislik incelemesi ve atölye planlaması için hazırlanan temel tahmin çıktıları.',
+    pdfSectionPlanningIndicatorsTitle: 'Planlama Göstergeleri',
+    pdfSectionPlanningIndicatorsSubtitle:
+        'Birleşimleri, iş yükünü ve sarf malzeme talebini karşılaştırmak için normalize edilmiş performans göstergeleri.',
+    pdfSectionProcessBreakdownTitle: 'Yöntem Dağılımı',
+    pdfSectionProcessBreakdownSubtitle:
+        'Biriken kaynak metalini, dolgu talebini ve ark süresini yöntem segmentine göre gösteren bölünmüş tahmin.',
+    pdfSectionEngineeringBasisTitle: 'Mühendislik Dayanağı',
+    pdfSectionEngineeringBasisSubtitle:
+        'Tahmini hesaplamak için kullanılan giriş seçimleri ve belirleyici geometri.',
+    pdfSectionCalculationMethodTitle: 'Hesaplama Yöntemi',
+    pdfSectionCalculationMethodSubtitle:
+        'Kaynak hacmi, kaynak metali, dolgu tüketimi ve ark süresi için uygulamada kullanılan formül dayanağı.',
+    pdfSectionEngineeringNotesTitle: 'Mühendislik Notları',
+    pdfSectionEngineeringNotesSubtitle:
+        'Planlama, tahmin ve rapor teslimi için pratik yorum notları.',
+    pdfReportTitle: 'Kaynak Mühendislik Raporu',
+    pdfCoverSubtitle:
+        'Mühendislik incelemesi ve atölye planlaması için hazırlanan, kaynak geometrisi, kaynak metali, dolgu metali tüketimi ve yönteme dayalı ark süresinin profesyonel tahmini.',
+    pdfReportIdLabel: 'Rapor No: {id}',
+    pdfCoverGenerated: 'Oluşturulma {date}',
+    pdfHeaderSubtitle:
+        'Planlama ve inceleme için kaynak geometrisi, kaynak metali, dolgu metali tüketimi ve yönteme dayalı ark süresinin profesyonel tahmini.',
+    pdfReportIdCaption: 'RAPOR NO',
+    pdfChipGenerated: 'Oluşturulma',
+    pdfBreakdownColAreaShare: 'Alan Payı',
+    pdfBreakdownColWeldMetalKg: 'Kaynak Metali (kg)',
+    pdfBreakdownColFillerKg: 'Dolgu (kg)',
+    pdfBreakdownColArcOnTimeH: 'Ark Süresi (h)',
+    pdfBreakdownColRateKgPerH: 'Hız (kg/h)',
+    pdfBreakdownColEfficiency: 'Verim',
+    pdfBasisColParameter: 'Parametre',
+    pdfBasisColValue: 'Değer',
+    pdfFormulaVolume: 'Hacim (cm3) = Alan (mm2) x Uzunluk (mm) / 1000',
+    pdfFormulaWeldMetal:
+        'Kaynak Metali (kg) = Hacim (cm3) x Yoğunluk (g/cm3) / 1000',
+    pdfFormulaFillerConsumption:
+        'Dolgu Tüketimi (kg) = Kaynak Metali / Dolgu Verimi x (1 + Fire / 100)',
+    pdfFormulaArcOnTime: 'Ark Süresi (h) = Dolgu Tüketimi / Dolgu Hızı',
+    pdfNote1:
+        'Ark süresi yalnızca etkin kaynak süresini kapsar. Montaj, puntalama, pasolar arası temizlik, yeniden konumlandırma ve muayene süresi hariçtir.',
+    pdfNote2:
+        'Dolgu metali tüketimi, dolgu verimi kaybını ve girilen fire payını içerir. Kesin verilen ağırlık değil, planlama tüketimi olarak değerlendirilmelidir.',
+    pdfNote3:
+        'Birleşik GTAW + SMAW çıktısı, girilen geçiş derinliğini kullanarak kaynak metalini ve süreyi hesaplanan yöntem payına göre dağıtır.',
+    pdfNote4:
+        'Yukarıda kullanılan dolgu verimi faktörleri (SMAW ~%65, FCAW ~%85, GMAW ~%90, GTAW ~%95), Lincoln Electric\'in Procedure Handbook of Arc Welding kitabında yayımlanan rakamlarla tutarlı, tipik endüstri aralıklarını yansıtır.',
+    pdfNote5:
+        'Bu rapor tahmin ve mühendislik planlaması içindir. Onaylı proje dokümantasyonu, müşteri şartnameleri ve üretim kontrolleri her zaman önceliklidir.',
+    pdfNote6:
+        'Bu ilk aşama planlama tahminidir - üretimde kullanmadan önce kalifiye WPS\'iniz ve bir test kuponu ile doğrulayın.',
+    pdfBasisGroupSetup: 'Kurulum ve Varsayımlar',
+    pdfBasisGroupGeometry: 'Birleşim Geometrisi',
+    pdfBasisGroupProcess: 'Yöntem Parametreleri',
+    pdfBasisGroupOther: 'Diğer',
+    pdfExportSuccessToast: 'PDF raporu başarıyla dışa aktarıldı.',
+    pdfExportFailureToast: 'PDF dışa aktarma başarısız oldu. Lütfen tekrar deneyin.',
   ),
   AppLanguage.ru: L10nStrings(
     navBrand: 'Varyos Weld',
@@ -3056,6 +3276,69 @@ const Map<AppLanguage, L10nStrings> _strings = {
     authFormConsentPrefix: 'Регистрируясь, вы соглашаетесь с нашими «',
     authFormConsentConnector: '» и «',
     authFormConsentSuffix: '».',
+    pdfDocTitle: 'Отчёт по оценке сварки',
+    pdfDocSubject: 'Отчёт по оценке расхода сварочных материалов',
+    pdfFooterPage: 'Стр. {current} / {total}',
+    pdfSectionExecutiveSummaryTitle: 'Краткое резюме',
+    pdfSectionExecutiveSummarySubtitle:
+        'Основные результаты оценки, подготовленные для инженерной проверки и планирования производства.',
+    pdfSectionPlanningIndicatorsTitle: 'Плановые показатели',
+    pdfSectionPlanningIndicatorsSubtitle:
+        'Нормализованные показатели эффективности для сравнения соединений, трудозатрат и потребности в присадочных материалах.',
+    pdfSectionProcessBreakdownTitle: 'Разбивка по способам сварки',
+    pdfSectionProcessBreakdownSubtitle:
+        'Разделённая оценка, показывающая наплавленный металл, потребность в присадке и время горения дуги по сегментам способа сварки.',
+    pdfSectionEngineeringBasisTitle: 'Инженерная основа',
+    pdfSectionEngineeringBasisSubtitle:
+        'Входные данные и определяющая геометрия, использованные для расчёта оценки.',
+    pdfSectionCalculationMethodTitle: 'Метод расчёта',
+    pdfSectionCalculationMethodSubtitle:
+        'Формулы, используемые в приложении для объёма шва, наплавленного металла, расхода присадки и времени горения дуги.',
+    pdfSectionEngineeringNotesTitle: 'Инженерные примечания',
+    pdfSectionEngineeringNotesSubtitle:
+        'Практические пояснения для планирования, оценки и передачи отчёта.',
+    pdfReportTitle: 'Инженерный отчёт по сварке',
+    pdfCoverSubtitle:
+        'Профессиональная оценка геометрии шва, наплавленного металла, расхода присадочного металла и времени горения дуги по способу сварки, подготовленная для инженерной проверки и планирования производства.',
+    pdfReportIdLabel: 'Номер отчёта: {id}',
+    pdfCoverGenerated: 'Создано {date}',
+    pdfHeaderSubtitle:
+        'Профессиональная оценка геометрии шва, наплавленного металла, расхода присадочного металла и времени горения дуги по способу сварки для планирования и проверки.',
+    pdfReportIdCaption: 'НОМЕР ОТЧЁТА',
+    pdfChipGenerated: 'Создано',
+    pdfBreakdownColAreaShare: 'Доля площади',
+    pdfBreakdownColWeldMetalKg: 'Наплавленный металл (кг)',
+    pdfBreakdownColFillerKg: 'Присадка (кг)',
+    pdfBreakdownColArcOnTimeH: 'Время дуги (ч)',
+    pdfBreakdownColRateKgPerH: 'Скорость (кг/ч)',
+    pdfBreakdownColEfficiency: 'КПД',
+    pdfBasisColParameter: 'Параметр',
+    pdfBasisColValue: 'Значение',
+    pdfFormulaVolume: 'Объём (см3) = Площадь (мм2) x Длина (мм) / 1000',
+    pdfFormulaWeldMetal:
+        'Наплавленный металл (кг) = Объём (см3) x Плотность (г/см3) / 1000',
+    pdfFormulaFillerConsumption:
+        'Расход присадки (кг) = Наплавленный металл / КПД наплавки x (1 + Потери / 100)',
+    pdfFormulaArcOnTime:
+        'Время горения дуги (ч) = Расход присадки / Скорость наплавки',
+    pdfNote1:
+        'Время горения дуги учитывает только активное время сварки. Сборка, прихватка, межслойная зачистка, перепозиционирование и контроль не включены.',
+    pdfNote2:
+        'Расход присадочного металла включает потери на КПД наплавки и введённый припуск на потери. Его следует рассматривать как плановый расход, а не точную выданную массу.',
+    pdfNote3:
+        'Совмещённый вывод GTAW + SMAW распределяет наплавленный металл и время по расчётной доле способа сварки с использованием введённой глубины перехода.',
+    pdfNote4:
+        'Использованные выше коэффициенты КПД наплавки (SMAW ~65%, FCAW ~85%, GMAW ~90%, GTAW ~95%) отражают типичные отраслевые диапазоны, согласующиеся с данными, опубликованными в Procedure Handbook of Arc Welding компании Lincoln Electric.',
+    pdfNote5:
+        'Этот отчёт предназначен для оценки и инженерного планирования. Утверждённая проектная документация, требования заказчика и производственный контроль всегда имеют приоритет.',
+    pdfNote6:
+        'Это предварительная плановая оценка — перед использованием в производстве подтвердите её по вашей квалифицированной технологической карте (WPS) и на тестовом образце.',
+    pdfBasisGroupSetup: 'Настройка и допущения',
+    pdfBasisGroupGeometry: 'Геометрия соединения',
+    pdfBasisGroupProcess: 'Параметры процесса',
+    pdfBasisGroupOther: 'Прочее',
+    pdfExportSuccessToast: 'PDF-отчёт успешно экспортирован.',
+    pdfExportFailureToast: 'Не удалось экспортировать PDF. Попробуйте снова.',
   ),
   AppLanguage.de: L10nStrings(
     navBrand: 'Varyos Weld',
@@ -3734,6 +4017,69 @@ const Map<AppLanguage, L10nStrings> _strings = {
     authFormConsentPrefix: 'Mit der Registrierung stimmen Sie unserer',
     authFormConsentConnector: 'und unseren',
     authFormConsentSuffix: ' zu.',
+    pdfDocTitle: 'Schweißschätzungsbericht',
+    pdfDocSubject: 'Bericht zur Schätzung des Schweißzusatzwerkstoffverbrauchs',
+    pdfFooterPage: 'Seite {current} / {total}',
+    pdfSectionExecutiveSummaryTitle: 'Zusammenfassung',
+    pdfSectionExecutiveSummarySubtitle:
+        'Wichtigste Schätzungsergebnisse, erstellt für die technische Prüfung und Werkstattplanung.',
+    pdfSectionPlanningIndicatorsTitle: 'Planungskennzahlen',
+    pdfSectionPlanningIndicatorsSubtitle:
+        'Normalisierte Leistungskennzahlen zum Vergleich von Verbindungen, Arbeitsaufwand und Zusatzwerkstoffbedarf.',
+    pdfSectionProcessBreakdownTitle: 'Verfahrensaufteilung',
+    pdfSectionProcessBreakdownSubtitle:
+        'Aufgeteilte Schätzung mit abgeschiedenem Schweißgut, Zusatzwerkstoffbedarf und Lichtbogenbrennzeit je Verfahrenssegment.',
+    pdfSectionEngineeringBasisTitle: 'Technische Grundlage',
+    pdfSectionEngineeringBasisSubtitle:
+        'Eingabeauswahl und maßgebende Geometrie, die zur Berechnung der Schätzung verwendet wurden.',
+    pdfSectionCalculationMethodTitle: 'Berechnungsmethode',
+    pdfSectionCalculationMethodSubtitle:
+        'In der Anwendung verwendete Formelgrundlage für Nahtvolumen, Schweißgut, Zusatzwerkstoffverbrauch und Lichtbogenbrennzeit.',
+    pdfSectionEngineeringNotesTitle: 'Technische Hinweise',
+    pdfSectionEngineeringNotesSubtitle:
+        'Praktische Interpretationshinweise für Planung, Schätzung und Berichtsübergabe.',
+    pdfReportTitle: 'Technischer Schweißbericht',
+    pdfCoverSubtitle:
+        'Professionelle Schätzung von Nahtgeometrie, Schweißgut, Zusatzwerkstoffverbrauch und verfahrensbasierter Lichtbogenbrennzeit, erstellt für die technische Prüfung und Werkstattplanung.',
+    pdfReportIdLabel: 'Bericht-Nr.: {id}',
+    pdfCoverGenerated: 'Erstellt {date}',
+    pdfHeaderSubtitle:
+        'Professionelle Schätzung von Nahtgeometrie, Schweißgut, Zusatzwerkstoffverbrauch und verfahrensbasierter Lichtbogenbrennzeit für Planung und Prüfung.',
+    pdfReportIdCaption: 'BERICHT-NR.',
+    pdfChipGenerated: 'Erstellt',
+    pdfBreakdownColAreaShare: 'Flächenanteil',
+    pdfBreakdownColWeldMetalKg: 'Schweißgut (kg)',
+    pdfBreakdownColFillerKg: 'Zusatzwerkstoff (kg)',
+    pdfBreakdownColArcOnTimeH: 'Brennzeit (h)',
+    pdfBreakdownColRateKgPerH: 'Leistung (kg/h)',
+    pdfBreakdownColEfficiency: 'Wirkungsgrad',
+    pdfBasisColParameter: 'Parameter',
+    pdfBasisColValue: 'Wert',
+    pdfFormulaVolume: 'Volumen (cm3) = Fläche (mm2) x Länge (mm) / 1000',
+    pdfFormulaWeldMetal:
+        'Schweißgut (kg) = Volumen (cm3) x Dichte (g/cm3) / 1000',
+    pdfFormulaFillerConsumption:
+        'Zusatzwerkstoffverbrauch (kg) = Schweißgut / Abschmelzwirkungsgrad x (1 + Verschnitt / 100)',
+    pdfFormulaArcOnTime:
+        'Brennzeit (h) = Zusatzwerkstoffverbrauch / Abschmelzleistung',
+    pdfNote1:
+        'Die Brennzeit umfasst nur die aktive Schweißzeit. Zusammenbau, Heften, Zwischenlagenreinigung, Umpositionierung und Prüfzeit sind ausgeschlossen.',
+    pdfNote2:
+        'Der Zusatzwerkstoffverbrauch umfasst Abschmelzwirkungsgradverluste und den eingegebenen Verschnittzuschlag. Er sollte als Planungsverbrauch behandelt werden, nicht als exaktes Ausgabegewicht.',
+    pdfNote3:
+        'Die kombinierte GTAW + SMAW-Ausgabe verteilt Schweißgut und Zeit anhand des berechneten Verfahrensanteils unter Verwendung der eingegebenen Übergangstiefe.',
+    pdfNote4:
+        'Die oben verwendeten Abschmelzwirkungsgradfaktoren (SMAW ~65 %, FCAW ~85 %, GMAW ~90 %, GTAW ~95 %) spiegeln typische Branchenbereiche wider, die mit den im Procedure Handbook of Arc Welding von Lincoln Electric veröffentlichten Werten übereinstimmen.',
+    pdfNote5:
+        'Dieser Bericht ist für Schätzung und technische Planung bestimmt. Genehmigte Projektdokumentation, Kundenspezifikationen und Produktionskontrollen haben stets Vorrang.',
+    pdfNote6:
+        'Dies ist eine erste Planungsschätzung - vor dem produktiven Einsatz anhand Ihres qualifizierten WPS und eines Testcoupons bestätigen.',
+    pdfBasisGroupSetup: 'Einrichtung und Annahmen',
+    pdfBasisGroupGeometry: 'Verbindungsgeometrie',
+    pdfBasisGroupProcess: 'Verfahrensparameter',
+    pdfBasisGroupOther: 'Sonstiges',
+    pdfExportSuccessToast: 'PDF-Bericht erfolgreich exportiert.',
+    pdfExportFailureToast: 'PDF-Export fehlgeschlagen. Bitte erneut versuchen.',
   ),
   AppLanguage.hi: L10nStrings(
     navBrand: 'Varyos Weld',
@@ -4403,6 +4749,71 @@ const Map<AppLanguage, L10nStrings> _strings = {
     authFormConsentPrefix: 'रजिस्टर करके, आप हमारी',
     authFormConsentConnector: 'और',
     authFormConsentSuffix: ' से सहमत होते हैं।',
+    // TODO: unverified translation -- the pdfXxx block below (PDF report
+    // export) is a literal draft following this file's existing
+    // transliteration style, not confirmed by a native Hindi speaker.
+    pdfDocTitle: 'वेल्ड एस्टिमेशन रिपोर्ट',
+    pdfDocSubject: 'वेल्ड कंज़्यूमेबल एस्टिमेशन रिपोर्ट',
+    pdfFooterPage: 'पेज {current} / {total}',
+    pdfSectionExecutiveSummaryTitle: 'एग्जीक्यूटिव समरी',
+    pdfSectionExecutiveSummarySubtitle:
+        'इंजीनियरिंग रिव्यू और शॉप प्लानिंग के लिए तैयार किए गए मुख्य एस्टिमेट आउटपुट।',
+    pdfSectionPlanningIndicatorsTitle: 'प्लानिंग इंडिकेटर',
+    pdfSectionPlanningIndicatorsSubtitle:
+        'जॉइंट, लेबर लोड, और कंज़्यूमेबल डिमांड की तुलना करने के लिए नॉर्मलाइज़्ड परफॉर्मेंस इंडिकेटर।',
+    pdfSectionProcessBreakdownTitle: 'प्रोसेस ब्रेकडाउन',
+    pdfSectionProcessBreakdownSubtitle:
+        'प्रोसेस सेगमेंट के अनुसार डिपॉज़िट किए गए वेल्ड मेटल, फिलर डिमांड, और आर्क-ऑन टाइम दिखाने वाला स्प्लिट एस्टिमेट।',
+    pdfSectionEngineeringBasisTitle: 'इंजीनियरिंग बेसिस',
+    pdfSectionEngineeringBasisSubtitle:
+        'एस्टिमेट कैलकुलेट करने के लिए इस्तेमाल की गई इनपुट सिलेक्शन और गवर्निंग ज्यामिति।',
+    pdfSectionCalculationMethodTitle: 'कैलकुलेशन मेथड',
+    pdfSectionCalculationMethodSubtitle:
+        'वेल्ड वॉल्यूम, वेल्ड मेटल, फिलर कंज़म्पशन, और आर्क-ऑन टाइम के लिए ऐप में इस्तेमाल किया गया फॉर्मूला बेसिस।',
+    pdfSectionEngineeringNotesTitle: 'इंजीनियरिंग नोट्स',
+    pdfSectionEngineeringNotesSubtitle:
+        'प्लानिंग, एस्टिमेशन, और रिपोर्ट हैंडऑफ के लिए प्रैक्टिकल इंटरप्रिटेशन नोट्स।',
+    pdfReportTitle: 'वेल्ड इंजीनियरिंग रिपोर्ट',
+    pdfCoverSubtitle:
+        'इंजीनियरिंग रिव्यू और शॉप प्लानिंग के लिए तैयार की गई, वेल्ड ज्यामिति, वेल्ड मेटल, फिलर मेटल कंज़म्पशन, और प्रोसेस-बेस्ड आर्क-ऑन टाइम की प्रोफेशनल एस्टिमेट।',
+    pdfReportIdLabel: 'रिपोर्ट ID: {id}',
+    pdfCoverGenerated: 'जनरेटेड {date}',
+    pdfHeaderSubtitle:
+        'प्लानिंग और रिव्यू के लिए वेल्ड ज्यामिति, वेल्ड मेटल, फिलर मेटल कंज़म्पशन, और प्रोसेस-बेस्ड आर्क-ऑन टाइम की प्रोफेशनल एस्टिमेट।',
+    pdfReportIdCaption: 'रिपोर्ट ID',
+    pdfChipGenerated: 'जनरेटेड',
+    pdfBreakdownColAreaShare: 'एरिया शेयर',
+    pdfBreakdownColWeldMetalKg: 'वेल्ड मेटल (kg)',
+    pdfBreakdownColFillerKg: 'फिलर (kg)',
+    pdfBreakdownColArcOnTimeH: 'आर्क-ऑन टाइम (h)',
+    pdfBreakdownColRateKgPerH: 'रेट (kg/h)',
+    pdfBreakdownColEfficiency: 'एफिशिएंसी',
+    pdfBasisColParameter: 'पैरामीटर',
+    pdfBasisColValue: 'वैल्यू',
+    pdfFormulaVolume: 'वॉल्यूम (cm3) = एरिया (mm2) x लंबाई (mm) / 1000',
+    pdfFormulaWeldMetal:
+        'वेल्ड मेटल (kg) = वॉल्यूम (cm3) x डेंसिटी (g/cm3) / 1000',
+    pdfFormulaFillerConsumption:
+        'फिलर कंज़म्पशन (kg) = वेल्ड मेटल / डिपॉज़िशन एफिशिएंसी x (1 + वेस्ट / 100)',
+    pdfFormulaArcOnTime: 'आर्क-ऑन टाइम (h) = फिलर कंज़म्पशन / डिपॉज़िशन रेट',
+    pdfNote1:
+        'आर्क-ऑन टाइम केवल एक्टिव वेल्डिंग टाइम को कवर करता है। फिट-अप, टैकिंग, इंटरपास क्लीनिंग, रीपोज़िशनिंग, और इंस्पेक्शन टाइम शामिल नहीं हैं।',
+    pdfNote2:
+        'फिलर मेटल कंज़म्पशन में डिपॉज़िशन एफिशिएंसी लॉस और दर्ज किया गया वेस्ट अलाउंस शामिल है। इसे एग्ज़ैक्ट इश्यूड वेट नहीं, बल्कि प्लानिंग कंज़म्पशन माना जाना चाहिए।',
+    pdfNote3:
+        'कॉम्बाइंड GTAW + SMAW आउटपुट, दर्ज की गई ट्रांज़िशन डेप्थ का इस्तेमाल करते हुए, कैलकुलेटेड प्रोसेस शेयर के अनुसार वेल्ड मेटल और टाइम को डिस्ट्रीब्यूट करता है।',
+    pdfNote4:
+        'ऊपर इस्तेमाल किए गए डिपॉज़िशन एफिशिएंसी फैक्टर (SMAW ~65%, FCAW ~85%, GMAW ~90%, GTAW ~95%) टिपिकल इंडस्ट्री रेंज को दर्शाते हैं, जो Lincoln Electric की Procedure Handbook of Arc Welding में पब्लिश्ड आंकड़ों से मेल खाते हैं।',
+    pdfNote5:
+        'यह रिपोर्ट एस्टिमेशन और इंजीनियरिंग प्लानिंग के लिए है। अप्रूव्ड प्रोजेक्ट डॉक्यूमेंटेशन, क्लाइंट स्पेसिफिकेशन, और प्रोडक्शन कंट्रोल हमेशा प्राथमिकता में रहने चाहिए।',
+    pdfNote6:
+        'यह एक फर्स्ट-पास प्लानिंग एस्टिमेट है - प्रोडक्शन में इस्तेमाल से पहले अपने क्वालिफाइड WPS और एक टेस्ट कूपन के खिलाफ कन्फर्म करें।',
+    pdfBasisGroupSetup: 'सेटअप और असम्पशन',
+    pdfBasisGroupGeometry: 'जॉइंट ज्यामिति',
+    pdfBasisGroupProcess: 'प्रोसेस पैरामीटर',
+    pdfBasisGroupOther: 'अन्य',
+    pdfExportSuccessToast: 'PDF रिपोर्ट सफलतापूर्वक एक्सपोर्ट हो गई।',
+    pdfExportFailureToast: 'PDF एक्सपोर्ट फेल हो गया। कृपया फिर से कोशिश करें।',
   ),
 };
 
