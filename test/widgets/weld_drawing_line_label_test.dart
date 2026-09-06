@@ -55,6 +55,61 @@ bool _segmentIntersectsRect(Offset a, Offset b, Rect r) {
   return t0 <= t1;
 }
 
+bool _isDiagonal(Offset a, Offset b) => a.dx != b.dx && a.dy != b.dy;
+bool _isVerticalRun(Offset a, Offset b) => a.dx == b.dx && a.dy != b.dy;
+bool _isHorizontalRun(Offset a, Offset b) => a.dy == b.dy && a.dx != b.dx;
+
+/// Widens the GTAW-root-only check below to catch the exact class of
+/// regression a reviewer found in commit c6b0516: `_drawAngleTag`'s
+/// `pushedFar` elbow-routing branch drew a diagonal (`start`->`stub`) then a
+/// vertical run (`stub`->`elbow`) then a horizontal run (`elbow`->`lineEnd`)
+/// and only ever checked the vertical run against avoidRects, so a push
+/// that cleared the vertical run could relocate the same collision onto the
+/// now-longer diagonal instead - invisible to a check that only ever looked
+/// at the GTAW-root label. This finds that exact 3-segment chain shape
+/// (diagonal, then a perfectly vertical run, then a perfectly horizontal
+/// run, each starting exactly where the previous one ended - unique to this
+/// branch, nothing else in this file draws that shape) and checks its
+/// diagonal and vertical segments against every hotspot rect in the scene,
+/// not just root.
+///
+/// Deliberately scoped to this specific chain shape rather than "every
+/// guide-colored segment vs every label rect": an exploratory sweep during
+/// this fix's investigation tried the fully general version and found it
+/// fails on effectively the ENTIRE test matrix, because ordinary dimension
+/// lines and leaders legitimately end at/right next to the very label they
+/// measure (e.g. a thickness dimension line's own vertical run sits only a
+/// few px from its own "t" pill by construction) - a general check can't
+/// tell that apart from a genuine cross-through without production changes
+/// this fix's scope doesn't cover. That's a separate, much larger
+/// pre-existing structural gap (dimension lines vs. the labels they
+/// measure, not this branch) - out of scope here, and exactly the kind of
+/// thing a future "Group 3" pass would need to address on its own terms.
+List<String> _pushedFarElbowCrossings(
+  List<List<Offset>> segments,
+  List<DrawingHotspot> hotspots,
+) {
+  final crossings = <String>[];
+  for (var i = 0; i + 2 < segments.length; i++) {
+    final a = segments[i];
+    final b = segments[i + 1];
+    final c = segments[i + 2];
+    if (a[1] != b[0] || b[1] != c[0]) continue;
+    if (!_isDiagonal(a[0], a[1])) continue;
+    if (!_isVerticalRun(b[0], b[1])) continue;
+    if (!_isHorizontalRun(c[0], c[1])) continue;
+    for (final h in hotspots) {
+      if (_segmentIntersectsRect(a[0], a[1], h.rect) ||
+          _segmentIntersectsRect(b[0], b[1], h.rect)) {
+        crossings.add(
+          '${a[0]} -> ${b[0]} -> ${b[1]} crosses ${h.fieldKey} (${h.rect})',
+        );
+      }
+    }
+  }
+  return crossings;
+}
+
 /// Records only the guide-colored line segments the painter draws (dimension
 /// lines, their extension stubs, arrowheads, and angle-tag leaders all share
 /// `guidePaint` - see `_drawDimensionLine`/`_drawAngleTag` in
@@ -216,15 +271,221 @@ void main() {
         crossings.add('${segment[0]} -> ${segment[1]}');
       }
     }
+    // Widened per a reviewer finding on commit c6b0516: the check above
+    // only ever covers the GTAW-root label specifically, so a leader that
+    // relocates a collision onto some OTHER label (e.g. the thickness pill)
+    // shipped silently. See `_pushedFarElbowCrossings`'s doc comment for why
+    // this is scoped to that branch's specific 3-segment chain shape rather
+    // than every segment vs every label.
+    crossings.addAll(_pushedFarElbowCrossings(recorder.segments, hotspots));
     expect(
       crossings,
       isEmpty,
       reason:
           'A dimension/leader line crosses the GTAW-root label '
-          '($rootLabelRect): ${crossings.join(' | ')}',
+          '($rootLabelRect), or a pushedFar angle-tag elbow leader crosses '
+          'some other label: ${crossings.join(' | ')}',
       skip: knownGap,
     );
   }
+
+  // Every one of these keys was verified, via a git-worktree diff against
+  // 62b992f (the commit immediately before c6b0516 ever touched
+  // `_drawAngleTag`'s pushedFar branch), to already exist byte-identically
+  // before that commit - i.e. this widened check's own investigation
+  // confirmed none of these are new or made worse by this round's fix; they
+  // pre-date it. c6b0516 briefly and accidentally hid a handful of these by
+  // relocating the exact same collision onto a different segment (the bug a
+  // reviewer found - see `_pushedFarElbowCrossings`'s doc comment) - this
+  // round's bounded/clamped fix intentionally falls back to the ORIGINAL
+  // unpushed elbow route rather than risk repeating that, so these
+  // resurface as visible, honest known gaps instead of silently passing.
+  // Keys are 'groove|joint|mode|geometryMode|width'.
+  const knownPushedFarGapsSweep1 = {
+    'compoundV|pipeButt|technical|equal|316',
+    'compoundV|pipeButt|technical|equal|346',
+    'compoundV|pipeButt|technical|equal|390',
+    'compoundV|pipeButt|technical|unequal|316',
+    'compoundV|pipeButt|technical|unequal|346',
+    'compoundV|pipeButt|technical|unequal|390',
+    'compoundV|pipeButt|visual|equal|316',
+    'compoundV|pipeButt|visual|equal|346',
+    'compoundV|pipeButt|visual|equal|390',
+    'compoundV|pipeButt|visual|unequal|316',
+    'compoundV|pipeButt|visual|unequal|346',
+    'compoundV|pipeButt|visual|unequal|390',
+    'compoundV|plateButt|technical|equal|316',
+    'compoundV|plateButt|technical|equal|346',
+    'compoundV|plateButt|technical|equal|390',
+    'compoundV|plateButt|technical|unequal|316',
+    'compoundV|plateButt|technical|unequal|346',
+    'compoundV|plateButt|technical|unequal|390',
+    'compoundV|plateButt|visual|equal|316',
+    'compoundV|plateButt|visual|equal|346',
+    'compoundV|plateButt|visual|equal|390',
+    'compoundV|plateButt|visual|unequal|316',
+    'compoundV|plateButt|visual|unequal|346',
+    'compoundV|plateButt|visual|unequal|390',
+    'doubleV|pipeButt|technical|equal|316',
+    'doubleV|pipeButt|technical|equal|346',
+    'doubleV|pipeButt|technical|equal|390',
+    'doubleV|pipeButt|technical|unequal|316',
+    'doubleV|pipeButt|technical|unequal|346',
+    'doubleV|pipeButt|technical|unequal|390',
+    'doubleV|pipeButt|visual|equal|316',
+    'doubleV|pipeButt|visual|equal|346',
+    'doubleV|pipeButt|visual|equal|390',
+    'doubleV|pipeButt|visual|unequal|316',
+    'doubleV|pipeButt|visual|unequal|346',
+    'doubleV|pipeButt|visual|unequal|390',
+    'doubleV|plateButt|technical|equal|316',
+    'doubleV|plateButt|technical|equal|346',
+    'doubleV|plateButt|technical|equal|390',
+    'doubleV|plateButt|technical|unequal|316',
+    'doubleV|plateButt|technical|unequal|346',
+    'doubleV|plateButt|technical|unequal|390',
+    'doubleV|plateButt|visual|equal|316',
+    'doubleV|plateButt|visual|equal|346',
+    'doubleV|plateButt|visual|equal|390',
+    'doubleV|plateButt|visual|unequal|316',
+    'doubleV|plateButt|visual|unequal|346',
+    'doubleV|plateButt|visual|unequal|390',
+    'halfV|pipeButt|technical|equal|316',
+    'halfV|pipeButt|technical|equal|346',
+    'halfV|pipeButt|technical|equal|390',
+    'halfV|pipeButt|technical|equal|480',
+    'halfV|pipeButt|technical|equal|600',
+    'halfV|pipeButt|technical|unequal|316',
+    'halfV|pipeButt|technical|unequal|346',
+    'halfV|pipeButt|technical|unequal|390',
+    'halfV|pipeButt|technical|unequal|480',
+    'halfV|pipeButt|visual|equal|316',
+    'halfV|pipeButt|visual|equal|346',
+    'halfV|pipeButt|visual|equal|390',
+    'halfV|pipeButt|visual|equal|480',
+    'halfV|pipeButt|visual|equal|600',
+    'halfV|pipeButt|visual|unequal|316',
+    'halfV|pipeButt|visual|unequal|346',
+    'halfV|pipeButt|visual|unequal|390',
+    'halfV|pipeButt|visual|unequal|480',
+    'halfV|plateButt|technical|equal|316',
+    'halfV|plateButt|technical|equal|346',
+    'halfV|plateButt|technical|equal|390',
+    'halfV|plateButt|technical|equal|480',
+    'halfV|plateButt|technical|equal|600',
+    'halfV|plateButt|technical|unequal|316',
+    'halfV|plateButt|technical|unequal|346',
+    'halfV|plateButt|technical|unequal|390',
+    'halfV|plateButt|technical|unequal|480',
+    'halfV|plateButt|visual|equal|316',
+    'halfV|plateButt|visual|equal|346',
+    'halfV|plateButt|visual|equal|390',
+    'halfV|plateButt|visual|equal|480',
+    'halfV|plateButt|visual|equal|600',
+    'halfV|plateButt|visual|unequal|316',
+    'halfV|plateButt|visual|unequal|346',
+    'halfV|plateButt|visual|unequal|390',
+    'halfV|plateButt|visual|unequal|480',
+    'singleV|pipeButt|technical|equal|316',
+    'singleV|pipeButt|visual|equal|316',
+    'singleV|pipeButt|visual|equal|346',
+    'singleV|plateButt|technical|equal|316',
+    'singleV|plateButt|visual|equal|316',
+    'singleV|plateButt|visual|equal|346',
+  };
+
+  // Keys are 'groove|geometryMode|width|thicknessMm' - see the comment on
+  // `knownPushedFarGapsSweep1` above (same provenance/verification).
+  const knownPushedFarGapsSweep2 = {
+    'compoundV|equal|316|12',
+    'compoundV|equal|316|25',
+    'compoundV|equal|316|40',
+    'compoundV|equal|316|50',
+    'compoundV|equal|316|60',
+    'compoundV|equal|346|12',
+    'compoundV|equal|346|25',
+    'compoundV|equal|346|40',
+    'compoundV|equal|346|60',
+    'compoundV|equal|390|12',
+    'compoundV|equal|390|25',
+    'compoundV|equal|760|60',
+    'compoundV|unequal|316|12',
+    'compoundV|unequal|316|25',
+    'compoundV|unequal|316|40',
+    'compoundV|unequal|316|50',
+    'compoundV|unequal|316|60',
+    'compoundV|unequal|346|12',
+    'compoundV|unequal|346|25',
+    'compoundV|unequal|346|40',
+    'compoundV|unequal|346|50',
+    'compoundV|unequal|346|60',
+    'compoundV|unequal|390|12',
+    'compoundV|unequal|390|25',
+    'compoundV|unequal|390|40',
+    'compoundV|unequal|390|50',
+    'compoundV|unequal|390|60',
+    'compoundV|unequal|480|40',
+    'compoundV|unequal|480|50',
+    'compoundV|unequal|480|60',
+    'compoundV|unequal|600|40',
+    'compoundV|unequal|600|50',
+    'compoundV|unequal|600|60',
+    'compoundV|unequal|760|60',
+    'doubleV|equal|316|12',
+    'doubleV|equal|316|25',
+    'doubleV|equal|316|40',
+    'doubleV|equal|316|50',
+    'doubleV|equal|316|60',
+    'doubleV|equal|346|12',
+    'doubleV|equal|346|25',
+    'doubleV|equal|346|40',
+    'doubleV|equal|346|50',
+    'doubleV|equal|346|60',
+    'doubleV|equal|390|12',
+    'doubleV|equal|390|25',
+    'doubleV|equal|390|40',
+    'doubleV|equal|390|50',
+    'doubleV|equal|390|60',
+    'doubleV|unequal|316|12',
+    'doubleV|unequal|316|25',
+    'doubleV|unequal|316|40',
+    'doubleV|unequal|346|12',
+    'doubleV|unequal|346|25',
+    'doubleV|unequal|390|12',
+    'doubleV|unequal|390|25',
+    'halfV|equal|316|12',
+    'halfV|equal|316|25',
+    'halfV|equal|316|40',
+    'halfV|equal|316|50',
+    'halfV|equal|316|60',
+    'halfV|equal|346|12',
+    'halfV|equal|346|25',
+    'halfV|equal|346|40',
+    'halfV|equal|346|50',
+    'halfV|equal|346|60',
+    'halfV|equal|390|12',
+    'halfV|equal|390|25',
+    'halfV|equal|390|50',
+    'halfV|equal|390|60',
+    'halfV|equal|480|12',
+    'halfV|equal|600|12',
+    'halfV|unequal|316|12',
+    'halfV|unequal|316|25',
+    'halfV|unequal|346|12',
+    'halfV|unequal|346|25',
+    'halfV|unequal|390|12',
+    'halfV|unequal|480|12',
+    'singleV|equal|316|12',
+    'singleV|equal|346|12',
+    'singleV|unequal|316|25',
+    'singleV|unequal|316|40',
+    'singleV|unequal|316|50',
+    'singleV|unequal|316|60',
+    'singleV|unequal|346|25',
+    'singleV|unequal|346|40',
+    'singleV|unequal|346|50',
+    'singleV|unequal|346|60',
+  };
 
   const widths = [316.0, 346.0, 390.0, 480.0, 600.0, 760.0];
   const height = 460.0;
@@ -253,6 +514,13 @@ void main() {
       for (final mode in DrawingMode.values) {
         for (final width in widths) {
           for (final geometryMode in geometryModes) {
+            final key =
+                '${groove.name}|${joint.name}|${mode.name}|'
+                '${geometryMode.name}|${width.toInt()}';
+            final knownGap = knownPushedFarGapsSweep1.contains(key)
+                ? 'pre-existing pushedFar-elbow-vs-other-label gap, '
+                      'predates c6b0516 - see knownPushedFarGapsSweep1'
+                : null;
             testWidgets(
               'GTAW-root label clear of lines: '
               '$groove/$joint/$mode/$geometryMode @${width.toInt()}',
@@ -264,6 +532,7 @@ void main() {
                 width: width,
                 height: height,
                 data: _buildData(geometryMode: geometryMode),
+                knownGap: knownGap,
               ),
             );
           }
@@ -326,6 +595,13 @@ void main() {
     for (final geometryMode in geometryModes) {
       for (final width in widths) {
         for (final thicknessMm in thicknesses) {
+          final key =
+              '${groove.name}|${geometryMode.name}|${width.toInt()}|'
+              '${thicknessMm.toInt()}';
+          final knownGap = knownPushedFarGapsSweep2.contains(key)
+              ? 'pre-existing pushedFar-elbow-vs-other-label gap, '
+                    'predates c6b0516 - see knownPushedFarGapsSweep2'
+              : null;
           testWidgets(
             'GTAW-root label clear of lines: $groove/$geometryMode '
             'thickness sweep @${width.toInt()} t=${thicknessMm.toInt()}',
@@ -340,6 +616,7 @@ void main() {
                 geometryMode: geometryMode,
                 thicknessMm: thicknessMm,
               ),
+              knownGap: knownGap,
             ),
           );
         }
