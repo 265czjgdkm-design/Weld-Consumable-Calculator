@@ -2760,10 +2760,10 @@ const Map<AppLanguage, L10nStrings> _strings = {
     drawingLabelGtawRoot: 'GTAW корень',
     drawingLabelCapTop: 'Верх',
     drawingLabelCapBottom: 'Низ',
+    drawingLabelCapOverlapValue: 'мм перекрытие валика',
     // TODO: unverified translation -- shortened to match the
-    // calcFieldCapOverlapLabel/calcFieldCapHeightLabel terms chosen for
-    // the same label-truncation fix, not confirmed by a native speaker.
-    drawingLabelCapOverlapValue: 'мм нахлёст шва',
+    // calcFieldCapHeightLabel term chosen for the same label-truncation
+    // fix, not confirmed by a native speaker.
     drawingLabelCapHeightValue: 'мм высота шва',
     calcSelectedClassificationNote: 'Выбранная классификация: {value}',
     calcTypicalBaseMetalsNote: 'Типичные основные металлы: {value}',
@@ -2859,19 +2859,14 @@ const Map<AppLanguage, L10nStrings> _strings = {
     calcFieldBreakHeightLabel: 'Высота излома h (мм)',
     calcFieldBreakHeightHelper:
         'Расстояние от притупления корня до точки излома скоса.',
-    // TODO: unverified term -- "нахлёст шва" is a descriptive translation
-    // (shortened further from "перекрытие облицовочного валика" to fix a
-    // real-device label-truncation bug), not a standard GOST/EN term (this
-    // dimension is this app's own derived concept, not a named standard
-    // parameter). Pending native-speaker/GOST-source confirmation.
-    calcFieldCapOverlapLabel: 'Нахлёст шва (мм)',
+    calcFieldCapOverlapLabel: 'Перекрытие валика (мм)',
     calcFieldCapOverlapHelper:
         'Насколько облицовочный валик выходит за пределы разделки с каждой стороны (добавляется к обеим кромкам). Необязательно.',
     // TODO: unverified translation -- the added Double-V clause below is a
     // literal draft, not confirmed by a native Russian speaker.
     calcFieldCapOverlapDoubleVHelper:
         'Насколько облицовочный валик выходит за пределы разделки с каждой стороны (добавляется к обеим кромкам). Для двойного V-образного шва это значение применяется к обеим сторонам, поэтому вклад облицовочного валика учитывается дважды. Необязательно.',
-    calcFieldCapHeightLabel: 'Высота шва (мм)',
+    calcFieldCapHeightLabel: 'Усиление шва (мм)',
     calcFieldCapHeightHelper:
         'Насколько облицовочный валик возвышается над поверхностью основного металла. Типичное усиление по AWS D1.1: до 3мм при t<=25мм, 5мм при 25-50мм, 6мм при t>50мм. Необязательно.',
     // TODO: unverified translation -- the added Double-V clause below is a
@@ -2880,14 +2875,10 @@ const Map<AppLanguage, L10nStrings> _strings = {
         'Насколько облицовочный валик возвышается над поверхностью основного металла. Типичное усиление по AWS D1.1: до 3мм при t<=25мм, 5мм при 25-50мм, 6мм при t>50мм. Для двойного V-образного шва это значение применяется к обеим сторонам, поэтому вклад облицовочного валика учитывается дважды. Необязательно.',
     calcFieldLegSizeLabel: 'Катет шва (мм)',
     calcFieldLegSizeHelper: 'Равный катет углового шва.',
-    // TODO: unverified symbol choice -- GOST 2.307 drawings conventionally
-    // use the dedicated diameter sign "⌀" (U+2300), not the Latin letter
-    // "Ø" used here to match the other locales; pending native-speaker/
-    // GOST-source confirmation on whether "Ø" reads as intended here.
-    calcFieldGtawWireDiameterLabel: 'GTAW Ø (мм)',
+    calcFieldGtawWireDiameterLabel: 'GTAW ⌀ (мм)',
     calcFieldGtawWireDiameterHelper:
         'Проволока GTAW. Размеры: 1.6, 2.0, 2.4, 3.2 мм.',
-    calcFieldSmawElectrodeDiameterLabel: 'SMAW Ø (мм)',
+    calcFieldSmawElectrodeDiameterLabel: 'SMAW ⌀ (мм)',
     calcFieldSmawElectrodeDiameterHelper:
         'Диаметр электрода SMAW. Размеры: 2.5, 3.2, 4.0, 5.0 мм.',
     calcFieldGmawWireDiameterLabel: 'Диаметр (мм)',
@@ -3062,12 +3053,9 @@ const Map<AppLanguage, L10nStrings> _strings = {
         'Вы вышли из аккаунта, и локальные данные были очищены, но некоторые облачные данные могли быть удалены не полностью. Проверьте подключение и повторите попытку или обратитесь в поддержку.',
     dashboardAccountCardLabel: 'Аккаунт',
     dashboardAccountCardGuestValue: 'Гость',
-    // TODO: unverified translation -- grammatical case may not fully match
-    // when combined with the linked labels above, needs native-speaker
-    // review.
-    authFormConsentPrefix: 'Регистрируясь, вы соглашаетесь с нашими',
-    authFormConsentConnector: 'и',
-    authFormConsentSuffix: '.',
+    authFormConsentPrefix: 'Регистрируясь, вы соглашаетесь с нашими «',
+    authFormConsentConnector: '» и «',
+    authFormConsentSuffix: '».',
   ),
   AppLanguage.de: L10nStrings(
     navBrand: 'Varyos Weld',
