@@ -284,62 +284,46 @@ void main() {
   // three fail the same way, starting at t=40) - so this now covers all 5
   // groove types, both geometry modes, not just Double V/Square/Equal.
   const thicknesses = [12.0, 25.0, 40.0, 50.0, 60.0];
-  // KNOWN GAP (re-measured after the _dimensionLineAvoidRects fix in
-  // weld_drawing_preview.dart, which closed the root-face-line and, in
-  // Unequal geometry, B-thickness-line collisions this file used to hit
-  // across nearly every groove type/geometry combination - see
-  // TEAM_LEARNINGS.md): every remaining case here still crosses the SAME
-  // groove-depth line _dimensionLineAvoidRects doesn't check (its own
-  // horizontal extension stub sits at `halfGap + 20`, overlapping the root
-  // label's `halfGap + 16` X by construction - see the comment on that
-  // constant), and only ever at very thick plate (t>=40) on a narrow
-  // canvas, where the mm-to-px scale has shrunk enough that the label's
-  // `rightGrooveY + 2.6`/`thickness - 1.0` fallback Y offset from that
-  // stub no longer buys enough real pixels - the same structural shape as
-  // the already-known, already-skipped Double V thick-plate gaps in
-  // weld_drawing_label_overlap_test.dart (`doubleVThickPlateGap`), now
-  // shown (by widening this sweep to all 5 groove types instead of just
-  // Double V/Square) to affect all of them, not just those two. A real fix
-  // needs the groove-depth line added to _dimensionLineAvoidRects' callers
-  // too; out of scope for this round, which targeted the reported
-  // B-thickness/root-face-line collision specifically.
-  const thickPlateNarrowGaps = <String>{
-    'GrooveType.singleV|JointGeometryMode.equal|316.0|40.0',
-    'GrooveType.singleV|JointGeometryMode.equal|316.0|50.0',
-    'GrooveType.singleV|JointGeometryMode.equal|316.0|60.0',
-    'GrooveType.singleV|JointGeometryMode.equal|346.0|50.0',
-    'GrooveType.singleV|JointGeometryMode.equal|346.0|60.0',
-    'GrooveType.singleV|JointGeometryMode.equal|390.0|50.0',
-    'GrooveType.singleV|JointGeometryMode.equal|390.0|60.0',
-    'GrooveType.singleV|JointGeometryMode.equal|480.0|60.0',
-    'GrooveType.singleV|JointGeometryMode.unequal|316.0|40.0',
-    'GrooveType.singleV|JointGeometryMode.unequal|316.0|50.0',
-    'GrooveType.singleV|JointGeometryMode.unequal|316.0|60.0',
-    'GrooveType.singleV|JointGeometryMode.unequal|346.0|50.0',
-    'GrooveType.singleV|JointGeometryMode.unequal|346.0|60.0',
-    'GrooveType.singleV|JointGeometryMode.unequal|390.0|50.0',
-    'GrooveType.singleV|JointGeometryMode.unequal|390.0|60.0',
-    'GrooveType.singleV|JointGeometryMode.unequal|480.0|60.0',
-    'GrooveType.halfV|JointGeometryMode.equal|316.0|40.0',
-    'GrooveType.halfV|JointGeometryMode.equal|316.0|50.0',
-    'GrooveType.halfV|JointGeometryMode.equal|316.0|60.0',
-    'GrooveType.halfV|JointGeometryMode.equal|346.0|50.0',
-    'GrooveType.halfV|JointGeometryMode.equal|346.0|60.0',
-    'GrooveType.halfV|JointGeometryMode.equal|390.0|50.0',
-    'GrooveType.halfV|JointGeometryMode.equal|390.0|60.0',
-    'GrooveType.halfV|JointGeometryMode.equal|480.0|60.0',
-    'GrooveType.doubleV|JointGeometryMode.equal|316.0|50.0',
-    'GrooveType.doubleV|JointGeometryMode.equal|316.0|60.0',
-    'GrooveType.doubleV|JointGeometryMode.equal|346.0|60.0',
-    'GrooveType.doubleV|JointGeometryMode.equal|390.0|60.0',
-    'GrooveType.doubleV|JointGeometryMode.unequal|316.0|50.0',
-    'GrooveType.doubleV|JointGeometryMode.unequal|316.0|60.0',
-    'GrooveType.doubleV|JointGeometryMode.unequal|346.0|60.0',
-    'GrooveType.doubleV|JointGeometryMode.unequal|390.0|60.0',
+  // FIXED (2026-09-06): `_dimensionLineAvoidRects` now also covers the
+  // groove-depth line (its horizontal extension stub sits at `halfGap +
+  // 20`, overlapping the root label's `halfGap + 16` X by construction) at
+  // all 5 groove-drawing functions - closing the collision this whole sweep
+  // originally caught. That fix alone wasn't sufficient, though: pushing
+  // the label clear of groove depth can land it below the member, straight
+  // into the ROOT GAP line's own extension stub (drawn even further down,
+  // from the member's bottom to `thickness + 3.5` at `x = halfGap`) - a
+  // second avoid rect for that line was needed too, at every groove type
+  // (see the comments on `rootLabelLineAvoidRects`/`rootLabelAvoidRects` in
+  // each `_draw*` function). Verified via mutation testing: reverting
+  // either avoid rect addition reproduces the original failures for the
+  // affected configs.
+  //
+  // KNOWN GAP, still open (see `angleLeaderGaps` below): closing the
+  // dimension-line collision moved Compound V's GTAW-root label further
+  // from its old (colliding) position, which in turn made the alpha/beta
+  // bevel-angle tags' own `pushedFar` avoidance push THEM further too -
+  // crossing the `pushedFar` elbow-routing threshold at several more
+  // Compound V combinations than the single pre-existing Half V case. This
+  // is the exact same root cause as `angleLeaderGaps`, just newly exposed
+  // by this fix rather than introduced by it - folded into that set below
+  // rather than kept as a separate list.
+
+  // KNOWN GAP: Half V's bevel-angle tag (and, per the note above, several
+  // Compound V alpha/beta combinations too) routes its leader line as a
+  // vertical-then-horizontal "elbow" once collision-avoidance has pushed
+  // its own label far enough from its natural position (see the
+  // `pushedFar` branch of `_drawAngleTag` in weld_drawing_preview.dart) -
+  // that elbow route isn't itself checked against other labels' rects
+  // (only the *label* position is), so at these specific
+  // thickness/width/geometry combinations the elbow's vertical run happens
+  // to pass through the GTAW-root label. `_dimensionLineAvoidRects` doesn't
+  // apply here since this isn't a fixed dimension line - a real fix needs
+  // `_drawAngleTag`'s leader route itself checked against avoidRects.
+  const angleLeaderGaps = <String>{
+    'GrooveType.halfV|JointGeometryMode.unequal|390.0|25.0',
     'GrooveType.compoundV|JointGeometryMode.equal|316.0|50.0',
     'GrooveType.compoundV|JointGeometryMode.equal|316.0|60.0',
     'GrooveType.compoundV|JointGeometryMode.equal|346.0|60.0',
-    'GrooveType.compoundV|JointGeometryMode.equal|760.0|60.0',
     'GrooveType.compoundV|JointGeometryMode.unequal|316.0|40.0',
     'GrooveType.compoundV|JointGeometryMode.unequal|316.0|50.0',
     'GrooveType.compoundV|JointGeometryMode.unequal|316.0|60.0',
@@ -349,37 +333,6 @@ void main() {
     'GrooveType.compoundV|JointGeometryMode.unequal|390.0|50.0',
     'GrooveType.compoundV|JointGeometryMode.unequal|390.0|60.0',
     'GrooveType.compoundV|JointGeometryMode.unequal|480.0|60.0',
-    'GrooveType.square|JointGeometryMode.equal|316.0|50.0',
-    'GrooveType.square|JointGeometryMode.equal|316.0|60.0',
-    'GrooveType.square|JointGeometryMode.equal|346.0|60.0',
-    'GrooveType.square|JointGeometryMode.unequal|316.0|50.0',
-    'GrooveType.square|JointGeometryMode.unequal|316.0|60.0',
-    'GrooveType.square|JointGeometryMode.unequal|346.0|60.0',
-  };
-  // KNOWN GAP (distinct root cause from the thick-plate/narrow-canvas set
-  // above - a single, narrow case, not a systematic pattern): Half V's
-  // bevel-angle tag routes its leader line as a vertical-then-horizontal
-  // "elbow" once collision-avoidance has pushed its own label far enough
-  // from its natural position (see the `pushedFar` branch of
-  // `_drawAngleTag` in weld_drawing_preview.dart) - that elbow route isn't
-  // itself checked against other labels' rects (only the *label*
-  // position is), so at this specific thickness/width/geometry
-  // combination the elbow's vertical run happens to pass through the
-  // GTAW-root label. `_dimensionLineAvoidRects` doesn't apply here since
-  // this isn't a fixed dimension line - a real fix needs `_drawAngleTag`'s
-  // leader route itself checked against avoidRects, out of scope for this
-  // round, which targeted dimension-line collisions specifically.
-  //
-  // 2026-09-05: the primary/secondary label-hierarchy pass (c7f1baf)
-  // briefly made alpha's bigger push cross the `pushedFar` threshold at 3
-  // more Compound V combinations, routing through the GTAW-root label the
-  // same way - but 3c7748f's reduced size bump (the same fix that cleared
-  // the Double V collisions above) brought alpha's push back under that
-  // threshold at all 3: re-measured directly via this suite's own painter,
-  // they're genuinely clear again, so this set is back to just the
-  // pre-existing Half V entry.
-  const angleLeaderGaps = <String>{
-    'GrooveType.halfV|JointGeometryMode.unequal|390.0|25.0',
   };
   for (final groove in grooves) {
     for (final geometryMode in geometryModes) {
@@ -400,10 +353,7 @@ void main() {
                 geometryMode: geometryMode,
                 thicknessMm: thicknessMm,
               ),
-              knownGap: thickPlateNarrowGaps.contains(key)
-                  ? 'fixed-mm clearance shrinks to nothing at this '
-                        'thickness/width - see KNOWN GAP comment above'
-                  : angleLeaderGaps.contains(key)
+              knownGap: angleLeaderGaps.contains(key)
                   ? 'bevel-angle leader elbow route crosses the root label '
                         'at this combination - see KNOWN GAP comment above'
                   : null,

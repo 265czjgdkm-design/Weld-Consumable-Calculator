@@ -669,11 +669,20 @@ class _WeldDrawingPainter extends CustomPainter {
       outlinePaint,
     );
     // See _dimensionLineAvoidRects: the root-face line always sits nearby
-    // (its short extension stubs reach `halfGap + 5`), and Unequal geometry
+    // (its short extension stubs reach `halfGap + 5`), Unequal geometry
     // additionally draws a B-thickness line whose own stub reaches much
-    // further out (`halfBody + 6`) - both computed here, before either line
-    // is actually drawn below, so the GTAW-root label can genuinely avoid
-    // them rather than relying on a fixed mm nudge that only clears one.
+    // further out (`halfBody + 6`), and the groove-depth line drawn in
+    // _drawButtCommonMeasurements below always reaches `halfGap + 20` -
+    // overlapping this label's own `halfGap + 16` X position by construction
+    // (see the comment on `rootLabelCenter` below) - all computed here,
+    // before any of them is actually drawn below, so the GTAW-root label
+    // can genuinely avoid them rather than relying on a fixed mm nudge that
+    // only clears one. Also includes the root-gap line's own extension stub
+    // (`thickness`..`thickness + 3.5` at `x = halfGap`, matching the
+    // `rootGapLabelY` passed to _drawButtCommonMeasurements below) - pushing
+    // clear of the groove-depth line alone isn't enough at very thick plate
+    // on a narrow canvas, where the push-down lands the label below the
+    // member and straight into that stub instead.
     final rootLabelLineAvoidRects = [
       ..._dimensionLineAvoidRects(
         layout,
@@ -681,6 +690,20 @@ class _WeldDrawingPainter extends CustomPainter {
         farX: halfGap + 5,
         topY: rightGrooveY,
         bottomY: member.rightBottom,
+      ),
+      ..._dimensionLineAvoidRects(
+        layout,
+        nearX: halfGap,
+        farX: halfGap + 20,
+        topY: 0,
+        bottomY: rightGrooveY - member.rightTop,
+      ),
+      ..._dimensionLineAvoidRects(
+        layout,
+        nearX: halfGap,
+        farX: halfGap,
+        topY: math.max(member.leftBottom, member.rightBottom),
+        bottomY: thickness + 3.5,
       ),
       if (data.geometryMode == JointGeometryMode.unequal)
         ..._dimensionLineAvoidRects(
@@ -910,7 +933,10 @@ class _WeldDrawingPainter extends CustomPainter {
     );
     // See _dimensionLineAvoidRects on Single V's identical block above -
     // Half V's B-thickness line stub reaches `rightBody + 6`, not
-    // `halfBody + 6` (Half V has separate left/right body widths).
+    // `halfBody + 6` (Half V has separate left/right body widths). Also
+    // includes the groove-depth line's own avoid rect (see Single V's
+    // block) since Half V's groove-depth stub reaches the same `halfGap +
+    // 20` regardless of which side is beveled.
     final rootLabelLineAvoidRects = [
       ..._dimensionLineAvoidRects(
         layout,
@@ -918,6 +944,25 @@ class _WeldDrawingPainter extends CustomPainter {
         farX: halfGap + 5,
         topY: rightGrooveY,
         bottomY: member.rightBottom,
+      ),
+      ..._dimensionLineAvoidRects(
+        layout,
+        nearX: halfGap,
+        farX: halfGap + 20,
+        topY: 0,
+        bottomY: rightGrooveY - member.rightTop,
+      ),
+      // Pushing clear of the groove-depth line alone isn't enough at very
+      // thick plate on a narrow canvas - the push lands the label below the
+      // member, straight into the root-gap line's own extension stub (drawn
+      // even further below, from `thickness` to `thickness + 3.5` at
+      // `x = halfGap`) - see the identical comment/fix on Single V.
+      ..._dimensionLineAvoidRects(
+        layout,
+        nearX: halfGap,
+        farX: halfGap,
+        topY: thickness,
+        bottomY: thickness + 3.5,
       ),
       if (data.geometryMode == JointGeometryMode.unequal)
         ..._dimensionLineAvoidRects(
@@ -1183,7 +1228,12 @@ class _WeldDrawingPainter extends CustomPainter {
       // spanning `rightUpperRootY`..`rightLowerRootY` rather than
       // `rightGrooveY`..`member.rightBottom`, since Double V roots from
       // both faces), plus, in Unequal geometry, the same B-thickness line
-      // every other groove type draws.
+      // every other groove type draws, plus the groove-depth line (spanning
+      // `0`..`rightUpperRootY - member.rightTop`, matching the `grooveY`
+      // passed to _drawButtCommonMeasurements below), plus that same
+      // function's root-gap line extension stub (`(leftMid + rightMid) /
+      // 2`..`thickness + 3.5` at `x = halfGap`, matching the
+      // `rootGapLabelY` passed there too).
       rootLabelAvoidRects: [
         ..._dimensionLineAvoidRects(
           layout,
@@ -1191,6 +1241,20 @@ class _WeldDrawingPainter extends CustomPainter {
           farX: halfGap + 5,
           topY: rightUpperRootY,
           bottomY: rightLowerRootY,
+        ),
+        ..._dimensionLineAvoidRects(
+          layout,
+          nearX: halfGap,
+          farX: halfGap + 20,
+          topY: 0,
+          bottomY: rightUpperRootY - member.rightTop,
+        ),
+        ..._dimensionLineAvoidRects(
+          layout,
+          nearX: halfGap,
+          farX: halfGap,
+          topY: (leftMid + rightMid) / 2,
+          bottomY: thickness + 3.5,
         ),
         if (data.geometryMode == JointGeometryMode.unequal)
           ..._dimensionLineAvoidRects(
@@ -1531,7 +1595,9 @@ class _WeldDrawingPainter extends CustomPainter {
       rootHeightMm: data.gtawTransitionMm,
       topLabelCenter: p(halfTop * 0.48, thickness * 0.16),
       rootLabelCenter: p(halfGap + 16, rightGrooveY + 2.6),
-      // See _dimensionLineAvoidRects on Single V's identical block above.
+      // See _dimensionLineAvoidRects on Single V's identical block above -
+      // includes the groove-depth line's and root-gap line's own avoid
+      // rects too.
       rootLabelAvoidRects: [
         ..._dimensionLineAvoidRects(
           layout,
@@ -1539,6 +1605,20 @@ class _WeldDrawingPainter extends CustomPainter {
           farX: halfGap + 5,
           topY: rightGrooveY,
           bottomY: member.rightBottom,
+        ),
+        ..._dimensionLineAvoidRects(
+          layout,
+          nearX: halfGap,
+          farX: halfGap + 20,
+          topY: 0,
+          bottomY: rightGrooveY - member.rightTop,
+        ),
+        ..._dimensionLineAvoidRects(
+          layout,
+          nearX: halfGap,
+          farX: halfGap,
+          topY: thickness,
+          bottomY: thickness + 3.5,
         ),
         if (data.geometryMode == JointGeometryMode.unequal)
           ..._dimensionLineAvoidRects(
@@ -1780,14 +1860,27 @@ class _WeldDrawingPainter extends CustomPainter {
       totalHeightMm: thickness,
       rootHeightMm: data.gtawTransitionMm,
       topLabelCenter: p(halfGap + 8, thickness * 0.18),
-      // Square has no bevel/root-face dimension line - its root-gap
-      // extension stub (drawn in `_drawButtCommonMeasurements` below) sits
-      // right at `halfGap`, short of this label's `halfGap + 16` X by
-      // construction. Unequal geometry still draws the same B-thickness
-      // line every other groove type does, though - see
-      // _dimensionLineAvoidRects on Single V's identical block above.
+      // Square has no bevel/root-face dimension line and no groove-depth
+      // line either (`_drawButtCommonMeasurements` is called with
+      // `grooveY: 0` below, which skips it) - but this label sits close
+      // enough to the bottom (`thickness + 0.6`) that it instead collides
+      // with the ROOT GAP line's right-hand extension stub, which runs from
+      // `rootGapLabelY` down to `thickness + 3.5` at `x = halfGap`. Modeled
+      // the same way as the other groove types' groove-depth avoid rect
+      // (`nearX == farX` collapses `_dimensionLineAvoidRects`'s three
+      // segments down to just that one vertical stub). Unequal geometry
+      // still draws the same B-thickness line every other groove type does,
+      // too - see _dimensionLineAvoidRects on Single V's identical block
+      // above.
       rootLabelCenter: p(halfGap + 16, thickness + 0.6),
       rootLabelAvoidRects: [
+        ..._dimensionLineAvoidRects(
+          layout,
+          nearX: halfGap,
+          farX: halfGap,
+          topY: math.max(member.leftBottom, member.rightBottom),
+          bottomY: thickness + 3.5,
+        ),
         if (data.geometryMode == JointGeometryMode.unequal)
           ..._dimensionLineAvoidRects(
             layout,
