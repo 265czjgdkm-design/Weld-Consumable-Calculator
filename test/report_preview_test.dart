@@ -205,18 +205,18 @@ void main() {
     () async {
       final hi = stringsFor(AppLanguage.hi);
       expect(
-        pdfExportStringsFor(AppLanguage.hi, hi),
+        pdfExportStringsFor(AppLanguage.hi),
         same(_en),
         reason: 'Hindi PDF exports should render with the English strings',
       );
       expect(
-        pdfExportStringsFor(AppLanguage.de, stringsFor(AppLanguage.de)),
+        pdfExportStringsFor(AppLanguage.de),
         same(stringsFor(AppLanguage.de)),
         reason: 'non-Hindi locales should be unaffected by the fallback',
       );
 
       final hiPdfText = await _extractPdfText(
-        await _buildBytes(pdfExportStringsFor(AppLanguage.hi, hi)),
+        await _buildBytes(pdfExportStringsFor(AppLanguage.hi)),
       );
       expect(hiPdfText, contains('Weld Metal (kg)'));
       expect(hiPdfText, isNot(contains(hi.pdfBreakdownColWeldMetalKg)));

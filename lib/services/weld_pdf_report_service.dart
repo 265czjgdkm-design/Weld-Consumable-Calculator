@@ -805,21 +805,26 @@ class WeldPdfReportService {
       cellStyle: const pw.TextStyle(color: _ink, fontSize: 9.2),
       cellPadding: const pw.EdgeInsets.symmetric(horizontal: 8, vertical: 7),
       // Explicit weights (rather than the default IntrinsicColumnWidth),
-      // derived from measured (font.stringMetrics) single-word widths of
-      // the longest translated header in each column across all 5 locales,
-      // so no column is narrower than its own longest unbreakable header
-      // word. Default IntrinsicColumnWidth let the longest header -- RU's
+      // derived from measured (font.stringMetrics) widths of the actual
+      // translated headers in each column across all 5 locales, so no
+      // column is narrower than its own longest unbreakable header word.
+      // Default IntrinsicColumnWidth let the longest header -- RU's
       // "Наплавленный металл (кг)" -- squeeze the short numeric columns
       // (Area Share, Efficiency) below what their own values ("95.0%")
-      // need, wrapping them mid-value across two lines.
+      // need, wrapping them mid-value across two lines. A first fix widened
+      // columns 2/3 (Weld Metal, Filler) enough for that, but left more
+      // slack there than those columns actually need, starving columns 4/5
+      // (Arc-On Time, Rate) and wrapping their short EN/TR headers across
+      // three lines. These weights trim 2/3/6 back to (headroom above)
+      // their own measured minimum and hand the difference to 4/5.
       columnWidths: const {
-        0: pw.FlexColumnWidth(1.18),
-        1: pw.FlexColumnWidth(1.45),
-        2: pw.FlexColumnWidth(1.64),
-        3: pw.FlexColumnWidth(1.71),
-        4: pw.FlexColumnWidth(1.13),
-        5: pw.FlexColumnWidth(1.15),
-        6: pw.FlexColumnWidth(1.53),
+        0: pw.FlexColumnWidth(1.14),
+        1: pw.FlexColumnWidth(1.40),
+        2: pw.FlexColumnWidth(1.61),
+        3: pw.FlexColumnWidth(1.67),
+        4: pw.FlexColumnWidth(1.28),
+        5: pw.FlexColumnWidth(1.21),
+        6: pw.FlexColumnWidth(1.49),
       },
       headers: [
         strings.basisProcess,

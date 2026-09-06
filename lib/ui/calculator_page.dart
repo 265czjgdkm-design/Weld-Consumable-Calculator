@@ -52,8 +52,10 @@ class _RequiredFieldMissingException implements Exception {
 /// the UI itself stays Hindi, since this is a PDF-rendering-limitation
 /// workaround, not a translation quality issue. Don't "fix" this by
 /// reverting to [uiStrings] for Hindi.
-L10nStrings pdfExportStringsFor(AppLanguage language, L10nStrings uiStrings) =>
-    language == AppLanguage.hi ? stringsFor(AppLanguage.en) : uiStrings;
+L10nStrings pdfExportStringsFor(AppLanguage language) =>
+    language == AppLanguage.hi
+    ? stringsFor(AppLanguage.en)
+    : stringsFor(language);
 
 class CalculatorPage extends StatefulWidget {
   CalculatorPage({
@@ -3412,10 +3414,7 @@ class _CalculatorPageState extends State<CalculatorPage> {
     if (result == null || _isExportingPdf) return;
 
     final strings = AppLocaleScope.stringsOf(context);
-    final pdfStrings = pdfExportStringsFor(
-      AppLocaleScope.of(context).language,
-      strings,
-    );
+    final pdfStrings = pdfExportStringsFor(AppLocaleScope.of(context).language);
     final basisEntries = _buildCalculationBasis(stringsOverride: pdfStrings);
 
     setState(() => _isExportingPdf = true);
