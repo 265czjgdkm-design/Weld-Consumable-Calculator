@@ -1035,6 +1035,11 @@ class _WeldDrawingPainter extends CustomPainter {
       thicknessLabelX: -leftBody - 6,
       rightThicknessLabelX: rightBody + 6,
       avoidRects: [...tintRects, angleRect, rootFaceRect],
+      // Half V's bevel angle and groove depth both live on the right-hand
+      // side (see the comment on `angleRect` above) - close enough that a
+      // narrow canvas can clamp both to the same band even after the
+      // avoidRects push above. See [_declutterAfterClamp].
+      grooveDepthPostClampAvoidRects: [angleRect],
     );
     final chipRects = _drawTopChips(canvas, size, grooveTypeLabel);
     _drawCapDimensions(
@@ -1748,6 +1753,12 @@ class _WeldDrawingPainter extends CustomPainter {
         ?commonRects.grooveDepth,
         hRect,
       ],
+      // Groove depth is drawn earlier in this same sequence (via
+      // commonRects, above) - close enough on a narrow canvas that both can
+      // clamp to the same bottom-edge band even after the avoidRects push
+      // above (compoundHalfVBetaClampGap in
+      // weld_drawing_label_overlap_test.dart). See [_declutterAfterClamp].
+      postClampAvoidRects: [?commonRects.grooveDepth],
       primary: true,
     );
     final chipRects = _drawTopChips(canvas, size, grooveTypeLabel);
@@ -2175,6 +2186,12 @@ class _WeldDrawingPainter extends CustomPainter {
     double? rightThicknessLabelX,
     double? rootGapLabelY,
     List<Rect> avoidRects = const [],
+    // Extra already-drawn rects (e.g. Half V's bevel-angle tag, drawn before
+    // this function runs) that groove depth's post-clamp declutter should
+    // also check - see [_declutterAfterClamp]. Root gap is always included
+    // below regardless, since it's this function's own known gap
+    // (singleVIdMatchGrooveDepthGap in weld_drawing_label_overlap_test.dart).
+    List<Rect> grooveDepthPostClampAvoidRects = const [],
   }) {
     final p = layout.point;
     final memberExtents = _memberExtents(thickness);
@@ -2254,6 +2271,11 @@ class _WeldDrawingPainter extends CustomPainter {
           ?bThicknessRect,
           rootGapRect,
         ],
+        // See [_declutterAfterClamp] / this function's own doc comment
+        // above: root gap is drawn immediately before this on a lane that
+        // can end up clamped to the same canvas-bottom band as groove depth
+        // on a narrow enough canvas + idMatch alignment.
+        postClampAvoidRects: [rootGapRect, ...grooveDepthPostClampAvoidRects],
       );
       return (
         thickness: thicknessRect,
@@ -2356,6 +2378,14 @@ class _WeldDrawingPainter extends CustomPainter {
         extensionEnd: p(0, topY + (capHeight * direction)),
         fieldKey: FieldKey.capHeightMm,
         avoidRects: [...avoidRects, ?overlapRect],
+        // See [_declutterAfterClamp]: on a narrow/short canvas both of this
+        // SAME face's pills can independently push toward the bottom canvas
+        // edge and clamp onto the identical y-band even though the line
+        // above already avoids `overlapRect` in unclamped space - a real,
+        // documented gap on Double V's both-faces cap pass (see the
+        // doubleVBothFacesNarrowGap/doubleVThickPlateGap KNOWN GAP comments
+        // in weld_drawing_label_overlap_test.dart).
+        postClampAvoidRects: [?overlapRect],
       );
     }
 
@@ -2650,6 +2680,11 @@ class _WeldDrawingPainter extends CustomPainter {
     Offset? extensionEnd,
     FieldKey? fieldKey,
     List<Rect> avoidRects = const [],
+    // Sibling rects that are already fully placed and drawn (unlike
+    // [avoidRects], which [_clearLabelPosition] checks against unclamped
+    // positions during resolution) - see [_declutterAfterClamp] for why a
+    // second, separate pass is needed after clamping.
+    List<Rect> postClampAvoidRects = const [],
     bool primary = false,
   }) {
     if (extensionStart != null) {
@@ -2674,6 +2709,16 @@ class _WeldDrawingPainter extends CustomPainter {
         labelCenter,
         fontSize,
         avoidRects,
+        primary: primary,
+      );
+    }
+    if (postClampAvoidRects.isNotEmpty) {
+      labelCenter = _declutterAfterClamp(
+        labelSize,
+        label,
+        labelCenter,
+        fontSize,
+        postClampAvoidRects,
         primary: primary,
       );
     }
@@ -2734,6 +2779,8 @@ class _WeldDrawingPainter extends CustomPainter {
     required String text,
     FieldKey? fieldKey,
     List<Rect> avoidRects = const [],
+    // See [_drawDimensionLine]'s identical parameter / [_declutterAfterClamp].
+    List<Rect> postClampAvoidRects = const [],
     bool primary = false,
   }) {
     final fontSize = _measurementFontSize(size);
@@ -2745,6 +2792,16 @@ class _WeldDrawingPainter extends CustomPainter {
         labelCenter,
         fontSize,
         avoidRects,
+        primary: primary,
+      );
+    }
+    if (postClampAvoidRects.isNotEmpty) {
+      resolvedCenter = _declutterAfterClamp(
+        size,
+        text,
+        resolvedCenter,
+        fontSize,
+        postClampAvoidRects,
         primary: primary,
       );
     }
@@ -2977,6 +3034,93 @@ class _WeldDrawingPainter extends CustomPainter {
       if (!moved) break;
     }
     return center;
+  }
+
+  // Group 3's bounded fix for a real structural gap in the mechanism above:
+  // [_clearLabelPosition] resolves collisions against UNCLAMPED rects (see
+  // [_resolutionMeasurementRect]'s own doc comment for why), but the rect
+  // actually drawn clamps to the canvas edge via [_measurementLabelRect] -
+  // two sibling labels that both get pushed toward the same edge can
+  // independently clamp onto the identical band, reintroducing a collision
+  // [_clearLabelPosition] believed it had already cleared. This runs AFTER
+  // that resolution, once a label's real final (clamped) position is known,
+  // and only ever engages when that position still truly overlaps an
+  // already-placed sibling's own real (clamped) rect - so it's a no-op for
+  // every label that doesn't hit this specific edge case.
+  //
+  // Deliberately narrow in every direction this file's history has already
+  // burned rounds on: horizontal-only (the collision is a Y-axis clamp
+  // problem; nudging Y here would just walk back into the same edge that
+  // caused it), tries exactly two deterministic candidate positions (clear
+  // of the blocker's right edge, then its left edge - always in that order,
+  // so behavior can't flicker between renders), and only ever moves the
+  // LATER-drawn label (the caller only ever passes an EARLIER, already-drawn
+  // rect as the sibling to avoid, never the reverse). If neither candidate
+  // achieves a genuinely fully-clear result (checked against every rect in
+  // [siblings], not just the one that triggered this), it gives up and
+  // returns the untouched original position - matching this exact session's
+  // ground rule of not forcing an unclean fix: a case this can't cleanly
+  // resolve is left exactly as collision-avoidance already left it, not
+  // nudged into a different, equally-broken position.
+  Offset _declutterAfterClamp(
+    Size size,
+    String text,
+    Offset labelCenter,
+    double fontSize,
+    List<Rect> siblings, {
+    bool primary = false,
+    double gap = 4.0,
+  }) {
+    if (siblings.isEmpty) return labelCenter;
+    bool clearOfAll(Rect rect) =>
+        siblings.every((s) => !rect.overlaps(s.inflate(gap)));
+
+    final baseRect = _measurementLabelRect(
+      size,
+      text,
+      labelCenter,
+      fontSize,
+      primary: primary,
+    );
+    if (clearOfAll(baseRect)) return labelCenter;
+
+    Rect? blocker;
+    for (final sibling in siblings) {
+      final inflated = sibling.inflate(gap);
+      if (baseRect.overlaps(inflated)) {
+        blocker = inflated;
+        break;
+      }
+    }
+    if (blocker == null) return labelCenter;
+
+    final rightCenter = Offset(
+      labelCenter.dx + (blocker.right - baseRect.left),
+      labelCenter.dy,
+    );
+    final rightRect = _measurementLabelRect(
+      size,
+      text,
+      rightCenter,
+      fontSize,
+      primary: primary,
+    );
+    if (clearOfAll(rightRect)) return rightCenter;
+
+    final leftCenter = Offset(
+      labelCenter.dx - (baseRect.right - blocker.left),
+      labelCenter.dy,
+    );
+    final leftRect = _measurementLabelRect(
+      size,
+      text,
+      leftCenter,
+      fontSize,
+      primary: primary,
+    );
+    if (clearOfAll(leftRect)) return leftCenter;
+
+    return labelCenter;
   }
 
   // Turns a dimension line's own drawn shape (its two extension stubs plus

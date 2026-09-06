@@ -577,11 +577,57 @@ void main() {
   // surfaced by testing this width for the first time, independent of
   // Findings 1-3 above. Needs a dedicated narrow-width layout pass, not
   // attempted in this round.
-  String? extraBusyNarrowGap(WeldDrawingData data, double canvasWidth) =>
-      (canvasWidth <= 240.0 && isExtraBusy(data))
-      ? 'extraBusy labels overlap at 320pt/240px width - real, '
-            'pre-existing, needs a dedicated follow-up'
-      : null;
+  //
+  // Group 3 (2026-09-07) fixed several of the combinations this bucket used
+  // to silently absorb: Compound V's groove-depth/beta collision (see
+  // [compoundHalfVBetaClampGap] below for the mechanism) at both draw
+  // modes, but not the same set at each - a new post-clamp declutter pass
+  // (`_declutterAfterClamp` in weld_drawing_preview.dart) only ever moves
+  // beta when doing so achieves a genuinely fully-clear result, so which
+  // exact combinations clear depends on how much horizontal room each one's
+  // real label widths leave, independently per mode (`technical` labels are
+  // narrower than `visual`'s soft-pill style, so more of them fit). All 5
+  // `technical`-mode combos [compoundHalfVBetaClampGap] used to track are
+  // fully fixed; only 3 of the same 5 are fixed in `visual` mode
+  // (`idMatch|pipeButt` and `odMatch|pipeButt` are NOT - declutter found no
+  // side with enough room there and correctly left them exactly as before,
+  // still 0-width margin at this exact canvas size). Re-measured directly
+  // via this suite's own painter, not assumed - every entry below (and its
+  // absence) was individually confirmed clean or still-colliding.
+  const compoundVBetaVisualFixed = {
+    'JointAlignment.centerline|JointType.pipeButt',
+    'JointAlignment.centerline|JointType.plateButt',
+    'JointAlignment.idMatch|JointType.plateButt',
+  };
+  const compoundVBetaTechnicalFixed = {
+    'JointAlignment.centerline|JointType.pipeButt',
+    'JointAlignment.centerline|JointType.plateButt',
+    'JointAlignment.idMatch|JointType.pipeButt',
+    'JointAlignment.idMatch|JointType.plateButt',
+    'JointAlignment.odMatch|JointType.pipeButt',
+  };
+  String? extraBusyNarrowGap(
+    WeldDrawingData data,
+    double canvasWidth, {
+    GrooveType? groove,
+    JointType? joint,
+    JointAlignment? alignment,
+    DrawingMode? mode,
+  }) {
+    if (canvasWidth > 240.0 || !isExtraBusy(data)) return null;
+    if (groove == GrooveType.compoundV) {
+      final key = '$alignment|$joint';
+      if (mode == DrawingMode.visual && compoundVBetaVisualFixed.contains(key)) {
+        return null;
+      }
+      if (mode == DrawingMode.technical &&
+          compoundVBetaTechnicalFixed.contains(key)) {
+        return null;
+      }
+    }
+    return 'extraBusy labels overlap at 320pt/240px width - real, '
+        'pre-existing, needs a dedicated follow-up';
+  }
 
   // KNOWN GAP (NOT pre-existing - a genuine regression from the
   // primary/secondary label-hierarchy pass, c7f1baf/3c7748f): at this exact
@@ -596,23 +642,34 @@ void main() {
   // clears groove depth in unclamped space but the separate Y-clamp
   // reintroduces the overlap. Same structural cause already documented in
   // [doubleVBothFacesNarrowGap] and [singleVIdMatchGrooveDepthGap] above,
-  // not a new bug class - but, unlike the broader [extraBusyNarrowGap]
-  // bucket this sits inside (which predates this feature and stays broad on
-  // purpose), these 6 configs specifically were re-measured directly against
-  // 3e2358c (the commit before c7f1baf) via this suite's own painter and
-  // confirmed clean (0 overlap) there in `technical` mode - `visual` mode at
-  // these same configs already had this collision pre-existing, correctly
-  // caught by [extraBusyNarrowGap] and untouched by this entry. A genuinely
-  // clean fix wasn't found within a contained change (it needs the same
-  // direction-aware-push work already called out above, out of scope here),
-  // so this stays open rather than silently absorbed into the "pre-existing"
-  // bucket's comment, which would misattribute it.
+  // not a new bug class.
+  //
+  // Group 3 (2026-09-07) fixed 5 of these 6: weld_drawing_preview.dart's
+  // `_declutterAfterClamp` now runs after beta's normal collision-avoidance
+  // resolves and clamps, and - only when beta's real final (clamped) rect
+  // still truly overlaps groove depth's real final rect - tries nudging beta
+  // fully clear of it horizontally (clear of its right edge, then its left,
+  // always in that deterministic order); if either candidate is genuinely
+  // fully clear of every rect it needs to avoid, that becomes beta's final
+  // position. Re-measured directly via this suite's own painter (not
+  // assumed): centerline/pipeButt, centerline/plateButt, idMatch/pipeButt,
+  // idMatch/plateButt and odMatch/pipeButt are now genuinely 0-overlap in
+  // `technical` mode (their `visual`-mode counterparts, previously caught by
+  // the broader [extraBusyNarrowGap] bucket instead, are fixed too where
+  // there was room - see that bucket's own updated comment). `odMatch/halfV`
+  // is NOT fixed: alpha (halfV's equivalent of beta, drawn via
+  // `_drawButtCommonMeasurements`'s `grooveDepthPostClampAvoidRects`) is
+  // already clamped to its own canvas-edge limit in both push directions at
+  // this exact width/text-length combination, so neither declutter candidate
+  // achieves a genuinely clear result - per this session's own ground rule,
+  // declutter correctly leaves it untouched rather than forcing a partial,
+  // still-broken move. This is the same structural "not enough horizontal
+  // room on a canvas this narrow" limit as [doubleVBothFacesNarrowGap] and
+  // [doubleVThickPlateGap] below, not a mechanism failure - a genuinely
+  // clean fix needs either a narrower Half V alpha/groove-depth label pair
+  // at this width or the direction-aware-push work already called out
+  // elsewhere in this file, both out of scope for a contained fix.
   const compoundHalfVTechnicalBetaGap = {
-    'JointAlignment.centerline|GrooveType.compoundV|JointType.pipeButt',
-    'JointAlignment.centerline|GrooveType.compoundV|JointType.plateButt',
-    'JointAlignment.idMatch|GrooveType.compoundV|JointType.pipeButt',
-    'JointAlignment.idMatch|GrooveType.compoundV|JointType.plateButt',
-    'JointAlignment.odMatch|GrooveType.compoundV|JointType.pipeButt',
     'JointAlignment.odMatch|GrooveType.halfV|JointType.pipeButt',
   };
   String? compoundHalfVBetaClampGap(
@@ -710,7 +767,14 @@ void main() {
                       mode,
                       width,
                     ) ??
-                    extraBusyNarrowGap(data, width) ??
+                    extraBusyNarrowGap(
+                      data,
+                      width,
+                      groove: groove,
+                      joint: joint,
+                      alignment: alignment,
+                      mode: mode,
+                    ) ??
                     singleVIdMatchGrooveDepthGap(
                       groove,
                       alignment,
