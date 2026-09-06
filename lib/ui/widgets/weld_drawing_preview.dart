@@ -2779,8 +2779,40 @@ class _WeldDrawingPainter extends CustomPainter {
       );
       final ux = naturalLength == 0 ? 0.0 : naturalDx / naturalLength;
       final uy = naturalLength == 0 ? 0.0 : naturalDy / naturalLength;
-      final stub = Offset(start.dx + (ux * 16), start.dy + (uy * 16));
-      final elbow = Offset(stub.dx, resolvedCenter.dy);
+      var stub = Offset(start.dx + (ux * 16), start.dy + (uy * 16));
+      var elbow = Offset(stub.dx, resolvedCenter.dy);
+      // Unlike the label itself (already pushed clear by
+      // [_clearLabelPosition] above), this elbow's own vertical run was
+      // never checked against avoidRects - only the label's rect was. On a
+      // busy canvas (Compound V especially) that run can cut straight
+      // through an already-placed label the same way the label position
+      // itself could. Nudge the stub (and the vertical run's x with it)
+      // sideways, in a small bounded loop mirroring
+      // [_clearLabelPosition]'s bounded-loop convention, until the run
+      // clears every avoid rect or the cap is hit. The push direction is
+      // decided once, from the first rect it actually hits, and held fixed
+      // for every later pass - deciding a fresh "nearest edge" direction
+      // per rect let two rects on opposite sides walk the run back and
+      // forth between them forever (each pass "fixing" the other's push),
+      // the same oscillation [_clearLabelPosition]'s own always-down
+      // convention exists to avoid.
+      double? pushDir;
+      for (var pass = 0; pass < avoidRects.length + 2; pass++) {
+        var moved = false;
+        for (final raw in avoidRects) {
+          final avoid = raw.inflate(3.0);
+          final runRect = Rect.fromPoints(stub, elbow);
+          if (!runRect.overlaps(avoid)) continue;
+          final deltaRight = avoid.right - runRect.left;
+          final deltaLeft = avoid.left - runRect.right;
+          pushDir ??= deltaRight.abs() <= deltaLeft.abs() ? 1.0 : -1.0;
+          final delta = pushDir > 0 ? deltaRight : deltaLeft;
+          stub = Offset(stub.dx + delta, stub.dy);
+          elbow = Offset(stub.dx, elbow.dy);
+          moved = true;
+        }
+        if (!moved) break;
+      }
       final horizontalDir = resolvedCenter.dx >= elbow.dx ? 1.0 : -1.0;
       final lineEnd = Offset(
         resolvedCenter.dx - (horizontalDir * 20),

@@ -298,47 +298,34 @@ void main() {
   // either avoid rect addition reproduces the original failures for the
   // affected configs.
   //
-  // KNOWN GAP, still open (see `angleLeaderGaps` below): closing the
-  // dimension-line collision moved Compound V's GTAW-root label further
-  // from its old (colliding) position, which in turn made the alpha/beta
-  // bevel-angle tags' own `pushedFar` avoidance push THEM further too -
-  // crossing the `pushedFar` elbow-routing threshold at several more
-  // Compound V combinations than the single pre-existing Half V case. This
-  // is the exact same root cause as `angleLeaderGaps`, just newly exposed
-  // by this fix rather than introduced by it - folded into that set below
-  // rather than kept as a separate list.
-
-  // KNOWN GAP: Half V's bevel-angle tag (and, per the note above, several
-  // Compound V alpha/beta combinations too) routes its leader line as a
+  // FIXED (2026-09-06): closing the dimension-line collision above moved
+  // Compound V's GTAW-root label further from its old (colliding) position,
+  // which in turn made the alpha/beta bevel-angle tags' own `pushedFar`
+  // avoidance push THEM further too - crossing the `pushedFar`
+  // elbow-routing threshold at several more Compound V combinations than
+  // the single pre-existing Half V case below. Both classes share the same
+  // root cause and the same fix: `_drawAngleTag`'s `pushedFar` branch now
+  // checks its own stub->elbow vertical run against `avoidRects` (the same
+  // list already used to place the label itself), nudging the run's X
+  // sideways - in one direction, decided once from the first blocking rect
+  // and held fixed for the rest of the search, exactly like
+  // [_clearLabelPosition]'s own always-down convention, to avoid the
+  // oscillation an earlier "nearest edge every time" attempt at this fix
+  // hit when two different rects on opposite sides kept undoing each
+  // other's push - until the run clears every avoid rect.
+  //
+  // FIXED: Half V's bevel-angle tag routes its leader line as a
   // vertical-then-horizontal "elbow" once collision-avoidance has pushed
   // its own label far enough from its natural position (see the
   // `pushedFar` branch of `_drawAngleTag` in weld_drawing_preview.dart) -
-  // that elbow route isn't itself checked against other labels' rects
-  // (only the *label* position is), so at these specific
-  // thickness/width/geometry combinations the elbow's vertical run happens
-  // to pass through the GTAW-root label. `_dimensionLineAvoidRects` doesn't
-  // apply here since this isn't a fixed dimension line - a real fix needs
-  // `_drawAngleTag`'s leader route itself checked against avoidRects.
-  const angleLeaderGaps = <String>{
-    'GrooveType.halfV|JointGeometryMode.unequal|390.0|25.0',
-    'GrooveType.compoundV|JointGeometryMode.equal|316.0|50.0',
-    'GrooveType.compoundV|JointGeometryMode.equal|316.0|60.0',
-    'GrooveType.compoundV|JointGeometryMode.equal|346.0|60.0',
-    'GrooveType.compoundV|JointGeometryMode.unequal|316.0|40.0',
-    'GrooveType.compoundV|JointGeometryMode.unequal|316.0|50.0',
-    'GrooveType.compoundV|JointGeometryMode.unequal|316.0|60.0',
-    'GrooveType.compoundV|JointGeometryMode.unequal|346.0|40.0',
-    'GrooveType.compoundV|JointGeometryMode.unequal|346.0|50.0',
-    'GrooveType.compoundV|JointGeometryMode.unequal|346.0|60.0',
-    'GrooveType.compoundV|JointGeometryMode.unequal|390.0|50.0',
-    'GrooveType.compoundV|JointGeometryMode.unequal|390.0|60.0',
-    'GrooveType.compoundV|JointGeometryMode.unequal|480.0|60.0',
-  };
+  // that elbow route previously wasn't itself checked against other
+  // labels' rects (only the *label* position was), so at this specific
+  // thickness/width/geometry combination the elbow's vertical run happened
+  // to pass through the GTAW-root label. See the fix described above.
   for (final groove in grooves) {
     for (final geometryMode in geometryModes) {
       for (final width in widths) {
         for (final thicknessMm in thicknesses) {
-          final key = '$groove|$geometryMode|$width|$thicknessMm';
           testWidgets(
             'GTAW-root label clear of lines: $groove/$geometryMode '
             'thickness sweep @${width.toInt()} t=${thicknessMm.toInt()}',
@@ -353,10 +340,6 @@ void main() {
                 geometryMode: geometryMode,
                 thicknessMm: thicknessMm,
               ),
-              knownGap: angleLeaderGaps.contains(key)
-                  ? 'bevel-angle leader elbow route crosses the root label '
-                        'at this combination - see KNOWN GAP comment above'
-                  : null,
             ),
           );
         }
