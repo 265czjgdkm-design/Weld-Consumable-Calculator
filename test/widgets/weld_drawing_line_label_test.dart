@@ -61,17 +61,31 @@ bool _isHorizontalRun(Offset a, Offset b) => a.dy == b.dy && a.dx != b.dx;
 
 /// Widens the GTAW-root-only check below to catch the exact class of
 /// regression a reviewer found in commit c6b0516: `_drawAngleTag`'s
-/// `pushedFar` elbow-routing branch drew a diagonal (`start`->`stub`) then a
-/// vertical run (`stub`->`elbow`) then a horizontal run (`elbow`->`lineEnd`)
-/// and only ever checked the vertical run against avoidRects, so a push
-/// that cleared the vertical run could relocate the same collision onto the
-/// now-longer diagonal instead - invisible to a check that only ever looked
-/// at the GTAW-root label. This finds that exact 3-segment chain shape
-/// (diagonal, then a perfectly vertical run, then a perfectly horizontal
-/// run, each starting exactly where the previous one ended - unique to this
-/// branch, nothing else in this file draws that shape) and checks its
-/// diagonal and vertical segments against every hotspot rect in the scene,
+/// `pushedFar` elbow-routing branch draws a diagonal (`start`->`stub`), then
+/// a vertical run (`stub`->`elbow`), then a horizontal run
+/// (`elbow`->`lineEnd`), and none of the three were ever checked against
+/// avoidRects - only the resolved label position was. This finds that exact
+/// 3-segment chain shape (diagonal, then a perfectly vertical run, then a
+/// perfectly horizontal run, each starting exactly where the previous one
+/// ended - unique to this branch, nothing else in this file draws that
+/// shape) and checks every segment against every hotspot rect in the scene,
 /// not just root.
+///
+/// A chain's OWN label rect is deliberately excluded: `lineEnd` (the
+/// horizontal run's endpoint) sits only 20px from the label's own resolved
+/// center by construction (see `_drawAngleTag`), so the horizontal run
+/// routinely ends at/inside its own pill - a legitimate self-touch, not a
+/// cross-label bug, exactly the same class of "own leader endpoint inside
+/// own pill by design" self-touch weld_drawing_label_overlap_test.dart's
+/// own overlap check already excludes for a different reason (see that
+/// file's docstring). Own label is identified as whichever hotspot rect
+/// contains the point 20px to either side of the chain's endpoint at the
+/// endpoint's own y - exactly where `_drawAngleTag` places `resolvedCenter`
+/// relative to `lineEnd`. Confirmed via an instrumented full-matrix sweep
+/// that this exclusion only ever drops genuine self-touches (16 of the 178
+/// configs the un-excluded check flags): every one of those 16 has its
+/// OWN fieldKey among the "crossed" set with no other groove/config
+/// evidence of a real second label anywhere near that rect.
 ///
 /// Deliberately scoped to this specific chain shape rather than "every
 /// guide-colored segment vs every label rect": an exploratory sweep during
@@ -98,11 +112,29 @@ List<String> _pushedFarElbowCrossings(
     if (!_isDiagonal(a[0], a[1])) continue;
     if (!_isVerticalRun(b[0], b[1])) continue;
     if (!_isHorizontalRun(c[0], c[1])) continue;
+
+    // See this function's doc comment: identifies the chain's own resolved
+    // label by the point 20px either side of `lineEnd` (c's endpoint), the
+    // exact offset `_drawAngleTag` places `resolvedCenter` at.
+    final cand1 = Offset(c[1].dx + 20, c[1].dy);
+    final cand2 = Offset(c[1].dx - 20, c[1].dy);
+    Rect? ownRect;
     for (final h in hotspots) {
+      if (h.rect.inflate(1.0).contains(cand1) ||
+          h.rect.inflate(1.0).contains(cand2)) {
+        ownRect = h.rect;
+        break;
+      }
+    }
+
+    for (final h in hotspots) {
+      if (ownRect != null && h.rect == ownRect) continue;
       if (_segmentIntersectsRect(a[0], a[1], h.rect) ||
-          _segmentIntersectsRect(b[0], b[1], h.rect)) {
+          _segmentIntersectsRect(b[0], b[1], h.rect) ||
+          _segmentIntersectsRect(c[0], c[1], h.rect)) {
         crossings.add(
-          '${a[0]} -> ${b[0]} -> ${b[1]} crosses ${h.fieldKey} (${h.rect})',
+          '${a[0]} -> ${b[0]} -> ${b[1]} -> ${c[1]} crosses '
+          '${h.fieldKey} (${h.rect})',
         );
       }
     }
@@ -185,6 +217,7 @@ void main() {
     required double height,
     required WeldDrawingData data,
     String? knownGap,
+    String? knownElbowGap,
   }) async {
     final strings = stringsFor(AppLanguage.en);
     await tester.pumpWidget(
@@ -260,72 +293,103 @@ void main() {
     expect(
       gtawHotspots.length,
       2,
-      reason: 'expected both the SMAW-fill-cap and GTAW-root labels to be '
+      reason:
+          'expected both the SMAW-fill-cap and GTAW-root labels to be '
           'hotspotted when GTAW+SMAW is the active process',
     );
     final rootLabelRect = gtawHotspots[1].rect;
 
-    final crossings = <String>[];
+    final rootCrossings = <String>[];
     for (final segment in recorder.segments) {
       if (_segmentIntersectsRect(segment[0], segment[1], rootLabelRect)) {
-        crossings.add('${segment[0]} -> ${segment[1]}');
+        rootCrossings.add('${segment[0]} -> ${segment[1]}');
       }
     }
-    // Widened per a reviewer finding on commit c6b0516: the check above
-    // only ever covers the GTAW-root label specifically, so a leader that
-    // relocates a collision onto some OTHER label (e.g. the thickness pill)
-    // shipped silently. See `_pushedFarElbowCrossings`'s doc comment for why
-    // this is scoped to that branch's specific 3-segment chain shape rather
-    // than every segment vs every label.
-    crossings.addAll(_pushedFarElbowCrossings(recorder.segments, hotspots));
+    // This is the file's ORIGINAL, narrow assertion: no line/leader
+    // crosses the GTAW-root label specifically. Kept as its own independent
+    // `expect` with its own independently-controlled `knownGap` - a
+    // reviewer found that an earlier round bundled this together with the
+    // broader `_pushedFarElbowCrossings` check below under one shared
+    // `skip`, so a `knownGap` added for the broader check could silently
+    // blind this narrower, more important one too. They must never share a
+    // skip flag again.
     expect(
-      crossings,
+      rootCrossings,
       isEmpty,
       reason:
           'A dimension/leader line crosses the GTAW-root label '
-          '($rootLabelRect), or a pushedFar angle-tag elbow leader crosses '
-          'some other label: ${crossings.join(' | ')}',
+          '($rootLabelRect): ${rootCrossings.join(' | ')}',
       skip: knownGap,
+    );
+
+    // Widened per a reviewer finding on commit c6b0516: the check above
+    // only ever covers the GTAW-root label specifically, so a leader that
+    // relocates a collision onto some OTHER label (e.g. the SMAW-fill-cap
+    // "top" label sharing the same FieldKey, or a different label
+    // entirely) shipped silently. See `_pushedFarElbowCrossings`'s doc
+    // comment for why this is scoped to that branch's specific 3-segment
+    // chain shape rather than every segment vs every label, and for why
+    // the chain's own label is excluded as a legitimate self-touch.
+    final elbowCrossings = _pushedFarElbowCrossings(
+      recorder.segments,
+      hotspots,
+    );
+    expect(
+      elbowCrossings,
+      isEmpty,
+      reason:
+          'A pushedFar angle-tag elbow leader crosses another label: '
+          '${elbowCrossings.join(' | ')}',
+      skip: knownElbowGap,
     );
   }
 
-  // Every one of these keys was verified, via a git-worktree diff against
-  // 62b992f (the commit immediately before c6b0516 ever touched
-  // `_drawAngleTag`'s pushedFar branch), to already exist byte-identically
-  // before that commit - i.e. this widened check's own investigation
-  // confirmed none of these are new or made worse by this round's fix; they
-  // pre-date it. c6b0516 briefly and accidentally hid a handful of these by
-  // relocating the exact same collision onto a different segment (the bug a
-  // reviewer found - see `_pushedFarElbowCrossings`'s doc comment) - this
-  // round's bounded/clamped fix intentionally falls back to the ORIGINAL
-  // unpushed elbow route rather than risk repeating that, so these
-  // resurface as visible, honest known gaps instead of silently passing.
-  // Keys are 'groove|joint|mode|geometryMode|width'.
-  const knownPushedFarGapsSweep1 = {
-    'compoundV|pipeButt|technical|equal|316',
-    'compoundV|pipeButt|technical|equal|346',
-    'compoundV|pipeButt|technical|equal|390',
-    'compoundV|pipeButt|technical|unequal|316',
-    'compoundV|pipeButt|technical|unequal|346',
-    'compoundV|pipeButt|technical|unequal|390',
-    'compoundV|pipeButt|visual|equal|316',
-    'compoundV|pipeButt|visual|equal|346',
-    'compoundV|pipeButt|visual|equal|390',
-    'compoundV|pipeButt|visual|unequal|316',
-    'compoundV|pipeButt|visual|unequal|346',
-    'compoundV|pipeButt|visual|unequal|390',
-    'compoundV|plateButt|technical|equal|316',
-    'compoundV|plateButt|technical|equal|346',
-    'compoundV|plateButt|technical|equal|390',
-    'compoundV|plateButt|technical|unequal|316',
-    'compoundV|plateButt|technical|unequal|346',
-    'compoundV|plateButt|technical|unequal|390',
-    'compoundV|plateButt|visual|equal|316',
-    'compoundV|plateButt|visual|equal|346',
-    'compoundV|plateButt|visual|equal|390',
-    'compoundV|plateButt|visual|unequal|316',
-    'compoundV|plateButt|visual|unequal|346',
-    'compoundV|plateButt|visual|unequal|390',
+  // ---------------------------------------------------------------------
+  // KNOWN GAPS - `_drawAngleTag`'s `pushedFar` elbow-routing branch
+  // ---------------------------------------------------------------------
+  // Re-established by a full-matrix instrumented sweep after reverting
+  // c6b0516/a12db19 (both attempts at fixing this mechanism by sliding the
+  // elbow's `stub.dx` sideways - see git history on this file/
+  // weld_drawing_preview.dart for why both failed review and were
+  // reverted back to 62b992f's original, unpushed elbow route). Every key
+  // below was verified via the same instrumented-sweep technique: dump
+  // every guide-colored segment the painter draws plus every hotspot rect,
+  // then geometrically test the `pushedFar` chain's 3 segments against
+  // every hotspot except its own (self-touch, see
+  // `_pushedFarElbowCrossings`'s doc comment).
+  //
+  // Two distinct mechanisms, not one undifferentiated bucket:
+  //
+  // (1) `alphaVsCapLabelGapsSweep*`: Single V/Half V/Double V's one bevel
+  // -angle tag ("alpha", FieldKey.bevelAngleDeg) has its own natural
+  // position pushed far enough (by `_clearLabelPosition`) that its elbow
+  // route's diagonal or vertical run crosses the SMAW-fill-cap ("top")
+  // label - the FIRST of `_drawCombinedProcessTint`'s two
+  // FieldKey.gtawTransitionMm-keyed hotspots, not the GTAW-root label
+  // (the second one) as an earlier round of this file's own comments
+  // assumed without checking which of the two same-keyed rects was
+  // actually hit; confirmed by instrumentation that all 104 of these
+  // configs hit the TOP rect specifically, never the root rect. Root cause:
+  // `_drawAngleTag`'s `pushedFar` branch never checks its own elbow route
+  // against `avoidRects`, only the resolved label position.
+  //
+  // (2) `compoundVBevelTagCrowdingGapsSweep*`: Compound V carries six
+  // callouts (thickness, root gap, groove depth, break height, root face,
+  // alpha, beta) on the busiest canvas in the app. Beta (secondary bevel
+  // angle, drawn last, avoiding all five other labels) is the one most
+  // often pushed far enough to trigger the elbow route, and its route
+  // crosses whichever of alpha's rect / the gtaw-tint top-or-root label /
+  // root-face / root-gap happens to sit in its path; a handful of these
+  // configs instead have alpha's own elbow crossing beta. Same root cause
+  // as (1) - the elbow route itself was never checked against avoidRects -
+  // just triggered far more often here because six labels crowd the same
+  // canvas. 12 of these (all thickness-sweep, all Compound V, all at
+  // t>=40mm on a narrow canvas) are severe enough that the chain's
+  // vertical run alone spans most of the canvas height and crosses the
+  // GTAW-root label directly too - these are also listed in
+  // `narrowRootGapsSweep2` so the original narrow root-only check is
+  // skipped for exactly these, and only these, with its own reason.
+  const alphaVsCapLabelGapsSweep1 = {
     'doubleV|pipeButt|technical|equal|316',
     'doubleV|pipeButt|technical|equal|346',
     'doubleV|pipeButt|technical|equal|390',
@@ -394,9 +458,75 @@ void main() {
     'singleV|plateButt|visual|equal|346',
   };
 
-  // Keys are 'groove|geometryMode|width|thicknessMm' - see the comment on
-  // `knownPushedFarGapsSweep1` above (same provenance/verification).
-  const knownPushedFarGapsSweep2 = {
+  const alphaVsCapLabelGapsSweep2 = {
+    'doubleV|equal|316|12',
+    'doubleV|equal|316|25',
+    'doubleV|equal|316|40',
+    'doubleV|equal|316|50',
+    'doubleV|equal|316|60',
+    'doubleV|equal|346|12',
+    'doubleV|equal|346|25',
+    'doubleV|equal|346|40',
+    'doubleV|equal|346|50',
+    'doubleV|equal|346|60',
+    'doubleV|equal|390|12',
+    'doubleV|equal|390|25',
+    'doubleV|equal|390|40',
+    'doubleV|equal|390|50',
+    'doubleV|equal|390|60',
+    'doubleV|unequal|316|12',
+    'doubleV|unequal|346|12',
+    'doubleV|unequal|390|12',
+    'halfV|equal|316|12',
+    'halfV|equal|316|25',
+    'halfV|equal|316|40',
+    'halfV|equal|316|50',
+    'halfV|equal|316|60',
+    'halfV|equal|346|12',
+    'halfV|equal|346|25',
+    'halfV|equal|346|40',
+    'halfV|equal|346|50',
+    'halfV|equal|346|60',
+    'halfV|equal|390|12',
+    'halfV|equal|390|25',
+    'halfV|equal|480|12',
+    'halfV|equal|600|12',
+    'halfV|unequal|316|12',
+    'halfV|unequal|346|12',
+    'halfV|unequal|390|12',
+    'halfV|unequal|480|12',
+    'singleV|equal|316|12',
+    'singleV|equal|346|12',
+  };
+
+  const compoundVBevelTagCrowdingGapsSweep1 = {
+    'compoundV|pipeButt|technical|equal|316',
+    'compoundV|pipeButt|technical|equal|346',
+    'compoundV|pipeButt|technical|equal|390',
+    'compoundV|pipeButt|technical|unequal|316',
+    'compoundV|pipeButt|technical|unequal|346',
+    'compoundV|pipeButt|technical|unequal|390',
+    'compoundV|pipeButt|visual|equal|316',
+    'compoundV|pipeButt|visual|equal|346',
+    'compoundV|pipeButt|visual|equal|390',
+    'compoundV|pipeButt|visual|unequal|316',
+    'compoundV|pipeButt|visual|unequal|346',
+    'compoundV|pipeButt|visual|unequal|390',
+    'compoundV|plateButt|technical|equal|316',
+    'compoundV|plateButt|technical|equal|346',
+    'compoundV|plateButt|technical|equal|390',
+    'compoundV|plateButt|technical|unequal|316',
+    'compoundV|plateButt|technical|unequal|346',
+    'compoundV|plateButt|technical|unequal|390',
+    'compoundV|plateButt|visual|equal|316',
+    'compoundV|plateButt|visual|equal|346',
+    'compoundV|plateButt|visual|equal|390',
+    'compoundV|plateButt|visual|unequal|316',
+    'compoundV|plateButt|visual|unequal|346',
+    'compoundV|plateButt|visual|unequal|390',
+  };
+
+  const compoundVBevelTagCrowdingGapsSweep2 = {
     'compoundV|equal|316|12',
     'compoundV|equal|316|25',
     'compoundV|equal|316|40',
@@ -431,60 +561,25 @@ void main() {
     'compoundV|unequal|600|50',
     'compoundV|unequal|600|60',
     'compoundV|unequal|760|60',
-    'doubleV|equal|316|12',
-    'doubleV|equal|316|25',
-    'doubleV|equal|316|40',
-    'doubleV|equal|316|50',
-    'doubleV|equal|316|60',
-    'doubleV|equal|346|12',
-    'doubleV|equal|346|25',
-    'doubleV|equal|346|40',
-    'doubleV|equal|346|50',
-    'doubleV|equal|346|60',
-    'doubleV|equal|390|12',
-    'doubleV|equal|390|25',
-    'doubleV|equal|390|40',
-    'doubleV|equal|390|50',
-    'doubleV|equal|390|60',
-    'doubleV|unequal|316|12',
-    'doubleV|unequal|316|25',
-    'doubleV|unequal|316|40',
-    'doubleV|unequal|346|12',
-    'doubleV|unequal|346|25',
-    'doubleV|unequal|390|12',
-    'doubleV|unequal|390|25',
-    'halfV|equal|316|12',
-    'halfV|equal|316|25',
-    'halfV|equal|316|40',
-    'halfV|equal|316|50',
-    'halfV|equal|316|60',
-    'halfV|equal|346|12',
-    'halfV|equal|346|25',
-    'halfV|equal|346|40',
-    'halfV|equal|346|50',
-    'halfV|equal|346|60',
-    'halfV|equal|390|12',
-    'halfV|equal|390|25',
-    'halfV|equal|390|50',
-    'halfV|equal|390|60',
-    'halfV|equal|480|12',
-    'halfV|equal|600|12',
-    'halfV|unequal|316|12',
-    'halfV|unequal|316|25',
-    'halfV|unequal|346|12',
-    'halfV|unequal|346|25',
-    'halfV|unequal|390|12',
-    'halfV|unequal|480|12',
-    'singleV|equal|316|12',
-    'singleV|equal|346|12',
-    'singleV|unequal|316|25',
-    'singleV|unequal|316|40',
-    'singleV|unequal|316|50',
-    'singleV|unequal|316|60',
-    'singleV|unequal|346|25',
-    'singleV|unequal|346|40',
-    'singleV|unequal|346|50',
-    'singleV|unequal|346|60',
+  };
+
+  // Subset of `compoundVBevelTagCrowdingGapsSweep2` (see mechanism (2)
+  // above) severe enough that the elbow's own vertical run crosses the
+  // GTAW-root label directly - these need the ORIGINAL narrow check's
+  // `knownGap` too, not just the broader elbow check's.
+  const narrowRootGapsSweep2 = {
+    'compoundV|equal|316|50',
+    'compoundV|equal|316|60',
+    'compoundV|equal|346|60',
+    'compoundV|unequal|316|40',
+    'compoundV|unequal|316|50',
+    'compoundV|unequal|316|60',
+    'compoundV|unequal|346|40',
+    'compoundV|unequal|346|50',
+    'compoundV|unequal|346|60',
+    'compoundV|unequal|390|50',
+    'compoundV|unequal|390|60',
+    'compoundV|unequal|480|60',
   };
 
   const widths = [316.0, 346.0, 390.0, 480.0, 600.0, 760.0];
@@ -496,10 +591,7 @@ void main() {
     GrooveType.compoundV,
     GrooveType.square,
   ];
-  const geometryModes = [
-    JointGeometryMode.equal,
-    JointGeometryMode.unequal,
-  ];
+  const geometryModes = [JointGeometryMode.equal, JointGeometryMode.unequal];
 
   // Equal AND Unequal geometry both matter here: a fix that only nudges the
   // GTAW-root label's fixed mm coordinate can clear whichever line the
@@ -517,9 +609,12 @@ void main() {
             final key =
                 '${groove.name}|${joint.name}|${mode.name}|'
                 '${geometryMode.name}|${width.toInt()}';
-            final knownGap = knownPushedFarGapsSweep1.contains(key)
-                ? 'pre-existing pushedFar-elbow-vs-other-label gap, '
-                      'predates c6b0516 - see knownPushedFarGapsSweep1'
+            final knownElbowGap = alphaVsCapLabelGapsSweep1.contains(key)
+                ? 'alpha bevel-angle tag pushedFar elbow crosses the '
+                      'SMAW-fill-cap label - see alphaVsCapLabelGapsSweep1'
+                : compoundVBevelTagCrowdingGapsSweep1.contains(key)
+                ? 'Compound V bevel-angle-tag pushedFar elbow crowding - '
+                      'see compoundVBevelTagCrowdingGapsSweep1'
                 : null;
             testWidgets(
               'GTAW-root label clear of lines: '
@@ -532,7 +627,7 @@ void main() {
                 width: width,
                 height: height,
                 data: _buildData(geometryMode: geometryMode),
-                knownGap: knownGap,
+                knownElbowGap: knownElbowGap,
               ),
             );
           }
@@ -567,30 +662,20 @@ void main() {
   // either avoid rect addition reproduces the original failures for the
   // affected configs.
   //
-  // FIXED (2026-09-06): closing the dimension-line collision above moved
-  // Compound V's GTAW-root label further from its old (colliding) position,
-  // which in turn made the alpha/beta bevel-angle tags' own `pushedFar`
-  // avoidance push THEM further too - crossing the `pushedFar`
-  // elbow-routing threshold at several more Compound V combinations than
-  // the single pre-existing Half V case below. Both classes share the same
-  // root cause and the same fix: `_drawAngleTag`'s `pushedFar` branch now
-  // checks its own stub->elbow vertical run against `avoidRects` (the same
-  // list already used to place the label itself), nudging the run's X
-  // sideways - in one direction, decided once from the first blocking rect
-  // and held fixed for the rest of the search, exactly like
-  // [_clearLabelPosition]'s own always-down convention, to avoid the
-  // oscillation an earlier "nearest edge every time" attempt at this fix
-  // hit when two different rects on opposite sides kept undoing each
-  // other's push - until the run clears every avoid rect.
-  //
-  // FIXED: Half V's bevel-angle tag routes its leader line as a
-  // vertical-then-horizontal "elbow" once collision-avoidance has pushed
-  // its own label far enough from its natural position (see the
-  // `pushedFar` branch of `_drawAngleTag` in weld_drawing_preview.dart) -
-  // that elbow route previously wasn't itself checked against other
-  // labels' rects (only the *label* position was), so at this specific
-  // thickness/width/geometry combination the elbow's vertical run happened
-  // to pass through the GTAW-root label. See the fix described above.
+  // ATTEMPTED AND ABANDONED (2026-09-07): a third fix attempt at
+  // `_drawAngleTag`'s `pushedFar` branch (after c6b0516's unbounded
+  // sideways `stub.dx` push and a12db19's bounded-but-effectively-inert
+  // version, both reverted - see git history on this file's companion
+  // weld_drawing_preview.dart) considered routing the elbow's vertical
+  // extent (its Y hand-off) instead of sliding the stub sideways, targeting
+  // the single original case this whole mechanism was chasing:
+  // `halfV|unequal|390|25`. Verification found that case now passes
+  // CLEANLY on the plain reverted 62b992f baseline with no further change -
+  // 62b992f's own dimension-line/avoidRects fix had already resolved it as
+  // a side effect (confirmed via mutation test: unskipping it at the
+  // 62b992f commit itself passes). No new elbow-Y-position fix was needed
+  // or attempted; the remaining gaps below are a structurally different,
+  // still-open mechanism (see the KNOWN GAPS block above).
   for (final groove in grooves) {
     for (final geometryMode in geometryModes) {
       for (final width in widths) {
@@ -598,9 +683,17 @@ void main() {
           final key =
               '${groove.name}|${geometryMode.name}|${width.toInt()}|'
               '${thicknessMm.toInt()}';
-          final knownGap = knownPushedFarGapsSweep2.contains(key)
-              ? 'pre-existing pushedFar-elbow-vs-other-label gap, '
-                    'predates c6b0516 - see knownPushedFarGapsSweep2'
+          final knownElbowGap = alphaVsCapLabelGapsSweep2.contains(key)
+              ? 'alpha bevel-angle tag pushedFar elbow crosses the '
+                    'SMAW-fill-cap label - see alphaVsCapLabelGapsSweep2'
+              : compoundVBevelTagCrowdingGapsSweep2.contains(key)
+              ? 'Compound V bevel-angle-tag pushedFar elbow crowding - '
+                    'see compoundVBevelTagCrowdingGapsSweep2'
+              : null;
+          final knownGap = narrowRootGapsSweep2.contains(key)
+              ? 'Compound V bevel-angle-tag pushedFar elbow vertical run '
+                    'spans most of the canvas and crosses the GTAW-root '
+                    'label directly - see narrowRootGapsSweep2'
               : null;
           testWidgets(
             'GTAW-root label clear of lines: $groove/$geometryMode '
@@ -617,6 +710,7 @@ void main() {
                 thicknessMm: thicknessMm,
               ),
               knownGap: knownGap,
+              knownElbowGap: knownElbowGap,
             ),
           );
         }

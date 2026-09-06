@@ -2779,85 +2779,8 @@ class _WeldDrawingPainter extends CustomPainter {
       );
       final ux = naturalLength == 0 ? 0.0 : naturalDx / naturalLength;
       final uy = naturalLength == 0 ? 0.0 : naturalDy / naturalLength;
-      final naturalStub = Offset(start.dx + (ux * 16), start.dy + (uy * 16));
-      var stub = naturalStub;
-      var elbow = Offset(stub.dx, resolvedCenter.dy);
-      // Unlike the label itself (already pushed clear by
-      // [_clearLabelPosition] above), this elbow's own two-segment run
-      // (start->stub diagonal, then stub->elbow vertical) was never checked
-      // against avoidRects - only the label's rect was. On a busy canvas
-      // (Compound V especially) either segment can cut straight through an
-      // already-placed label the same way the label position itself could.
-      //
-      // A first fix here only checked the vertical run and pushed `stub.dx`
-      // sideways with no bound, no canvas clamp, and a direction chosen
-      // from whichever rect it happened to hit first - which could relocate
-      // the collision onto the now-longer diagonal instead of eliminating
-      // it (confirmed: Compound V/equal/t=12mm/316px pushed `stub` all the
-      // way to the canvas edge, and the resulting diagonal swept across the
-      // thickness label on its way there). Fixed properly: search a small,
-      // BOUNDED range of candidate `stub.dx` values, in the direction that
-      // keeps the stub on the same side of `start` as the label's own
-      // resolved center (not whichever rect is first in the list), checking
-      // BOTH segments against every avoid rect at each candidate. The range
-      // is capped at a diagonal length a small multiple of the stub's own
-      // intentionally-short natural length (16px) - past that, the detour
-      // is clearly a worse route than the original short, clean elbow. If
-      // no candidate within that bounded, clamped-to-canvas range clears
-      // both segments, fall back to the original unpushed elbow entirely
-      // (accepting the known collision rather than actively making it
-      // worse) - the same "don't force a fix that makes things worse"
-      // precedent as the `_narrowDrawingHeight` height-budget lever
-      // elsewhere in this file's history.
-      bool clearsBothSegments(Offset candidateStub, Offset candidateElbow) {
-        final diagonal = Rect.fromPoints(start, candidateStub);
-        final vertical = Rect.fromPoints(candidateStub, candidateElbow);
-        for (final raw in avoidRects) {
-          final avoid = raw.inflate(3.0);
-          if (diagonal.overlaps(avoid) || vertical.overlaps(avoid)) {
-            return false;
-          }
-        }
-        return true;
-      }
-
-      if (!clearsBothSegments(stub, elbow)) {
-        const maxDiagonalLength = 60.0;
-        const canvasMargin = 10.0;
-        final fixedDySpan = naturalStub.dy - start.dy;
-        final maxDxSpanSquared =
-            (maxDiagonalLength * maxDiagonalLength) -
-            (fixedDySpan * fixedDySpan);
-        final maxDx = maxDxSpanSquared > 0
-            ? math.sqrt(maxDxSpanSquared)
-            : 0.0;
-        final minStubDx = math.max(start.dx - maxDx, canvasMargin);
-        final maxStubDx = math.min(
-          start.dx + maxDx,
-          size.width - canvasMargin,
-        );
-        final preferredDir = resolvedCenter.dx >= start.dx ? 1.0 : -1.0;
-        const stepPx = 4.0;
-        Offset? found;
-        for (final dir in [preferredDir, -preferredDir]) {
-          var candidateDx = naturalStub.dx;
-          while (true) {
-            candidateDx += dir * stepPx;
-            if (candidateDx < minStubDx || candidateDx > maxStubDx) break;
-            final candidateStub = Offset(candidateDx, naturalStub.dy);
-            final candidateElbow = Offset(candidateDx, resolvedCenter.dy);
-            if (clearsBothSegments(candidateStub, candidateElbow)) {
-              found = candidateStub;
-              break;
-            }
-          }
-          if (found != null) break;
-        }
-        if (found != null) {
-          stub = found;
-          elbow = Offset(found.dx, resolvedCenter.dy);
-        }
-      }
+      final stub = Offset(start.dx + (ux * 16), start.dy + (uy * 16));
+      final elbow = Offset(stub.dx, resolvedCenter.dy);
       final horizontalDir = resolvedCenter.dx >= elbow.dx ? 1.0 : -1.0;
       final lineEnd = Offset(
         resolvedCenter.dx - (horizontalDir * 20),
