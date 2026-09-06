@@ -82,10 +82,11 @@ bool _isHorizontalRun(Offset a, Offset b) => a.dy == b.dy && a.dx != b.dx;
 /// contains the point 20px to either side of the chain's endpoint at the
 /// endpoint's own y - exactly where `_drawAngleTag` places `resolvedCenter`
 /// relative to `lineEnd`. Confirmed via an instrumented full-matrix sweep
-/// that this exclusion only ever drops genuine self-touches (16 of the 178
-/// configs the un-excluded check flags): every one of those 16 has its
-/// OWN fieldKey among the "crossed" set with no other groove/config
-/// evidence of a real second label anywhere near that rect.
+/// that this exclusion only ever drops genuine self-touches (67 of the 229
+/// configs the un-excluded a+b+c check flags, 268 individual chain/hotspot
+/// pairs across those configs): every dropped pair's owner was verified
+/// against real draw-order ground truth (the hotspot rect actually drawn
+/// for that chain's own label), with zero non-own labels among them.
 ///
 /// Deliberately scoped to this specific chain shape rather than "every
 /// guide-colored segment vs every label rect": an exploratory sweep during
@@ -669,13 +670,15 @@ void main() {
   // weld_drawing_preview.dart) considered routing the elbow's vertical
   // extent (its Y hand-off) instead of sliding the stub sideways, targeting
   // the single original case this whole mechanism was chasing:
-  // `halfV|unequal|390|25`. Verification found that case now passes
-  // CLEANLY on the plain reverted 62b992f baseline with no further change -
-  // 62b992f's own dimension-line/avoidRects fix had already resolved it as
-  // a side effect (confirmed via mutation test: unskipping it at the
-  // 62b992f commit itself passes). No new elbow-Y-position fix was needed
-  // or attempted; the remaining gaps below are a structurally different,
-  // still-open mechanism (see the KNOWN GAPS block above).
+  // `halfV|unequal|390|25`. Verification found this entry was vacuous from
+  // birth: it passes unskipped both at 62b992f AND at 406bc0b, the commit
+  // that originally introduced it (confirmed via mutation test at both
+  // commits) - so no avoidRects/dimension-line fix at any point in this
+  // file's history ever actually broke or fixed it, and three rounds of
+  // `_drawAngleTag` rewrites were chasing a case that was never broken. No
+  // new elbow-Y-position fix was needed or attempted; the remaining gaps
+  // below are a structurally different, still-open mechanism (see the
+  // KNOWN GAPS block above).
   for (final groove in grooves) {
     for (final geometryMode in geometryModes) {
       for (final width in widths) {
