@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 
@@ -9,6 +10,7 @@ import 'package:weld_consumable_calculator/l10n/strings.dart';
 import 'package:weld_consumable_calculator/models/consumable_selection.dart';
 import 'package:weld_consumable_calculator/models/weld_models.dart';
 import 'package:weld_consumable_calculator/services/weld_pdf_report_service.dart';
+import 'package:weld_consumable_calculator/ui/calculator_page.dart';
 import 'package:weld_consumable_calculator/ui/calculator_page/calculator_page_models.dart';
 
 final _en = stringsFor(AppLanguage.en);
@@ -72,6 +74,28 @@ List<CalculationBasisItem> _pipeButtBasisEntries() => const [
   ),
 ];
 
+/// Renders [bytes] to text via `pdftotext` (poppler) so tests can assert on
+/// actual decoded PDF content instead of raw document bytes --
+/// `PdfDocument.documentID` embeds `DateTime.now()` plus random bytes, so
+/// any two generated PDFs differ byte-for-byte regardless of content.
+Future<String> _extractPdfText(Uint8List bytes) async {
+  final dir = await Directory.systemTemp.createTemp('weld_report_text_');
+  try {
+    final file = File('${dir.path}/report.pdf');
+    await file.writeAsBytes(bytes, flush: true);
+    final result = await Process.run('pdftotext', [
+      file.path,
+      '-',
+    ], stdoutEncoding: utf8);
+    if (result.exitCode != 0) {
+      throw StateError('pdftotext failed: ${result.stderr}');
+    }
+    return result.stdout as String;
+  } finally {
+    await dir.delete(recursive: true);
+  }
+}
+
 Future<Uint8List> _buildBytes(L10nStrings strings) async {
   const calculator = WeldCalculator();
   const reportService = WeldPdfReportService();
@@ -120,15 +144,25 @@ void main() {
     expect(await file.exists(), isTrue);
   });
 
-  test('a non-English locale produces different rendered PDF content than '
+  test('a non-English locale produces different rendered PDF text than '
       'English (proves the new pdfXxx strings are actually wired through, '
-      'not just added to strings.dart)', () async {
-    final enBytes = await _buildBytes(_en);
-    final deBytes = await _buildBytes(stringsFor(AppLanguage.de));
-    final ruBytes = await _buildBytes(stringsFor(AppLanguage.ru));
+      'not just added to strings.dart) -- asserted on decoded PDF text '
+      'content, not raw document bytes, since PdfDocument.documentID '
+      'embeds DateTime.now() plus random bytes and makes any two generated '
+      'PDFs differ regardless of content', () async {
+    final enText = await _extractPdfText(await _buildBytes(_en));
+    final deText = await _extractPdfText(
+      await _buildBytes(stringsFor(AppLanguage.de)),
+    );
+    final ruText = await _extractPdfText(
+      await _buildBytes(stringsFor(AppLanguage.ru)),
+    );
 
-    expect(deBytes, isNot(equals(enBytes)));
-    expect(ruBytes, isNot(equals(enBytes)));
+    expect(enText, contains('Weld Metal (kg)'));
+    expect(deText, contains('Schweißgut (kg)'));
+    expect(deText, isNot(contains('Weld Metal (kg)')));
+    expect(ruText, contains('Наплавленный металл (кг)'));
+    expect(ruText, isNot(contains('Weld Metal (kg)')));
   });
 
   test(
@@ -160,6 +194,32 @@ void main() {
             'cover every rune in the Russian and Hindi reports, but got: '
             '${missingGlyphWarnings.join(', ')}',
       );
+    },
+  );
+
+  test(
+    'PDF export falls back to English for the Hindi locale (the pdf '
+    "package has no Indic complex-script shaping, so Hindi PDF output "
+    'renders with garbled/reordered glyphs) -- the UI locale itself is '
+    'untouched by this fallback',
+    () async {
+      final hi = stringsFor(AppLanguage.hi);
+      expect(
+        pdfExportStringsFor(AppLanguage.hi, hi),
+        same(_en),
+        reason: 'Hindi PDF exports should render with the English strings',
+      );
+      expect(
+        pdfExportStringsFor(AppLanguage.de, stringsFor(AppLanguage.de)),
+        same(stringsFor(AppLanguage.de)),
+        reason: 'non-Hindi locales should be unaffected by the fallback',
+      );
+
+      final hiPdfText = await _extractPdfText(
+        await _buildBytes(pdfExportStringsFor(AppLanguage.hi, hi)),
+      );
+      expect(hiPdfText, contains('Weld Metal (kg)'));
+      expect(hiPdfText, isNot(contains(hi.pdfBreakdownColWeldMetalKg)));
     },
   );
 }

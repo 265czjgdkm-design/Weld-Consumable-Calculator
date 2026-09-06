@@ -7,6 +7,7 @@ import 'package:purchases_flutter/purchases_flutter.dart';
 
 import '../core/weld_calculator.dart';
 import '../core/welding_defaults.dart';
+import '../l10n/app_language.dart';
 import '../l10n/app_locale_scope.dart';
 import '../l10n/strings.dart';
 import '../models/consumable_selection.dart';
@@ -43,6 +44,16 @@ class _RequiredFieldMissingException implements Exception {
   final FieldKey fieldKey;
   final String message;
 }
+
+/// Chooses which [L10nStrings] a PDF export renders with. The `pdf` package
+/// (v3.13.0) has no Indic complex-script shaping -- no GSUB/GPOS, no
+/// matra/vowel-sign reordering -- so Hindi PDF output renders with visibly
+/// garbled/reordered glyphs. PDF exports fall back to English for Hindi;
+/// the UI itself stays Hindi, since this is a PDF-rendering-limitation
+/// workaround, not a translation quality issue. Don't "fix" this by
+/// reverting to [uiStrings] for Hindi.
+L10nStrings pdfExportStringsFor(AppLanguage language, L10nStrings uiStrings) =>
+    language == AppLanguage.hi ? stringsFor(AppLanguage.en) : uiStrings;
 
 class CalculatorPage extends StatefulWidget {
   CalculatorPage({
@@ -3401,7 +3412,11 @@ class _CalculatorPageState extends State<CalculatorPage> {
     if (result == null || _isExportingPdf) return;
 
     final strings = AppLocaleScope.stringsOf(context);
-    final basisEntries = _buildCalculationBasis();
+    final pdfStrings = pdfExportStringsFor(
+      AppLocaleScope.of(context).language,
+      strings,
+    );
+    final basisEntries = _buildCalculationBasis(stringsOverride: pdfStrings);
 
     setState(() => _isExportingPdf = true);
     try {
@@ -3412,7 +3427,7 @@ class _CalculatorPageState extends State<CalculatorPage> {
         consumableSelection: _consumableSelection,
         result: result,
         basisEntries: basisEntries,
-        strings: strings,
+        strings: pdfStrings,
       );
       await exportPdfReport(report.bytes, report.fileName);
       // Persisting the report to local history is best-effort and must
@@ -3447,8 +3462,14 @@ class _CalculatorPageState extends State<CalculatorPage> {
   String _formatPercent(double ratio, {int digits = 1}) =>
       '${(ratio * 100).toStringAsFixed(digits)}%';
 
-  List<CalculationBasisItem> _buildCalculationBasis() {
-    final strings = AppLocaleScope.stringsOf(context);
+  // [stringsOverride] lets the PDF export path (which falls back to English
+  // for Hindi -- the `pdf` package has no Indic complex-script shaping) bake
+  // the basis items' localizedValue strings from the override instead of the
+  // live UI locale.
+  List<CalculationBasisItem> _buildCalculationBasis({
+    L10nStrings? stringsOverride,
+  }) {
+    final strings = stringsOverride ?? AppLocaleScope.stringsOf(context);
     final items = <CalculationBasisItem>[
       // WeldingProcess.label is never localized (GTAW/SMAW/etc. are
       // international AWS process abbreviations) -- no localizedValue needed.

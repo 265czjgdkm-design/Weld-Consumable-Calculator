@@ -804,6 +804,23 @@ class WeldPdfReportService {
       ),
       cellStyle: const pw.TextStyle(color: _ink, fontSize: 9.2),
       cellPadding: const pw.EdgeInsets.symmetric(horizontal: 8, vertical: 7),
+      // Explicit weights (rather than the default IntrinsicColumnWidth),
+      // derived from measured (font.stringMetrics) single-word widths of
+      // the longest translated header in each column across all 5 locales,
+      // so no column is narrower than its own longest unbreakable header
+      // word. Default IntrinsicColumnWidth let the longest header -- RU's
+      // "Наплавленный металл (кг)" -- squeeze the short numeric columns
+      // (Area Share, Efficiency) below what their own values ("95.0%")
+      // need, wrapping them mid-value across two lines.
+      columnWidths: const {
+        0: pw.FlexColumnWidth(1.18),
+        1: pw.FlexColumnWidth(1.45),
+        2: pw.FlexColumnWidth(1.64),
+        3: pw.FlexColumnWidth(1.71),
+        4: pw.FlexColumnWidth(1.13),
+        5: pw.FlexColumnWidth(1.15),
+        6: pw.FlexColumnWidth(1.53),
+      },
       headers: [
         strings.basisProcess,
         strings.pdfBreakdownColAreaShare,

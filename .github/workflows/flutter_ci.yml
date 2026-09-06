@@ -19,6 +19,9 @@ jobs:
         with:
           channel: stable
 
+      - name: Install poppler-utils
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends poppler-utils
+
       - name: Install dependencies
         run: flutter pub get
 
