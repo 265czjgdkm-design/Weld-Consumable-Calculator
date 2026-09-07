@@ -628,6 +628,29 @@ void main() {
     'JointAlignment.idMatch|JointType.plateButt',
     'JointAlignment.odMatch|JointType.pipeButt',
   };
+  // Equal geometry's own dedicated sets (only ever exercised at
+  // `JointAlignment.centerline` - the Equal-geometry loop below never
+  // varies alignment): NOT the same combos as Unequal's sets above - a
+  // reviewer found equal geometry's simpler single thickness label leaves
+  // beta a few px of room shorter than unequal's split A/B labels do, so
+  // reusing [compoundVBetaVisualFixed]/[compoundVBetaTechnicalFixed]
+  // directly for Equal geometry would falsely mark a still-colliding
+  // config as fixed. A prior round gated the bypass on
+  // `geometryMode == unequal` to avoid exactly that, but that gate also
+  // meant Equal-geometry configs could NEVER take the bypass at all -
+  // silently absorbing every Equal-geometry compoundV overlap into the
+  // generic message below regardless of severity, which is exactly how
+  // `equal|gtawSmaw|compoundV|pipeButt|visual|240` (a genuine 204px² pill
+  // overlap) went undetected. Measured directly via this suite's own
+  // painter, not assumed: plateButt is genuinely clear in both modes,
+  // pipeButt is clear only in `technical` mode.
+  const compoundVBetaVisualFixedEqual = {
+    'JointAlignment.centerline|JointType.plateButt',
+  };
+  const compoundVBetaTechnicalFixedEqual = {
+    'JointAlignment.centerline|JointType.plateButt',
+    'JointAlignment.centerline|JointType.pipeButt',
+  };
   String? extraBusyNarrowGap(
     WeldDrawingData data,
     double canvasWidth, {
@@ -637,24 +660,23 @@ void main() {
     DrawingMode? mode,
   }) {
     if (canvasWidth > 240.0 || !isExtraBusy(data)) return null;
-    // [compoundVBetaVisualFixed]/[compoundVBetaTechnicalFixed] were measured
-    // against the Unequal-geometry matrix specifically (this bucket's own
-    // "8 genuine fixes" - see the doc comment above) - reusing them for
-    // Equal-geometry configs (a reviewer found a genuinely different,
-    // slightly-still-overlapping result there for the same
-    // groove/joint/alignment/mode key: equal geometry's simpler single
-    // thickness label leaves beta a few px of room shorter than unequal's
-    // split A/B labels do) would falsely mark a still-colliding config as
-    // fixed, so this bypass only ever applies to the geometry mode it was
-    // actually verified for.
-    if (groove == GrooveType.compoundV &&
-        data.geometryMode == JointGeometryMode.unequal) {
+    // The bypass now applies to BOTH geometry modes, each against its own
+    // measured set (see the sets' own doc comments above for why they
+    // can't be shared) - so a severity regression in either geometry mode
+    // fails loudly instead of hiding in the generic message below.
+    if (groove == GrooveType.compoundV) {
       final key = '$alignment|$joint';
-      if (mode == DrawingMode.visual && compoundVBetaVisualFixed.contains(key)) {
+      final isUnequal = data.geometryMode == JointGeometryMode.unequal;
+      final visualFixed = isUnequal
+          ? compoundVBetaVisualFixed
+          : compoundVBetaVisualFixedEqual;
+      final technicalFixed = isUnequal
+          ? compoundVBetaTechnicalFixed
+          : compoundVBetaTechnicalFixedEqual;
+      if (mode == DrawingMode.visual && visualFixed.contains(key)) {
         return null;
       }
-      if (mode == DrawingMode.technical &&
-          compoundVBetaTechnicalFixed.contains(key)) {
+      if (mode == DrawingMode.technical && technicalFixed.contains(key)) {
         return null;
       }
     }

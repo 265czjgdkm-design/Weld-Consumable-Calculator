@@ -379,21 +379,33 @@ class _WeldDrawingPainter extends CustomPainter {
   static const _primaryVerticalPadBump = 1.0;
   static const _primaryMinWidthBump = 0.0;
   static const _primaryMinHeightBump = 0.0;
-  // [_declutterAfterClamp] compares a label's real clamped rect against a
-  // sibling's real clamped rect inflated by its own `gap` - but
-  // [_clearLabelPosition] places a pushed label at EXACTLY `gap` clearance
-  // (`delta = avoid.bottom - rect.top`), so an already-correctly-placed
-  // label sitting at that exact boundary can have its separation resolve to
-  // a few `1e-14`px on the negative side of zero, purely from floating-point
-  // rounding in the chain of offset arithmetic that got it there. Without
-  // this tolerance that FP noise reads as "still overlapping" and triggers a
-  // completely unnecessary declutter move - measured in a real reproduction
-  // (Square groove/plateButt/visual/odMatch/480px) where every one of 42
-  // "successful" cap-height moves turned out to be exactly this, fixing zero
-  // real overlaps. `0.05` is comfortably above any FP rounding noise from
-  // this file's offset math (which lands in the `1e-13`px range) while far
-  // below the smallest real overlap this mechanism needs to catch (single
-  // real overlaps in this file measure in whole or tenths of a pixel).
+  // [_declutterAfterClamp] uses this as its tolerance both for deciding
+  // whether to engage at all and for accepting a candidate move (see that
+  // method's own doc comment for why those two were unified) - the
+  // original motivation was that [_clearLabelPosition] places a pushed
+  // label at EXACTLY `gap` clearance (`delta = avoid.bottom - rect.top`),
+  // so an already-correctly-placed label sitting at that exact boundary
+  // can have its separation resolve to a few `1e-14`px on the negative
+  // side of zero, purely from floating-point rounding in the chain of
+  // offset arithmetic that got it there. Without this tolerance that FP
+  // noise reads as "still overlapping" and triggers a completely
+  // unnecessary declutter move - measured in a real reproduction (Square
+  // groove/plateButt/visual/odMatch/480px) where every one of 42
+  // "successful" cap-height moves turned out to be exactly this, fixing
+  // zero real overlaps. That reproduction was against the groove-depth/
+  // cap-height call sites, which have since been deleted; at the one call
+  // site still using [_declutterAfterClamp] today (Compound V's beta tag),
+  // mutation-testing found this epsilon changes zero overlap outcomes for
+  // any config in the current matrix - reverting to a boundary-inclusive
+  // (`>= 0`) comparison produces an identical result. It stays as a
+  // defensive safeguard against FP noise (not something actively fixing a
+  // live bug today) in case a future call site reintroduces inputs that
+  // land exactly on this boundary - don't read "it changes nothing today"
+  // as license to remove it. `0.05` is comfortably above any FP rounding
+  // noise from this file's offset math (which lands in the `1e-13`px
+  // range) while far below the smallest real overlap this mechanism needs
+  // to catch (single real overlaps in this file measure in whole or
+  // tenths of a pixel).
   static const _declutterEpsilon = 0.05;
 
   @override
@@ -1783,8 +1795,17 @@ class _WeldDrawingPainter extends CustomPainter {
         ?chipRects.pipeChip,
       ],
     );
-    // Secondary angle (beta): drawn last, so it must avoid every
-    // already-placed label, not a subset.
+    // Secondary angle (beta): drawn last, so it avoids every already-placed
+    // label it can actually reach - alpha/root-face/thickness/root-gap/
+    // groove-depth/h-line/tints and both cap dimensions, all placed in the
+    // bottom band beta itself lives in. `chipRects.typeChip`/`.pipeChip`
+    // (drawn even earlier, at the top of the canvas) are deliberately NOT
+    // in this list: not an oversight, they sit in a geometrically separate
+    // top band and a full 54,000-config sweep confirmed beta never reaches
+    // far enough to collide with them. Don't add them defensively - that
+    // sweep is the evidence, and pulling the chips into this avoid list
+    // could itself introduce new unintended pushes. If a future label gets
+    // placed between the chips and beta, revisit this list then.
     _drawAngleTag(
       canvas,
       guidePaint,
@@ -3090,20 +3111,28 @@ class _WeldDrawingPainter extends CustomPainter {
   // resolve is left exactly as collision-avoidance already left it, not
   // nudged into a different, equally-broken position.
   //
-  // Two different tolerances, deliberately: whether to engage at all (is
-  // [labelCenter] already fine?) uses the full aesthetic `gap` this file
-  // maintains everywhere else, but whether a CANDIDATE move is acceptable
-  // only requires genuine non-overlap (a hair above zero, same
-  // [_declutterEpsilon] used for FP noise elsewhere in this function) - a
-  // reviewer found that requiring the full `gap` cushion for candidates too
-  // rejected a horizontal shift that was already a few px tighter than
-  // `gap` against ANOTHER sibling (not the one that triggered this, but one
-  // newly included after Finding 2's fix widened [siblings] to the full
-  // set) purely on aesthetic grounds, even though that shift produced zero
-  // real overlap - falling back to the untouched position instead, which
-  // still had a genuine full overlap. A merely-tight-but-clear result is
-  // strictly better than a definite overlap, so candidate acceptance is
-  // intentionally more permissive than the "should I bother" trigger check.
+  // ONE tolerance, deliberately, used for both "should I engage at all"
+  // (is [labelCenter] already fine?) and "is this CANDIDATE move
+  // acceptable" - [_declutterEpsilon], a hair above zero. An earlier
+  // version used the full aesthetic label `gap` this file maintains
+  // elsewhere for the engage check and only [_declutterEpsilon] for
+  // candidate acceptance; a reviewer found that mismatch let a label
+  // already genuinely clear of its sibling (e.g. by ~2px, comfortably
+  // inside the loose acceptance tolerance) still trigger a pointless move
+  // because that same ~2px fell inside the much stricter `gap`-based
+  // trigger band - producing a move that didn't even improve clearance and
+  // could push the label (and its leader line, which is anchored to the
+  // label's unclamped [resolvedCenter], not its final drawn position)
+  // toward or past the canvas edge. Unifying to the loose end was
+  // mutation-tested against the full matrix: same fixes stay fixed, zero
+  // new regressions, zero pointless moves - the `gap` parameter this used
+  // to need was removed as dead weight once nothing referenced it.
+  // (Unifying to the strict end instead - i.e. requiring the full `gap`
+  // cushion for candidates too - was tried and rejected: it re-rejects an
+  // already-tighter-than-`gap`-but-genuinely-clear candidate against a
+  // sibling newly included after Finding 2's fix widened [siblings] to the
+  // full set, falling back to the untouched position, which regresses
+  // several configs back to a full pill overlap.)
   Offset _declutterAfterClamp(
     Size size,
     String text,
@@ -3111,13 +3140,9 @@ class _WeldDrawingPainter extends CustomPainter {
     double fontSize,
     List<Rect> siblings, {
     bool primary = false,
-    double gap = 4.0,
   }) {
     if (siblings.isEmpty) return labelCenter;
-    // Inflate by a hair less than the real `gap` (see [_declutterEpsilon])
-    // so a label sitting at exactly its required clearance never reads as
-    // overlapping due to floating-point noise on that boundary.
-    final triggerTolerance = gap - _declutterEpsilon;
+    final triggerTolerance = _declutterEpsilon;
     bool clearOfAll(Rect rect, double tolerance) =>
         siblings.every((s) => !rect.overlaps(s.inflate(tolerance)));
 
