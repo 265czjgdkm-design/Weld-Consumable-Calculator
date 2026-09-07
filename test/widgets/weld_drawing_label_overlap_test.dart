@@ -581,19 +581,41 @@ void main() {
   // Group 3 (2026-09-07) fixed several of the combinations this bucket used
   // to silently absorb: Compound V's groove-depth/beta collision (see
   // [compoundHalfVBetaClampGap] below for the mechanism) at both draw
-  // modes, but not the same set at each - a new post-clamp declutter pass
-  // (`_declutterAfterClamp` in weld_drawing_preview.dart) only ever moves
-  // beta when doing so achieves a genuinely fully-clear result, so which
-  // exact combinations clear depends on how much horizontal room each one's
-  // real label widths leave, independently per mode (`technical` labels are
-  // narrower than `visual`'s soft-pill style, so more of them fit). All 5
-  // `technical`-mode combos [compoundHalfVBetaClampGap] used to track are
-  // fully fixed; only 3 of the same 5 are fixed in `visual` mode
-  // (`idMatch|pipeButt` and `odMatch|pipeButt` are NOT - declutter found no
-  // side with enough room there and correctly left them exactly as before,
-  // still 0-width margin at this exact canvas size). Re-measured directly
-  // via this suite's own painter, not assumed - every entry below (and its
-  // absence) was individually confirmed clean or still-colliding.
+  // modes, but not the same set at each - a post-clamp declutter pass
+  // (`_declutterAfterClamp` in weld_drawing_preview.dart, wired at beta's
+  // own `_drawAngleTag` call) only ever moves beta when doing so achieves a
+  // genuinely non-overlapping result, so which exact combinations clear
+  // depends on how much horizontal room each one's real label widths leave,
+  // independently per mode (`technical` labels are narrower than `visual`'s
+  // soft-pill style, so more of them fit). All 5 `technical`-mode combos
+  // [compoundHalfVBetaClampGap] used to track are fully fixed; only 3 of
+  // the same 5 are fixed in `visual` mode.
+  //
+  // A second reviewer round found this fix's first draft had two real bugs:
+  // an exact-boundary floating-point artifact could make
+  // `_declutterAfterClamp`'s overlap check fire even when a label already
+  // sat at its intended clearance (fixed with a small epsilon tolerance),
+  // and beta's own declutter was validated against only ONE sibling (groove
+  // depth) - so a "clean" candidate could still land beta on top of a
+  // DIFFERENT sibling, or on Compound V's cap-height label specifically,
+  // which didn't exist yet at beta's draw time and so couldn't be checked.
+  // That second bug reproduced as a genuine worse-than-baseline regression
+  // (beta landing fully inside the cap-height pill) at this exact
+  // combination. Fixed by drawing Compound V's cap dimensions BEFORE beta
+  // instead of after (cap height's own position never actually depended on
+  // beta, so nothing is lost by reordering) and validating beta's declutter
+  // against every already-placed sibling, cap height/overlap included.
+  // `idMatch|pipeButt` and `odMatch|pipeButt` are still NOT fixed in
+  // `visual` mode: declutter tries both horizontal candidates for each and
+  // finds neither is genuinely clear (for `odMatch|pipeButt`, beta's base
+  // position already overlaps groove depth regardless of welding process;
+  // for `idMatch|pipeButt`, every single-process combination is already
+  // clean and only GTAW+SMAW's two extra combined-process labels crowd the
+  // narrow bottom band enough to block both candidates) - so beta is
+  // correctly left at its pre-Group-3 baseline position rather than forced
+  // into an unclean move. Re-measured directly via this suite's own
+  // painter, not assumed - every entry below (and its absence) was
+  // individually confirmed clean or still-colliding.
   const compoundVBetaVisualFixed = {
     'JointAlignment.centerline|JointType.pipeButt',
     'JointAlignment.centerline|JointType.plateButt',
@@ -615,7 +637,18 @@ void main() {
     DrawingMode? mode,
   }) {
     if (canvasWidth > 240.0 || !isExtraBusy(data)) return null;
-    if (groove == GrooveType.compoundV) {
+    // [compoundVBetaVisualFixed]/[compoundVBetaTechnicalFixed] were measured
+    // against the Unequal-geometry matrix specifically (this bucket's own
+    // "8 genuine fixes" - see the doc comment above) - reusing them for
+    // Equal-geometry configs (a reviewer found a genuinely different,
+    // slightly-still-overlapping result there for the same
+    // groove/joint/alignment/mode key: equal geometry's simpler single
+    // thickness label leaves beta a few px of room shorter than unequal's
+    // split A/B labels do) would falsely mark a still-colliding config as
+    // fixed, so this bypass only ever applies to the geometry mode it was
+    // actually verified for.
+    if (groove == GrooveType.compoundV &&
+        data.geometryMode == JointGeometryMode.unequal) {
       final key = '$alignment|$joint';
       if (mode == DrawingMode.visual && compoundVBetaVisualFixed.contains(key)) {
         return null;
@@ -644,26 +677,32 @@ void main() {
   // [doubleVBothFacesNarrowGap] and [singleVIdMatchGrooveDepthGap] above,
   // not a new bug class.
   //
-  // Group 3 (2026-09-07) fixed 5 of these 6: weld_drawing_preview.dart's
-  // `_declutterAfterClamp` now runs after beta's normal collision-avoidance
-  // resolves and clamps, and - only when beta's real final (clamped) rect
-  // still truly overlaps groove depth's real final rect - tries nudging beta
-  // fully clear of it horizontally (clear of its right edge, then its left,
-  // always in that deterministic order); if either candidate is genuinely
-  // fully clear of every rect it needs to avoid, that becomes beta's final
-  // position. Re-measured directly via this suite's own painter (not
-  // assumed): centerline/pipeButt, centerline/plateButt, idMatch/pipeButt,
-  // idMatch/plateButt and odMatch/pipeButt are now genuinely 0-overlap in
-  // `technical` mode (their `visual`-mode counterparts, previously caught by
-  // the broader [extraBusyNarrowGap] bucket instead, are fixed too where
-  // there was room - see that bucket's own updated comment). `odMatch/halfV`
-  // is NOT fixed: alpha (halfV's equivalent of beta, drawn via
-  // `_drawButtCommonMeasurements`'s `grooveDepthPostClampAvoidRects`) is
-  // already clamped to its own canvas-edge limit in both push directions at
-  // this exact width/text-length combination, so neither declutter candidate
-  // achieves a genuinely clear result - per this session's own ground rule,
-  // declutter correctly leaves it untouched rather than forcing a partial,
-  // still-broken move. This is the same structural "not enough horizontal
+  // Group 3 (2026-09-07) fixed 5 of these 6, all Compound V: beta's own
+  // `_declutterAfterClamp` call (wired at its `_drawAngleTag` call site in
+  // weld_drawing_preview.dart) now runs after beta's normal
+  // collision-avoidance resolves and clamps, and - only when beta's real
+  // final (clamped) rect still truly overlaps an already-placed sibling's
+  // real final rect - tries nudging beta fully clear of it horizontally
+  // (clear of its right edge, then its left, always in that deterministic
+  // order); if either candidate is genuinely non-overlapping, that becomes
+  // beta's final position. Re-measured directly via this suite's own
+  // painter (not assumed): centerline/pipeButt, centerline/plateButt,
+  // idMatch/pipeButt, idMatch/plateButt and odMatch/pipeButt are now
+  // genuinely 0-overlap in `technical` mode (their `visual`-mode
+  // counterparts, previously caught by the broader [extraBusyNarrowGap]
+  // bucket instead, are fixed too where there was room - see that bucket's
+  // own updated comment). `odMatch/halfV` is NOT fixed: Half V's alpha tag
+  // (beta's equivalent there) has no post-clamp declutter of its own at
+  // all - a reviewer's second round confirmed via a full instrumented
+  // matrix sweep that the mechanism this fix originally wired for Half V's
+  // groove depth (and Single V's, and Compound V's own groove-depth pill)
+  // never once produced a genuinely non-overlapping result anywhere: every
+  // trigger it caught was either already non-overlapping by this suite's
+  // own strict standard (just tighter than this file's usual aesthetic
+  // clearance) or a real overlap neither horizontal candidate could clear,
+  // so it was removed as dead weight rather than left as inert complexity.
+  // `odMatch/halfV` was never actually fixed by that mechanism even before
+  // its removal - this is the same structural "not enough horizontal
   // room on a canvas this narrow" limit as [doubleVBothFacesNarrowGap] and
   // [doubleVThickPlateGap] below, not a mechanism failure - a genuinely
   // clean fix needs either a narrower Half V alpha/groove-depth label pair
@@ -799,6 +838,18 @@ void main() {
   // spread rather than folding it into the full matrix above (which would
   // double an already-large combinatorial matrix for coverage this only
   // needs once).
+  //
+  // A second reviewer round found this loop's own [extraBusyNarrowGap] call
+  // (below) was passed only `(data, width)`, not the same
+  // groove/joint/alignment/mode args the Unequal-geometry matrix above
+  // passes - meaning EVERY extraBusy+narrow config here fell into the
+  // broadest possible skip, with no way for a genuinely-fixed combination to
+  // ever un-skip, which is exactly how this round's own beta/cap-height
+  // regression (Finding 2) went undetected here: it was silently absorbed
+  // into this same bucket instead of failing loudly. Now passes the same
+  // named args for consistency (see [extraBusyNarrowGap]'s own doc comment
+  // for why its Compound V bypass still correctly never applies to any
+  // config in THIS loop specifically).
   for (final process in WeldingProcess.values) {
     final data = _buildData(
       weldingProcess: process,
@@ -818,7 +869,14 @@ void main() {
               language: AppLanguage.en,
               data: data,
               knownGap:
-                  extraBusyNarrowGap(data, width) ??
+                  extraBusyNarrowGap(
+                    data,
+                    width,
+                    groove: groove,
+                    joint: joint,
+                    alignment: JointAlignment.centerline,
+                    mode: mode,
+                  ) ??
                   capHeightNarrowSingleVGap(groove, joint, mode, width) ??
                   doubleVBothFacesNarrowGap(
                     groove,

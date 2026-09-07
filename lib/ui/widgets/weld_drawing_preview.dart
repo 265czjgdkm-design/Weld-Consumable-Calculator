@@ -379,6 +379,22 @@ class _WeldDrawingPainter extends CustomPainter {
   static const _primaryVerticalPadBump = 1.0;
   static const _primaryMinWidthBump = 0.0;
   static const _primaryMinHeightBump = 0.0;
+  // [_declutterAfterClamp] compares a label's real clamped rect against a
+  // sibling's real clamped rect inflated by its own `gap` - but
+  // [_clearLabelPosition] places a pushed label at EXACTLY `gap` clearance
+  // (`delta = avoid.bottom - rect.top`), so an already-correctly-placed
+  // label sitting at that exact boundary can have its separation resolve to
+  // a few `1e-14`px on the negative side of zero, purely from floating-point
+  // rounding in the chain of offset arithmetic that got it there. Without
+  // this tolerance that FP noise reads as "still overlapping" and triggers a
+  // completely unnecessary declutter move - measured in a real reproduction
+  // (Square groove/plateButt/visual/odMatch/480px) where every one of 42
+  // "successful" cap-height moves turned out to be exactly this, fixing zero
+  // real overlaps. `0.05` is comfortably above any FP rounding noise from
+  // this file's offset math (which lands in the `1e-13`px range) while far
+  // below the smallest real overlap this mechanism needs to catch (single
+  // real overlaps in this file measure in whole or tenths of a pixel).
+  static const _declutterEpsilon = 0.05;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -1035,11 +1051,6 @@ class _WeldDrawingPainter extends CustomPainter {
       thicknessLabelX: -leftBody - 6,
       rightThicknessLabelX: rightBody + 6,
       avoidRects: [...tintRects, angleRect, rootFaceRect],
-      // Half V's bevel angle and groove depth both live on the right-hand
-      // side (see the comment on `angleRect` above) - close enough that a
-      // narrow canvas can clamp both to the same band even after the
-      // avoidRects push above. See [_declutterAfterClamp].
-      grooveDepthPostClampAvoidRects: [angleRect],
     );
     final chipRects = _drawTopChips(canvas, size, grooveTypeLabel);
     _drawCapDimensions(
@@ -1733,36 +1744,25 @@ class _WeldDrawingPainter extends CustomPainter {
         ?commonRects.grooveDepth,
       ],
     );
-    // Secondary angle (beta): drawn last of the six, so it must avoid all
-    // five already-placed labels, not a subset.
-    final betaRect = _drawAngleTag(
-      canvas,
-      guidePaint,
-      size,
-      start: p(halfBreak + ((halfTop - halfBreak) * 0.48), rightBreakY * 0.48),
-      labelCenter: p(halfBreak + 6, (rightBreakY + rightGrooveY) / 2),
-      text: 'β ${_formatValue(secondaryAngle)}°',
-      fieldKey: FieldKey.secondaryBevelAngleDeg,
-      avoidRects: [
-        ...tintRects,
-        alphaRect,
-        rootFaceRect,
-        commonRects.thickness,
-        ?commonRects.bThickness,
-        commonRects.rootGap,
-        ?commonRects.grooveDepth,
-        hRect,
-      ],
-      // Groove depth is drawn earlier in this same sequence (via
-      // commonRects, above) - close enough on a narrow canvas that both can
-      // clamp to the same bottom-edge band even after the avoidRects push
-      // above (compoundHalfVBetaClampGap in
-      // weld_drawing_label_overlap_test.dart). See [_declutterAfterClamp].
-      postClampAvoidRects: [?commonRects.grooveDepth],
-      primary: true,
-    );
+    // Cap overlap/height are optional and, unlike beta, their own natural
+    // position never actually depends on beta - the "2 mm cap height" line
+    // rises from a fixed geometry-driven offset (`halfTop`/`topY`), and
+    // beta's own rect never has any effect on that unclamped candidate in
+    // practice (measured directly: cap height's resolved rect is identical
+    // whether beta's own rect is included in its avoid list or not). So cap
+    // dimensions are drawn here, BEFORE beta, and beta - the one label in
+    // this pair whose position genuinely does depend on the other - is the
+    // one that adapts to cap's already-fixed rect below, not the reverse. A
+    // reviewer found the opposite order (beta drawn first, cap included
+    // beta in ITS OWN avoid list afterward) let beta's post-clamp declutter
+    // move it into exactly where cap height was always going to land,
+    // producing a full pill-on-pill collision worse than the one it was
+    // trying to fix - since cap height can't itself move anywhere (there is
+    // no genuinely clear candidate for it on a canvas this narrow), only
+    // fixing this from beta's side (where a genuinely clear candidate can
+    // actually exist) resolves it.
     final chipRects = _drawTopChips(canvas, size, grooveTypeLabel);
-    _drawCapDimensions(
+    final capRects = _drawCapDimensions(
       canvas,
       size,
       guidePaint,
@@ -1779,10 +1779,56 @@ class _WeldDrawingPainter extends CustomPainter {
         commonRects.rootGap,
         ?commonRects.grooveDepth,
         hRect,
-        betaRect,
         chipRects.typeChip,
         ?chipRects.pipeChip,
       ],
+    );
+    // Secondary angle (beta): drawn last, so it must avoid every
+    // already-placed label, not a subset.
+    _drawAngleTag(
+      canvas,
+      guidePaint,
+      size,
+      start: p(halfBreak + ((halfTop - halfBreak) * 0.48), rightBreakY * 0.48),
+      labelCenter: p(halfBreak + 6, (rightBreakY + rightGrooveY) / 2),
+      text: 'β ${_formatValue(secondaryAngle)}°',
+      fieldKey: FieldKey.secondaryBevelAngleDeg,
+      avoidRects: [
+        ...tintRects,
+        alphaRect,
+        rootFaceRect,
+        commonRects.thickness,
+        ?commonRects.bThickness,
+        commonRects.rootGap,
+        ?commonRects.grooveDepth,
+        hRect,
+        ?capRects.overlap,
+        ?capRects.height,
+      ],
+      // Groove depth is drawn earlier in this same sequence (via
+      // commonRects, above) - close enough on a narrow canvas that both can
+      // clamp to the same bottom-edge band even after the avoidRects push
+      // above (compoundHalfVBetaClampGap in
+      // weld_drawing_label_overlap_test.dart). See [_declutterAfterClamp].
+      // Validated against every already-placed sibling here (the same set
+      // passed to `avoidRects` above, including cap height/overlap now that
+      // they're drawn first - see this block's own comment above), not just
+      // groove depth - a reviewer found that checking groove depth alone let
+      // a candidate move land beta on top of a DIFFERENT already-drawn
+      // sibling instead (a worse collision than the one being fixed).
+      postClampAvoidRects: [
+        ...tintRects,
+        alphaRect,
+        rootFaceRect,
+        commonRects.thickness,
+        ?commonRects.bThickness,
+        commonRects.rootGap,
+        ?commonRects.grooveDepth,
+        hRect,
+        ?capRects.overlap,
+        ?capRects.height,
+      ],
+      primary: true,
     );
   }
 
@@ -2186,12 +2232,6 @@ class _WeldDrawingPainter extends CustomPainter {
     double? rightThicknessLabelX,
     double? rootGapLabelY,
     List<Rect> avoidRects = const [],
-    // Extra already-drawn rects (e.g. Half V's bevel-angle tag, drawn before
-    // this function runs) that groove depth's post-clamp declutter should
-    // also check - see [_declutterAfterClamp]. Root gap is always included
-    // below regardless, since it's this function's own known gap
-    // (singleVIdMatchGrooveDepthGap in weld_drawing_label_overlap_test.dart).
-    List<Rect> grooveDepthPostClampAvoidRects = const [],
   }) {
     final p = layout.point;
     final memberExtents = _memberExtents(thickness);
@@ -2271,11 +2311,6 @@ class _WeldDrawingPainter extends CustomPainter {
           ?bThicknessRect,
           rootGapRect,
         ],
-        // See [_declutterAfterClamp] / this function's own doc comment
-        // above: root gap is drawn immediately before this on a lane that
-        // can end up clamped to the same canvas-bottom band as groove depth
-        // on a narrow enough canvas + idMatch alignment.
-        postClampAvoidRects: [rootGapRect, ...grooveDepthPostClampAvoidRects],
       );
       return (
         thickness: thicknessRect,
@@ -2378,14 +2413,6 @@ class _WeldDrawingPainter extends CustomPainter {
         extensionEnd: p(0, topY + (capHeight * direction)),
         fieldKey: FieldKey.capHeightMm,
         avoidRects: [...avoidRects, ?overlapRect],
-        // See [_declutterAfterClamp]: on a narrow/short canvas both of this
-        // SAME face's pills can independently push toward the bottom canvas
-        // edge and clamp onto the identical y-band even though the line
-        // above already avoids `overlapRect` in unclamped space - a real,
-        // documented gap on Double V's both-faces cap pass (see the
-        // doubleVBothFacesNarrowGap/doubleVThickPlateGap KNOWN GAP comments
-        // in weld_drawing_label_overlap_test.dart).
-        postClampAvoidRects: [?overlapRect],
       );
     }
 
@@ -3056,12 +3083,27 @@ class _WeldDrawingPainter extends CustomPainter {
   // so behavior can't flicker between renders), and only ever moves the
   // LATER-drawn label (the caller only ever passes an EARLIER, already-drawn
   // rect as the sibling to avoid, never the reverse). If neither candidate
-  // achieves a genuinely fully-clear result (checked against every rect in
-  // [siblings], not just the one that triggered this), it gives up and
+  // achieves a genuinely non-overlapping result (checked against every rect
+  // in [siblings], not just the one that triggered this), it gives up and
   // returns the untouched original position - matching this exact session's
   // ground rule of not forcing an unclean fix: a case this can't cleanly
   // resolve is left exactly as collision-avoidance already left it, not
   // nudged into a different, equally-broken position.
+  //
+  // Two different tolerances, deliberately: whether to engage at all (is
+  // [labelCenter] already fine?) uses the full aesthetic `gap` this file
+  // maintains everywhere else, but whether a CANDIDATE move is acceptable
+  // only requires genuine non-overlap (a hair above zero, same
+  // [_declutterEpsilon] used for FP noise elsewhere in this function) - a
+  // reviewer found that requiring the full `gap` cushion for candidates too
+  // rejected a horizontal shift that was already a few px tighter than
+  // `gap` against ANOTHER sibling (not the one that triggered this, but one
+  // newly included after Finding 2's fix widened [siblings] to the full
+  // set) purely on aesthetic grounds, even though that shift produced zero
+  // real overlap - falling back to the untouched position instead, which
+  // still had a genuine full overlap. A merely-tight-but-clear result is
+  // strictly better than a definite overlap, so candidate acceptance is
+  // intentionally more permissive than the "should I bother" trigger check.
   Offset _declutterAfterClamp(
     Size size,
     String text,
@@ -3072,8 +3114,12 @@ class _WeldDrawingPainter extends CustomPainter {
     double gap = 4.0,
   }) {
     if (siblings.isEmpty) return labelCenter;
-    bool clearOfAll(Rect rect) =>
-        siblings.every((s) => !rect.overlaps(s.inflate(gap)));
+    // Inflate by a hair less than the real `gap` (see [_declutterEpsilon])
+    // so a label sitting at exactly its required clearance never reads as
+    // overlapping due to floating-point noise on that boundary.
+    final triggerTolerance = gap - _declutterEpsilon;
+    bool clearOfAll(Rect rect, double tolerance) =>
+        siblings.every((s) => !rect.overlaps(s.inflate(tolerance)));
 
     final baseRect = _measurementLabelRect(
       size,
@@ -3082,11 +3128,11 @@ class _WeldDrawingPainter extends CustomPainter {
       fontSize,
       primary: primary,
     );
-    if (clearOfAll(baseRect)) return labelCenter;
+    if (clearOfAll(baseRect, triggerTolerance)) return labelCenter;
 
     Rect? blocker;
     for (final sibling in siblings) {
-      final inflated = sibling.inflate(gap);
+      final inflated = sibling.inflate(triggerTolerance);
       if (baseRect.overlaps(inflated)) {
         blocker = inflated;
         break;
@@ -3105,7 +3151,7 @@ class _WeldDrawingPainter extends CustomPainter {
       fontSize,
       primary: primary,
     );
-    if (clearOfAll(rightRect)) return rightCenter;
+    if (clearOfAll(rightRect, _declutterEpsilon)) return rightCenter;
 
     final leftCenter = Offset(
       labelCenter.dx - (baseRect.right - blocker.left),
@@ -3118,7 +3164,7 @@ class _WeldDrawingPainter extends CustomPainter {
       fontSize,
       primary: primary,
     );
-    if (clearOfAll(leftRect)) return leftCenter;
+    if (clearOfAll(leftRect, _declutterEpsilon)) return leftCenter;
 
     return labelCenter;
   }
