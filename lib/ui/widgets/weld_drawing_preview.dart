@@ -394,18 +394,23 @@ class _WeldDrawingPainter extends CustomPainter {
   // "successful" cap-height moves turned out to be exactly this, fixing
   // zero real overlaps. That reproduction was against the groove-depth/
   // cap-height call sites, which have since been deleted; at the one call
-  // site still using [_declutterAfterClamp] today (Compound V's beta tag),
-  // mutation-testing found this epsilon changes zero overlap outcomes for
+  // site using [_declutterAfterClamp] today (Compound V's beta tag -
+  // `_drawDimensionLine` took an identical parameter, but nothing ever
+  // passed it, so that dead wiring has since been removed too),
+  // mutation-testing found this epsilon changes zero OVERLAP OUTCOMES for
   // any config in the current matrix - reverting to a boundary-inclusive
-  // (`>= 0`) comparison produces an identical result. It stays as a
-  // defensive safeguard against FP noise (not something actively fixing a
-  // live bug today) in case a future call site reintroduces inputs that
-  // land exactly on this boundary - don't read "it changes nothing today"
-  // as license to remove it. `0.05` is comfortably above any FP rounding
-  // noise from this file's offset math (which lands in the `1e-13`px
-  // range) while far below the smallest real overlap this mechanism needs
-  // to catch (single real overlaps in this file measure in whole or
-  // tenths of a pixel).
+  // (`>= 0`) comparison produces identical overlap outcomes (NOT identical
+  // exact pixel positions: 60 configs shift by exactly 0.05px, since the
+  // epsilon also inflates the blocker rect used to compute the candidate
+  // offset - just never enough to flip whether a config overlaps). It
+  // stays as a defensive safeguard against FP noise (not something
+  // actively fixing a live bug today) in case a future call site
+  // reintroduces inputs that land exactly on this boundary - don't read
+  // "it changes nothing today" as license to remove it. `0.05` is
+  // comfortably above any FP rounding noise from this file's offset math
+  // (which lands in the `1e-13`px range) while far below the smallest
+  // real overlap this mechanism needs to catch (single real overlaps in
+  // this file measure in whole or tenths of a pixel).
   static const _declutterEpsilon = 0.05;
 
   @override
@@ -2728,11 +2733,6 @@ class _WeldDrawingPainter extends CustomPainter {
     Offset? extensionEnd,
     FieldKey? fieldKey,
     List<Rect> avoidRects = const [],
-    // Sibling rects that are already fully placed and drawn (unlike
-    // [avoidRects], which [_clearLabelPosition] checks against unclamped
-    // positions during resolution) - see [_declutterAfterClamp] for why a
-    // second, separate pass is needed after clamping.
-    List<Rect> postClampAvoidRects = const [],
     bool primary = false,
   }) {
     if (extensionStart != null) {
@@ -2757,16 +2757,6 @@ class _WeldDrawingPainter extends CustomPainter {
         labelCenter,
         fontSize,
         avoidRects,
-        primary: primary,
-      );
-    }
-    if (postClampAvoidRects.isNotEmpty) {
-      labelCenter = _declutterAfterClamp(
-        labelSize,
-        label,
-        labelCenter,
-        fontSize,
-        postClampAvoidRects,
         primary: primary,
       );
     }
@@ -2827,7 +2817,12 @@ class _WeldDrawingPainter extends CustomPainter {
     required String text,
     FieldKey? fieldKey,
     List<Rect> avoidRects = const [],
-    // See [_drawDimensionLine]'s identical parameter / [_declutterAfterClamp].
+    // Sibling rects that are already fully placed and drawn (unlike
+    // [avoidRects], which [_clearLabelPosition] checks against unclamped
+    // positions during resolution) - see [_declutterAfterClamp] for why a
+    // second, separate pass is needed after clamping. `_drawDimensionLine`
+    // used to take an identical parameter, but nothing ever passed it -
+    // removed as dead wiring, leaving this the only call site.
     List<Rect> postClampAvoidRects = const [],
     bool primary = false,
   }) {
@@ -2854,6 +2849,22 @@ class _WeldDrawingPainter extends CustomPainter {
       );
     }
     canvas.drawCircle(start, 2.6, Paint()..color = paint.color);
+    // The real, clamped pill rect the label is about to be drawn at (see
+    // [_measurementLabelRect]) - computed up front so the `pushedFar` elbow
+    // branch below can route its leader to the label's ACTUAL (clamped) Y,
+    // not `resolvedCenter.dy`'s unclamped one. A previous round already hit
+    // this exact class of bug on the X axis; this closes the Y-axis version
+    // (the elbow's vertical run/endpoint could otherwise land past the
+    // canvas bottom even though the pill itself was clamped to stay inside
+    // it, leaving a leader that visibly ran off the drawing and disconnected
+    // from its own label).
+    final rect = _measurementLabelRect(
+      size,
+      text,
+      resolvedCenter,
+      fontSize,
+      primary: primary,
+    );
     // A busy drawing (Compound V especially) can push a label far enough
     // from its natural spot that one straight line from `start` reads as
     // pointing somewhere else entirely, and can visually cut across other
@@ -2885,11 +2896,13 @@ class _WeldDrawingPainter extends CustomPainter {
       final ux = naturalLength == 0 ? 0.0 : naturalDx / naturalLength;
       final uy = naturalLength == 0 ? 0.0 : naturalDy / naturalLength;
       final stub = Offset(start.dx + (ux * 16), start.dy + (uy * 16));
-      final elbow = Offset(stub.dx, resolvedCenter.dy);
+      // `rect.center.dy` (not `resolvedCenter.dy`) - see the doc comment
+      // above `rect`'s declaration.
+      final elbow = Offset(stub.dx, rect.center.dy);
       final horizontalDir = resolvedCenter.dx >= elbow.dx ? 1.0 : -1.0;
       final lineEnd = Offset(
         resolvedCenter.dx - (horizontalDir * 20),
-        resolvedCenter.dy,
+        rect.center.dy,
       );
       canvas.drawLine(start, stub, paint);
       canvas.drawLine(stub, elbow, paint);
@@ -2902,13 +2915,6 @@ class _WeldDrawingPainter extends CustomPainter {
       resolvedCenter,
       fontSize: fontSize,
       technicalDimension: true,
-      primary: primary,
-    );
-    final rect = _measurementLabelRect(
-      size,
-      text,
-      resolvedCenter,
-      fontSize,
       primary: primary,
     );
     _hotspot(fieldKey, rect);

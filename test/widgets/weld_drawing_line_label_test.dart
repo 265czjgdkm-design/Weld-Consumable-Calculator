@@ -170,11 +170,12 @@ class _LineRecordingCanvas implements Canvas {
 WeldDrawingData _buildData({
   WeldingProcess weldingProcess = WeldingProcess.gtawSmaw,
   JointGeometryMode geometryMode = JointGeometryMode.equal,
+  JointAlignment alignment = JointAlignment.centerline,
   double thicknessMm = 12,
 }) => WeldDrawingData(
   weldingProcess: weldingProcess,
   geometryMode: geometryMode,
-  alignment: JointAlignment.centerline,
+  alignment: alignment,
   thicknessMm: thicknessMm,
   thicknessAMm: geometryMode == JointGeometryMode.unequal ? 14 : null,
   thicknessBMm: geometryMode == JointGeometryMode.unequal ? 10 : null,
@@ -716,6 +717,160 @@ void main() {
               knownElbowGap: knownElbowGap,
             ),
           );
+        }
+      }
+    }
+  }
+
+  // -------------------------------------------------------------------
+  // Leader/dimension-line canvas-bounds coverage (Group 3, round 5)
+  // -------------------------------------------------------------------
+  // A reviewer found this file had NO assertion at all that a drawn
+  // leader/dimension-line segment stays within the canvas - only that it
+  // avoids crossing specific labels (above). That gap is exactly why a real
+  // regression went undetected across 2 rounds: `_drawAngleTag`'s
+  // `pushedFar` elbow branch built its elbow/lineEnd points from
+  // `resolvedCenter.dy` - the UNCLAMPED label center - while the label pill
+  // itself clamps to the canvas via `_measurementLabelRect`, so on a busy,
+  // narrow canvas (Compound V especially) the leader's vertical run/endpoint
+  // could run several pixels past the canvas bottom even though its own
+  // label pill was correctly clamped to stay inside it - a visibly
+  // disconnected line floating below the drawing. This sweep reproduces the
+  // exact conditions that exposed it (a narrow busy canvas, every welding
+  // process, every alignment, every locale) and asserts every recorded
+  // guide-colored segment endpoint stays within `[0, width] x [0, height]`.
+  Future<void> checkLeaderWithinCanvasBounds(
+    WidgetTester tester, {
+    required GrooveType groove,
+    required JointType joint,
+    required DrawingMode mode,
+    required double width,
+    required double height,
+    required WeldDrawingData data,
+    required AppLanguage language,
+  }) async {
+    final strings = stringsFor(language);
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: Align(
+            alignment: Alignment.topLeft,
+            child: SizedBox(
+              width: width,
+              height: height,
+              child: WeldDrawingPreview(
+                grooveType: groove,
+                jointType: joint,
+                drawingMode: mode,
+                data: data,
+                jointTypeLabel: joint.labelFor(strings),
+                grooveTypeLabel: groove.labelFor(strings),
+                filletWeldFaceLabel: strings.drawingLabelFilletWeldFace,
+                tJointLabel: strings.drawingLabelTJoint,
+                smawFillCapLabel: strings.drawingLabelSmawFillCap,
+                gtawRootLabel: strings.drawingLabelGtawRoot,
+                capTopLabel: strings.drawingLabelCapTop,
+                capBottomLabel: strings.drawingLabelCapBottom,
+                capOverlapValueLabel: strings.drawingLabelCapOverlapValue,
+                capHeightValueLabel: strings.drawingLabelCapHeightValue,
+                fillAvailableSpace: true,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    final finder = find.descendant(
+      of: find.byType(WeldDrawingPreview),
+      matching: find.byType(CustomPaint),
+    );
+    final painter = tester
+        .widgetList<CustomPaint>(finder)
+        .firstWhere((cp) => cp.painter != null)
+        .painter!;
+    final size = Size(width, height);
+    final recorder = _LineRecordingCanvas();
+    painter.paint(recorder, size);
+
+    final outOfBounds = <String>[];
+    for (final segment in recorder.segments) {
+      for (final point in segment) {
+        if (point.dx < 0 ||
+            point.dy < 0 ||
+            point.dx > width ||
+            point.dy > height) {
+          outOfBounds.add(
+            '${segment[0]} -> ${segment[1]} has an endpoint ($point) '
+            'outside the ${width}x$height canvas',
+          );
+          break;
+        }
+      }
+    }
+    expect(
+      outOfBounds,
+      isEmpty,
+      reason:
+          'A leader/dimension-line segment runs off the canvas: '
+          '${outOfBounds.join(' | ')}',
+    );
+  }
+
+  // Compound V/pipe butt at the narrowest real device width is the exact
+  // reproduction a reviewer used to find the bug this sweep guards against -
+  // busy enough (6 callouts) to push its secondary bevel-angle tag ("beta")
+  // into `_drawAngleTag`'s `pushedFar` elbow branch, on a canvas narrow/
+  // short enough for canvas-edge clamping to actually engage. Both joints
+  // and every non-fillet groove are swept too (not just the one that
+  // originally surfaced it), since the fix lives in a groove-agnostic shared
+  // helper (`_drawAngleTag`) and any groove busy enough to push a bevel-
+  // angle tag far can hit the exact same mechanism.
+  const narrowWidths = [240.0, 280.0, 295.0, 310.0, 332.0, 348.0];
+  double boundsNarrowWidthDelta(double canvasWidth) =>
+      canvasWidth <= 240.0 ? 48.0 : 0.0;
+  double boundsBusyHeightFor(double w) => 398.0 - boundsNarrowWidthDelta(w);
+  double boundsNormalHeightFor(double w) => 334.0 - boundsNarrowWidthDelta(w);
+  const busyGroovesForBounds = [
+    GrooveType.halfV,
+    GrooveType.compoundV,
+    GrooveType.doubleV,
+  ];
+  const normalButtGroovesForBounds = [GrooveType.singleV, GrooveType.square];
+
+  for (final groove in [
+    ...busyGroovesForBounds,
+    ...normalButtGroovesForBounds,
+  ]) {
+    final heightFor = busyGroovesForBounds.contains(groove)
+        ? boundsBusyHeightFor
+        : boundsNormalHeightFor;
+    for (final joint in [JointType.plateButt, JointType.pipeButt]) {
+      for (final width in narrowWidths) {
+        for (final process in WeldingProcess.values) {
+          for (final alignment in JointAlignment.values) {
+            for (final language in AppLanguage.values) {
+              testWidgets(
+                'leader/dimension lines stay within canvas bounds: '
+                '$groove/$joint/$process/$alignment/${language.code} '
+                '@${width.toInt()}',
+                (tester) => checkLeaderWithinCanvasBounds(
+                  tester,
+                  groove: groove,
+                  joint: joint,
+                  mode: DrawingMode.visual,
+                  width: width,
+                  height: heightFor(width),
+                  data: _buildData(
+                    weldingProcess: process,
+                    alignment: alignment,
+                  ),
+                  language: language,
+                ),
+              );
+            }
+          }
         }
       }
     }
