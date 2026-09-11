@@ -3014,7 +3014,7 @@ class _WeldDrawingPainter extends CustomPainter {
     );
   }
 
-  // Group 4 (this session): a narrow-width-only compact variant for
+  // Group 4 (prior session): a narrow-width-only compact variant for
   // secondary (non-primary) labels, used by fillet's leader labels (see
   // `_drawFillet`) so a locale's longer translated text (e.g. Russian's
   // "Т-образное соединение"/"поверхность углового шва") doesn't force a
@@ -3025,7 +3025,23 @@ class _WeldDrawingPainter extends CustomPainter {
   // by width instead of mode. These deltas MUST stay mirrored in
   // [_drawTechnicalLabel]/[_drawSoftLabel] below, same as the existing
   // `_primary*Bump` constants they sit next to.
-  static const double _compactFontShrink = 1.2;
+  //
+  // Follow-up round (this session): 1.2 rendered at ~9.6-9.8px at 240px
+  // canvas width - below both Material's (~11-12sp) and iOS's (11pt
+  // caption2) practical legibility floors. A reviewer measured every
+  // shrink value from 0.4 up to 1.2 clears the full label-overlap matrix
+  // with an IDENTICAL margin at the historically-tightest pair (RU
+  // technical mode) - the collision fix itself only ever needed the
+  // padding/min-width shrinks below, not this much font reduction; the
+  // extra shrink beyond ~0.4 bought nothing but headroom against
+  // hypothetical future longer translations. Reduced to 0.6 (~10.2px
+  // final, a real - if modest - legibility gain over 1.2) rather than the
+  // bare 0.4 floor, keeping some of that headroom rather than spending all
+  // of it: confirmed via this suite's own painter that every shrink value
+  // in 0.4-1.2 produces the exact same pairwise margins across the full
+  // fillet matrix (locale x width x mode), so 0.6 costs nothing the
+  // collision fix actually needs.
+  static const double _compactFontShrink = 0.6;
   static const double _compactHorizontalPadShrink = 6.0;
   static const double _compactVerticalPadShrink = 1.0;
   static const double _compactMinWidthShrink = 8.0;
