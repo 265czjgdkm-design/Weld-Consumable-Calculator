@@ -561,17 +561,41 @@ class _CalculatorPageState extends State<CalculatorPage> {
     final extraBusy =
         _jointGeometryMode == JointGeometryMode.unequal ||
         _weldingProcess == WeldingProcess.gtawSmaw;
+    // Group 4 (this session): each of these 4 tiers already grants its
+    // combos the biggest bucket available (there's no bigger tier left to
+    // move them into) - Half V/Compound V/Double V + Unequal-geometry/
+    // GTAW+SMAW combos still clamped sibling labels onto the identical
+    // canvas-bottom band at the narrowest real device width (320pt/240px
+    // canvas) even at this ceiling. A throwaway spike harness (rendering
+    // the real painter at the current height, then +20/40/60/80px, across
+    // every locale - not just English, since Russian's longer labels turned
+    // out to need more room than English's same combo in busy&&!extraBusy)
+    // measured exactly how much more total canvas height each tier's
+    // known-failing combos need to genuinely clear (not guessed):
+    // busy&&!extraBusy and busy&&extraBusy both needed +60px (Double V's RU
+    // both-faces cap pair, and Half V's odMatch/pipeButt combo, the worst
+    // cases respectively), !busy&&extraBusy needed +40px, !busy&&!extraBusy
+    // needed +20px (Single V's cap-height/thickness clash). Bumped every
+    // bound in each tier by that same delta (preserving each tier's
+    // existing range width) rather than just the upper bound, since most
+    // real 320pt-wide phones' `safeHeight * ratio` lands below the tier's
+    // own floor and clamps there, not at the ceiling - see
+    // test/widgets/weld_drawing_label_overlap_test.dart's matching
+    // `busyHeightFor`/`normalHeightFor`/`heightFor`, bumped by the same
+    // deltas in lockstep. Fillet's tier is untouched - its own real gap
+    // (RU label width, not height) needs a different fix, see
+    // weld_drawing_preview.dart's `_drawFillet`.
     if (busy) {
       return extraBusy
-          ? (safeHeight * 0.66).clamp(580.0, 640.0)
-          : (safeHeight * 0.58).clamp(500.0, 560.0);
+          ? (safeHeight * 0.66).clamp(640.0, 700.0)
+          : (safeHeight * 0.58).clamp(560.0, 620.0);
     }
     if (_grooveType == GrooveType.fillet) {
       return (safeHeight * 0.44).clamp(390.0, 440.0);
     }
     return extraBusy
-        ? (safeHeight * 0.58).clamp(500.0, 560.0)
-        : (safeHeight * 0.52).clamp(440.0, 500.0);
+        ? (safeHeight * 0.58).clamp(540.0, 600.0)
+        : (safeHeight * 0.52).clamp(460.0, 520.0);
   }
 
   Widget _buildEstimatorWorkspace(BuildContext context) {
