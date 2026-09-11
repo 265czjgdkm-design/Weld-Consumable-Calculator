@@ -395,13 +395,15 @@ class _WeldDrawingPainter extends CustomPainter {
   // zero real overlaps. That reproduction was against the groove-depth/
   // cap-height call sites, which have since been deleted; at the one call
   // site using [_declutterAfterClamp] today (Compound V's beta tag -
-  // `_drawDimensionLine` took an identical parameter, but nothing ever
-  // passed it, so that dead wiring has since been removed too),
-  // mutation-testing found this epsilon changes zero OVERLAP OUTCOMES for
-  // any config in the current matrix - reverting to a boundary-inclusive
-  // (`>= 0`) comparison produces identical overlap outcomes (NOT identical
-  // exact pixel positions: 60 configs shift by exactly 0.05px, since the
-  // epsilon also inflates the blocker rect used to compute the candidate
+  // `_drawDimensionLine` took an identical parameter at two call sites in
+  // 752b744, but nothing has passed it since 9a899e5 deleted those, so
+  // that dead wiring has since been removed too), mutation-testing found
+  // this epsilon changes zero OVERLAP OUTCOMES for any config in the
+  // current matrix - reverting to a boundary-inclusive (`>= 0`) comparison
+  // produces identical overlap outcomes (NOT identical exact pixel
+  // positions: a small number of configs shift by exactly 0.05px in any
+  // given matrix, since the epsilon also inflates the blocker rect used
+  // to compute the candidate
   // offset - just never enough to flip whether a config overlaps). It
   // stays as a defensive safeguard against FP noise (not something
   // actively fixing a live bug today) in case a future call site
@@ -2821,7 +2823,8 @@ class _WeldDrawingPainter extends CustomPainter {
     // [avoidRects], which [_clearLabelPosition] checks against unclamped
     // positions during resolution) - see [_declutterAfterClamp] for why a
     // second, separate pass is needed after clamping. `_drawDimensionLine`
-    // used to take an identical parameter, but nothing ever passed it -
+    // used to take an identical parameter (passed at two call sites in
+    // 752b744), but nothing has passed it since 9a899e5 deleted those -
     // removed as dead wiring, leaving this the only call site.
     List<Rect> postClampAvoidRects = const [],
     bool primary = false,
