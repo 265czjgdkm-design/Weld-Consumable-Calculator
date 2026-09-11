@@ -2127,6 +2127,19 @@ class _WeldDrawingPainter extends CustomPainter {
     // Leaders are drawn last, so they nudge clear of the leg labels rather
     // than the other way around - reordering the leg labels after the
     // leaders would just move which pair needs the avoid list.
+    // Group 4 (this session): at the narrowest real device width
+    // (320pt/240px), a locale's longer translated leader text (Russian's
+    // "поверхность углового шва"/"Т-образное соединение" specifically -
+    // measured directly via this suite's own painter, not assumed) collides
+    // with the OTHER leader at its natural top-of-canvas position, pushing
+    // the T-joint leader all the way down past both leg labels until it
+    // lands squarely on top of the leg1 dimension pill - independent of
+    // canvas height (the push exhausts the canvas's available height, not
+    // its own room). `compact` shrinks both leaders' font/padding below this
+    // width so the natural (unpushed) positions stay clear of each other in
+    // every locale, closing the collision at its actual source rather than
+    // shrinking the (unrelated, identical-across-locales) leg labels.
+    final compactLeaders = size.width <= 250.0;
     final filletFaceRect = _drawLeader(
       canvas,
       guidePaint,
@@ -2136,6 +2149,7 @@ class _WeldDrawingPainter extends CustomPainter {
       text: filletWeldFaceLabel,
       size: size,
       avoidRects: [leg1Rect, leg2Rect],
+      compact: compactLeaders,
     );
     _drawLeader(
       canvas,
@@ -2146,6 +2160,7 @@ class _WeldDrawingPainter extends CustomPainter {
       text: tJointLabel,
       size: size,
       avoidRects: [leg1Rect, leg2Rect, filletFaceRect],
+      compact: compactLeaders,
     );
     _drawTypeChip(canvas, size, grooveTypeLabel);
   }
@@ -2791,6 +2806,7 @@ class _WeldDrawingPainter extends CustomPainter {
     required String text,
     required Size size,
     List<Rect> avoidRects = const [],
+    bool compact = false,
   }) {
     canvas.drawLine(start, mid, paint);
     canvas.drawLine(mid, end, paint);
@@ -2804,10 +2820,24 @@ class _WeldDrawingPainter extends CustomPainter {
         labelCenter,
         fontSize,
         avoidRects,
+        compact: compact,
       );
     }
-    _drawAnnotationLabel(canvas, size, text, labelCenter, fontSize: fontSize);
-    return _measurementLabelRect(size, text, labelCenter, fontSize);
+    _drawAnnotationLabel(
+      canvas,
+      size,
+      text,
+      labelCenter,
+      fontSize: fontSize,
+      compact: compact,
+    );
+    return _measurementLabelRect(
+      size,
+      text,
+      labelCenter,
+      fontSize,
+      compact: compact,
+    );
   }
 
   Rect _drawAngleTag(
@@ -2942,8 +2972,11 @@ class _WeldDrawingPainter extends CustomPainter {
     Offset center,
     double fontSize, {
     bool primary = false,
+    bool compact = false,
   }) {
-    final resolvedFontSize = primary ? fontSize + _primaryFontBump : fontSize;
+    final resolvedFontSize =
+        (primary ? fontSize + _primaryFontBump : fontSize) -
+        (compact ? _compactFontShrink : 0);
     final painter = TextPainter(
       text: TextSpan(
         text: text,
@@ -2959,20 +2992,43 @@ class _WeldDrawingPainter extends CustomPainter {
       textDirection: TextDirection.ltr,
     )..layout();
     final verticalPadding =
-        (_isTechnical ? 10.0 : 11.0) + (primary ? _primaryVerticalPadBump : 0);
+        (_isTechnical ? 10.0 : 11.0) +
+        (primary ? _primaryVerticalPadBump : 0) -
+        (compact ? _compactVerticalPadShrink : 0);
     final minWidth =
-        (_isTechnical ? 56.0 : 62.0) + (primary ? _primaryMinWidthBump : 0);
+        (_isTechnical ? 56.0 : 62.0) +
+        (primary ? _primaryMinWidthBump : 0) -
+        (compact ? _compactMinWidthShrink : 0);
     final minHeight =
         (_isTechnical ? 26.0 : 28.0) + (primary ? _primaryMinHeightBump : 0);
     return Rect.fromCenter(
       center: center,
       width: math.max(
-        painter.width + 18.0 + (primary ? _primaryHorizontalPadBump : 0),
+        painter.width +
+            18.0 +
+            (primary ? _primaryHorizontalPadBump : 0) -
+            (compact ? _compactHorizontalPadShrink : 0),
         minWidth,
       ),
       height: math.max(painter.height + verticalPadding, minHeight),
     );
   }
+
+  // Group 4 (this session): a narrow-width-only compact variant for
+  // secondary (non-primary) labels, used by fillet's leader labels (see
+  // `_drawFillet`) so a locale's longer translated text (e.g. Russian's
+  // "Т-образное соединение"/"поверхность углового шва") doesn't force a
+  // downward collision-avoidance push far enough to land on a sibling
+  // dimension pill at the narrowest real device width (320pt/240px) -
+  // information-preserving (smaller font/padding, not shortened text), same
+  // shape as [_isTechnical]'s existing mode-dependent sizing above, gated
+  // by width instead of mode. These deltas MUST stay mirrored in
+  // [_drawTechnicalLabel]/[_drawSoftLabel] below, same as the existing
+  // `_primary*Bump` constants they sit next to.
+  static const double _compactFontShrink = 1.2;
+  static const double _compactHorizontalPadShrink = 6.0;
+  static const double _compactVerticalPadShrink = 1.0;
+  static const double _compactMinWidthShrink = 8.0;
 
   // Same as [_unclampedMeasurementRect] but with X clamped to the canvas
   // edge (never Y). [_clearLabelPosition] only ever pushes a label
@@ -2993,6 +3049,7 @@ class _WeldDrawingPainter extends CustomPainter {
     Offset center,
     double fontSize, {
     bool primary = false,
+    bool compact = false,
   }) {
     final rect = _unclampedMeasurementRect(
       size,
@@ -3000,6 +3057,7 @@ class _WeldDrawingPainter extends CustomPainter {
       center,
       fontSize,
       primary: primary,
+      compact: compact,
     );
     return Rect.fromLTWH(
       _safeClamp(rect.left, 10, size.width - rect.width - 10),
@@ -3025,6 +3083,7 @@ class _WeldDrawingPainter extends CustomPainter {
     Offset center,
     double fontSize, {
     bool primary = false,
+    bool compact = false,
   }) {
     final rect = _unclampedMeasurementRect(
       size,
@@ -3032,6 +3091,7 @@ class _WeldDrawingPainter extends CustomPainter {
       center,
       fontSize,
       primary: primary,
+      compact: compact,
     );
     return Rect.fromLTWH(
       _safeClamp(rect.left, 10, size.width - rect.width - 10),
@@ -3070,6 +3130,7 @@ class _WeldDrawingPainter extends CustomPainter {
     List<Rect> avoidRects, {
     double gap = 4.0,
     bool primary = false,
+    bool compact = false,
   }) {
     var center = candidateCenter;
     for (var pass = 0; pass < avoidRects.length + 2; pass++) {
@@ -3082,6 +3143,7 @@ class _WeldDrawingPainter extends CustomPainter {
           center,
           fontSize,
           primary: primary,
+          compact: compact,
         );
         if (!rect.overlaps(avoid)) continue;
         final delta = avoid.bottom - rect.top;
@@ -3255,6 +3317,7 @@ class _WeldDrawingPainter extends CustomPainter {
     bool technicalDimension = false,
     List<Rect> avoidRects = const [],
     bool primary = false,
+    bool compact = false,
   }) {
     var resolvedCenter = center;
     if (avoidRects.isNotEmpty) {
@@ -3265,6 +3328,7 @@ class _WeldDrawingPainter extends CustomPainter {
         fontSize,
         avoidRects,
         primary: primary,
+        compact: compact,
       );
     }
     if (_isTechnical) {
@@ -3277,6 +3341,7 @@ class _WeldDrawingPainter extends CustomPainter {
         weight: technicalDimension ? FontWeight.w500 : weight,
         square: technicalDimension,
         primary: primary,
+        compact: compact,
       );
     }
 
@@ -3288,6 +3353,7 @@ class _WeldDrawingPainter extends CustomPainter {
       fontSize: fontSize,
       weight: weight,
       primary: primary,
+      compact: compact,
     );
   }
 
@@ -3311,8 +3377,11 @@ class _WeldDrawingPainter extends CustomPainter {
     FontWeight weight = FontWeight.w600,
     bool square = false,
     bool primary = false,
+    bool compact = false,
   }) {
-    final resolvedFontSize = primary ? fontSize + _primaryFontBump : fontSize;
+    final resolvedFontSize =
+        (primary ? fontSize + _primaryFontBump : fontSize) -
+        (compact ? _compactFontShrink : 0);
     final painter = TextPainter(
       text: TextSpan(
         text: text,
@@ -3327,11 +3396,17 @@ class _WeldDrawingPainter extends CustomPainter {
       textDirection: TextDirection.ltr,
     )..layout();
     final horizontalPadding =
-        (square ? 18.0 : 20.0) + (primary ? _primaryHorizontalPadBump : 0);
+        (square ? 18.0 : 20.0) +
+        (primary ? _primaryHorizontalPadBump : 0) -
+        (compact ? _compactHorizontalPadShrink : 0);
     final verticalPadding =
-        (square ? 10.0 : 11.0) + (primary ? _primaryVerticalPadBump : 0);
+        (square ? 10.0 : 11.0) +
+        (primary ? _primaryVerticalPadBump : 0) -
+        (compact ? _compactVerticalPadShrink : 0);
     final minWidth =
-        (square ? 56.0 : 66.0) + (primary ? _primaryMinWidthBump : 0);
+        (square ? 56.0 : 66.0) +
+        (primary ? _primaryMinWidthBump : 0) -
+        (compact ? _compactMinWidthShrink : 0);
     final minHeight =
         (square ? 26.0 : 28.0) + (primary ? _primaryMinHeightBump : 0);
     final rect = Rect.fromCenter(
@@ -3389,8 +3464,11 @@ class _WeldDrawingPainter extends CustomPainter {
     double fontSize = 12,
     FontWeight weight = FontWeight.w600,
     bool primary = false,
+    bool compact = false,
   }) {
-    final resolvedFontSize = primary ? fontSize + _primaryFontBump : fontSize;
+    final resolvedFontSize =
+        (primary ? fontSize + _primaryFontBump : fontSize) -
+        (compact ? _compactFontShrink : 0);
     final painter = TextPainter(
       text: TextSpan(
         text: text,
@@ -3404,13 +3482,21 @@ class _WeldDrawingPainter extends CustomPainter {
       ),
       textDirection: TextDirection.ltr,
     )..layout();
-    final horizontalPadding = 18.0 + (primary ? _primaryHorizontalPadBump : 0);
-    final verticalPadding = 11.0 + (primary ? _primaryVerticalPadBump : 0);
+    final horizontalPadding =
+        18.0 +
+        (primary ? _primaryHorizontalPadBump : 0) -
+        (compact ? _compactHorizontalPadShrink : 0);
+    final verticalPadding =
+        11.0 +
+        (primary ? _primaryVerticalPadBump : 0) -
+        (compact ? _compactVerticalPadShrink : 0);
     final rect = Rect.fromCenter(
       center: center,
       width: math.max(
         painter.width + horizontalPadding,
-        62.0 + (primary ? _primaryMinWidthBump : 0),
+        62.0 +
+            (primary ? _primaryMinWidthBump : 0) -
+            (compact ? _compactMinWidthShrink : 0),
       ),
       height: math.max(
         painter.height + verticalPadding,
