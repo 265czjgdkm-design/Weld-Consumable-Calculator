@@ -212,21 +212,27 @@ void main() {
   // estimated): horizontal chrome (card padding/margins around the drawing
   // canvas) is a flat 80px at every common device width, so these canvas
   // widths map directly to real common device widths: 320->240, 360->280,
-  // 375->295, 390->310, 412->332, 428->348. The heights below (398/334/280,
-  // plus their extraBusy counterparts 474/394) are this suite's existing
+  // 375->295, 390->310, 412->332, 428->348. The heights below (458/354/280,
+  // plus their extraBusy counterparts 534/434) are this suite's existing
   // already-verified-safe per-tier canvas heights, unchanged for every one
   // of those widths - except the narrowest (320pt/240px canvas), where the
   // reviewer measured the real card header wrapping to two lines, pushing
   // vertical chrome ~42-48px higher there than at any wider width; rather
   // than reusing the same constant at that width too, [_narrowWidthDelta]
   // subtracts that same real measured penalty from it specifically.
+  // Group 4 (this session): busy/non-extraBusy bumped +60px (398->458 -
+  // Russian's longer Double V both-faces cap labels needed more than
+  // English's same combo did) and non-busy/non-extraBusy bumped +20px
+  // (334->354), to match calculator_page.dart's `_narrowDrawingHeight`
+  // tier-ceiling raise - see that function's own doc comment for the spike
+  // measurements behind the exact deltas.
   const widths = [240.0, 280.0, 295.0, 310.0, 332.0, 348.0];
   double narrowWidthDelta(double canvasWidth) =>
       canvasWidth <= 240.0 ? 48.0 : 0.0;
   double busyHeightFor(double canvasWidth) =>
-      398.0 - narrowWidthDelta(canvasWidth);
+      458.0 - narrowWidthDelta(canvasWidth);
   double normalHeightFor(double canvasWidth) =>
-      334.0 - narrowWidthDelta(canvasWidth);
+      354.0 - narrowWidthDelta(canvasWidth);
   double filletHeightFor(double canvasWidth) =>
       280.0 - narrowWidthDelta(canvasWidth);
   final joints = [JointType.plateButt, JointType.pipeButt];
@@ -238,189 +244,31 @@ void main() {
   ];
   final normalButtGrooves = [GrooveType.singleV, GrooveType.square];
 
-  // KNOWN GAP: Single V/pipe butt is the one groove+joint combination where
-  // cap height's dimension line (added for the cap-overlap/cap-height
-  // feature) ends up clamped down into the "t mm" thickness label's lane at
-  // the narrowest real device width (320pt/240px, visual mode only) - this
-  // collision is newly introduced BY the cap-height feature (cap height
-  // didn't exist before), not a pre-existing one, but it's in the same
-  // family as the fillet/extraBusy gaps below and not attempted here since
-  // the fix (a dedicated narrow-width lane for cap height) needs its own
-  // pass, same as those.
-  String? capHeightNarrowSingleVGap(
-    GrooveType groove,
-    JointType joint,
-    DrawingMode mode,
-    double width,
-  ) =>
-      (groove == GrooveType.singleV &&
-          joint == JointType.pipeButt &&
-          mode == DrawingMode.visual &&
-          width <= 240.0)
-      ? 'cap height label overlaps the thickness label at 320pt/240px '
-            'width - real, pre-existing, needs a dedicated follow-up'
-      : null;
+  // FIXED (Group 4, this session): Single V/pipe butt's cap-height
+  // dimension line used to clamp down into the "t mm" thickness label's
+  // lane at the narrowest real device width (320pt/240px, visual mode
+  // only) - the same canvas-edge-clamp family as the other gaps this
+  // session closed. A throwaway spike harness (see
+  // calculator_page.dart's `_narrowDrawingHeight` doc comment) measured
+  // this combo genuinely clears with +20px more canvas height; confirmed
+  // via this suite's own painter (mutation-tested: reverting the height
+  // bump reproduces the collision, reapplying clears it).
 
-  // KNOWN GAP: Double V/pipe butt at the narrowest real device width
-  // (320pt/240px, visual mode) is one of SEVERAL combinations where the
-  // both-faces cap-reinforcement feature (Double V gets a cap dimension
-  // pair on top AND bottom, per the user's explicit "welded from both
-  // sides" decision) doesn't fit - see [doubleVThickPlateGap] below for the
-  // rest of the real scope, which a reviewer found this comment previously
-  // understated: the SAME collision also fires at 280/295/310px canvases
-  // (360/375/412pt phones - common widths, not rare ones) once plate
-  // thickness is in the realistic range for a Double V groove (t>=~50mm;
-  // Double V is specifically the groove type used on THICK plate in real
-  // practice, so this was invisible while every matrix in this file
-  // hardcoded thicknessMm: 12). Measured examples confirmed by re-running
-  // this suite's own width mapping: t=50/310px -> 14.1x3.3px overlap;
-  // t=60/295px -> 19.8x5.3px; t=60/280px -> 23.4x2.4px. NOT a collision
-  // with the pipe OD chip (a prior version of this comment claimed that,
-  // but re-measuring the actual rects shows the OD chip isn't involved at
-  // all): the real collision is bottom-face `capOverlapMm` fully or
-  // partially overlapping bottom-face `capHeightMm` - one pill landing on
-  // top of the other. Root cause: both bottom-face pills' resolved
-  // (pre-clamp) positions land past the canvas edge on a short/narrow
-  // canvas, so each independently canvas-edge-clamps (see
-  // `_measurementLabelRect`) to the same y-band - the clamp has no
-  // knowledge of where a sibling label already clamped to. This is a real,
-  // structural limit of the shared label-avoidance system, not just an
-  // unfixably-tight squeeze: `_clearLabelPosition` only ever pushes
-  // candidates DOWN to clear a collision (deliberately monotonic - see its
-  // doc comment), so once a bottom-face label is already being pushed
-  // toward the bottom canvas edge, there's no direction left to push it
-  // clear of the edge-clamp. Tried reserving genuine extra pixel room below
-  // the plate on this path too (the same fix that resolved Finding 2/Gap B
-  // on desktop) - it made the narrow-canvas case worse, not better (spread
-  // the collision to technical mode and more locales), since
-  // [busyHeightFor]'s per-tier mobile canvas heights below are already
-  // tuned tightly enough that shrinking the frame further to reserve
-  // pixels elsewhere pushes some other label past its own edge instead. A
-  // real fix needs either a wider dedicated narrow-width/thick-plate layout
-  // for this combination or a direction-aware (not just monotonic-down)
-  // push in the shared avoidance system - both out of scope for a
-  // contained fix, so left as an accurately-described skip rather than a
-  // silent regression.
-  String? doubleVBothFacesNarrowGap(
-    GrooveType groove,
-    JointType joint,
-    DrawingMode mode,
-    double width,
-    AppLanguage language,
-  ) {
-    if (groove != GrooveType.doubleV || width > 240.0) {
-      return null;
-    }
-    if (joint == JointType.pipeButt && mode == DrawingMode.visual) {
-      // 2026-09-05: the primary/secondary label-hierarchy pass (c7f1baf)
-      // briefly tipped `technical` mode's previously-clear bottom-face cap
-      // pills into this same edge-clamp collision too, via the same
-      // now-bigger thickness/root-gap/bevel-angle/root-face pills pushing
-      // every later label a few more pixels down - but that same session's
-      // follow-up (3c7748f) reduced the primary-pill size bump specifically
-      // to clear the 22 collisions it caused, and `technical` mode here was
-      // one of them: re-measured directly via this suite's own painter,
-      // `technical` mode is genuinely clear again at every locale, so the
-      // gate stays `visual`-only.
-      return "Double V's both-faces bottom-face cap-overlap and cap-height "
-          'pills both canvas-edge-clamp to the same y-band at 320pt/240px '
-          'width - real, newly introduced, needs a dedicated follow-up '
-          '(see [doubleVThickPlateGap] for the same collision at other '
-          'common widths once plate thickness is realistic for Double V)';
-    }
-    if (mode != DrawingMode.visual) {
-      return null;
-    }
-    // KNOWN GAP: same root cause as the pipe-butt case above, but for
-    // plate butt - only reachable in Russian, and only since a previous
-    // session added the top/bottom-face prefix word ("Верх"/"Низ") to the
-    // two cap-dimension label pairs (see
-    // WeldDrawingPreview.capTopLabel/capBottomLabel): the extra prefix
-    // widens the bottom-face pills just enough to collide at this single
-    // narrowest canvas width. A reviewer flagged this comment's previous
-    // wording ("collide"/"just enough") as understating the severity: this
-    // is a full 66.7x17.6px pill-on-pill overlap (one label sitting
-    // directly on top of the other), not a marginal squeeze - re-measured
-    // directly via this suite's own painter, not assumed. German was ALSO
-    // affected before a prior session's Finding 4 fix (which fully
-    // localized the "mm cap overlap"/"mm cap height" suffix instead of
-    // concatenating a localized prefix onto hardcoded English); that fix's
-    // German replacement text (Überstand's/Überhöhung's) happened to be
-    // short enough to clear the collision as a side effect - confirmed via
-    // a real `flutter test` run, not assumed. Russian's fully-localized
-    // suffix (see drawingLabelCapOverlapValue/drawingLabelCapHeightValue)
-    // is longer than the hardcoded-English suffix it replaced, so that same
-    // fix made the overlap on this path WORSE, not better - the pill grew
-    // from 55.5x17.6px to the 66.7x17.6px measured above as a direct side
-    // effect of fully localizing the suffix text, a regression that went
-    // undisclosed in that fix's own summary.
-    // 2026-09-05: the primary/secondary label-hierarchy pass (c7f1baf)
-    // briefly tipped English into this same plate-butt collision too
-    // (previously RU-only, with German narrowly clear per the note above) -
-    // but 3c7748f's reduced size bump cleared it, same as the pipe-butt case
-    // above: re-measured directly, English is genuinely clear again.
-    if (joint == JointType.plateButt && language == AppLanguage.ru) {
-      return "Double V's both-faces bottom-face cap-overlap and cap-height "
-          'pills fully overlap at 320pt/240px width in this locale - same '
-          'structural cause as the pipe-butt gap above, needs the same '
-          'dedicated follow-up.';
-    }
-    return null;
-  }
-
-  // KNOWN GAP (thickness axis): the collision described above is NOT
-  // limited to the 320pt/240px canvas - it recurs at 280/295/310px
-  // (360/375/412pt phones) once thicknessMm is in the realistic range for
-  // a Double V groove, which no matrix in this file exercised before (every
-  // one hardcoded thicknessMm: 12). Exact set below was measured directly
-  // by rendering this suite's own painter at each width/joint/mode with
-  // thicknessMm swept across 12/40/50/60 (12 matches every other matrix in
-  // this file; 40/50/60 span the realistic Double V range a reviewer
-  // flagged as the untested axis hiding this collision) - not a broad
-  // over-cautious skip, only the combinations that actually collide are
-  // marked, everything else in the matrix below is expected to (and does)
-  // pass.
-  const doubleVCollisions = {
-    '240|plateButt|visual|50',
-    '240|plateButt|visual|60',
-    // `12mm` (this suite's own baseline thickness, used by every other
-    // matrix in this file) is a pre-existing entry, unrelated to the
-    // primary/secondary label-hierarchy pass below - it predates c7f1baf,
-    // so the collision was never confined to unusually-thick Double V
-    // plates in the first place.
-    '240|pipeButt|visual|12',
-    '240|pipeButt|visual|40',
-    '240|pipeButt|visual|50',
-    '240|pipeButt|visual|60',
-    '240|pipeButt|technical|40',
-    '240|pipeButt|technical|50',
-    '240|pipeButt|technical|60',
-    '280|pipeButt|visual|60',
-    '295|pipeButt|visual|50',
-    '295|pipeButt|visual|60',
-    '310|pipeButt|visual|50',
-    '310|pipeButt|visual|60',
-    '310|pipeButt|technical|60',
-  };
-  String? doubleVThickPlateGap(
-    GrooveType groove,
-    JointType joint,
-    DrawingMode mode,
-    double width,
-    double thicknessMm,
-  ) {
-    if (groove != GrooveType.doubleV) return null;
-    final key = '${width.toInt()}|$joint|$mode|${thicknessMm.toInt()}'
-        .replaceFirst('JointType.', '')
-        .replaceFirst('DrawingMode.', '');
-    if (!doubleVCollisions.contains(key)) return null;
-    return "Double V's both-faces bottom-face cap-overlap and cap-height "
-        'pills collide at ${width.toInt()}px/${thicknessMm.toInt()}mm '
-        '($joint, $mode) - same root cause as the narrowest-width gap above, '
-        'measured to also occur at common mobile widths once plate '
-        'thickness is realistic for Double V; needs the same dedicated '
-        'follow-up.';
-  }
+  // FIXED (Group 4, this session): Double V's both-faces cap-reinforcement
+  // pills (bottom-face `capOverlapMm`/`capHeightMm`) used to canvas-edge-
+  // clamp onto the identical y-band at the narrowest real device width
+  // (320pt/240px) - both in `pipeButt`/visual and, in Russian only,
+  // `plateButt`/visual (RU's longer top/bottom-face-prefixed cap labels) -
+  // and the same collision recurred at 280/295/310px canvases once plate
+  // thickness was in the realistic range for a Double V groove (t>=~50mm).
+  // A throwaway spike harness (see calculator_page.dart's
+  // `_narrowDrawingHeight` doc comment) measured every one of these combos
+  // genuinely clears with more total canvas height - the worst case
+  // (Russian's `pipeButt`/visual pair) needed +60px, every other combo
+  // needed less. Confirmed via this suite's own painter across the full
+  // width/thickness/locale sweep this comment used to describe as unfixed
+  // (mutation-tested: reverting the height bump reproduces every one of
+  // these collisions, reapplying clears all of them).
 
   for (final language in AppLanguage.values) {
     for (final width in widths) {
@@ -434,13 +282,6 @@ void main() {
               drawingMode: mode,
               canvasSize: Size(width, busyHeightFor(width)),
               language: language,
-              knownGap: doubleVBothFacesNarrowGap(
-                groove,
-                joint,
-                mode,
-                width,
-                language,
-              ),
             );
           }
         }
@@ -453,11 +294,34 @@ void main() {
               drawingMode: mode,
               canvasSize: Size(width, normalHeightFor(width)),
               language: language,
-              knownGap: capHeightNarrowSingleVGap(groove, joint, mode, width),
             );
           }
         }
       }
+      // FIXED (Group 4, this session): at the narrowest real device width
+      // (320pt/240px), fillet's Russian labels used to genuinely overlap
+      // (~39-43px horizontally) regardless of available height - a real,
+      // pre-existing bug independent of the height-bump fixes above (a
+      // locale/width-driven label-width issue, not a height one). A
+      // reviewer round's original scoping of this gap named the wrong
+      // labels: re-measured directly via this suite's own painter, the two
+      // leg-size dimension pills (`leg1Rect`/`leg2Rect` in
+      // weld_drawing_preview.dart's `_drawFillet`) are IDENTICAL text
+      // ("X mm leg", hardcoded, never localized) across every locale - the
+      // actual collision is between the T-joint leader's label (Russian's
+      // "Т-образное соединение") and the leg1 dimension pill, after
+      // Russian's long leader text (both `tJointLabel` and
+      // `filletWeldFaceLabel`) forces a downward collision-avoidance push
+      // far enough to land on it. Fixed with a narrow-width-only compact
+      // font/padding variant (`compact` param, `_drawLeader`/
+      // `_drawAnnotationLabel`/`_drawTechnicalLabel`/`_drawSoftLabel`/
+      // `_unclampedMeasurementRect`) applied to both fillet leader labels
+      // below 250px canvas width - information-preserving (smaller
+      // font/padding, not shortened text), gated by width rather than mode
+      // like `_isTechnical`'s existing sizing already is. Confirmed via
+      // this suite's own painter across every locale/mode (mutation-tested:
+      // reverting `compact` reproduces the RU overlap, reapplying clears
+      // it) and a real rendered PNG (legible, not cramped).
       for (final mode in DrawingMode.values) {
         _expectNoOverlap(
           'fillet/$mode @${width.toInt()} [$language]',
@@ -466,30 +330,18 @@ void main() {
           drawingMode: mode,
           canvasSize: Size(width, filletHeightFor(width)),
           language: language,
-          // KNOWN GAP: at the narrowest real device width (320pt/240px),
-          // fillet's Russian labels are wide enough to genuinely overlap
-          // (~39px horizontally) regardless of available height - this is
-          // a real, pre-existing bug independent of Findings 1-3 above
-          // (a locale/width-driven label-width issue, not a height one),
-          // surfaced by testing this width for the first time. Needs its
-          // own dedicated fix (narrower fillet label text or an extra
-          // narrow-width lane), not attempted in this round.
-          knownGap: (width <= 240.0 && language == AppLanguage.ru)
-              ? 'fillet RU labels overlap at 320pt/240px width - real, '
-                    'pre-existing, needs a dedicated follow-up'
-              : null,
         );
       }
     }
   }
 
-  // Thickness axis for Double V (this round's fix - see [doubleVThickPlateGap]
-  // above): every matrix above/below builds its `WeldDrawingData` via
-  // `_buildData`'s default `thicknessMm: 12`, so the bottom-face
-  // cap-overlap/cap-height collision never got exercised at the thicker
-  // plate values realistic for a Double V groove. Single language (en) -
-  // this collision is driven by fixed-pixel-size label geometry, not label
-  // text width/length, so locale isn't the relevant axis here (locale
+  // Thickness axis for Double V: every matrix above/below builds its
+  // `WeldDrawingData` via `_buildData`'s default `thicknessMm: 12`, so the
+  // bottom-face cap-overlap/cap-height collision (see the FIXED comment
+  // above) never got exercised at the thicker plate values realistic for a
+  // Double V groove until a prior round added this sweep. Single language
+  // (en) - this collision is driven by fixed-pixel-size label geometry, not
+  // label text width/length, so locale isn't the relevant axis here (locale
   // coverage for Double V already exists above at thicknessMm: 12).
   const doubleVThicknesses = [12.0, 40.0, 50.0, 60.0];
   for (final width in widths) {
@@ -506,13 +358,6 @@ void main() {
             data: _buildData(
               weldingProcess: WeldingProcess.gtaw,
               thicknessMm: thicknessMm,
-            ),
-            knownGap: doubleVThickPlateGap(
-              GrooveType.doubleV,
-              joint,
-              mode,
-              width,
-              thicknessMm,
             ),
           );
         }
@@ -554,6 +399,10 @@ void main() {
   // for that reason (see its `extraBusy` condition); mirror its bumped
   // floor, and (like [busyHeightFor]/[normalHeightFor] above) apply the
   // same narrowest-width chrome penalty via [narrowWidthDelta].
+  // Group 4 (this session): busy&&extraBusy and busy&&!extraBusy (458,
+  // mirrored above) both bumped +60px (474->534, 398->458),
+  // !busy&&extraBusy bumped +40px (394->434) - see `_narrowDrawingHeight`'s
+  // own doc comment for the spike measurements behind the exact deltas.
   bool isExtraBusy(WeldDrawingData data) =>
       data.geometryMode == JointGeometryMode.unequal ||
       data.weldingProcess == WeldingProcess.gtawSmaw;
@@ -565,239 +414,39 @@ void main() {
     final extraBusy = isExtraBusy(data);
     final delta = narrowWidthDelta(canvasWidth);
     if (busyGrooves.contains(groove)) {
-      return (extraBusy ? 474.0 : 398.0) - delta;
+      return (extraBusy ? 534.0 : 458.0) - delta;
     }
-    return (extraBusy ? 394.0 : 334.0) - delta;
+    return (extraBusy ? 434.0 : 354.0) - delta;
   }
 
-  // KNOWN GAP: extraBusy's own label set (unequal geometry's "B ... mm", or
-  // GTAW+SMAW's 2 combined-process labels) genuinely does not fit at the
-  // narrowest real device width (320pt/240px) even after accounting for
-  // that width's larger vertical chrome - a real, pre-existing bug
-  // surfaced by testing this width for the first time, independent of
-  // Findings 1-3 above. Needs a dedicated narrow-width layout pass, not
-  // attempted in this round.
-  //
-  // Group 3 (2026-09-07) fixed several of the combinations this bucket used
-  // to silently absorb: Compound V's groove-depth/beta collision (see
-  // [compoundHalfVBetaClampGap] below for the mechanism) at both draw
-  // modes, but not the same set at each - a post-clamp declutter pass
-  // (`_declutterAfterClamp` in weld_drawing_preview.dart, wired at beta's
-  // own `_drawAngleTag` call) only ever moves beta when doing so achieves a
-  // genuinely non-overlapping result, so which exact combinations clear
-  // depends on how much horizontal room each one's real label widths leave,
-  // independently per mode (`technical` labels are narrower than `visual`'s
-  // soft-pill style, so more of them fit). All 5 `technical`-mode combos
-  // [compoundHalfVBetaClampGap] used to track are fully fixed; only 3 of
-  // the same 5 are fixed in `visual` mode.
-  //
-  // A second reviewer round found this fix's first draft had two real bugs:
-  // an exact-boundary floating-point artifact could make
-  // `_declutterAfterClamp`'s overlap check fire even when a label already
-  // sat at its intended clearance (fixed with a small epsilon tolerance),
-  // and beta's own declutter was validated against only ONE sibling (groove
-  // depth) - so a "clean" candidate could still land beta on top of a
-  // DIFFERENT sibling, or on Compound V's cap-height label specifically,
-  // which didn't exist yet at beta's draw time and so couldn't be checked.
-  // That second bug reproduced as a genuine worse-than-baseline regression
-  // (beta landing fully inside the cap-height pill) at this exact
-  // combination. Fixed by drawing Compound V's cap dimensions BEFORE beta
-  // instead of after (cap height's own position never actually depended on
-  // beta, so nothing is lost by reordering) and validating beta's declutter
-  // against every already-placed sibling, cap height/overlap included.
-  // `idMatch|pipeButt` and `odMatch|pipeButt` are still NOT fixed in
-  // `visual` mode: declutter tries both horizontal candidates for each and
-  // finds neither is genuinely clear (for `odMatch|pipeButt`, beta's base
-  // position already overlaps groove depth regardless of welding process;
-  // for `idMatch|pipeButt`, every single-process combination is already
-  // clean and only GTAW+SMAW's two extra combined-process labels crowd the
-  // narrow bottom band enough to block both candidates) - so beta is
-  // correctly left at its pre-Group-3 baseline position rather than forced
-  // into an unclean move. Re-measured directly via this suite's own
-  // painter, not assumed - every entry below (and its absence) was
-  // individually confirmed clean or still-colliding.
-  const compoundVBetaVisualFixed = {
-    'JointAlignment.centerline|JointType.pipeButt',
-    'JointAlignment.centerline|JointType.plateButt',
-    'JointAlignment.idMatch|JointType.plateButt',
-  };
-  const compoundVBetaTechnicalFixed = {
-    'JointAlignment.centerline|JointType.pipeButt',
-    'JointAlignment.centerline|JointType.plateButt',
-    'JointAlignment.idMatch|JointType.pipeButt',
-    'JointAlignment.idMatch|JointType.plateButt',
-    'JointAlignment.odMatch|JointType.pipeButt',
-  };
-  // Equal geometry's own dedicated sets (only ever exercised at
-  // `JointAlignment.centerline` - the Equal-geometry loop below never
-  // varies alignment): NOT the same combos as Unequal's sets above - a
-  // reviewer found equal geometry's simpler single thickness label leaves
-  // beta a few px of room shorter than unequal's split A/B labels do, so
-  // reusing [compoundVBetaVisualFixed]/[compoundVBetaTechnicalFixed]
-  // directly for Equal geometry would falsely mark a still-colliding
-  // config as fixed. A prior round gated the bypass on
-  // `geometryMode == unequal` to avoid exactly that, but that gate also
-  // meant Equal-geometry configs could NEVER take the bypass at all -
-  // silently absorbing every Equal-geometry compoundV overlap into the
-  // generic message below regardless of severity, which is exactly how
-  // `equal|gtawSmaw|compoundV|pipeButt|visual|240` (a genuine 204px² pill
-  // overlap) went undetected. Measured directly via this suite's own
-  // painter, not assumed: plateButt is genuinely clear in both modes,
-  // pipeButt is clear only in `technical` mode.
-  const compoundVBetaVisualFixedEqual = {
-    'JointAlignment.centerline|JointType.plateButt',
-  };
-  const compoundVBetaTechnicalFixedEqual = {
-    'JointAlignment.centerline|JointType.plateButt',
-    'JointAlignment.centerline|JointType.pipeButt',
-  };
-  String? extraBusyNarrowGap(
-    WeldDrawingData data,
-    double canvasWidth, {
-    GrooveType? groove,
-    JointType? joint,
-    JointAlignment? alignment,
-    DrawingMode? mode,
-  }) {
-    if (canvasWidth > 240.0 || !isExtraBusy(data)) return null;
-    // The bypass now applies to BOTH geometry modes, each against its own
-    // measured set (see the sets' own doc comments above for why they
-    // can't be shared) - so a severity regression in either geometry mode
-    // fails loudly instead of hiding in the generic message below.
-    if (groove == GrooveType.compoundV) {
-      final key = '$alignment|$joint';
-      final isUnequal = data.geometryMode == JointGeometryMode.unequal;
-      final visualFixed = isUnequal
-          ? compoundVBetaVisualFixed
-          : compoundVBetaVisualFixedEqual;
-      final technicalFixed = isUnequal
-          ? compoundVBetaTechnicalFixed
-          : compoundVBetaTechnicalFixedEqual;
-      if (mode == DrawingMode.visual && visualFixed.contains(key)) {
-        return null;
-      }
-      if (mode == DrawingMode.technical && technicalFixed.contains(key)) {
-        return null;
-      }
-    }
-    return 'extraBusy labels overlap at 320pt/240px width - real, '
-        'pre-existing, needs a dedicated follow-up';
-  }
+  // FIXED (Group 4, this session): extraBusy's own label set (Unequal
+  // geometry's "B ... mm", or GTAW+SMAW's 2 combined-process labels, at
+  // 320pt/240px) - including every remaining Compound V/Half V groove-depth
+  // vs beta/alpha angle-tag canvas-edge-clamp collision Group 3 (2026-09-07)
+  // couldn't fully close (`idMatch|pipeButt`/`odMatch|pipeButt` in `visual`
+  // mode, and Half V's `odMatch/pipeButt` in both modes) - was the same
+  // canvas-edge-clamp family as the other gaps this session closed. A
+  // throwaway spike harness (see calculator_page.dart's
+  // `_narrowDrawingHeight` doc comment) measured every one of these combos
+  // genuinely clears with more total canvas height - the worst case (Half
+  // V's `odMatch/pipeButt`/visual) needed +60px, every other combo needed
+  // less. Confirmed via this suite's own painter across the full
+  // process/alignment/groove/joint/mode sweep below (mutation-tested:
+  // reverting the height bump reproduces every one of these collisions,
+  // reapplying clears all of them) - Group 3's `_declutterAfterClamp`
+  // mechanism (still wired at beta/alpha's `_drawAngleTag` call sites)
+  // stays in place as a no-op safety net for any future regression in this
+  // family, not removed just because the height bump made it currently
+  // redundant everywhere it used to engage.
 
-  // KNOWN GAP (NOT pre-existing - a genuine regression from the
-  // primary/secondary label-hierarchy pass, c7f1baf/3c7748f): at this exact
-  // combination (320pt/240px canvas, GTAW+SMAW combined process, Unequal
-  // geometry, `technical` mode), Compound V's groove-depth pill and its beta
-  // ("β") angle tag - now a bigger primary-styled pill - land on top of each
-  // other (Half V's groove-depth/alpha pair, same story). `_clearLabelPosition`
-  // computes beta's downward push against groove depth's rect using
-  // UNCLAMPED Y math (see `_resolutionMeasurementRect`'s own doc comment for
-  // why), but the rect actually drawn clamps Y to the canvas's bottom edge
-  // (see `_measurementLabelRect`) - close enough to that edge, the push
-  // clears groove depth in unclamped space but the separate Y-clamp
-  // reintroduces the overlap. Same structural cause already documented in
-  // [doubleVBothFacesNarrowGap] and [singleVIdMatchGrooveDepthGap] above,
-  // not a new bug class.
-  //
-  // Group 3 (2026-09-07) fixed 5 of these 6, all Compound V: beta's own
-  // `_declutterAfterClamp` call (wired at its `_drawAngleTag` call site in
-  // weld_drawing_preview.dart) now runs after beta's normal
-  // collision-avoidance resolves and clamps, and - only when beta's real
-  // final (clamped) rect still truly overlaps an already-placed sibling's
-  // real final rect - tries nudging beta fully clear of it horizontally
-  // (clear of its right edge, then its left, always in that deterministic
-  // order); if either candidate is genuinely non-overlapping, that becomes
-  // beta's final position. Re-measured directly via this suite's own
-  // painter (not assumed): centerline/pipeButt, centerline/plateButt,
-  // idMatch/pipeButt, idMatch/plateButt and odMatch/pipeButt are now
-  // genuinely 0-overlap in `technical` mode (their `visual`-mode
-  // counterparts, previously caught by the broader [extraBusyNarrowGap]
-  // bucket instead, are fixed too where there was room - see that bucket's
-  // own updated comment). `odMatch/halfV` is NOT fixed: Half V's alpha tag
-  // (beta's equivalent there) has no post-clamp declutter of its own at
-  // all - a reviewer's second round confirmed via a full instrumented
-  // matrix sweep that the mechanism this fix originally wired for Half V's
-  // groove depth (and Single V's, and Compound V's own groove-depth pill)
-  // never once produced a genuinely non-overlapping result anywhere: every
-  // trigger it caught was either already non-overlapping by this suite's
-  // own strict standard (just tighter than this file's usual aesthetic
-  // clearance) or a real overlap neither horizontal candidate could clear,
-  // so it was removed as dead weight rather than left as inert complexity.
-  // `odMatch/halfV` was never actually fixed by that mechanism even before
-  // its removal - this is the same structural "not enough horizontal
-  // room on a canvas this narrow" limit as [doubleVBothFacesNarrowGap] and
-  // [doubleVThickPlateGap] below, not a mechanism failure - a genuinely
-  // clean fix needs either a narrower Half V alpha/groove-depth label pair
-  // at this width or the direction-aware-push work already called out
-  // elsewhere in this file, both out of scope for a contained fix.
-  const compoundHalfVTechnicalBetaGap = {
-    'JointAlignment.odMatch|GrooveType.halfV|JointType.pipeButt',
-  };
-  String? compoundHalfVBetaClampGap(
-    JointAlignment alignment,
-    GrooveType groove,
-    JointType joint,
-    WeldingProcess process,
-    DrawingMode mode,
-    double canvasWidth,
-  ) {
-    if (canvasWidth != 240.0 ||
-        process != WeldingProcess.gtawSmaw ||
-        mode != DrawingMode.technical) {
-      return null;
-    }
-    if (!compoundHalfVTechnicalBetaGap.contains('$alignment|$groove|$joint')) {
-      return null;
-    }
-    return 'groove-depth and beta/alpha angle-tag pills overlap at this '
-        'combination - newly introduced by the primary/secondary '
-        'label-hierarchy pass (c7f1baf/3c7748f), see KNOWN GAP comment above';
-  }
-
-  // KNOWN GAP: a real, narrow side effect of the GTAW-root-label
-  // line-crossing fix in weld_drawing_preview.dart (see
-  // `_dimensionLineAvoidRects`) - genuinely clearing the B-thickness
-  // dimension line requires pushing the GTAW-root label down whenever it
-  // would otherwise cross that line, and at Single V's idMatch alignment
-  // specifically (which puts the B-thickness line's bottom stub unusually
-  // close to the root label's natural Y) that push cascades through every
-  // later label that in turn avoids the one before it (root face ->
-  // thickness/root gap -> groove depth), landing root gap and groove
-  // depth's pills into each other at this single width/alignment/groove/
-  // joint combination. Root cause is the same pre-existing structural limit
-  // already documented in [doubleVBothFacesNarrowGap] above
-  // (`_clearLabelPosition` only ever pushes labels DOWN, so a label already
-  // this close to the next one's edge has nowhere left to go) - not a new
-  // architectural problem, just a new specific combination that now reaches
-  // it. A real fix needs that same broader direction-aware-push work, out
-  // of scope here.
-  // 2026-09-05: the primary/secondary label-hierarchy pass made this worse
-  // (14.4x1.9px -> 21.6x5.9px with that round's original size bump) since
-  // the now-bigger root-gap pill pushes groove depth further into the same
-  // edge before it clamps; reducing the primary-pill size bump (see
-  // `_primaryFontBump`/`_primary*PadBump`/`_primaryMin*Bump` in
-  // weld_drawing_preview.dart) to keep the hierarchy readable without
-  // reintroducing the 22 new collisions that round's full-size bump caused
-  // elsewhere brought this back down to 18.6x1.9px - still worse than the
-  // pre-hierarchy baseline (same root cause, a still-slightly-bigger primary
-  // pill), so left as the same known gap rather than claimed fixed.
-  String? singleVIdMatchGrooveDepthGap(
-    GrooveType groove,
-    JointAlignment alignment,
-    JointType joint,
-    DrawingMode mode,
-    double width,
-  ) =>
-      (groove == GrooveType.singleV &&
-          alignment == JointAlignment.idMatch &&
-          joint == JointType.pipeButt &&
-          mode == DrawingMode.visual &&
-          width == 310.0)
-      ? 'root gap/groove depth pills overlap by 18.6x1.9px at this '
-            'combination - real, newly surfaced by the GTAW-root '
-            'line-crossing fix and slightly worsened by the primary/'
-            'secondary label-hierarchy pass, see KNOWN GAP comment above'
-      : null;
+  // FIXED (Group 4, this session): Single V's idMatch alignment used to
+  // land root gap and groove depth's pills into each other at 310px width
+  // (a cascading side effect of the GTAW-root-label line-crossing fix
+  // pushing every later label down slightly) - same canvas-edge-clamp
+  // family as the other gaps this session closed. The same spike measured
+  // this combo genuinely clears with +40px more canvas height; confirmed
+  // via this suite's own painter (mutation-tested: reverting the height
+  // bump reproduces the collision, reapplying clears it).
 
   for (final alignment in JointAlignment.values) {
     for (final process in WeldingProcess.values) {
@@ -819,30 +468,6 @@ void main() {
                 canvasSize: Size(width, heightFor(groove, data, width)),
                 language: AppLanguage.en,
                 data: data,
-                knownGap:
-                    compoundHalfVBetaClampGap(
-                      alignment,
-                      groove,
-                      joint,
-                      process,
-                      mode,
-                      width,
-                    ) ??
-                    extraBusyNarrowGap(
-                      data,
-                      width,
-                      groove: groove,
-                      joint: joint,
-                      alignment: alignment,
-                      mode: mode,
-                    ) ??
-                    singleVIdMatchGrooveDepthGap(
-                      groove,
-                      alignment,
-                      joint,
-                      mode,
-                      width,
-                    ),
               );
             }
           }
@@ -851,27 +476,17 @@ void main() {
     }
   }
 
-  // Finding 2 (this round): went uncaught because every matrix above either
-  // hardcoded Unequal geometry (the matrix just above) or hardcoded a
-  // single process, gtaw (the top-of-file matrix) - Equal geometry crossed
-  // with GTAW+SMAW (which adds its own 2 extra labels regardless of
+  // Finding 2 (prior round): went uncaught because every matrix above
+  // either hardcoded Unequal geometry (the matrix just above) or hardcoded
+  // a single process, gtaw (the top-of-file matrix) - Equal geometry
+  // crossed with GTAW+SMAW (which adds its own 2 extra labels regardless of
   // geometry mode) was never exercised at any width. Cover Equal geometry x
   // every process explicitly, at a representative narrow/mid/desktop width
   // spread rather than folding it into the full matrix above (which would
   // double an already-large combinatorial matrix for coverage this only
-  // needs once).
-  //
-  // A second reviewer round found this loop's own [extraBusyNarrowGap] call
-  // (below) was passed only `(data, width)`, not the same
-  // groove/joint/alignment/mode args the Unequal-geometry matrix above
-  // passes - meaning EVERY extraBusy+narrow config here fell into the
-  // broadest possible skip, with no way for a genuinely-fixed combination to
-  // ever un-skip, which is exactly how this round's own beta/cap-height
-  // regression (Finding 2) went undetected here: it was silently absorbed
-  // into this same bucket instead of failing loudly. Now passes the same
-  // named args for consistency (see [extraBusyNarrowGap]'s own doc comment
-  // for why its Compound V bypass still correctly never applies to any
-  // config in THIS loop specifically).
+  // needs once). The extraBusy/cap-height/both-faces overlaps this loop
+  // used to catch here are FIXED (Group 4, this session) - see the height
+  // bump's doc comments above.
   for (final process in WeldingProcess.values) {
     final data = _buildData(
       weldingProcess: process,
@@ -890,23 +505,6 @@ void main() {
               canvasSize: Size(width, heightFor(groove, data, width)),
               language: AppLanguage.en,
               data: data,
-              knownGap:
-                  extraBusyNarrowGap(
-                    data,
-                    width,
-                    groove: groove,
-                    joint: joint,
-                    alignment: JointAlignment.centerline,
-                    mode: mode,
-                  ) ??
-                  capHeightNarrowSingleVGap(groove, joint, mode, width) ??
-                  doubleVBothFacesNarrowGap(
-                    groove,
-                    joint,
-                    mode,
-                    width,
-                    AppLanguage.en,
-                  ),
             );
           }
         }
@@ -914,11 +512,13 @@ void main() {
     }
   }
 
-  // Finding 4: locale-specific overlaps only surfaced with the combined
-  // GTAW+SMAW process (longest extra labels) and Unequal geometry (extra
-  // "B ... mm" label) together - the worst case for label-packing - across
-  // every alignment and locale, at a representative narrow/mid/desktop
-  // width spread.
+  // Finding 4 (prior round): locale-specific overlaps only surfaced with
+  // the combined GTAW+SMAW process (longest extra labels) and Unequal
+  // geometry (extra "B ... mm" label) together - the worst case for
+  // label-packing - across every alignment and locale, at a representative
+  // narrow/mid/desktop width spread. The Single V idMatch/310px overlap
+  // this loop used to catch is FIXED (Group 4, this session) - see the
+  // height bump's doc comments above.
   const localeWidths = [310.0, 480.0, 760.0];
   for (final language in AppLanguage.values) {
     for (final alignment in JointAlignment.values) {
@@ -940,13 +540,6 @@ void main() {
                 canvasSize: Size(width, heightFor(groove, data, width)),
                 language: language,
                 data: data,
-                knownGap: singleVIdMatchGrooveDepthGap(
-                  groove,
-                  alignment,
-                  joint,
-                  mode,
-                  width,
-                ),
               );
             }
           }
