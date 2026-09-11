@@ -308,12 +308,17 @@ void main() {
           }
         }
       }
-      // FIXED (Group 4, this session): at the narrowest real device width
+      // FIXED (Group 4, prior session): at the narrowest real device width
       // (320pt/240px), fillet's Russian labels used to genuinely overlap
-      // (~39-43px horizontally) regardless of available height - a real,
-      // pre-existing bug independent of the height-bump fixes above (a
-      // locale/width-driven label-width issue, not a height one). A
-      // reviewer round's original scoping of this gap named the wrong
+      // (~39-43px horizontally) - a real, pre-existing bug caused by label
+      // WIDTH, not height (a locale/width-driven issue, distinct from the
+      // height-bump fixes above). A height-only fix is theoretically
+      // possible (a reviewer measured +20px of fillet canvas height also
+      // clears this specific case) but is impractical: a 320pt-wide device
+      // would need ~977pt of safe screen height to trigger that much
+      // clamp headroom, far more than any real phone provides - `compact`
+      // (below) is the practical fix. A reviewer round's original scoping
+      // of this gap named the wrong
       // labels: re-measured directly via this suite's own painter, the two
       // leg-size dimension pills (`leg1Rect`/`leg2Rect` in
       // weld_drawing_preview.dart's `_drawFillet`) are IDENTICAL text

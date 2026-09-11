@@ -2127,18 +2127,23 @@ class _WeldDrawingPainter extends CustomPainter {
     // Leaders are drawn last, so they nudge clear of the leg labels rather
     // than the other way around - reordering the leg labels after the
     // leaders would just move which pair needs the avoid list.
-    // Group 4 (this session): at the narrowest real device width
+    // Group 4 (prior session): at the narrowest real device width
     // (320pt/240px), a locale's longer translated leader text (Russian's
     // "поверхность углового шва"/"Т-образное соединение" specifically -
     // measured directly via this suite's own painter, not assumed) collides
     // with the OTHER leader at its natural top-of-canvas position, pushing
     // the T-joint leader all the way down past both leg labels until it
-    // lands squarely on top of the leg1 dimension pill - independent of
-    // canvas height (the push exhausts the canvas's available height, not
-    // its own room). `compact` shrinks both leaders' font/padding below this
-    // width so the natural (unpushed) positions stay clear of each other in
-    // every locale, closing the collision at its actual source rather than
-    // shrinking the (unrelated, identical-across-locales) leg labels.
+    // lands squarely on top of the leg1 dimension pill. A reviewer found a
+    // height-only fix is theoretically possible here (+20px of fillet
+    // canvas height also clears this specific case, only 20px more than
+    // this tier's existing floor) but is impractical: a 320pt-wide device
+    // would need ~977pt of safe screen height to trigger that much of the
+    // clamp headroom this push relies on, which no real phone provides -
+    // `compact` shrinks both leaders' font/padding below this width so the
+    // natural (unpushed) positions stay clear of each other in every
+    // locale, closing the collision at its actual source (label width,
+    // not height) rather than shrinking the (unrelated,
+    // identical-across-locales) leg labels.
     final compactLeaders = size.width <= 250.0;
     final filletFaceRect = _drawLeader(
       canvas,
