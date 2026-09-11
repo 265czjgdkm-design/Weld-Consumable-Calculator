@@ -220,19 +220,29 @@ void main() {
   // vertical chrome ~42-48px higher there than at any wider width; rather
   // than reusing the same constant at that width too, [_narrowWidthDelta]
   // subtracts that same real measured penalty from it specifically.
-  // Group 4 (this session): busy/non-extraBusy bumped +60px (398->458 -
+  // Group 4 (prior session): busy/non-extraBusy bumped +60px (398->458 -
   // Russian's longer Double V both-faces cap labels needed more than
   // English's same combo did) and non-busy/non-extraBusy bumped +20px
   // (334->354), to match calculator_page.dart's `_narrowDrawingHeight`
   // tier-ceiling raise - see that function's own doc comment for the spike
   // measurements behind the exact deltas.
+  // Follow-up round (this session): Group 4's fix was only verified at
+  // `thicknessMm: 12` - a reviewer found the same canvas-bottom-clamp
+  // mechanism recurs at 320pt/240px for realistic thicknesses away from
+  // 12mm (thin plate ~3-11mm and thick plate ~45-60mm, both directions).
+  // Bumped every tier by the worst-case-needed extra height (measured via
+  // a thickness-sweeping throwaway spike, see calculator_page.dart's
+  // `_narrowDrawingHeight` doc comment for the exact figures) plus a 10px
+  // margin: non-busy/non-extraBusy +80px (354->434), non-busy/extraBusy
+  // +90px (434->524), busy/non-extraBusy +110px (458->568), busy/extraBusy
+  // +110px (534->644).
   const widths = [240.0, 280.0, 295.0, 310.0, 332.0, 348.0];
   double narrowWidthDelta(double canvasWidth) =>
       canvasWidth <= 240.0 ? 48.0 : 0.0;
   double busyHeightFor(double canvasWidth) =>
-      458.0 - narrowWidthDelta(canvasWidth);
+      568.0 - narrowWidthDelta(canvasWidth);
   double normalHeightFor(double canvasWidth) =>
-      354.0 - narrowWidthDelta(canvasWidth);
+      434.0 - narrowWidthDelta(canvasWidth);
   double filletHeightFor(double canvasWidth) =>
       280.0 - narrowWidthDelta(canvasWidth);
   final joints = [JointType.plateButt, JointType.pipeButt];
@@ -365,6 +375,103 @@ void main() {
     }
   }
 
+  // Follow-up round (this session): every matrix above/below still only
+  // ever exercises `_buildData`'s default `thicknessMm: 12` (or, for Double
+  // V just above, a handful of thick-plate-only values) - a reviewer found
+  // that with production-realistic thicknesses (governing thickness =
+  // max(A,B) in Unequal mode) away from 12mm, in BOTH directions - thin
+  // plate (~3-11mm) and thick plate (~45-60mm) - the same canvas-bottom-
+  // clamp mechanism the earlier FIXED comments describe recurs at
+  // 320pt/240px, because the angle-tag/groove-depth pills genuinely shift
+  // position as the drawn groove geometry shrinks or grows with thickness.
+  // Confined to 240px width - a throwaway spike harness (rendering the real
+  // painter, the same technique as every FIXED comment above) confirmed
+  // every wider width (280-348px) already clears the full 3-60mm range with
+  // zero overlaps even before this round's height bump, so this sweep is
+  // width=240-only rather than duplicating the full width axis. Every
+  // locale, both joints and draw modes, and every groove type that showed a
+  // real collision in the reviewer's audit (Single V, Double V, Compound
+  // V) - Half V and Square are included too as a regression guard even
+  // though neither failed in the equal-geometry/gtaw sweep specifically.
+  const followUpThicknesses = [
+    3.0,
+    4.0,
+    5.0,
+    6.0,
+    7.0,
+    8.0,
+    9.0,
+    10.0,
+    11.0,
+    12.0,
+    20.0,
+    30.0,
+    40.0,
+    45.0,
+    50.0,
+    55.0,
+    60.0,
+  ];
+  final followUpGrooves = [...busyGrooves, ...normalButtGrooves];
+  for (final language in AppLanguage.values) {
+    for (final joint in joints) {
+      for (final groove in followUpGrooves) {
+        for (final mode in DrawingMode.values) {
+          for (final thicknessMm in followUpThicknesses) {
+            final height = busyGrooves.contains(groove)
+                ? busyHeightFor(240.0)
+                : normalHeightFor(240.0);
+            _expectNoOverlap(
+              '$groove/$joint/$mode @240 t=${thicknessMm.toInt()}mm [$language]',
+              jointType: joint,
+              grooveType: groove,
+              drawingMode: mode,
+              canvasSize: Size(240.0, height),
+              language: language,
+              data: _buildData(
+                weldingProcess: WeldingProcess.gtaw,
+                thicknessMm: thicknessMm,
+              ),
+            );
+          }
+        }
+      }
+    }
+  }
+
+  // Follow-up round (this session), extraBusy tier: the same thickness-axis
+  // gap also recurred under GTAW+SMAW's combined process (extraBusy, taller
+  // tier) - narrower thickness list (targeted around the values the spike
+  // harness found failing) and English-only (matching this file's existing
+  // convention of single-locale coverage for secondary/audit-style axes,
+  // e.g. the Double V sweep above) to keep this addition proportionate.
+  const followUpExtraBusyThicknesses = [3.0, 6.0, 7.0, 8.0, 45.0, 60.0];
+  for (final joint in joints) {
+    for (final groove in busyGrooves) {
+      for (final mode in DrawingMode.values) {
+        for (final thicknessMm in followUpExtraBusyThicknesses) {
+          // Every groove here is a busy groove and gtawSmaw always sets
+          // extraBusy, so this is [busyGrooves]'s extraBusy tier (644,
+          // `heightFor`'s own tier table below) - inlined rather than
+          // calling `heightFor` since that helper is declared further down
+          // this function body.
+          _expectNoOverlap(
+            'extraBusy/$groove/$joint/$mode @240 t=${thicknessMm.toInt()}mm [en]',
+            jointType: joint,
+            grooveType: groove,
+            drawingMode: mode,
+            canvasSize: Size(240.0, 644.0 - narrowWidthDelta(240.0)),
+            language: AppLanguage.en,
+            data: _buildData(
+              weldingProcess: WeldingProcess.gtawSmaw,
+              thicknessMm: thicknessMm,
+            ),
+          );
+        }
+      }
+    }
+  }
+
   // The matrices above (Equal geometry, gtaw, 316-390px) were the whole
   // suite before this reviewer round. Everything below extends coverage to
   // what that round's audit actually exercised - Unequal geometry (all 3
@@ -399,10 +506,14 @@ void main() {
   // for that reason (see its `extraBusy` condition); mirror its bumped
   // floor, and (like [busyHeightFor]/[normalHeightFor] above) apply the
   // same narrowest-width chrome penalty via [narrowWidthDelta].
-  // Group 4 (this session): busy&&extraBusy and busy&&!extraBusy (458,
+  // Group 4 (prior session): busy&&extraBusy and busy&&!extraBusy (458,
   // mirrored above) both bumped +60px (474->534, 398->458),
   // !busy&&extraBusy bumped +40px (394->434) - see `_narrowDrawingHeight`'s
   // own doc comment for the spike measurements behind the exact deltas.
+  // Follow-up round (this session): every tier bumped again by the
+  // thickness-axis worst case plus a 10px margin, mirroring
+  // [busyHeightFor]/[normalHeightFor] above - see `_narrowDrawingHeight`'s
+  // doc comment for the exact figures.
   bool isExtraBusy(WeldDrawingData data) =>
       data.geometryMode == JointGeometryMode.unequal ||
       data.weldingProcess == WeldingProcess.gtawSmaw;
@@ -414,9 +525,9 @@ void main() {
     final extraBusy = isExtraBusy(data);
     final delta = narrowWidthDelta(canvasWidth);
     if (busyGrooves.contains(groove)) {
-      return (extraBusy ? 534.0 : 458.0) - delta;
+      return (extraBusy ? 644.0 : 568.0) - delta;
     }
-    return (extraBusy ? 434.0 : 354.0) - delta;
+    return (extraBusy ? 524.0 : 434.0) - delta;
   }
 
   // FIXED (Group 4, this session): extraBusy's own label set (Unequal

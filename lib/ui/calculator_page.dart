@@ -561,7 +561,7 @@ class _CalculatorPageState extends State<CalculatorPage> {
     final extraBusy =
         _jointGeometryMode == JointGeometryMode.unequal ||
         _weldingProcess == WeldingProcess.gtawSmaw;
-    // Group 4 (this session): each of these 4 tiers already grants its
+    // Group 4 (prior session): each of these 4 tiers already grants its
     // combos the biggest bucket available (there's no bigger tier left to
     // move them into) - Half V/Compound V/Double V + Unequal-geometry/
     // GTAW+SMAW combos still clamped sibling labels onto the identical
@@ -585,17 +585,41 @@ class _CalculatorPageState extends State<CalculatorPage> {
     // deltas in lockstep. Fillet's tier is untouched - its own real gap
     // (RU label width, not height) needs a different fix, see
     // weld_drawing_preview.dart's `_drawFillet`.
+    //
+    // Follow-up round (this session): Group 4's fix was verified only at
+    // `thicknessMm: 12` (the test suite's hardcoded default at the time) -
+    // a reviewer found the SAME canvas-bottom-clamp mechanism recurs at
+    // 320pt/240px for realistic plate/pipe-wall thicknesses away from 12mm,
+    // in both directions: thin plate (~3-11mm, Single V/Double V/Compound
+    // V's angle-tag or cap-height pill shifts down as groove geometry
+    // shrinks) and thick plate (~45-60mm, the opposite shift as groove
+    // geometry grows). A throwaway spike harness (same technique as Group
+    // 4's, but sweeping `thicknessMm` 3-60 densely at 240px width across
+    // every groove/joint/process/geometry-mode/alignment/mode/locale
+    // combination) bisected the true worst-case extra height each tier
+    // needs beyond Group 4's own bump: !busy&&!extraBusy +70px (Single V,
+    // pipeButt, t=3-6mm), !busy&&extraBusy +80px (Single V, gtawSmaw,
+    // t=3-6mm), busy&&!extraBusy +100px (Double V, pipeButt, t=60mm),
+    // busy&&extraBusy +100px (Compound V, pipeButt/idMatch, t=7mm).
+    // Bumped every bound in each tier by that measured worst case plus a
+    // 10px margin (not the bare minimum, to avoid a razor-thin clearance
+    // against future longer translations) - +80/+90/+110/+110px
+    // respectively - confirmed via the same spike harness across the full
+    // realistic thickness range (3-60mm, every 1mm from 3-20 then every
+    // 5mm to 60) with zero remaining overlaps (8003/8003 configs), and via
+    // this suite's own painter/test file (mutation-tested: reverting these
+    // bounds reproduces the collisions, reapplying clears them).
     if (busy) {
       return extraBusy
-          ? (safeHeight * 0.66).clamp(640.0, 700.0)
-          : (safeHeight * 0.58).clamp(560.0, 620.0);
+          ? (safeHeight * 0.66).clamp(750.0, 810.0)
+          : (safeHeight * 0.58).clamp(670.0, 730.0);
     }
     if (_grooveType == GrooveType.fillet) {
       return (safeHeight * 0.44).clamp(390.0, 440.0);
     }
     return extraBusy
-        ? (safeHeight * 0.58).clamp(540.0, 600.0)
-        : (safeHeight * 0.52).clamp(460.0, 520.0);
+        ? (safeHeight * 0.58).clamp(630.0, 690.0)
+        : (safeHeight * 0.52).clamp(540.0, 600.0);
   }
 
   Widget _buildEstimatorWorkspace(BuildContext context) {
