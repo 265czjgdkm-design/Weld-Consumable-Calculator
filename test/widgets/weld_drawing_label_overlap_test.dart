@@ -215,31 +215,31 @@ void main() {
   // widths map directly to real common device widths: 320->240, 360->280,
   // 375->295, 390->310, 412->332, 428->348. The heights below (458/354/280,
   // plus their extraBusy counterparts 534/434) are this suite's existing
-  // already-verified-safe per-tier canvas heights, unchanged for every one
-  // of those widths - except the narrowest ones, where the reviewer
-  // measured the real card header wrapping to two lines, pushing vertical
-  // chrome ~42-48px higher there than at any wider width; rather than
-  // reusing the same constant at that width too, [_narrowWidthDelta]
-  // subtracts that same real measured penalty from it specifically.
-  // Follow-up round (this session), Finding 3: [_narrowWidthDelta]'s gate
-  // only ever applied that penalty at canvasWidth<=240 (320pt) -
-  // re-measured directly by pumping the live `CalculatorPage` widget
-  // (worst-case locale, `ru`, matching this file's existing worst-case-
-  // locale convention) at a safeHeight chosen to land the drawing card's
-  // height mid-clamp-range (not at a floor/ceiling, so the card height is
-  // exactly known and chrome = cardHeight - measured canvas height): the
-  // two-line header wrap - and its ~148px chrome (vs. ~129px unwrapped) -
-  // persists for EVERY device width up to 375pt (canvas up to 295px), only
-  // dropping to 129px at 390pt+ (canvas 310px+). So the penalty gate
-  // under-penalized (tested a too-generous canvas) for widths 251-295px,
-  // which includes the 360pt/375pt phones this app most commonly ships to.
-  // Widened the gate to canvasWidth<=295 - same 48px delta, since the real
-  // chrome is identical (148px) across the whole 240-295px band, not a new
-  // number. This also makes Finding 1's new `legSizeMm` sweep below
-  // meaningful: at the old, too-generous height those cases never actually
-  // exercise the real collision (verified by reverting just this gate and
-  // confirming the sweep still passes trivially), so Findings 1 and 3
-  // combine into a single regression guard here.
+  // already-verified-safe per-tier canvas heights.
+  // Follow-up round (this session), Finding 3 in `a62347c` claimed real
+  // vertical chrome jumps to ~148px (from ~129px) below 295px canvas width,
+  // because the drawing card's Russian title wraps to two lines there - a
+  // reviewer found that measurement was taken by pumping the live
+  // `CalculatorPage` widget WITHOUT loading the real Roboto font (this
+  // file's own `setUpAll` above exists specifically to do that). Redone
+  // with the real font loaded (same technique as this file's own painter
+  // renders), across every device width this suite tests and all 5
+  // locales, at default text scale: chrome is a FLAT 105px everywhere - the
+  // Russian title ("Техническое изображение") renders on one line at every
+  // width once real glyph metrics are used, it only wrapped under the
+  // Ahem-like synthetic-font fallback the unloaded-font measurement
+  // actually used. [_narrowWidthDelta] is corrected to 0 at every width -
+  // there is no real per-width chrome penalty to model at default text
+  // scale, so the per-tier canvas heights below need no narrow-width
+  // adjustment; they already stand on their own (derived independently via
+  // painter-level mutation testing, not from this chrome measurement).
+  // NOTE: default text scale is not the whole picture - enlarging the
+  // OS/app text scale (accessibility users) DOES grow this same header
+  // chrome (it scales with `textScaler`, unlike this painter's own
+  // fixed-size labels), shrinking the real canvas height available. See
+  // the dedicated "accessibility text scale" test group near the end of
+  // this file for that coverage, kept separate from this default-scale
+  // model on purpose.
   // Group 4 (prior session): busy/non-extraBusy bumped +60px (398->458 -
   // Russian's longer Double V both-faces cap labels needed more than
   // English's same combo did) and non-busy/non-extraBusy bumped +20px
@@ -257,8 +257,12 @@ void main() {
   // +90px (434->524), busy/non-extraBusy +110px (458->568), busy/extraBusy
   // +110px (534->644).
   const widths = [240.0, 280.0, 295.0, 310.0, 332.0, 348.0];
-  double narrowWidthDelta(double canvasWidth) =>
-      canvasWidth <= 295.0 ? 48.0 : 0.0;
+  // Corrected (this session, see the doc comment above): real default-scale
+  // chrome does not vary by width, so there is no real narrow-width
+  // penalty to subtract. Kept as a named no-op (rather than deleting it and
+  // its call sites) so the paper trail of what this used to model, and why
+  // it no longer does, stays attached to the height helpers below.
+  double narrowWidthDelta(double canvasWidth) => 0.0;
   double busyHeightFor(double canvasWidth) =>
       568.0 - narrowWidthDelta(canvasWidth);
   double normalHeightFor(double canvasWidth) =>
@@ -335,30 +339,43 @@ void main() {
       // height-bump fixes above). A height-only fix is theoretically
       // possible - a reviewer bisected it directly (1px steps): at
       // production canvas height (242px) the overlap is 1.11px and clears
-      // at 244px, only +2px - but is still impractical: a 320pt-wide
-      // device would need `safeHeight` (calculator_page.dart's
-      // `_narrowDrawingHeight`) of ~891pt to push the fillet card past its
-      // 390pt floor far enough to reach that +2px, far more than any real
-      // phone provides - `compact` (below) is the practical fix. A
-      // reviewer round's original scoping of this gap named the wrong
-      // labels: re-measured directly via this suite's own painter, the two
-      // leg-size dimension pills (`leg1Rect`/`leg2Rect` in
-      // weld_drawing_preview.dart's `_drawFillet`) are IDENTICAL text
-      // ("X mm leg", hardcoded, never localized) across every locale - the
-      // actual collision is between the T-joint leader's label (Russian's
-      // "Т-образное соединение") and the leg1 dimension pill, after
-      // Russian's long leader text (both `tJointLabel` and
-      // `filletWeldFaceLabel`) forces a downward collision-avoidance push
-      // far enough to land on it. Fixed with a narrow-width-only compact
-      // font/padding variant (`compact` param, `_drawLeader`/
-      // `_drawAnnotationLabel`/`_drawTechnicalLabel`/`_drawSoftLabel`/
-      // `_unclampedMeasurementRect`) applied to both fillet leader labels
-      // below 250px canvas width - information-preserving (smaller
-      // font/padding, not shortened text), gated by width rather than mode
-      // like `_isTechnical`'s existing sizing already is. Confirmed via
-      // this suite's own painter across every locale/mode (mutation-tested:
-      // reverting `compact` reproduces the RU overlap, reapplying clears
-      // it) and a real rendered PNG (legible, not cramped).
+      // at 244px, only +2px more. A reviewer round's original scoping of
+      // this gap named the wrong labels: re-measured directly via this
+      // suite's own painter, the two leg-size dimension pills
+      // (`leg1Rect`/`leg2Rect` in weld_drawing_preview.dart's
+      // `_drawFillet`) are IDENTICAL text ("X mm leg", hardcoded, never
+      // localized) across every locale - the actual collision is between
+      // the T-joint leader's label (Russian's "Т-образное соединение") and
+      // the leg1 dimension pill, after Russian's long leader text (both
+      // `tJointLabel` and `filletWeldFaceLabel`) forces a downward
+      // collision-avoidance push far enough to land on it. Fixed with a
+      // narrow-width-only compact font/padding variant (`compact` param,
+      // `_drawLeader`/`_drawAnnotationLabel`/`_drawTechnicalLabel`/
+      // `_drawSoftLabel`/`_unclampedMeasurementRect`) applied to both
+      // fillet leader labels below 250px canvas width - information-
+      // preserving (smaller font/padding, not shortened text), gated by
+      // width rather than mode like `_isTechnical`'s existing sizing
+      // already is. Confirmed via this suite's own painter across every
+      // locale/mode (mutation-tested: reverting `compact` reproduces the RU
+      // overlap, reapplying clears it) and a real rendered PNG (legible,
+      // not cramped).
+      // Follow-up round (this session): the "+2px is still impractical, no
+      // real phone reaches it" framing above was based on a chrome
+      // measurement (~148px) later found to be a measurement bug (missing
+      // real-font load - see this file's corrected header comment). With
+      // the corrected flat 105px default-scale chrome, the fillet card's
+      // real canvas height is 285-335px at every real device - already past
+      // the 244px clearing point, so this collision does not occur at
+      // default text scale at all, and `compact` makes zero measured
+      // difference at the corrected default-scale height used below
+      // (confirmed by sweeping the full width/legSize/mode/locale matrix
+      // with `compact` enabled, disabled, and at either cutoff - identical
+      // empty failure sets in every case). `compact` remains justified, but
+      // only for accessibility users with an enlarged `textScaler` - that
+      // grows the same header chrome this painter's own labels ignore,
+      // genuinely shrinking the real canvas back down to (and below) the
+      // 242px case bisected above. See the "accessibility text scale" test
+      // group near the end of this file.
       for (final mode in DrawingMode.values) {
         _expectNoOverlap(
           'fillet/$mode @${width.toInt()} [$language]',
@@ -734,6 +751,16 @@ void main() {
   // the full `widths` list above, none of which fall in 251-261px) with a
   // realistic `legSizeMm` range, so this class of gap can't hide behind a
   // single hardcoded value again.
+  // Follow-up round (this session): that measurement used the since-
+  // corrected (too-small) canvas height model (see this file's corrected
+  // header comment) - re-verified at the corrected default-scale
+  // `filletHeightFor` (flat 280px, no narrow-width penalty), this sweep
+  // passes with zero failures regardless of whether `compact` is enabled,
+  // disabled, or at either the old 250px or current 262px cutoff. Kept as a
+  // default-scale regression guard (still a real, still-passing production
+  // requirement), but the 262px cutoff's actual justification now lives in
+  // the "accessibility text scale" test group near the end of this file -
+  // at default scale `compact` genuinely makes no difference here.
   const filletGateWidths = [251.0, 254.0, 258.0, 261.0];
   const filletLegSizes = [
     3.0,
@@ -764,6 +791,165 @@ void main() {
               weldingProcess: WeldingProcess.gtaw,
               legSizeMm: legSizeMm,
             ),
+          );
+        }
+      }
+    }
+  }
+
+  // ACCESSIBILITY TEXT SCALE (this session) - separate from every matrix
+  // above, which all render at DEFAULT text scale (`textScaler` 1.0). This
+  // group specifically covers users with the OS/app text-size setting
+  // enlarged, a real and legitimate coverage case on its own terms, not a
+  // replacement for the default-scale correctness fix above.
+  //
+  // Why this is a distinct axis at all: `weld_drawing_preview.dart`'s own
+  // painted labels (every `TextPainter` in that file) never pass a
+  // `textScaler`, so they are drawn at a fixed size regardless of
+  // accessibility settings - the canvas CONTENT this suite checks for
+  // overlap is textScaler-invariant. What DOES change is the canvas SIZE
+  // available: `calculator_page.dart`'s drawing-card title and mode-toggle
+  // row are ordinary widget text, which DOES scale with `textScaler`,
+  // growing the header chrome above the canvas and shrinking
+  // `_narrowDrawingHeight`'s fixed card-height budget down to a smaller
+  // real canvas. So testing "accessibility scale" here means testing at the
+  // smaller canvas heights that scale actually produces, using the same
+  // real painter and same real font as every test above - not simulating
+  // scaled label text (there is none to simulate).
+  //
+  // Chrome at each scale was measured the same way as the corrected
+  // default-scale chrome above (pumping the real `CalculatorPage`, real
+  // font loaded, every locale, worst-case locale is Russian - its longer
+  // title wraps to 2 lines at narrow widths under text scaling where
+  // English's does not): at `textScaler` 1.3, Russian chrome is 148px up
+  // to 240px canvas width, 117px from 280px up; at 1.5, 190px up to 240px,
+  // 162px from 280-295px, 126px from 310px up. Fillet's card height itself
+  // (`_narrowDrawingHeight`'s `clamp(safeHeight*0.44, 390.0, 440.0)`) does
+  // not depend on `textScaler`, so using its floor (390) as the canvas
+  // height driver mirrors this suite's existing convention of testing the
+  // smallest (hardest) realistic canvas per tier, same as every constant
+  // above.
+  //
+  // Two representative scales, not an exhaustive sweep of every possible
+  // `textScaler` value: 1.3 (a common "large text" accessibility setting)
+  // and 1.5 (moderately large, where a genuine new gap - see below - shows
+  // up that 1.3 does not reach). Scoped to fillet, the joint type this
+  // whole compact-label cleanup has been about, across the full
+  // width/legSize/mode/locale matrix `compact`'s own fix and Finding 1's
+  // sweep already established as relevant.
+  double a11yChromeRu13(double canvasWidth) =>
+      canvasWidth <= 240.0 ? 148.0 : 117.0;
+  double a11yChromeRu15(double canvasWidth) => canvasWidth <= 240.0
+      ? 190.0
+      : (canvasWidth <= 295.0 ? 162.0 : 126.0);
+  const filletTierFloor = 390.0;
+  double a11yFilletHeight13(double canvasWidth) =>
+      filletTierFloor - a11yChromeRu13(canvasWidth);
+  double a11yFilletHeight15(double canvasWidth) =>
+      filletTierFloor - a11yChromeRu15(canvasWidth);
+  const a11yWidths = [
+    240.0,
+    251.0,
+    254.0,
+    258.0,
+    261.0,
+    280.0,
+    295.0,
+    310.0,
+    332.0,
+    348.0,
+  ];
+
+  // At `textScaler` 1.3, the shrunk canvas (down to 242px at the narrowest
+  // width - the exact 1.11px-overlap case `_drawFillet`'s own doc comment
+  // bisected `compact` against) is fully covered by the existing 262px
+  // `compact` gate: swept the full width/legSize/mode/locale matrix below
+  // with `compact` as shipped - zero overlaps. Mutation-tested (reverting
+  // `compact` to always-false): 2 failures appear (Russian, leg=6mm - the
+  // exact default `_buildData` leg size - at 240px canvas), proving this
+  // tier is not vacuous.
+  for (final language in AppLanguage.values) {
+    for (final width in a11yWidths) {
+      for (final mode in DrawingMode.values) {
+        for (final legSizeMm in filletLegSizes) {
+          _expectNoOverlap(
+            'a11y ts=1.3 fillet/$mode @${width.toInt()} '
+            'leg=${legSizeMm.toInt()}mm [$language]',
+            jointType: JointType.fillet,
+            grooveType: GrooveType.fillet,
+            drawingMode: mode,
+            canvasSize: Size(width, a11yFilletHeight13(width)),
+            language: language,
+            data: _buildData(
+              weldingProcess: WeldingProcess.gtaw,
+              legSizeMm: legSizeMm,
+            ),
+          );
+        }
+      }
+    }
+  }
+
+  // At `textScaler` 1.5, the canvas shrinks further (200px at the
+  // narrowest width) - a genuinely NEW gap `compact` does not address: at
+  // very small leg sizes (3-4mm) and the narrowest canvas (240px) only, the
+  // two leg-size dimension pills themselves (`leg1Rect`/`leg2Rect`, plain
+  // English text, identical across every locale) run out of vertical room
+  // and clash directly, and in Russian specifically also the T-joint leader
+  // (which `compact` already shrinks, but not enough to clear at this
+  // extra-tight leg size/height combination). `compact` targets label
+  // WIDTH; this is a label-vs-label spacing problem driven by canvas
+  // HEIGHT being smaller still, a different mechanism entirely - not fixed
+  // by widening `compact`'s width gate further. Documented as a KNOWN GAP
+  // (not silently dropped) rather than folded into a fix this round wasn't
+  // scoped to make. Mutation-tested (reverting `compact`): failures grow
+  // from 8 to 26 across this same matrix, confirming `compact` still helps
+  // here even though it doesn't fully close this narrower/smaller-leg case.
+  // Exact (locale, mode, legSizeMm) combinations the mutation-tested sweep
+  // found still failing at this scale, all at the narrowest canvas
+  // (240px) - every locale's `visual` mode at leg=3mm (leg pill vs leg
+  // pill, locale-independent since both leg labels are hardcoded English),
+  // plus Russian specifically also at leg=4mm and in `technical` mode too
+  // (leg pill vs the Russian T-joint leader `compact` already shrinks, but
+  // not enough at this extra-tight combination). Listed explicitly (not a
+  // broader boolean condition) so this stays exactly the confirmed-failing
+  // set and doesn't silently widen to combinations that actually pass.
+  final a11y15KnownGaps = {
+    (AppLanguage.tr, DrawingMode.visual, 3.0),
+    (AppLanguage.en, DrawingMode.visual, 3.0),
+    (AppLanguage.ru, DrawingMode.visual, 3.0),
+    (AppLanguage.ru, DrawingMode.visual, 4.0),
+    (AppLanguage.ru, DrawingMode.technical, 3.0),
+    (AppLanguage.ru, DrawingMode.technical, 4.0),
+    (AppLanguage.de, DrawingMode.visual, 3.0),
+    (AppLanguage.hi, DrawingMode.visual, 3.0),
+  };
+  for (final language in AppLanguage.values) {
+    for (final width in a11yWidths) {
+      for (final mode in DrawingMode.values) {
+        for (final legSizeMm in filletLegSizes) {
+          final isKnownGap =
+              width == 240.0 &&
+              a11y15KnownGaps.contains((language, mode, legSizeMm));
+          _expectNoOverlap(
+            'a11y ts=1.5 fillet/$mode @${width.toInt()} '
+            'leg=${legSizeMm.toInt()}mm [$language]',
+            jointType: JointType.fillet,
+            grooveType: GrooveType.fillet,
+            drawingMode: mode,
+            canvasSize: Size(width, a11yFilletHeight15(width)),
+            language: language,
+            data: _buildData(
+              weldingProcess: WeldingProcess.gtaw,
+              legSizeMm: legSizeMm,
+            ),
+            knownGap: isKnownGap
+                ? 'fillet leg-pill/leader spacing at textScaler 1.5, '
+                      'narrowest canvas (240px), small leg size '
+                      '(3-4mm) - a canvas-height limit `compact` (a '
+                      'width-only fix) does not address; see this '
+                      'group\'s own doc comment'
+                : null,
           );
         }
       }
