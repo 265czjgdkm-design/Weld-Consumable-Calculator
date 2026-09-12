@@ -7,6 +7,8 @@ import '../services/preset_sync_service.dart';
 import '../services/user_account_store.dart';
 import '../services/user_preset_store.dart';
 import '../services/user_preset_sync.dart';
+import 'calculator_page/calculator_page_widgets.dart';
+import 'widgets/welding_loader.dart';
 
 /// Account management screen: shows the current account (email, optional
 /// name), Sign Out, and Delete Account when signed in; a plain
@@ -226,21 +228,59 @@ class _AccountScreenState extends State<AccountScreen> {
     return Scaffold(
       appBar: AppBar(title: Text(strings.accountScreenTitle)),
       body: _loading
-          ? const Center(child: CircularProgressIndicator())
+          ? const Center(
+              child: WeldingLoader(size: 36, bladeColor: Color(0xFF12191B)),
+            )
           : SingleChildScrollView(
               padding: const EdgeInsets.all(20),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  if (_email != null)
-                    _buildSignedInState(strings)
-                  else
-                    _buildGuestState(strings),
-                  const SizedBox(height: 32),
+                  Card(
+                    child: Padding(
+                      padding: const EdgeInsets.all(20),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _buildIdentityHeader(strings),
+                          const SizedBox(height: 20),
+                          if (_email != null)
+                            _buildSignedInState(strings)
+                          else
+                            _buildGuestState(strings),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  const Divider(height: 1),
+                  const SizedBox(height: 16),
                   _buildLegalLinks(strings),
                 ],
               ),
             ),
+    );
+  }
+
+  Widget _buildIdentityHeader(L10nStrings strings) {
+    return Row(
+      children: [
+        Container(
+          width: 44,
+          height: 44,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: const Color(0xFF12191B),
+            border: Border.all(color: const Color(0xFFFF6A35), width: 2),
+          ),
+          child: const Center(child: VaryosMark(size: 26)),
+        ),
+        const SizedBox(width: 14),
+        Text(
+          strings.accountScreenTitle,
+          style: Theme.of(context).textTheme.titleMedium,
+        ),
+      ],
     );
   }
 
@@ -285,13 +325,9 @@ class _AccountScreenState extends State<AccountScreen> {
               side: BorderSide(color: Theme.of(context).colorScheme.error),
             ),
             child: _busy
-                ? SizedBox(
-                    width: 18,
-                    height: 18,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2.2,
-                      color: Theme.of(context).colorScheme.error,
-                    ),
+                ? WeldingLoader(
+                    size: 18,
+                    bladeColor: Theme.of(context).colorScheme.error,
                   )
                 : Text(strings.accountDeleteAccountButton),
           ),
@@ -332,7 +368,12 @@ class _AccountScreenState extends State<AccountScreen> {
             labelText: strings.accountSignInEmailLabel,
             hintText: strings.emailGateHint,
             errorText: _emailError,
-            border: const OutlineInputBorder(),
+            filled: true,
+            fillColor: const Color(0xFFF1F5F7),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(16),
+              borderSide: BorderSide.none,
+            ),
           ),
         ),
         const SizedBox(height: 16),
@@ -341,11 +382,7 @@ class _AccountScreenState extends State<AccountScreen> {
           child: FilledButton(
             onPressed: _busy ? null : _signIn,
             child: _busy
-                ? const SizedBox(
-                    width: 18,
-                    height: 18,
-                    child: CircularProgressIndicator(strokeWidth: 2.2),
-                  )
+                ? const WeldingLoader(size: 18)
                 : Text(strings.accountSignInButton),
           ),
         ),

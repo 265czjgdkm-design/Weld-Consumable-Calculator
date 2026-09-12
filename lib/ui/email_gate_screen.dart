@@ -7,6 +7,7 @@ import '../services/signup_submitter.dart';
 import '../services/user_account_store.dart';
 import 'calculator_page/calculator_page_widgets.dart';
 import 'home_dashboard_screen.dart';
+import 'widgets/welding_loader.dart';
 
 /// Shown once, right after the splash animation: a choice between creating
 /// an account (first/last name + email) and continuing as a guest.
@@ -67,25 +68,75 @@ class _EmailGateScreenState extends State<EmailGateScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFF0B0F10),
-      body: SafeArea(
-        child: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 32),
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 420),
-              child: _showForm
-                  ? _RegistrationForm(
-                      submitting: _submitting,
-                      onBack: () => setState(() => _showForm = false),
-                      onSubmit: _submitRegistration,
-                    )
-                  : _AuthChoice(
-                      onRegister: () => setState(() => _showForm = true),
-                      onGuest: _continueAsGuest,
-                    ),
+      body: Container(
+        width: double.infinity,
+        height: double.infinity,
+        decoration: const BoxDecoration(
+          gradient: RadialGradient(
+            center: Alignment(-0.3, -0.5),
+            radius: 1.3,
+            colors: [Color(0xFF232D30), Color(0xFF0B0F10)],
+          ),
+        ),
+        child: SafeArea(
+          child: Center(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(
+                horizontal: 28,
+                vertical: 32,
+              ),
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 420),
+                child: _showForm
+                    ? _RegistrationForm(
+                        submitting: _submitting,
+                        onBack: () => setState(() => _showForm = false),
+                        onSubmit: _submitRegistration,
+                      )
+                    : _AuthChoice(
+                        onRegister: () => setState(() => _showForm = true),
+                        onGuest: _continueAsGuest,
+                      ),
+              ),
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// A [VaryosMark] with a soft, static orange bloom behind it -- so the mark
+/// doesn't sit on a flat black header right after the splash's glowing
+/// impact flash. Reuses the same [RadialGradient] recipe as
+/// splash_screen.dart's impact flash, just held at a fixed ambient opacity
+/// instead of animating in and out.
+class _MarkWithBloom extends StatelessWidget {
+  const _MarkWithBloom({required this.markSize, required this.bloomSize});
+
+  final double markSize;
+  final double bloomSize;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: bloomSize,
+      height: bloomSize,
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          Container(
+            width: bloomSize,
+            height: bloomSize,
+            decoration: const BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: RadialGradient(
+                colors: [Color(0x40FF6A35), Color(0x00FF6A35)],
+              ),
+            ),
+          ),
+          VaryosMark(size: markSize),
+        ],
       ),
     );
   }
@@ -103,7 +154,7 @@ class _AuthChoice extends StatelessWidget {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        const VaryosMark(size: 44),
+        const _MarkWithBloom(markSize: 44, bloomSize: 140),
         const SizedBox(height: 28),
         Text(
           strings.authChoiceTitle,
@@ -240,7 +291,7 @@ class _RegistrationFormState extends State<_RegistrationForm> {
               icon: const Icon(Icons.arrow_back, color: Colors.white),
             ),
             const SizedBox(width: 4),
-            const VaryosMark(size: 32),
+            const _MarkWithBloom(markSize: 32, bloomSize: 64),
           ],
         ),
         const SizedBox(height: 20),
@@ -293,14 +344,7 @@ class _RegistrationFormState extends State<_RegistrationForm> {
               ),
             ),
             child: widget.submitting
-                ? const SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2.4,
-                      color: Colors.white,
-                    ),
-                  )
+                ? const WeldingLoader(size: 20)
                 : Text(
                     strings.authFormSubmitButton,
                     style: const TextStyle(fontWeight: FontWeight.w700),
@@ -351,6 +395,10 @@ class _AuthTextField extends StatelessWidget {
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
           borderSide: BorderSide.none,
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: const BorderSide(color: Color(0xFFFF6A35), width: 1.5),
         ),
         contentPadding: const EdgeInsets.symmetric(
           horizontal: 18,

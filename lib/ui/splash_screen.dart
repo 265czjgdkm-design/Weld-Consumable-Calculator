@@ -9,6 +9,7 @@ import '../services/signup_gate_store.dart';
 import 'calculator_page/calculator_page_widgets.dart';
 import 'email_gate_screen.dart';
 import 'home_dashboard_screen.dart';
+import 'widgets/welding_loader.dart';
 
 /// Path a designer can drop a Rive-authored splash animation into. When it's
 /// present (and loads successfully) it replaces [_FallbackSplashAnimation]
@@ -30,7 +31,10 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   void initState() {
     super.initState();
-    _navigateTimer = Timer(const Duration(milliseconds: 2100), _goToApp);
+    // 1700ms blade-collide-forms-V formation (unchanged) + ~1000ms hammer
+    // strike beat + ~500ms wordmark reveal + a short hold, so the extra
+    // beat has room to land before handoff to the email gate / dashboard.
+    _navigateTimer = Timer(const Duration(milliseconds: 3400), _goToApp);
     _checkRiveAsset();
   }
 
@@ -122,8 +126,10 @@ class _SplashScreenState extends State<SplashScreen> {
 /// Sequence: the two blade shapes strike inward from opposite sides and meet
 /// at center; the impact throws a brief flash and a shower of ember
 /// particles (welding imagery, on brand); the spark settles with a light
-/// bounce; the wordmark slides up as its letter-spacing relaxes from wide to
-/// its resting value.
+/// bounce. Once the mark has fully formed, a second beat plays: a
+/// [WeldingLoader] hammer swings in and strikes the now-formed V, throwing
+/// its own spark burst; only once that beat completes does the wordmark
+/// slide up as its letter-spacing relaxes from wide to its resting value.
 class _FallbackSplashAnimation extends StatefulWidget {
   const _FallbackSplashAnimation();
 
@@ -133,7 +139,7 @@ class _FallbackSplashAnimation extends StatefulWidget {
 }
 
 class _FallbackSplashAnimationState extends State<_FallbackSplashAnimation>
-    with SingleTickerProviderStateMixin {
+    with TickerProviderStateMixin {
   static const _particleAnglesDeg = <double>[
     200.0,
     230.0,
@@ -154,6 +160,13 @@ class _FallbackSplashAnimationState extends State<_FallbackSplashAnimation>
   late final Animation<double> _markRevealOpacity;
   late final List<Animation<double>> _particleDistance;
   late final List<Animation<double>> _particleOpacity;
+
+  // The hammer-strike beat and wordmark reveal both play AFTER the blade
+  // formation above completes, so they're driven by their own controller
+  // rather than a sub-interval of `_controller` -- WeldingLoader manages its
+  // own internal timing and reports back via onComplete.
+  bool _showHammer = false;
+  late final AnimationController _wordmarkController;
   late final Animation<double> _wordmarkOpacity;
   late final Animation<Offset> _wordmarkOffset;
   late final Animation<double> _wordmarkSpacing;
@@ -259,32 +272,48 @@ class _FallbackSplashAnimationState extends State<_FallbackSplashAnimation>
         ),
     ];
 
+    _wordmarkController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 500),
+    );
     _wordmarkOpacity = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(
-        parent: _controller,
-        curve: const Interval(0.56, 0.92, curve: Curves.easeOut),
+        parent: _wordmarkController,
+        curve: const Interval(0.0, 0.85, curve: Curves.easeOut),
       ),
     );
     _wordmarkOffset =
         Tween<Offset>(begin: const Offset(0, 0.3), end: Offset.zero).animate(
           CurvedAnimation(
-            parent: _controller,
-            curve: const Interval(0.56, 0.92, curve: Curves.easeOutCubic),
+            parent: _wordmarkController,
+            curve: const Interval(0.0, 0.85, curve: Curves.easeOutCubic),
           ),
         );
     _wordmarkSpacing = Tween<double>(begin: 15.0, end: 2.0).animate(
-      CurvedAnimation(
-        parent: _controller,
-        curve: const Interval(0.56, 1.0, curve: Curves.easeOutCubic),
-      ),
+      CurvedAnimation(parent: _wordmarkController, curve: Curves.easeOutCubic),
     );
 
+    // Once the V has fully formed, show the hammer-strike beat; its own
+    // onComplete then kicks off the wordmark reveal.
+    _controller.addStatusListener(_handleFormationStatus);
     _controller.forward();
+  }
+
+  void _handleFormationStatus(AnimationStatus status) {
+    if (status != AnimationStatus.completed) return;
+    if (!mounted) return;
+    setState(() => _showHammer = true);
+  }
+
+  void _handleHammerComplete() {
+    if (!mounted) return;
+    _wordmarkController.forward();
   }
 
   @override
   void dispose() {
     _controller.dispose();
+    _wordmarkController.dispose();
     super.dispose();
   }
 
@@ -292,7 +321,7 @@ class _FallbackSplashAnimationState extends State<_FallbackSplashAnimation>
   Widget build(BuildContext context) {
     return Center(
       child: AnimatedBuilder(
-        animation: _controller,
+        animation: Listenable.merge([_controller, _wordmarkController]),
         builder: (context, child) {
           return Column(
             mainAxisSize: MainAxisSize.min,
@@ -455,7 +484,15 @@ class _FallbackSplashAnimationState extends State<_FallbackSplashAnimation>
           BoxShadow(color: Color(0x66FF6A35), blurRadius: 40, spreadRadius: -12),
         ],
       ),
-      child: const Center(child: VaryosMark(size: 52)),
+      child: Center(
+        child: _showHammer
+            ? WeldingLoader(
+                size: 52,
+                loop: false,
+                onComplete: _handleHammerComplete,
+              )
+            : const VaryosMark(size: 52),
+      ),
     );
   }
 }
