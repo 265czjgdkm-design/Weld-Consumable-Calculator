@@ -27,14 +27,20 @@ class SplashScreen extends StatefulWidget {
 class _SplashScreenState extends State<SplashScreen> {
   Timer? _navigateTimer;
   bool _riveAssetAvailable = false;
+  bool _navigated = false;
 
   @override
   void initState() {
     super.initState();
-    // 1700ms blade-collide-forms-V formation (unchanged) + ~1000ms hammer
-    // strike beat + ~500ms wordmark reveal + a short hold, so the extra
-    // beat has room to land before handoff to the email gate / dashboard.
-    _navigateTimer = Timer(const Duration(milliseconds: 3400), _goToApp);
+    // ~1340ms blade-collide-forms-V formation (the hammer beat now starts as
+    // soon as the last active formation tween settles instead of waiting
+    // out the rest of the 1700ms controller -- see
+    // _FallbackSplashAnimationState._formationVisualEndFraction) + 700ms
+    // one-shot hammer strike beat (no idle wait -- see WeldingLoader's
+    // loop:false handling) + 500ms wordmark reveal + a short 300ms hold.
+    // Was 3400ms; trimmed after a reviewer's frame-accurate audit found
+    // ~1.3s of accidental dead air in that figure.
+    _navigateTimer = Timer(const Duration(milliseconds: 2850), _goToApp);
     _checkRiveAsset();
   }
 
@@ -56,6 +62,10 @@ class _SplashScreenState extends State<SplashScreen> {
   }
 
   Future<void> _goToApp() async {
+    if (_navigated) return;
+    _navigated = true;
+    _navigateTimer?.cancel();
+
     if (!mounted) return;
     final gateResolved = await const SignupGateStore().isResolved();
     if (!mounted) return;
@@ -293,20 +303,30 @@ class _FallbackSplashAnimationState extends State<_FallbackSplashAnimation>
       CurvedAnimation(parent: _wordmarkController, curve: Curves.easeOutCubic),
     );
 
-    // Once the V has fully formed, show the hammer-strike beat; its own
+    // Once the V has visually formed, show the hammer-strike beat; its own
     // onComplete then kicks off the wordmark reveal.
-    _controller.addStatusListener(_handleFormationStatus);
+    _controller.addListener(_handleFormationProgress);
     _controller.forward();
   }
 
-  void _handleFormationStatus(AnimationStatus status) {
-    if (status != AnimationStatus.completed) return;
-    if (!mounted) return;
+  // The last active formation tween (the 8th ember particle's opacity fade,
+  // Interval(0.7 + 7*0.012, ...)) settles at 0.784 of `_controller`; nothing
+  // else changes after that even though the controller itself keeps running
+  // to 1.0. Triggering the hammer beat here instead of on the controller's
+  // own AnimationStatus.completed removes that dead tail -- previously
+  // ~560ms of frozen screen, since moving the wordmark reveal to its own
+  // post-hammer controller left it with nothing to fill.
+  static const _formationVisualEndFraction = 0.79;
+
+  void _handleFormationProgress() {
+    if (_showHammer) return;
+    if (_controller.value < _formationVisualEndFraction) return;
     setState(() => _showHammer = true);
   }
 
   void _handleHammerComplete() {
     if (!mounted) return;
+    setState(() => _showHammer = false);
     _wordmarkController.forward();
   }
 
@@ -485,13 +505,17 @@ class _FallbackSplashAnimationState extends State<_FallbackSplashAnimation>
         ],
       ),
       child: Center(
+        // 80px (up from an original 52px) so the hammer's head/silhouette
+        // actually reads at full scale instead of shrinking to a smudge --
+        // both branches use the same size so swapping between them doesn't
+        // visibly jump.
         child: _showHammer
             ? WeldingLoader(
-                size: 52,
+                size: 80,
                 loop: false,
                 onComplete: _handleHammerComplete,
               )
-            : const VaryosMark(size: 52),
+            : const VaryosMark(size: 80),
       ),
     );
   }

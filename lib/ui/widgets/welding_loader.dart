@@ -50,7 +50,11 @@ class _WeldingLoaderState extends State<WeldingLoader>
     super.initState();
     _controller = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 1000),
+      // A repeating spinner needs the idle/cocked hold (see the beat-weight
+      // comment on _WeldingLoaderPainter) so it doesn't feel frantic; a
+      // one-shot play (the splash's hammer strike) skips that hold entirely
+      // and goes straight into the swing, so its cycle is 300ms shorter.
+      duration: Duration(milliseconds: widget.loop ? 1000 : 700),
     );
     if (widget.loop) {
       _controller.repeat();
@@ -88,6 +92,7 @@ class _WeldingLoaderState extends State<WeldingLoader>
             painter: _WeldingLoaderPainter(
               progress: _controller.value,
               simplified: simplified,
+              loop: widget.loop,
               bladeColor: widget.bladeColor,
             ),
           );
@@ -101,18 +106,26 @@ class _WeldingLoaderPainter extends CustomPainter {
   _WeldingLoaderPainter({
     required this.progress,
     required this.simplified,
+    required this.loop,
     required this.bladeColor,
   });
 
   final double progress;
   final bool simplified;
+  final bool loop;
   final Color bladeColor;
 
   // Beat weights per the plan: idle/up ~30%, swing ~20%, impact+flash ~15%,
   // retract ~35%, so a looping instance doesn't feel frantic at small sizes.
-  static const _idleEnd = 0.30;
-  static const _swingEnd = 0.50;
-  static const _impactEnd = 0.65;
+  // A one-shot play (loop:false, the splash's hammer strike) has nothing to
+  // "wait its turn" for, so it skips the idle hold and rescales the
+  // remaining swing/impact/retract weights (20/15/35, summing to 70) to
+  // fill the full 0..1 range instead -- paired with the shorter 700ms
+  // controller duration above, this reproduces the exact same absolute
+  // swing/impact/retract timings (200/150/350ms) minus the 300ms idle wait.
+  double get _idleEnd => loop ? 0.30 : 0.0;
+  double get _swingEnd => loop ? 0.50 : 20 / 70;
+  double get _impactEnd => loop ? 0.65 : (20 + 15) / 70;
   static const _cockAngle = 0.85;
 
   static const _particleAnglesDeg = <double>[
@@ -152,13 +165,34 @@ class _WeldingLoaderPainter extends CustomPainter {
     return 1.0 - Curves.easeIn.transform((t - 0.35) / 0.65);
   }
 
+  /// A smooth 0..1..0 breathing wave completing exactly one cycle per loop
+  /// iteration, so a simplified (size < 40) inline spinner always has
+  /// visible motion -- not just during the ~150ms impact window like the
+  /// spark's alpha/flash bump used to, which left it looking frozen for the
+  /// other 850ms of every cycle (a real async wait looked hung). Alpha
+  /// (rather than e.g. a scale pulse) is what carries this: it directly
+  /// changes every covered pixel's byte value regardless of widget size, so
+  /// it stays visible even at the smallest in-app size (18px), where a
+  /// geometric pulse would shrink to a sub-pixel, imperceptible wobble.
+  double get _breathe => 0.5 + 0.5 * math.sin(progress * 2 * math.pi);
+
   @override
   void paint(Canvas canvas, Size size) {
     final scale = size.width / 200;
     Offset p(double x, double y) => Offset(x * scale, y * scale);
 
     final flash = _flashIntensity;
-    _paintMark(canvas, p, sparkAlpha: simplified ? _lerp(0.5, 1.0, flash) : 1.0);
+    _paintMark(
+      canvas,
+      p,
+      // Both terms share the same 0.5 floor, so whichever is higher at any
+      // given moment is a smoothly-varying curve, never a flat plateau --
+      // unlike a floor below 0.5, which would flatten the whole bottom half
+      // of the breathing wave against the flash's idle value.
+      sparkAlpha: simplified
+          ? math.max(_lerp(0.5, 0.95, _breathe), _lerp(0.5, 1.0, flash))
+          : 1.0,
+    );
 
     if (flash > 0.01) {
       _paintFlash(canvas, p, scale, flash);
@@ -216,7 +250,7 @@ class _WeldingLoaderPainter extends CustomPainter {
     final paint = Paint()
       ..shader = RadialGradient(
         colors: [
-          Color(0xFF6A35 | (innerAlpha << 24)),
+          Color.fromARGB(innerAlpha, 0xFF, 0x6A, 0x35),
           const Color(0x00FF6A35),
         ],
       ).createShader(Rect.fromCircle(center: center, radius: radius));
@@ -276,6 +310,20 @@ class _WeldingLoaderPainter extends CustomPainter {
     Offset Function(double, double) p,
     double scale,
   ) {
+    // Full hammer mode (size >= 40) is currently only used on this app's
+    // dark surfaces (the splash), and this shape hardcodes a light hammer
+    // regardless of bladeColor -- a caller passing a dark bladeColor here
+    // (implying a light background) would get an invisible white-on-white
+    // hammer. If a future caller needs full hammer mode on a light
+    // background, derive the hammer's colors from bladeColor instead of
+    // hitting this assert.
+    assert(
+      bladeColor.computeLuminance() > 0.5,
+      'WeldingLoader with size >= 40 (full hammer mode) hardcodes a light '
+      'hammer -- it needs a light bladeColor (implying a dark background) '
+      'or the hammer will be invisible.',
+    );
+
     final impact = p(100, 158);
     canvas.save();
     canvas.translate(impact.dx, impact.dy);
@@ -284,15 +332,14 @@ class _WeldingLoaderPainter extends CustomPainter {
 
     // Sized boldly relative to the 200x200 space (not to the 200x16-ish
     // proportions of the V blades) since this whole shape is scaled down a
-    // lot at the sizes this widget is actually used at (e.g. 52px in the
-    // splash frame) -- anything thinner reads as invisible once scaled.
-    final handlePaint = Paint()..color = const Color(0xFF9AA5A8);
-    canvas.drawRRect(
-      RRect.fromLTRBR(-7, -58, 7, -10, const Radius.circular(5)),
-      handlePaint,
-    );
-
-    final headRect = const Rect.fromLTRB(-28, -70, 28, -46);
+    // lot at the sizes this widget is actually used at -- anything thinner
+    // reads as invisible once scaled.
+    //
+    // The HEAD sits at the pivot (y=0, the impact point) so it's what
+    // actually reaches/strikes the spark at full extension; the handle
+    // trails away from it, back toward the cocked position the hammer
+    // swings in from.
+    final headRect = const Rect.fromLTRB(-28, -24, 28, 0);
     final headPaint = Paint()
       ..shader = const LinearGradient(
         begin: Alignment.topCenter,
@@ -304,6 +351,12 @@ class _WeldingLoaderPainter extends CustomPainter {
       headPaint,
     );
 
+    final handlePaint = Paint()..color = const Color(0xFF9AA5A8);
+    canvas.drawRRect(
+      RRect.fromLTRBR(-7, -72, 7, -24, const Radius.circular(5)),
+      handlePaint,
+    );
+
     canvas.restore();
   }
 
@@ -313,5 +366,6 @@ class _WeldingLoaderPainter extends CustomPainter {
   bool shouldRepaint(covariant _WeldingLoaderPainter oldDelegate) =>
       oldDelegate.progress != progress ||
       oldDelegate.simplified != simplified ||
+      oldDelegate.loop != loop ||
       oldDelegate.bladeColor != bladeColor;
 }

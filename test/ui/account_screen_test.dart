@@ -44,7 +44,9 @@ void main() {
 
       await _pumpAccountScreen(tester);
 
-      expect(find.text('user@example.com'), findsOneWidget);
+      // Appears twice: once as the identity header near the avatar, once
+      // in the signed-in detail body below it.
+      expect(find.text('user@example.com'), findsNWidgets(2));
 
       await tester.tap(find.text(strings.accountSignOutButton));
       await tester.pumpAndSettle();
@@ -100,7 +102,7 @@ void main() {
         );
 
         expect(listCalled, isFalse);
-        expect(find.text('user@example.com'), findsOneWidget);
+        expect(find.text('user@example.com'), findsNWidgets(2));
 
         const accountStore = UserAccountStore();
         expect(await accountStore.getEmail(), 'user@example.com');
@@ -281,7 +283,7 @@ void main() {
           }),
         );
 
-        expect(find.text('existing@example.com'), findsOneWidget);
+        expect(find.text('existing@example.com'), findsNWidgets(2));
 
         const accountStore = UserAccountStore();
         expect(await accountStore.getEmail(), 'existing@example.com');
@@ -325,7 +327,7 @@ void main() {
             );
             await tester.tap(find.text(strings.accountSignInButton));
             await tester.pumpAndSettle();
-            expect(find.text('alice@example.com'), findsOneWidget);
+            expect(find.text('alice@example.com'), findsNWidgets(2));
 
             // Sign Out deliberately leaves local presets in place.
             await tester.tap(find.text(strings.accountSignOutButton));
@@ -336,7 +338,7 @@ void main() {
             await tester.enterText(find.byType(TextField), 'bob@example.com');
             await tester.tap(find.text(strings.accountSignInButton));
             await tester.pumpAndSettle();
-            expect(find.text('bob@example.com'), findsOneWidget);
+            expect(find.text('bob@example.com'), findsNWidgets(2));
           },
           () => MockClient((request) async {
             if (request.method == 'GET') {
@@ -544,7 +546,7 @@ void main() {
             await tester.tap(find.text(strings.accountSignInButton));
             await tester.pumpAndSettle();
 
-            expect(find.text('user@example.com'), findsOneWidget);
+            expect(find.text('user@example.com'), findsNWidgets(2));
 
             await tester.tap(find.text(strings.accountDeleteAccountButton));
             await tester.pumpAndSettle();

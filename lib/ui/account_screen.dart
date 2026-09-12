@@ -263,6 +263,13 @@ class _AccountScreenState extends State<AccountScreen> {
   }
 
   Widget _buildIdentityHeader(L10nStrings strings) {
+    final name = [
+      _firstName,
+      _lastName,
+    ].whereType<String>().where((part) => part.isNotEmpty).join(' ');
+    final identityLabel = _email == null
+        ? strings.dashboardAccountCardGuestValue
+        : (name.isNotEmpty ? name : _email!);
     return Row(
       children: [
         Container(
@@ -276,10 +283,7 @@ class _AccountScreenState extends State<AccountScreen> {
           child: const Center(child: VaryosMark(size: 26)),
         ),
         const SizedBox(width: 14),
-        Text(
-          strings.accountScreenTitle,
-          style: Theme.of(context).textTheme.titleMedium,
-        ),
+        Text(identityLabel, style: Theme.of(context).textTheme.titleMedium),
       ],
     );
   }
