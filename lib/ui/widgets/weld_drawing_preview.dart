@@ -2133,16 +2133,17 @@ class _WeldDrawingPainter extends CustomPainter {
     // measured directly via this suite's own painter, not assumed) collides
     // with the OTHER leader at its natural top-of-canvas position, pushing
     // the T-joint leader all the way down past both leg labels until it
-    // lands squarely on top of the leg1 dimension pill. A reviewer found a
-    // height-only fix is theoretically possible here (+20px of fillet
-    // canvas height also clears this specific case, only 20px more than
-    // this tier's existing floor) but is impractical: a 320pt-wide device
-    // would need ~977pt of safe screen height to trigger that much of the
-    // clamp headroom this push relies on, which no real phone provides -
-    // `compact` shrinks both leaders' font/padding below this width so the
-    // natural (unpushed) positions stay clear of each other in every
-    // locale, closing the collision at its actual source (label width,
-    // not height) rather than shrinking the (unrelated,
+    // lands squarely on top of the leg1 dimension pill. A reviewer bisected
+    // a height-only fix directly (1px steps): at production canvas height
+    // (242px) the overlap is 1.11px and clears at 244px - only +2px, not
+    // the +20px an earlier estimate claimed - but is still impractical: a
+    // 320pt-wide device would need `safeHeight` (calculator_page.dart's
+    // `_narrowDrawingHeight`) of ~891pt to push the fillet card past its
+    // 390pt floor far enough to reach that +2px, far more than any real
+    // phone provides - `compact` shrinks both leaders' font/padding below
+    // this width so the natural (unpushed) positions stay clear of each
+    // other in every locale, closing the collision at its actual source
+    // (label width, not height) rather than shrinking the (unrelated,
     // identical-across-locales) leg labels.
     final compactLeaders = size.width <= 250.0;
     final filletFaceRect = _drawLeader(

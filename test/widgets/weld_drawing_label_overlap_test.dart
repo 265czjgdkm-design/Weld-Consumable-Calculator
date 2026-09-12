@@ -313,12 +313,14 @@ void main() {
       // (~39-43px horizontally) - a real, pre-existing bug caused by label
       // WIDTH, not height (a locale/width-driven issue, distinct from the
       // height-bump fixes above). A height-only fix is theoretically
-      // possible (a reviewer measured +20px of fillet canvas height also
-      // clears this specific case) but is impractical: a 320pt-wide device
-      // would need ~977pt of safe screen height to trigger that much
-      // clamp headroom, far more than any real phone provides - `compact`
-      // (below) is the practical fix. A reviewer round's original scoping
-      // of this gap named the wrong
+      // possible - a reviewer bisected it directly (1px steps): at
+      // production canvas height (242px) the overlap is 1.11px and clears
+      // at 244px, only +2px - but is still impractical: a 320pt-wide
+      // device would need `safeHeight` (calculator_page.dart's
+      // `_narrowDrawingHeight`) of ~891pt to push the fillet card past its
+      // 390pt floor far enough to reach that +2px, far more than any real
+      // phone provides - `compact` (below) is the practical fix. A
+      // reviewer round's original scoping of this gap named the wrong
       // labels: re-measured directly via this suite's own painter, the two
       // leg-size dimension pills (`leg1Rect`/`leg2Rect` in
       // weld_drawing_preview.dart's `_drawFillet`) are IDENTICAL text
