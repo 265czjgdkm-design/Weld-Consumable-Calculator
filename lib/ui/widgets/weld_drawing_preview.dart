@@ -2135,16 +2135,40 @@ class _WeldDrawingPainter extends CustomPainter {
     // the T-joint leader all the way down past both leg labels until it
     // lands squarely on top of the leg1 dimension pill. A reviewer bisected
     // a height-only fix directly (1px steps): at production canvas height
-    // (242px) the overlap is 1.11px and clears at 244px - only +2px, not
-    // the +20px an earlier estimate claimed - but is still impractical: a
-    // 320pt-wide device would need `safeHeight` (calculator_page.dart's
-    // `_narrowDrawingHeight`) of ~891pt to push the fillet card past its
-    // 390pt floor far enough to reach that +2px, far more than any real
-    // phone provides - `compact` shrinks both leaders' font/padding below
-    // this width so the natural (unpushed) positions stay clear of each
-    // other in every locale, closing the collision at its actual source
-    // (label width, not height) rather than shrinking the (unrelated,
-    // identical-across-locales) leg labels.
+    // (242px) the overlap is 1.11px and clears at 244px - only +2px more.
+    // Follow-up round (this session): the original framing of that +2px as
+    // "impractical, no real phone reaches it" was wrong - it was computed
+    // using a test-measured chrome (~148px) that turned out to be a
+    // measurement bug (the test's own live-`CalculatorPage` chrome spike was
+    // missing a real-font load, so the RU header wrapped to 2 lines that
+    // don't actually wrap with the real font - see the test file's own
+    // corrected header comment). With the real font loaded, default-scale
+    // (`textScaler` 1.0) chrome is a flat 105px at every width and every
+    // locale, which already puts the fillet card's real canvas height at
+    // 285-335px for every real `safeHeight` - past the 244px clearing point
+    // with room to spare. So at DEFAULT text scale this collision does not
+    // occur in production at all, and `compact` makes zero measured
+    // difference there (confirmed by sweeping the full width/legSize/
+    // mode/locale matrix at the corrected default-scale canvas height with
+    // `compact` enabled, disabled, and at either cutoff - identical, empty
+    // failure sets in every case). The collision IS real for accessibility
+    // users with enlarged text, though: this painter's own labels are drawn
+    // at a fixed size regardless of `textScaler` (see every `TextPainter`
+    // construction in this file - none pass a `textScaler`), but the
+    // surrounding chrome (the card title/mode-toggle row in
+    // calculator_page.dart) DOES scale with it, shrinking the canvas height
+    // actually available - at `textScaler` 1.3 the narrowest real canvas is
+    // ~242px, exactly the 1.11px-overlap case bisected above. `compact`
+    // shrinks both leaders' font/padding below this width so the natural
+    // (unpushed) positions stay clear of each other in every locale at that
+    // scale, closing the collision at its actual source (label width, not
+    // height) rather than shrinking the (unrelated, identical-across-
+    // locales) leg labels. See test/widgets/weld_drawing_label_overlap_test
+    // .dart's accessibility-scale test group for the coverage this
+    // justifies (and its own known-gap note for a separate, smaller-leg-
+    // size collision that a still-larger `textScaler` exposes, which
+    // `compact` does not address - a height-driven leg-pill clash, not the
+    // width-driven leader clash this mechanism targets).
     // Follow-up round (this session): the 250px cutoff above was itself too
     // narrow - a reviewer's `legSizeMm` sweep (an axis this file's own test
     // suite had hardcoded at 6mm everywhere, so this gap hid from every
