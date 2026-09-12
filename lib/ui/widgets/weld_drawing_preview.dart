@@ -2145,7 +2145,20 @@ class _WeldDrawingPainter extends CustomPainter {
     // other in every locale, closing the collision at its actual source
     // (label width, not height) rather than shrinking the (unrelated,
     // identical-across-locales) leg labels.
-    final compactLeaders = size.width <= 250.0;
+    // Follow-up round (this session): the 250px cutoff above was itself too
+    // narrow - a reviewer's `legSizeMm` sweep (an axis this file's own test
+    // suite had hardcoded at 6mm everywhere, so this gap hid from every
+    // prior round) found real overlaps (up to 3.1px, Russian only) for
+    // several `legSizeMm` values across canvas widths 251-261px, just above
+    // the old cutoff, where `compact` didn't engage but the leaders'
+    // natural positions still weren't clear yet at every leg size. Swept
+    // widths 245-285px x legSizeMm 3-25mm x both modes x every locale via
+    // this suite's own painter: every failure fell within 251-261px, zero
+    // failures from 262px up. Raised the cutoff to 262px (just past the
+    // confirmed-failing band) rather than the fillet tier's height floor -
+    // same reasoning as above, this is a label-width problem, not a
+    // canvas-height one.
+    final compactLeaders = size.width <= 262.0;
     final filletFaceRect = _drawLeader(
       canvas,
       guidePaint,

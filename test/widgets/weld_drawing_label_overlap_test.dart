@@ -69,6 +69,7 @@ WeldDrawingData _buildData({
   JointGeometryMode geometryMode = JointGeometryMode.equal,
   JointAlignment alignment = JointAlignment.centerline,
   double thicknessMm = 12,
+  double legSizeMm = 6,
 }) {
   return WeldDrawingData(
     weldingProcess: weldingProcess,
@@ -84,7 +85,7 @@ WeldDrawingData _buildData({
     breakHeightMm: 4,
     capOverlapMm: 2,
     capHeightMm: 2,
-    legSizeMm: 6,
+    legSizeMm: legSizeMm,
     pipeOdMm: 168.3,
     gtawTransitionMm: weldingProcess == WeldingProcess.gtawSmaw ? 3 : null,
   );
@@ -215,11 +216,30 @@ void main() {
   // 375->295, 390->310, 412->332, 428->348. The heights below (458/354/280,
   // plus their extraBusy counterparts 534/434) are this suite's existing
   // already-verified-safe per-tier canvas heights, unchanged for every one
-  // of those widths - except the narrowest (320pt/240px canvas), where the
-  // reviewer measured the real card header wrapping to two lines, pushing
-  // vertical chrome ~42-48px higher there than at any wider width; rather
-  // than reusing the same constant at that width too, [_narrowWidthDelta]
+  // of those widths - except the narrowest ones, where the reviewer
+  // measured the real card header wrapping to two lines, pushing vertical
+  // chrome ~42-48px higher there than at any wider width; rather than
+  // reusing the same constant at that width too, [_narrowWidthDelta]
   // subtracts that same real measured penalty from it specifically.
+  // Follow-up round (this session), Finding 3: [_narrowWidthDelta]'s gate
+  // only ever applied that penalty at canvasWidth<=240 (320pt) -
+  // re-measured directly by pumping the live `CalculatorPage` widget
+  // (worst-case locale, `ru`, matching this file's existing worst-case-
+  // locale convention) at a safeHeight chosen to land the drawing card's
+  // height mid-clamp-range (not at a floor/ceiling, so the card height is
+  // exactly known and chrome = cardHeight - measured canvas height): the
+  // two-line header wrap - and its ~148px chrome (vs. ~129px unwrapped) -
+  // persists for EVERY device width up to 375pt (canvas up to 295px), only
+  // dropping to 129px at 390pt+ (canvas 310px+). So the penalty gate
+  // under-penalized (tested a too-generous canvas) for widths 251-295px,
+  // which includes the 360pt/375pt phones this app most commonly ships to.
+  // Widened the gate to canvasWidth<=295 - same 48px delta, since the real
+  // chrome is identical (148px) across the whole 240-295px band, not a new
+  // number. This also makes Finding 1's new `legSizeMm` sweep below
+  // meaningful: at the old, too-generous height those cases never actually
+  // exercise the real collision (verified by reverting just this gate and
+  // confirming the sweep still passes trivially), so Findings 1 and 3
+  // combine into a single regression guard here.
   // Group 4 (prior session): busy/non-extraBusy bumped +60px (398->458 -
   // Russian's longer Double V both-faces cap labels needed more than
   // English's same combo did) and non-busy/non-extraBusy bumped +20px
@@ -238,7 +258,7 @@ void main() {
   // +110px (534->644).
   const widths = [240.0, 280.0, 295.0, 310.0, 332.0, 348.0];
   double narrowWidthDelta(double canvasWidth) =>
-      canvasWidth <= 240.0 ? 48.0 : 0.0;
+      canvasWidth <= 295.0 ? 48.0 : 0.0;
   double busyHeightFor(double canvasWidth) =>
       568.0 - narrowWidthDelta(canvasWidth);
   double normalHeightFor(double canvasWidth) =>
@@ -693,6 +713,58 @@ void main() {
               fillAvailableSpace: false,
             );
           }
+        }
+      }
+    }
+  }
+
+  // Follow-up round (this session), Finding 1: every fillet case above (and
+  // every fillet case this file has ever had) hardcodes `_buildData`'s
+  // default `legSizeMm: 6` via the shared default parameter - `legSizeMm`
+  // was a genuinely untested axis. A reviewer found real overlaps (up to
+  // ~3.1px, Russian only) for several OTHER `legSizeMm` values at canvas
+  // widths 251-261px - just above `_drawFillet`'s old 250px `compact`
+  // cutoff in weld_drawing_preview.dart, where `compact` hadn't engaged
+  // yet but the leaders' natural (unpushed) positions weren't clear at
+  // every leg size either. A width sweep (245-285px x legSizeMm 3-25mm x
+  // both modes x every locale, via this suite's own painter) found every
+  // failure fell within 251-261px and none from 262px up, which is what
+  // determined `_drawFillet`'s new 262px `compact` cutoff (see its own doc
+  // comment). Sweeps that confirmed band directly (rather than duplicating
+  // the full `widths` list above, none of which fall in 251-261px) with a
+  // realistic `legSizeMm` range, so this class of gap can't hide behind a
+  // single hardcoded value again.
+  const filletGateWidths = [251.0, 254.0, 258.0, 261.0];
+  const filletLegSizes = [
+    3.0,
+    4.0,
+    5.0,
+    6.0,
+    7.0,
+    8.0,
+    9.0,
+    10.0,
+    15.0,
+    20.0,
+    25.0,
+  ];
+  for (final language in AppLanguage.values) {
+    for (final width in filletGateWidths) {
+      for (final mode in DrawingMode.values) {
+        for (final legSizeMm in filletLegSizes) {
+          _expectNoOverlap(
+            'fillet/$mode @${width.toInt()} leg=${legSizeMm.toInt()}mm '
+            '[$language]',
+            jointType: JointType.fillet,
+            grooveType: GrooveType.fillet,
+            drawingMode: mode,
+            canvasSize: Size(width, filletHeightFor(width)),
+            language: language,
+            data: _buildData(
+              weldingProcess: WeldingProcess.gtaw,
+              legSizeMm: legSizeMm,
+            ),
+          );
         }
       }
     }
