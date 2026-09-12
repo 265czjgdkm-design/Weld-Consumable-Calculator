@@ -902,9 +902,14 @@ void main() {
   // HEIGHT being smaller still, a different mechanism entirely - not fixed
   // by widening `compact`'s width gate further. Documented as a KNOWN GAP
   // (not silently dropped) rather than folded into a fix this round wasn't
-  // scoped to make. Mutation-tested (reverting `compact`): failures grow
-  // from 8 to 26 across this same matrix, confirming `compact` still helps
-  // here even though it doesn't fully close this narrower/smaller-leg case.
+  // scoped to make. Mutation-tested (reverting `compact` entirely, i.e. the
+  // 262px gate never engaging): failures grow from 8 to 59 across this same
+  // matrix (not just the narrowest 240px width - `ru` also fails at the
+  // synthetic gate widths 251/254/258/261, which are part of `a11yWidths`);
+  // reverting only to the old 250px gate (compact still engages, just at a
+  // narrower threshold) gives 41. Confirms `compact`'s 262px width is
+  // load-bearing at this scale even though it doesn't fully close this
+  // narrower/smaller-leg case.
   // Exact (locale, mode, legSizeMm) combinations the mutation-tested sweep
   // found still failing at this scale, all at the narrowest canvas
   // (240px) - every locale's `visual` mode at leg=3mm (leg pill vs leg
