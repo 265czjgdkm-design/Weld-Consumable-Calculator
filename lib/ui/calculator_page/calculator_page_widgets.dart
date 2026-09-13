@@ -91,8 +91,6 @@ class TopNavigationBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final strings = AppLocaleScope.stringsOf(context);
-
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
@@ -157,41 +155,13 @@ class TopNavigationBar extends StatelessWidget {
                         ),
                       ],
                     ),
-                    const SizedBox(height: 2),
-                    Text(
-                      strings.navSubtitle,
-                      style: Theme.of(context).textTheme.bodySmall,
-                    ),
                   ],
                 ),
               ),
             ],
           );
 
-          final pills = Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            alignment: WrapAlignment.end,
-            crossAxisAlignment: WrapCrossAlignment.center,
-            children: [
-              StatusPill(
-                label: strings.navPillEstimator,
-                color: const Color(0xFFE8F2F5),
-                textColor: const Color(0xFF12191B),
-              ),
-              StatusPill(
-                label: strings.navPillPdf,
-                color: const Color(0xFFF1F5F8),
-                textColor: const Color(0xFF395361),
-              ),
-              StatusPill(
-                label: strings.navPillAws,
-                color: const Color(0xFFF1F5F8),
-                textColor: const Color(0xFF395361),
-              ),
-              const LanguagePickerButton(),
-            ],
-          );
+          const pills = LanguagePickerButton();
 
           if (stacked) {
             return Column(
@@ -204,7 +174,7 @@ class TopNavigationBar extends StatelessWidget {
             children: [
               Expanded(child: identity),
               const SizedBox(width: 20),
-              Flexible(child: pills),
+              pills,
             ],
           );
         },
