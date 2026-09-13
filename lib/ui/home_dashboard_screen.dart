@@ -136,7 +136,7 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
                                 _DashboardTile(
                                   icon: Icons.calculate_outlined,
                                   label: strings.dashboardFillerConsumption,
-                                  emphasized: true,
+                                  style: _TileStyle.primary,
                                   onPressed: () => Navigator.of(context).push(
                                     MaterialPageRoute(
                                       builder: (context) => CalculatorPage(),
@@ -146,7 +146,7 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
                                 _DashboardTile(
                                   icon: Icons.device_thermostat_outlined,
                                   label: strings.dashboardPreheatCalculator,
-                                  emphasized: true,
+                                  style: _TileStyle.primary,
                                   onPressed: () => Navigator.of(context).push(
                                     MaterialPageRoute(
                                       builder: (context) =>
@@ -158,7 +158,7 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
                                   icon: Icons.ac_unit_outlined,
                                   label:
                                       strings.dashboardCoolingTimeCalculator,
-                                  emphasized: true,
+                                  style: _TileStyle.primary,
                                   onPressed: () => Navigator.of(context).push(
                                     MaterialPageRoute(
                                       builder: (context) =>
@@ -178,7 +178,7 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
                                 _DashboardTile(
                                   icon: Icons.smart_toy_outlined,
                                   label: strings.dashboardAiAssistant,
-                                  emphasized: true,
+                                  style: _TileStyle.accent,
                                   onPressed: _openAiAssistant,
                                 ),
                               ],
@@ -359,55 +359,110 @@ class _DashboardTileGrid extends StatelessWidget {
   }
 }
 
+/// Which visual treatment a [_DashboardTile] gets. The plain boolean
+/// "emphasized" this replaced only had two looks (a Material-seed teal that
+/// matched nothing else in the brand, and a cold blue-grey block) -- neither
+/// reads as this app's own dark/orange identity (splash, landing page,
+/// TopNavigationBar mark badge). [primary] and [accent] now reuse that same
+/// literal dark gradient; [neutral] switches to a plain white card (like
+/// [_AccountEntryCard]) instead of a colored block, which is closer to how a
+/// polished app actually differentiates "primary" vs "secondary" actions.
+enum _TileStyle { primary, accent, neutral }
+
 class _DashboardTile extends StatelessWidget {
   const _DashboardTile({
     required this.icon,
     required this.label,
     required this.onPressed,
-    this.emphasized = false,
+    this.style = _TileStyle.neutral,
   });
 
   final IconData icon;
   final String label;
   final VoidCallback onPressed;
-  final bool emphasized;
+  final _TileStyle style;
+
+  static const _brandOrange = Color(0xFFFF6A35);
+  static const _darkGradient = LinearGradient(
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+    colors: [Color(0xFF1B2326), Color(0xFF0B0F10)],
+  );
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    final background = emphasized
-        ? colorScheme.primary
-        : colorScheme.secondaryContainer;
-    final foreground = emphasized
-        ? colorScheme.onPrimary
-        : colorScheme.onSecondaryContainer;
+    final BoxDecoration decoration;
+    final Color foreground;
+    final Color iconColor;
+    switch (style) {
+      case _TileStyle.primary:
+        decoration = const BoxDecoration(gradient: _darkGradient);
+        foreground = Colors.white;
+        iconColor = Colors.white;
+      case _TileStyle.accent:
+        // Same dark surface as [primary] with an orange glow behind the
+        // icon and an orange-tinted border -- the AI assistant is the
+        // newest feature, so it gets a visibly distinct "premium" entry
+        // rather than blending in as just another calculator-style tile.
+        decoration = BoxDecoration(
+          gradient: _darkGradient,
+          border: Border.all(
+            color: _brandOrange.withValues(alpha: 0.55),
+            width: 1.4,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: _brandOrange.withValues(alpha: 0.28),
+              blurRadius: 22,
+              spreadRadius: -4,
+            ),
+          ],
+        );
+        foreground = Colors.white;
+        iconColor = _brandOrange;
+      case _TileStyle.neutral:
+        decoration = BoxDecoration(
+          color: Colors.white,
+          border: Border.all(color: const Color(0xFFE1E8ED)),
+        );
+        foreground = const Color(0xFF17303C);
+        iconColor = const Color(0xFF17303C);
+    }
+
     return AspectRatio(
       aspectRatio: 1,
-      child: Material(
-        color: background,
-        borderRadius: BorderRadius.circular(20),
-        child: InkWell(
+      child: Container(
+        decoration: decoration.copyWith(
           borderRadius: BorderRadius.circular(20),
-          onTap: onPressed,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(icon, size: 30, color: foreground),
-                const SizedBox(height: 10),
-                Text(
-                  label,
-                  textAlign: TextAlign.center,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontSize: 13.5,
-                    fontWeight: FontWeight.w700,
-                    color: foreground,
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: Material(
+          type: MaterialType.transparency,
+          child: InkWell(
+            onTap: onPressed,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(
+                horizontal: 12,
+                vertical: 14,
+              ),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(icon, size: 30, color: iconColor),
+                  const SizedBox(height: 10),
+                  Text(
+                    label,
+                    textAlign: TextAlign.center,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 13.5,
+                      fontWeight: FontWeight.w700,
+                      color: foreground,
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ),

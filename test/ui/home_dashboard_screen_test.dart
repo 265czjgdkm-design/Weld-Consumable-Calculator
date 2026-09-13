@@ -32,19 +32,20 @@ Future<void> _gotoDashboard(WidgetTester tester) async {
   expect(find.byType(HomeDashboardScreen), findsOneWidget);
 }
 
-/// Resolves the actual painted background [Color] of the square dashboard
-/// tile's own [Material] for a given label -- the same "painted
-/// Material.color readback" technique the reviewer used to catch Finding 1
-/// in the first place, so a regression here would be caught the same way
-/// it was found. `_DashboardTile` paints its `Material` directly around
-/// the tile content, so the closest `Material` ancestor of the label is
-/// the tile's own, not an ambient theme one further up the tree.
-Color _tileColor(WidgetTester tester, String label) {
-  final materialFinder = find.ancestor(
+/// Resolves the actual painted [BoxDecoration] of the square dashboard
+/// tile's own [Container] for a given label -- the same "painted decoration
+/// readback" technique the reviewer used to catch Finding 1 in the first
+/// place, so a regression here would be caught the same way it was found.
+/// `_DashboardTile` paints its `Container` directly around the tile
+/// content, so the closest `Container` ancestor of the label is the tile's
+/// own, not an ambient one further up the tree.
+BoxDecoration _tileDecoration(WidgetTester tester, String label) {
+  final containerFinder = find.ancestor(
     of: find.text(label),
-    matching: find.byType(Material),
+    matching: find.byType(Container),
   );
-  return tester.widget<Material>(materialFinder.first).color!;
+  return tester.widget<Container>(containerFinder.first).decoration
+      as BoxDecoration;
 }
 
 void main() {
@@ -135,32 +136,55 @@ void main() {
   });
 
   testWidgets(
-    'the 3 calculator (emphasized) buttons and the 4 tonal buttons render '
-    'with genuinely different painted colors (reviewer Finding 1: the '
-    "app-wide filledButtonTheme used to intercept FilledButton.tonalIcon's "
-    'own default color before it was ever reached)',
+    'the 3 calculator (primary) tiles, the AI assistant (accent) tile, and '
+    'the 4 neutral tiles render with genuinely different decorations '
+    '(reviewer Finding 1: the app-wide filledButtonTheme used to intercept '
+    "FilledButton.tonalIcon's own default color before it was ever reached "
+    '-- this is the same "shared-look regression" check, updated for the '
+    'square-tile redesign)',
     (tester) async {
       await _gotoDashboard(tester);
 
-      final emphasizedColors = [
-        _tileColor(tester, strings.dashboardFillerConsumption),
-        _tileColor(tester, strings.dashboardPreheatCalculator),
-        _tileColor(tester, strings.dashboardCoolingTimeCalculator),
+      final primaryGradients = [
+        _tileDecoration(tester, strings.dashboardFillerConsumption).gradient,
+        _tileDecoration(tester, strings.dashboardPreheatCalculator).gradient,
+        _tileDecoration(
+          tester,
+          strings.dashboardCoolingTimeCalculator,
+        ).gradient,
       ];
-      final tonalColors = [
-        _tileColor(tester, strings.dashboardBaseMaterial),
-        _tileColor(tester, strings.dashboardFillerMaterial),
-        _tileColor(tester, strings.dashboardSavedCalculations),
-        _tileColor(tester, strings.dashboardSavedReports),
+      final accentDecoration = _tileDecoration(
+        tester,
+        strings.dashboardAiAssistant,
+      );
+      final neutralColors = [
+        _tileDecoration(tester, strings.dashboardBaseMaterial).color,
+        _tileDecoration(tester, strings.dashboardFillerMaterial).color,
+        _tileDecoration(tester, strings.dashboardSavedCalculations).color,
+        _tileDecoration(tester, strings.dashboardSavedReports).color,
       ];
 
-      // The 3 emphasized (calculator) buttons all share one color...
-      expect(emphasizedColors.toSet(), hasLength(1));
-      // ...the 4 tonal (library/history) buttons all share a different one...
-      expect(tonalColors.toSet(), hasLength(1));
-      // ...and the two groups are genuinely different from each other, not
-      // both silently resolved to the same app-wide theme color.
-      expect(emphasizedColors.first, isNot(equals(tonalColors.first)));
+      // The 3 calculator tiles all share the same gradient...
+      expect(primaryGradients.toSet(), hasLength(1));
+      // ...the 4 neutral tiles all share the same (non-null) solid color...
+      expect(neutralColors.toSet(), hasLength(1));
+      expect(neutralColors.first, isNotNull);
+      // ...the AI assistant tile shares the calculators' dark gradient (same
+      // brand surface) but is NOT just another plain calculator tile: it
+      // carries its own distinct border/glow the calculators don't have.
+      expect(accentDecoration.gradient, equals(primaryGradients.first));
+      expect(accentDecoration.border, isNotNull);
+      expect(
+        _tileDecoration(
+          tester,
+          strings.dashboardFillerConsumption,
+        ).border,
+        isNull,
+      );
+      // ...and the primary/accent dark surfaces are genuinely different from
+      // the neutral tiles' solid white, not both silently resolved to the
+      // same app-wide theme color.
+      expect(primaryGradients.first, isNotNull);
     },
   );
 

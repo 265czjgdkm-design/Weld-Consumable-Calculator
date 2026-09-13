@@ -375,26 +375,87 @@ class _WeldingLoaderPainter extends CustomPainter {
     // reads as invisible once scaled. Local +x (after the rotate above) now
     // points along the reach vector, so the head's leading edge sits at
     // exactly _reach (touching the impact point at the struck pose) and the
-    // handle trails back from it toward the pivot. Head/handle both grown
-    // noticeably past the previous round's 28-unit-wide/56-unit-tall head so
-    // the silhouette itself reads as a hammer, not a thin sliver.
+    // handle trails back from it toward the pivot.
     final headRect = Rect.fromLTRB(_reach - 42, -36, _reach, 36);
+    final handleRect = Rect.fromLTRB(10, -10, _reach - 42, 10);
+
+    // A soft drop shadow (offset within this same rotated space, so it
+    // stays "under" the hammer at every swing angle rather than reading as
+    // a fixed-direction light source) sells depth against the flat V mark
+    // and flat card surfaces this is drawn on top of.
+    final shadowPaint = Paint()
+      ..color = Colors.black.withValues(alpha: 0.30)
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 5);
+    canvas.save();
+    canvas.translate(3, 5);
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(headRect, const Radius.circular(9)),
+      shadowPaint,
+    );
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(handleRect, const Radius.circular(7)),
+      shadowPaint,
+    );
+    canvas.restore();
+
+    // Handle: dark graphite (the app's own brand-dark, not a near-white
+    // tone) so it reads as a distinct grip instead of blending into the
+    // head -- the previous light-grey-on-light-grey handle/head pairing had
+    // almost no contrast between the two parts of the silhouette.
+    final handlePaint = Paint()..color = const Color(0xFF2B3538);
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(handleRect, const Radius.circular(7)),
+      handlePaint,
+    );
+    // A thin lighter band near the head end of the grip, like a collar/
+    // ferrule where a real hammer head is fitted onto its handle.
+    canvas.drawRRect(
+      RRect.fromLTRBR(
+        handleRect.right - 10,
+        handleRect.top,
+        handleRect.right,
+        handleRect.bottom,
+        const Radius.circular(3),
+      ),
+      Paint()..color = const Color(0xFF4A5A61),
+    );
+
+    // Head: bolder metallic gradient, plus a darker outline for definition
+    // (the previous white-to-0xFFCBD4D0 fill had no edge, so at small
+    // scales it visually fused with the shadow/background) and a bright
+    // diagonal highlight streak for a polished-metal sheen.
+    final headRRect = RRect.fromRectAndRadius(
+      headRect,
+      const Radius.circular(9),
+    );
     final headPaint = Paint()
       ..shader = const LinearGradient(
         begin: Alignment.topCenter,
         end: Alignment.bottomCenter,
-        colors: [Colors.white, Color(0xFFCBD4D0)],
+        colors: [Color(0xFFF5F7F8), Color(0xFFAEB8BB)],
       ).createShader(headRect);
+    canvas.drawRRect(headRRect, headPaint);
     canvas.drawRRect(
-      RRect.fromRectAndRadius(headRect, const Radius.circular(8)),
-      headPaint,
+      headRRect,
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 2
+        ..color = const Color(0xFF7A8386),
     );
 
-    final handlePaint = Paint()..color = const Color(0xFF9AA5A8);
-    canvas.drawRRect(
-      RRect.fromLTRBR(10, -10, _reach - 42, 10, const Radius.circular(7)),
-      handlePaint,
+    canvas.save();
+    canvas.clipRRect(headRRect);
+    final highlightPath = Path()
+      ..moveTo(headRect.left + 6, headRect.top + 6)
+      ..lineTo(headRect.left + 16, headRect.top + 6)
+      ..lineTo(headRect.left + 6, headRect.bottom - 6)
+      ..lineTo(headRect.left - 4, headRect.bottom - 6)
+      ..close();
+    canvas.drawPath(
+      highlightPath,
+      Paint()..color = Colors.white.withValues(alpha: 0.65),
     );
+    canvas.restore();
 
     canvas.restore();
   }
