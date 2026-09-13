@@ -32,15 +32,17 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   void initState() {
     super.initState();
-    // ~1340ms blade-collide-forms-V formation (the hammer beat now starts as
-    // soon as the last active formation tween settles instead of waiting
-    // out the rest of the 1700ms controller -- see
+    // ~1140ms blade-collide-forms-V formation (the hammer beat now starts as
+    // soon as the last actually-visible formation tween settles instead of
+    // waiting out the rest of the 1700ms controller -- see
     // _FallbackSplashAnimationState._formationVisualEndFraction) + 700ms
     // one-shot hammer strike beat (no idle wait -- see WeldingLoader's
     // loop:false handling) + 500ms wordmark reveal + a short 300ms hold.
-    // Was 3400ms; trimmed after a reviewer's frame-accurate audit found
-    // ~1.3s of accidental dead air in that figure.
-    _navigateTimer = Timer(const Duration(milliseconds: 2850), _goToApp);
+    // Was 2850ms; trimmed further after a reviewer's frame-accurate audit
+    // found the previous 0.79 fraction was still keyed off ember particles
+    // that are fully occluded behind the mark frame, leaving ~200ms of
+    // additional dead air.
+    _navigateTimer = Timer(const Duration(milliseconds: 2650), _goToApp);
     _checkRiveAsset();
   }
 
@@ -309,14 +311,18 @@ class _FallbackSplashAnimationState extends State<_FallbackSplashAnimation>
     _controller.forward();
   }
 
-  // The last active formation tween (the 8th ember particle's opacity fade,
-  // Interval(0.7 + 7*0.012, ...)) settles at 0.784 of `_controller`; nothing
-  // else changes after that even though the controller itself keeps running
-  // to 1.0. Triggering the hammer beat here instead of on the controller's
-  // own AnimationStatus.completed removes that dead tail -- previously
-  // ~560ms of frozen screen, since moving the wordmark reveal to its own
-  // post-hammer controller left it with nothing to fill.
-  static const _formationVisualEndFraction = 0.79;
+  // The ember particles (_particleOpacity/_particleDistance, settling around
+  // 0.78-0.79 of `_controller`) are NOT the last visible motion -- they're
+  // fully occluded behind _buildMarkFrame's opaque 96x96 Container, which
+  // paints on top of them in the Stack and is fully opaque once
+  // _markRevealOpacity completes at 0.5. The actual last visible tween is
+  // _markRevealScale's Interval(0.38, 0.66, elasticOut) settling at
+  // controller value ~0.668 -- confirmed by frame-accurate pixel-diffing
+  // (zero changed pixels from 1152ms to 1328ms when this was still 0.79).
+  // Triggering the hammer beat here instead of on the controller's own
+  // AnimationStatus.completed (or on the invisible ember tail) removes that
+  // dead stretch entirely.
+  static const _formationVisualEndFraction = 0.67;
 
   void _handleFormationProgress() {
     if (_showHammer) return;

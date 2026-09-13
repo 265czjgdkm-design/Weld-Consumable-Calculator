@@ -179,11 +179,12 @@ void main() {
       final bytes = (await tester.runAsync(
         () => _captureRgba(tester, find.byKey(key)),
       ))!;
-      // 80px widget captured at pixelRatio 1.0 -> an 80x80 RGBA image. At
-      // full extension the head spans screen-space x:[28.8, 51.2],
-      // y:[53.6, 63.2] (see _paintHammer) -- sampled well inside that box,
-      // clear of the anti-aliased edges (right at y=63.2 would blend with
-      // the impact flash bloom underneath).
+      // 80px widget captured at pixelRatio 1.0 -> an 80x80 RGBA image. The
+      // head is now a rotated rect (pivot offset up-right of the impact
+      // point, see _paintHammer's finding-C fix) rather than axis-aligned,
+      // occupying roughly screen-space x:[36, 55], y:[49, 74] at full
+      // extension -- sampled well inside that quad, clear of the
+      // anti-aliased edges.
       const width = 80;
       const x = 40;
       const y = 58;
@@ -206,6 +207,64 @@ void main() {
             'the impact point should show the light hammer head color at '
             'full extension, not the orange spark or empty background -- '
             'got rgba($r, $g, $b, $a)',
+      );
+    },
+  );
+
+  testWidgets(
+    'the hammer swing sweeps a real, visible arc -- large per-frame pixel '
+    'deltas, not a near-stationary block spinning on the impact point '
+    '(reviewer finding: hammer barely moves)',
+    (tester) async {
+      final key = GlobalKey();
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            backgroundColor: Colors.black,
+            body: Center(
+              child: RepaintBoundary(
+                key: key,
+                child: const WeldingLoader(size: 80, loop: false),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+
+      // Swing runs from 0 to 20/70 of the 700ms one-shot cycle (~200ms).
+      // Sample it at 50ms steps and diff consecutive frames.
+      const stepMs = 50;
+      const swingMs = 200;
+      Uint8List? previous;
+      var maxChangedBytes = 0;
+
+      for (var t = 0; t <= swingMs; t += stepMs) {
+        await tester.pump(const Duration(milliseconds: stepMs));
+        final current = (await tester.runAsync(
+          () => _captureRgba(tester, find.byKey(key)),
+        ))!;
+        if (previous != null) {
+          var changed = 0;
+          for (var i = 0; i < current.length; i++) {
+            if (current[i] != previous[i]) changed++;
+          }
+          if (changed > maxChangedBytes) maxChangedBytes = changed;
+        }
+        previous = current;
+      }
+
+      // The broken (round-2) geometry measured only ~200-360 changed
+      // pixels/frame out of 304,200 total (a much larger canvas than this
+      // 80x80x4-byte capture, but the same "barely moves" signature); a
+      // real swing should change a large fraction of this frame's 25,600
+      // bytes every step.
+      expect(
+        maxChangedBytes,
+        greaterThan(2000),
+        reason:
+            'expected a large per-frame pixel delta from a real swinging '
+            'arc, got only $maxChangedBytes changed bytes/frame',
       );
     },
   );

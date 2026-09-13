@@ -324,22 +324,31 @@ class _WeldingLoaderPainter extends CustomPainter {
       'or the hammer will be invisible.',
     );
 
-    final impact = p(100, 158);
+    // The pivot sits up-and-right of the impact point (roughly where a
+    // wrist/forearm would be), NOT on the impact point itself -- rotating
+    // about the impact point and drawing the head near canvas-origin (both
+    // previous rounds' approach) puts the head within a few units of the
+    // rotation center, so swinging through the full angle range barely
+    // moves it. Instead the head is drawn at the far end of a fixed-length
+    // reach vector from this offset pivot, so rotating the whole shape
+    // traces a real arc: at _hammerAngle == 0 (struck) the reach vector
+    // points exactly at the impact point; at _hammerAngle == _cockAngle
+    // (idle/cocked) it swings up and away, matching "swings in from
+    // upper-right".
+    final pivot = p(_pivotX, _pivotY);
     canvas.save();
-    canvas.translate(impact.dx, impact.dy);
-    canvas.rotate(_hammerAngle);
+    canvas.translate(pivot.dx, pivot.dy);
+    canvas.rotate(_restAngle + _hammerAngle);
     canvas.scale(scale);
 
     // Sized boldly relative to the 200x200 space (not to the 200x16-ish
     // proportions of the V blades) since this whole shape is scaled down a
     // lot at the sizes this widget is actually used at -- anything thinner
-    // reads as invisible once scaled.
-    //
-    // The HEAD sits at the pivot (y=0, the impact point) so it's what
-    // actually reaches/strikes the spark at full extension; the handle
-    // trails away from it, back toward the cocked position the hammer
-    // swings in from.
-    final headRect = const Rect.fromLTRB(-28, -24, 28, 0);
+    // reads as invisible once scaled. Local +x (after the rotate above) now
+    // points along the reach vector, so the head's leading edge sits at
+    // exactly _reach (touching the impact point at the struck pose) and the
+    // handle trails back from it toward the pivot.
+    final headRect = Rect.fromLTRB(_reach - 28, -28, _reach, 28);
     final headPaint = Paint()
       ..shader = const LinearGradient(
         begin: Alignment.topCenter,
@@ -353,12 +362,24 @@ class _WeldingLoaderPainter extends CustomPainter {
 
     final handlePaint = Paint()..color = const Color(0xFF9AA5A8);
     canvas.drawRRect(
-      RRect.fromLTRBR(-7, -72, 7, -24, const Radius.circular(5)),
+      RRect.fromLTRBR(8, -7, _reach - 28, 7, const Radius.circular(5)),
       handlePaint,
     );
 
     canvas.restore();
   }
+
+  // Pivot position in the same 200x200 space as the impact point (100,158)
+  // above -- up and to the right of it, matching "swings in from
+  // upper-right". _reach/_restAngle are derived from these two points
+  // rather than hardcoded independently, so the head is guaranteed to land
+  // exactly on the impact point at the struck pose regardless of rounding.
+  static const _pivotX = 166.0;
+  static const _pivotY = 134.0;
+  static final double _reach = math.sqrt(
+    math.pow(100 - _pivotX, 2) + math.pow(158 - _pivotY, 2),
+  );
+  static final double _restAngle = math.atan2(158 - _pivotY, 100 - _pivotX);
 
   double _lerp(double a, double b, double t) => a + (b - a) * t;
 

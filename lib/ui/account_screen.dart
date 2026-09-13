@@ -289,21 +289,18 @@ class _AccountScreenState extends State<AccountScreen> {
   }
 
   Widget _buildSignedInState(L10nStrings strings) {
-    final name = [
-      _firstName,
-      _lastName,
-    ].whereType<String>().where((part) => part.isNotEmpty).join(' ');
+    // The identity header above already renders the display name (falling
+    // back to the email when there isn't one) -- this body's job is to show
+    // the account's actual identifier, the email, which is a DIFFERENT
+    // string for the common named-user case. Re-deriving and rendering the
+    // name here too would just duplicate the header for that case.
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        if (name.isNotEmpty) ...[
-          Text(
-            name,
-            style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 18),
-          ),
-          const SizedBox(height: 4),
-        ],
-        Text(_email!, style: Theme.of(context).textTheme.bodyLarge),
+        Text(
+          _email!,
+          style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 18),
+        ),
         const SizedBox(height: 10),
         Text(
           strings.accountNoPasswordNotice,

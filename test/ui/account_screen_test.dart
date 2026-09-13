@@ -44,8 +44,10 @@ void main() {
 
       await _pumpAccountScreen(tester);
 
-      // Appears twice: once as the identity header near the avatar, once
-      // in the signed-in detail body below it.
+      // This account has no first/last name on file, so the identity
+      // header falls back to showing the email itself (see the dedicated
+      // named-user test below for the common case, where the header shows
+      // the name and the body shows the email -- two different strings).
       expect(find.text('user@example.com'), findsNWidgets(2));
 
       await tester.tap(find.text(strings.accountSignOutButton));
@@ -64,6 +66,25 @@ void main() {
       expect(survivingPresets, hasLength(1));
       expect(survivingPresets.single.id, 'local-1');
     });
+
+    testWidgets(
+      'a signed-in user with a first/last name sees the name once (identity '
+      'header) and the email once (signed-in detail body), not the same '
+      'string duplicated in both places (reviewer finding: account-screen '
+      'identity duplication)',
+      (tester) async {
+        SharedPreferences.setMockInitialValues({
+          'user_account_email_v1': 'alice@example.com',
+          'user_account_first_name_v1': 'Alice',
+          'user_account_last_name_v1': 'Smith',
+        });
+
+        await _pumpAccountScreen(tester);
+
+        expect(find.text('Alice Smith'), findsOneWidget);
+        expect(find.text('alice@example.com'), findsOneWidget);
+      },
+    );
 
     testWidgets(
       'Delete Account: Cancel leaves the account, local presets, and cloud '
