@@ -32,17 +32,16 @@ Future<void> _gotoDashboard(WidgetTester tester) async {
   expect(find.byType(HomeDashboardScreen), findsOneWidget);
 }
 
-/// Resolves the actual painted background [Color] of the [Material] that
-/// backs a given `FilledButton` label -- the same "painted Material.color
-/// readback" technique the reviewer used to catch Finding 1 in the first
-/// place, so a regression here would be caught the same way it was found.
-Color _filledButtonColor(WidgetTester tester, String label) {
-  final buttonFinder = find.ancestor(
+/// Resolves the actual painted background [Color] of the square dashboard
+/// tile's own [Material] for a given label -- the same "painted
+/// Material.color readback" technique the reviewer used to catch Finding 1
+/// in the first place, so a regression here would be caught the same way
+/// it was found. `_DashboardTile` paints its `Material` directly around
+/// the tile content, so the closest `Material` ancestor of the label is
+/// the tile's own, not an ambient theme one further up the tree.
+Color _tileColor(WidgetTester tester, String label) {
+  final materialFinder = find.ancestor(
     of: find.text(label),
-    matching: find.byType(FilledButton),
-  );
-  final materialFinder = find.descendant(
-    of: buttonFinder,
     matching: find.byType(Material),
   );
   return tester.widget<Material>(materialFinder.first).color!;
@@ -144,15 +143,15 @@ void main() {
       await _gotoDashboard(tester);
 
       final emphasizedColors = [
-        _filledButtonColor(tester, strings.dashboardFillerConsumption),
-        _filledButtonColor(tester, strings.dashboardPreheatCalculator),
-        _filledButtonColor(tester, strings.dashboardCoolingTimeCalculator),
+        _tileColor(tester, strings.dashboardFillerConsumption),
+        _tileColor(tester, strings.dashboardPreheatCalculator),
+        _tileColor(tester, strings.dashboardCoolingTimeCalculator),
       ];
       final tonalColors = [
-        _filledButtonColor(tester, strings.dashboardBaseMaterial),
-        _filledButtonColor(tester, strings.dashboardFillerMaterial),
-        _filledButtonColor(tester, strings.dashboardSavedCalculations),
-        _filledButtonColor(tester, strings.dashboardSavedReports),
+        _tileColor(tester, strings.dashboardBaseMaterial),
+        _tileColor(tester, strings.dashboardFillerMaterial),
+        _tileColor(tester, strings.dashboardSavedCalculations),
+        _tileColor(tester, strings.dashboardSavedReports),
       ];
 
       // The 3 emphasized (calculator) buttons all share one color...
