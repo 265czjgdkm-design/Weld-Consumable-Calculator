@@ -268,4 +268,69 @@ void main() {
       );
     },
   );
+
+  testWidgets(
+    'the V mark itself squash-reacts at the moment of impact, not just the '
+    'hammer',
+    (tester) async {
+      final key = GlobalKey();
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            backgroundColor: Colors.black,
+            body: Center(
+              child: RepaintBoundary(
+                key: key,
+                child: const WeldingLoader(size: 80, loop: false),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+
+      // Neutral: before the swing/impact window has started at all.
+      final neutral = await tester.runAsync(
+        () => _captureRgba(tester, find.byKey(key)),
+      );
+
+      // swingEnd is at 20/70 of the 700ms one-shot cycle (200ms); the
+      // squash pulse peaks at windowT == 0.25 of the impact window
+      // (swingEnd..impactEnd, 150ms long) -- i.e. 200 + 0.25*150 = 237.5ms
+      // in, matching _markSquashIntensity's peak.
+      await tester.pump(const Duration(milliseconds: 238));
+      final peak = await tester.runAsync(
+        () => _captureRgba(tester, find.byKey(key)),
+      );
+
+      // Sample a region on the left blade's top-left corner: far from the
+      // hammer (which sits up-right of the impact point and is frozen at
+      // the struck pose for this entire window, so it can't be the source
+      // of any diff here) and outside the flash/particle radii (both
+      // centered on the impact point, well below/right of this box), so any
+      // difference here can only come from the V-mark squash transform.
+      const width = 80;
+      var diffCount = 0;
+      for (var y = 8; y < 20; y++) {
+        for (var x = 12; x < 24; x++) {
+          final i = (y * width + x) * 4;
+          if (neutral![i] != peak![i] ||
+              neutral[i + 1] != peak[i + 1] ||
+              neutral[i + 2] != peak[i + 2] ||
+              neutral[i + 3] != peak[i + 3]) {
+            diffCount++;
+          }
+        }
+      }
+
+      expect(
+        diffCount,
+        greaterThan(0),
+        reason:
+            'expected the V mark to visibly shift/deform at the impact '
+            'frame vs. its neutral rest frame in this hammer-free corner '
+            'region, but the two frames were pixel-identical there',
+      );
+    },
+  );
 }

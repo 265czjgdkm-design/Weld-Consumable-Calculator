@@ -126,7 +126,10 @@ class _WeldingLoaderPainter extends CustomPainter {
   double get _idleEnd => loop ? 0.30 : 0.0;
   double get _swingEnd => loop ? 0.50 : 20 / 70;
   double get _impactEnd => loop ? 0.65 : (20 + 15) / 70;
-  static const _cockAngle = 0.85;
+  // Widened from 0.85 (~49deg) so the swing covers meaningfully more arc --
+  // combined with the longer _reach below, the head now travels roughly
+  // double the previous arc length from cocked to struck.
+  static const _cockAngle = 1.15;
 
   static const _particleAnglesDeg = <double>[
     190.0,
@@ -165,6 +168,17 @@ class _WeldingLoaderPainter extends CustomPainter {
     return 1.0 - Curves.easeIn.transform((t - 0.35) / 0.65);
   }
 
+  /// A brief squash-then-recover pulse on the V mark itself, synchronized to
+  /// the same impact window as the flash above -- peaks right as the hammer
+  /// makes contact, then fully recovers well before the struck hold ends, so
+  /// it reads as "the V just got hit" rather than a lingering wobble.
+  double get _markSquashIntensity {
+    final t = _impactWindowT;
+    if (t == null) return 0.0;
+    if (t < 0.25) return Curves.easeOut.transform(t / 0.25);
+    return 1.0 - Curves.easeIn.transform(((t - 0.25) / 0.45).clamp(0.0, 1.0));
+  }
+
   /// A smooth 0..1..0 breathing wave completing exactly one cycle per loop
   /// iteration, so a simplified (size < 40) inline spinner always has
   /// visible motion -- not just during the ~150ms impact window like the
@@ -182,6 +196,17 @@ class _WeldingLoaderPainter extends CustomPainter {
     Offset p(double x, double y) => Offset(x * scale, y * scale);
 
     final flash = _flashIntensity;
+    // Full-detail mode only (matches the hammer's own gating below) -- the
+    // simplified small spinners have no hammer to sync a "just got hit"
+    // reaction against.
+    final squash = simplified ? 0.0 : _markSquashIntensity;
+    if (squash > 0.001) {
+      final center = p(100, 96.5);
+      canvas.save();
+      canvas.translate(center.dx, center.dy);
+      canvas.scale(1 + 0.09 * squash, 1 - 0.16 * squash);
+      canvas.translate(-center.dx, -center.dy);
+    }
     _paintMark(
       canvas,
       p,
@@ -193,6 +218,9 @@ class _WeldingLoaderPainter extends CustomPainter {
           ? math.max(_lerp(0.5, 0.95, _breathe), _lerp(0.5, 1.0, flash))
           : 1.0,
     );
+    if (squash > 0.001) {
+      canvas.restore();
+    }
 
     if (flash > 0.01) {
       _paintFlash(canvas, p, scale, flash);
@@ -347,8 +375,10 @@ class _WeldingLoaderPainter extends CustomPainter {
     // reads as invisible once scaled. Local +x (after the rotate above) now
     // points along the reach vector, so the head's leading edge sits at
     // exactly _reach (touching the impact point at the struck pose) and the
-    // handle trails back from it toward the pivot.
-    final headRect = Rect.fromLTRB(_reach - 28, -28, _reach, 28);
+    // handle trails back from it toward the pivot. Head/handle both grown
+    // noticeably past the previous round's 28-unit-wide/56-unit-tall head so
+    // the silhouette itself reads as a hammer, not a thin sliver.
+    final headRect = Rect.fromLTRB(_reach - 42, -36, _reach, 36);
     final headPaint = Paint()
       ..shader = const LinearGradient(
         begin: Alignment.topCenter,
@@ -356,13 +386,13 @@ class _WeldingLoaderPainter extends CustomPainter {
         colors: [Colors.white, Color(0xFFCBD4D0)],
       ).createShader(headRect);
     canvas.drawRRect(
-      RRect.fromRectAndRadius(headRect, const Radius.circular(6)),
+      RRect.fromRectAndRadius(headRect, const Radius.circular(8)),
       headPaint,
     );
 
     final handlePaint = Paint()..color = const Color(0xFF9AA5A8);
     canvas.drawRRect(
-      RRect.fromLTRBR(8, -7, _reach - 28, 7, const Radius.circular(5)),
+      RRect.fromLTRBR(10, -10, _reach - 42, 10, const Radius.circular(7)),
       handlePaint,
     );
 
@@ -374,8 +404,13 @@ class _WeldingLoaderPainter extends CustomPainter {
   // upper-right". _reach/_restAngle are derived from these two points
   // rather than hardcoded independently, so the head is guaranteed to land
   // exactly on the impact point at the struck pose regardless of rounding.
-  static const _pivotX = 166.0;
-  static const _pivotY = 134.0;
+  // Moved further from the impact point than the previous round (was
+  // 166,134, reach ~70) so the arm is longer and the swing traces a
+  // visibly bigger arc; verified this still stays clear of the splash's
+  // mark-frame edges at every angle in the swing (see coder verification
+  // notes).
+  static const _pivotX = 186.0;
+  static const _pivotY = 96.0;
   static final double _reach = math.sqrt(
     math.pow(100 - _pivotX, 2) + math.pow(158 - _pivotY, 2),
   );
