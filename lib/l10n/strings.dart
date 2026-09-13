@@ -576,6 +576,25 @@ class L10nStrings {
     required this.pdfBasisGroupOther,
     required this.pdfExportSuccessToast,
     required this.pdfExportFailureToast,
+    required this.dashboardAssistantSectionTitle,
+    required this.dashboardAiAssistant,
+    required this.aiAssistantScreenTitle,
+    required this.aiAssistantScreenSubtitle,
+    required this.aiAssistantInputHint,
+    required this.aiAssistantSuggestionFillerLabel,
+    required this.aiAssistantSuggestionFillerPrompt,
+    required this.aiAssistantSuggestionPreheatLabel,
+    required this.aiAssistantSuggestionPreheatPrompt,
+    required this.aiAssistantSuggestionCoolingLabel,
+    required this.aiAssistantSuggestionCoolingPrompt,
+    required this.aiAssistantErrorRateLimited,
+    required this.aiAssistantErrorBadRequest,
+    required this.aiAssistantErrorTimeout,
+    required this.aiAssistantErrorNetwork,
+    required this.aiAssistantErrorUpstream,
+    required this.aiAssistantPremiumGateTitle,
+    required this.aiAssistantPremiumGateBody,
+    required this.aiAssistantPremiumGateButton,
   });
 
   final String navBrand;
@@ -1159,6 +1178,25 @@ class L10nStrings {
   final String pdfBasisGroupOther;
   final String pdfExportSuccessToast;
   final String pdfExportFailureToast;
+  final String dashboardAssistantSectionTitle;
+  final String dashboardAiAssistant;
+  final String aiAssistantScreenTitle;
+  final String aiAssistantScreenSubtitle;
+  final String aiAssistantInputHint;
+  final String aiAssistantSuggestionFillerLabel;
+  final String aiAssistantSuggestionFillerPrompt;
+  final String aiAssistantSuggestionPreheatLabel;
+  final String aiAssistantSuggestionPreheatPrompt;
+  final String aiAssistantSuggestionCoolingLabel;
+  final String aiAssistantSuggestionCoolingPrompt;
+  final String aiAssistantErrorRateLimited;
+  final String aiAssistantErrorBadRequest;
+  final String aiAssistantErrorTimeout;
+  final String aiAssistantErrorNetwork;
+  final String aiAssistantErrorUpstream;
+  final String aiAssistantPremiumGateTitle;
+  final String aiAssistantPremiumGateBody;
+  final String aiAssistantPremiumGateButton;
 }
 
 const Map<AppLanguage, L10nStrings> _strings = {
@@ -1877,6 +1915,35 @@ const Map<AppLanguage, L10nStrings> _strings = {
     pdfBasisGroupOther: 'Other',
     pdfExportSuccessToast: 'PDF report exported successfully.',
     pdfExportFailureToast: 'PDF export failed. Please try again.',
+    dashboardAssistantSectionTitle: 'Assistant',
+    dashboardAiAssistant: 'AI Assistant',
+    aiAssistantScreenTitle: 'AI Assistant',
+    aiAssistantScreenSubtitle:
+        "Ask about this app's calculators or general welding-standard concepts.",
+    aiAssistantInputHint: 'Ask a question...',
+    aiAssistantSuggestionFillerLabel: 'Filler/Consumable Calculator',
+    aiAssistantSuggestionFillerPrompt:
+        'What does the Filler/Consumable Calculator calculate, and how should I use it?',
+    aiAssistantSuggestionPreheatLabel: 'Preheat Calculator',
+    aiAssistantSuggestionPreheatPrompt:
+        'What does the Preheat Calculator calculate, and how should I use it?',
+    aiAssistantSuggestionCoolingLabel: 'Cooling Time (t8/5) Calculator',
+    aiAssistantSuggestionCoolingPrompt:
+        'What does the Cooling Time (t8/5) Calculator calculate, and how should I use it?',
+    aiAssistantErrorRateLimited:
+        'Too many messages -- please wait a bit and try again.',
+    aiAssistantErrorBadRequest:
+        'That message could not be sent. Please try again.',
+    aiAssistantErrorTimeout:
+        'The assistant took too long to respond. Please try again.',
+    aiAssistantErrorNetwork:
+        'No connection to the assistant. Check your internet and try again.',
+    aiAssistantErrorUpstream:
+        'The assistant is temporarily unavailable. Please try again.',
+    aiAssistantPremiumGateTitle: 'AI Assistant is a Premium feature',
+    aiAssistantPremiumGateBody:
+        'Unlock Premium to ask the AI assistant about your calculations and general welding-standard concepts.',
+    aiAssistantPremiumGateButton: 'Unlock Premium',
   ),
   AppLanguage.tr: L10nStrings(
     navBrand: 'Varyos Weld',
@@ -2598,6 +2665,33 @@ const Map<AppLanguage, L10nStrings> _strings = {
     pdfBasisGroupOther: 'Diğer',
     pdfExportSuccessToast: 'PDF raporu başarıyla dışa aktarıldı.',
     pdfExportFailureToast: 'PDF dışa aktarma başarısız oldu. Lütfen tekrar deneyin.',
+    dashboardAssistantSectionTitle: 'Asistan',
+    dashboardAiAssistant: 'Yapay Zeka Asistanı',
+    aiAssistantScreenTitle: 'Yapay Zeka Asistanı',
+    aiAssistantScreenSubtitle:
+        'Uygulamanın hesaplayıcıları veya genel kaynak standardı kavramları hakkında soru sorun.',
+    aiAssistantInputHint: 'Bir soru sorun...',
+    aiAssistantSuggestionFillerLabel: 'Dolgu/Sarf Malzeme Hesaplayıcı',
+    aiAssistantSuggestionFillerPrompt:
+        'Dolgu/Sarf Malzeme Hesaplayıcı ne hesaplıyor ve nasıl kullanmalıyım?',
+    aiAssistantSuggestionPreheatLabel: 'Önısıtma Hesaplayıcı',
+    aiAssistantSuggestionPreheatPrompt:
+        'Önısıtma Hesaplayıcı ne hesaplıyor ve nasıl kullanmalıyım?',
+    aiAssistantSuggestionCoolingLabel: 'Soğuma Süresi (t8/5) Hesaplayıcı',
+    aiAssistantSuggestionCoolingPrompt:
+        'Soğuma Süresi (t8/5) Hesaplayıcı ne hesaplıyor ve nasıl kullanmalıyım?',
+    aiAssistantErrorRateLimited:
+        'Çok fazla mesaj gönderildi -- lütfen biraz bekleyip tekrar deneyin.',
+    aiAssistantErrorBadRequest: 'Bu mesaj gönderilemedi. Lütfen tekrar deneyin.',
+    aiAssistantErrorTimeout:
+        'Asistan yanıt vermekte çok uzun sürdü. Lütfen tekrar deneyin.',
+    aiAssistantErrorNetwork:
+        'Asistana bağlanılamadı. İnternet bağlantınızı kontrol edip tekrar deneyin.',
+    aiAssistantErrorUpstream: 'Asistan şu anda kullanılamıyor. Lütfen tekrar deneyin.',
+    aiAssistantPremiumGateTitle: 'Yapay Zeka Asistanı bir Premium özelliktir',
+    aiAssistantPremiumGateBody:
+        "Hesaplamalarınız ve genel kaynak standardı kavramları hakkında yapay zeka asistanına soru sormak için Premium'u açın.",
+    aiAssistantPremiumGateButton: "Premium'u Aç",
   ),
   AppLanguage.ru: L10nStrings(
     navBrand: 'Varyos Weld',
@@ -3339,6 +3433,32 @@ const Map<AppLanguage, L10nStrings> _strings = {
     pdfBasisGroupOther: 'Прочее',
     pdfExportSuccessToast: 'PDF-отчёт успешно экспортирован.',
     pdfExportFailureToast: 'Не удалось экспортировать PDF. Попробуйте снова.',
+    dashboardAssistantSectionTitle: 'Ассистент',
+    dashboardAiAssistant: 'ИИ-ассистент',
+    aiAssistantScreenTitle: 'ИИ-ассистент',
+    aiAssistantScreenSubtitle:
+        'Задавайте вопросы о калькуляторах приложения или об общих понятиях сварочных стандартов.',
+    aiAssistantInputHint: 'Задайте вопрос...',
+    aiAssistantSuggestionFillerLabel: 'Калькулятор присадочного материала',
+    aiAssistantSuggestionFillerPrompt:
+        'Что рассчитывает калькулятор присадочного материала и как его использовать?',
+    aiAssistantSuggestionPreheatLabel: 'Калькулятор подогрева',
+    aiAssistantSuggestionPreheatPrompt:
+        'Что рассчитывает калькулятор подогрева и как его использовать?',
+    aiAssistantSuggestionCoolingLabel: 'Калькулятор времени охлаждения (t8/5)',
+    aiAssistantSuggestionCoolingPrompt:
+        'Что рассчитывает калькулятор времени охлаждения (t8/5) и как его использовать?',
+    aiAssistantErrorRateLimited:
+        'Слишком много сообщений -- подождите немного и попробуйте снова.',
+    aiAssistantErrorBadRequest: 'Не удалось отправить это сообщение. Попробуйте снова.',
+    aiAssistantErrorTimeout: 'Ассистент слишком долго отвечал. Попробуйте снова.',
+    aiAssistantErrorNetwork:
+        'Нет соединения с ассистентом. Проверьте интернет и попробуйте снова.',
+    aiAssistantErrorUpstream: 'Ассистент временно недоступен. Попробуйте снова.',
+    aiAssistantPremiumGateTitle: 'ИИ-ассистент -- функция Premium',
+    aiAssistantPremiumGateBody:
+        'Откройте Premium, чтобы задавать ИИ-ассистенту вопросы о ваших расчётах и общих понятиях сварочных стандартов.',
+    aiAssistantPremiumGateButton: 'Открыть Premium',
   ),
   AppLanguage.de: L10nStrings(
     navBrand: 'Varyos Weld',
@@ -4080,6 +4200,35 @@ const Map<AppLanguage, L10nStrings> _strings = {
     pdfBasisGroupOther: 'Sonstiges',
     pdfExportSuccessToast: 'PDF-Bericht erfolgreich exportiert.',
     pdfExportFailureToast: 'PDF-Export fehlgeschlagen. Bitte erneut versuchen.',
+    dashboardAssistantSectionTitle: 'Assistent',
+    dashboardAiAssistant: 'KI-Assistent',
+    aiAssistantScreenTitle: 'KI-Assistent',
+    aiAssistantScreenSubtitle:
+        'Stellen Sie Fragen zu den Rechnern dieser App oder zu allgemeinen Konzepten von Schweißnormen.',
+    aiAssistantInputHint: 'Frage eingeben...',
+    aiAssistantSuggestionFillerLabel: 'Zusatzwerkstoff-Rechner',
+    aiAssistantSuggestionFillerPrompt:
+        'Was berechnet der Zusatzwerkstoff-Rechner und wie sollte ich ihn verwenden?',
+    aiAssistantSuggestionPreheatLabel: 'Vorwärmrechner',
+    aiAssistantSuggestionPreheatPrompt:
+        'Was berechnet der Vorwärmrechner und wie sollte ich ihn verwenden?',
+    aiAssistantSuggestionCoolingLabel: 'Abkühlzeit-Rechner (t8/5)',
+    aiAssistantSuggestionCoolingPrompt:
+        'Was berechnet der Abkühlzeit-Rechner (t8/5) und wie sollte ich ihn verwenden?',
+    aiAssistantErrorRateLimited:
+        'Zu viele Nachrichten -- bitte warten Sie kurz und versuchen Sie es erneut.',
+    aiAssistantErrorBadRequest:
+        'Diese Nachricht konnte nicht gesendet werden. Bitte erneut versuchen.',
+    aiAssistantErrorTimeout:
+        'Der Assistent hat zu lange für eine Antwort gebraucht. Bitte erneut versuchen.',
+    aiAssistantErrorNetwork:
+        'Keine Verbindung zum Assistenten. Internetverbindung prüfen und erneut versuchen.',
+    aiAssistantErrorUpstream:
+        'Der Assistent ist vorübergehend nicht verfügbar. Bitte erneut versuchen.',
+    aiAssistantPremiumGateTitle: 'Der KI-Assistent ist eine Premium-Funktion',
+    aiAssistantPremiumGateBody:
+        'Schalten Sie Premium frei, um dem KI-Assistenten Fragen zu Ihren Berechnungen und allgemeinen Schweißnorm-Konzepten zu stellen.',
+    aiAssistantPremiumGateButton: 'Premium freischalten',
   ),
   AppLanguage.hi: L10nStrings(
     navBrand: 'Varyos Weld',
@@ -4814,6 +4963,33 @@ const Map<AppLanguage, L10nStrings> _strings = {
     pdfBasisGroupOther: 'अन्य',
     pdfExportSuccessToast: 'PDF रिपोर्ट सफलतापूर्वक एक्सपोर्ट हो गई।',
     pdfExportFailureToast: 'PDF एक्सपोर्ट फेल हो गया। कृपया फिर से कोशिश करें।',
+    dashboardAssistantSectionTitle: 'सहायक',
+    dashboardAiAssistant: 'एआई असिस्टेंट',
+    aiAssistantScreenTitle: 'एआई असिस्टेंट',
+    aiAssistantScreenSubtitle:
+        'ऐप के कैलकुलेटर या सामान्य वेल्डिंग स्टैंडर्ड अवधारणाओं के बारे में पूछें।',
+    aiAssistantInputHint: 'एक सवाल पूछें...',
+    aiAssistantSuggestionFillerLabel: 'फिलर/कंज्यूमेबल कैलकुलेटर',
+    aiAssistantSuggestionFillerPrompt:
+        'फिलर/कंज्यूमेबल कैलकुलेटर क्या कैलकुलेट करता है और मुझे इसे कैसे उपयोग करना चाहिए?',
+    aiAssistantSuggestionPreheatLabel: 'प्रीहीट कैलकुलेटर',
+    aiAssistantSuggestionPreheatPrompt:
+        'प्रीहीट कैलकुलेटर क्या कैलकुलेट करता है और मुझे इसे कैसे उपयोग करना चाहिए?',
+    aiAssistantSuggestionCoolingLabel: 'कूलिंग टाइम (t8/5) कैलकुलेटर',
+    aiAssistantSuggestionCoolingPrompt:
+        'कूलिंग टाइम (t8/5) कैलकुलेटर क्या कैलकुलेट करता है और मुझे इसे कैसे उपयोग करना चाहिए?',
+    aiAssistantErrorRateLimited:
+        'बहुत सारे मेसेज भेजे गए -- कृपया थोड़ी देर रुकें और फिर कोशिश करें।',
+    aiAssistantErrorBadRequest: 'यह मेसेज भेजा नहीं जा सका। कृपया फिर से कोशिश करें।',
+    aiAssistantErrorTimeout:
+        'असिस्टेंट को जवाब देने में बहुत समय लगा। कृपया फिर से कोशिश करें।',
+    aiAssistantErrorNetwork:
+        'असिस्टेंट से कनेक्शन नहीं हो पाया। अपना इंटरनेट चेक करें और फिर से कोशिश करें।',
+    aiAssistantErrorUpstream: 'असिस्टेंट अभी उपलब्ध नहीं है। कृपया फिर से कोशिश करें।',
+    aiAssistantPremiumGateTitle: 'एआई असिस्टेंट एक प्रीमियम फीचर है',
+    aiAssistantPremiumGateBody:
+        'अपनी कैलकुलेशन और सामान्य वेल्डिंग स्टैंडर्ड अवधारणाओं के बारे में एआई असिस्टेंट से पूछने के लिए प्रीमियम अनलॉक करें।',
+    aiAssistantPremiumGateButton: 'प्रीमियम अनलॉक करें',
   ),
 };
 
