@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:purchases_flutter/purchases_flutter.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:weld_consumable_calculator/l10n/app_language.dart';
 import 'package:weld_consumable_calculator/l10n/app_locale.dart';
@@ -52,11 +53,18 @@ class _FakeAiAssistantService extends AiAssistantService {
 void main() {
   final strings = stringsFor(AppLanguage.en);
 
+  // All tests below exercise the chat itself, not the AI-consent
+  // disclosure (covered separately below), so they pre-seed the
+  // "already acknowledged" flag -- same key AiConsentStore reads/writes.
   Future<void> pumpScreen(
     WidgetTester tester, {
     required bool isPremium,
     AiAssistantService? assistantService,
+    bool consentAcknowledged = true,
   }) async {
+    SharedPreferences.setMockInitialValues({
+      'ai_consent_acknowledged_v1': consentAcknowledged,
+    });
     final locale = AppLocale();
     await tester.pumpWidget(
       AppLocaleScope(
@@ -168,6 +176,41 @@ void main() {
 
       expect(find.text('What is CET?'), findsOneWidget);
       expect(find.text('Reply to a typed question.'), findsOneWidget);
+    },
+  );
+
+  testWidgets(
+    'a premium user on first entry sees the AI-consent disclosure instead '
+    'of the chat input (Apple 5.1.2(i) / Google Play AI-disclosure policy)',
+    (tester) async {
+      await pumpScreen(tester, isPremium: true, consentAcknowledged: false);
+
+      expect(find.text(strings.aiAssistantConsentTitle), findsOneWidget);
+      expect(find.text(strings.aiAssistantConsentButton), findsOneWidget);
+      expect(find.byType(TextField), findsNothing);
+    },
+  );
+
+  testWidgets(
+    'acknowledging the AI-consent disclosure reveals the normal chat input, '
+    'and a fresh screen instance with the flag already set skips the '
+    'disclosure entirely',
+    (tester) async {
+      await pumpScreen(tester, isPremium: true, consentAcknowledged: false);
+
+      await tester.tap(find.text(strings.aiAssistantConsentButton));
+      await tester.pumpAndSettle();
+
+      expect(find.text(strings.aiAssistantConsentTitle), findsNothing);
+      expect(find.byType(TextField), findsOneWidget);
+
+      // Simulate relaunching the screen now that markAcknowledged() has
+      // persisted the flag -- a fresh instance should go straight to the
+      // normal chat input without re-showing the disclosure.
+      await pumpScreen(tester, isPremium: true, consentAcknowledged: true);
+
+      expect(find.text(strings.aiAssistantConsentTitle), findsNothing);
+      expect(find.byType(TextField), findsOneWidget);
     },
   );
 }

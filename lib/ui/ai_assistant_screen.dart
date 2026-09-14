@@ -9,9 +9,11 @@ import '../l10n/app_locale_scope.dart';
 import '../l10n/strings.dart';
 import '../models/chat_message.dart';
 import '../services/ai_assistant_service.dart';
+import '../services/ai_consent_store.dart';
 import '../services/entitlement_service.dart';
 import '../services/purchases_config.dart';
 import 'calculator_page/calculator_page_widgets.dart';
+import 'widgets/welding_loader.dart';
 
 /// In-app AI chat that answers questions about this app's calculators and
 /// general welding-standard concepts (see the implementation plan's
@@ -23,11 +25,14 @@ class AiAssistantScreen extends StatefulWidget {
     super.key,
     EntitlementService? entitlementService,
     AiAssistantService? assistantService,
+    AiConsentStore? consentStore,
   }) : entitlementService = entitlementService ?? EntitlementService(),
-       assistantService = assistantService ?? const AiAssistantService();
+       assistantService = assistantService ?? const AiAssistantService(),
+       consentStore = consentStore ?? const AiConsentStore();
 
   final EntitlementService entitlementService;
   final AiAssistantService assistantService;
+  final AiConsentStore consentStore;
 
   @override
   State<AiAssistantScreen> createState() => _AiAssistantScreenState();
@@ -36,6 +41,7 @@ class AiAssistantScreen extends StatefulWidget {
 class _AiAssistantScreenState extends State<AiAssistantScreen> {
   bool _isPremium = false;
   bool _isSending = false;
+  bool _consentAcknowledged = false;
   final List<ChatMessage> _messages = [];
   final TextEditingController _inputController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
@@ -45,6 +51,19 @@ class _AiAssistantScreenState extends State<AiAssistantScreen> {
   void initState() {
     super.initState();
     _initEntitlement();
+    _initConsent();
+  }
+
+  Future<void> _initConsent() async {
+    final acknowledged = await widget.consentStore.isAcknowledged();
+    if (!mounted) return;
+    setState(() => _consentAcknowledged = acknowledged);
+  }
+
+  Future<void> _acknowledgeConsent() async {
+    await widget.consentStore.markAcknowledged();
+    if (!mounted) return;
+    setState(() => _consentAcknowledged = true);
   }
 
   Future<void> _initEntitlement() async {
@@ -91,7 +110,7 @@ class _AiAssistantScreenState extends State<AiAssistantScreen> {
 
   Future<void> _send(String text) async {
     final trimmed = text.trim();
-    if (trimmed.isEmpty || _isSending) return;
+    if (trimmed.isEmpty || _isSending || !_consentAcknowledged) return;
     final strings = AppLocaleScope.stringsOf(context);
     final locale = AppLocaleScope.of(context).language.code;
 
@@ -182,6 +201,9 @@ class _AiAssistantScreenState extends State<AiAssistantScreen> {
   }
 
   Widget _buildChat(L10nStrings strings) {
+    if (!_consentAcknowledged) {
+      return _buildConsentGate(strings);
+    }
     return Column(
       children: [
         Expanded(
@@ -197,11 +219,7 @@ class _AiAssistantScreenState extends State<AiAssistantScreen> {
         if (_isSending)
           const Padding(
             padding: EdgeInsets.symmetric(vertical: 8),
-            child: SizedBox(
-              height: 18,
-              width: 18,
-              child: CircularProgressIndicator(strokeWidth: 2),
-            ),
+            child: WeldingLoader(size: 18, bladeColor: Color(0xFF12191B)),
           ),
         const SizedBox(height: 8),
         Row(
@@ -247,6 +265,54 @@ class _AiAssistantScreenState extends State<AiAssistantScreen> {
             onPressed: () => _send(strings.aiAssistantSuggestionCoolingPrompt),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildConsentGate(L10nStrings strings) {
+    // Same scrollable-card shape as _buildPremiumGate below -- see that
+    // method's comment for why this can't just be Center-ed.
+    return SingleChildScrollView(
+      child: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 420),
+          child: Card(
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(
+                    Icons.privacy_tip_outlined,
+                    size: 40,
+                    color: Color(0xFF12191B),
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    strings.aiAssistantConsentTitle,
+                    textAlign: TextAlign.center,
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    strings.aiAssistantConsentBody,
+                    textAlign: TextAlign.center,
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: const Color(0xFF607482),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  FilledButton(
+                    onPressed: _acknowledgeConsent,
+                    child: Text(strings.aiAssistantConsentButton),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -489,14 +555,7 @@ class _AiAssistantPaywallSheetState extends State<_AiAssistantPaywallSheet> {
           ),
         ),
         child: busy
-            ? const SizedBox(
-                width: 18,
-                height: 18,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2.2,
-                  color: Colors.white,
-                ),
-              )
+            ? const WeldingLoader(size: 18, bladeColor: Colors.white)
             : Text(label),
       ),
     );
@@ -564,7 +623,9 @@ class _AiAssistantPaywallSheetState extends State<_AiAssistantPaywallSheet> {
             const Text('Cancel anytime from Settings'),
             const SizedBox(height: 22),
             if (_loadingOffering)
-              const Center(child: CircularProgressIndicator())
+              const Center(
+                child: WeldingLoader(size: 36, bladeColor: Color(0xFF12191B)),
+              )
             else if (_hasAnyPackage) ...[
               if (_monthlyPackage != null) ...[
                 _buildPurchaseButton(
@@ -599,10 +660,9 @@ class _AiAssistantPaywallSheetState extends State<_AiAssistantPaywallSheet> {
                     ? null
                     : _restore,
                 child: _restoring
-                    ? const SizedBox(
-                        width: 18,
-                        height: 18,
-                        child: CircularProgressIndicator(strokeWidth: 2.2),
+                    ? const WeldingLoader(
+                        size: 18,
+                        bladeColor: Color(0xFF12191B),
                       )
                     : const Text('Restore Purchases'),
               ),
