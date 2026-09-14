@@ -340,6 +340,7 @@ class L10nStrings {
     required this.calcAccountEmailInvalidError,
     required this.calcCalculationFailedError,
     required this.calcFieldRequiredError,
+    required this.calcFieldOutOfRangeError,
     required this.calcErrorLabelQuantity,
     required this.calcErrorLabelDensity,
     required this.calcErrorLabelWasteFactor,
@@ -595,6 +596,9 @@ class L10nStrings {
     required this.aiAssistantPremiumGateTitle,
     required this.aiAssistantPremiumGateBody,
     required this.aiAssistantPremiumGateButton,
+    required this.aiAssistantConsentTitle,
+    required this.aiAssistantConsentBody,
+    required this.aiAssistantConsentButton,
   });
 
   final String navBrand;
@@ -936,6 +940,7 @@ class L10nStrings {
   final String calcAccountEmailInvalidError;
   final String calcCalculationFailedError;
   final String calcFieldRequiredError;
+  final String calcFieldOutOfRangeError;
   final String calcErrorLabelQuantity;
   final String calcErrorLabelDensity;
   final String calcErrorLabelWasteFactor;
@@ -1197,6 +1202,9 @@ class L10nStrings {
   final String aiAssistantPremiumGateTitle;
   final String aiAssistantPremiumGateBody;
   final String aiAssistantPremiumGateButton;
+  final String aiAssistantConsentTitle;
+  final String aiAssistantConsentBody;
+  final String aiAssistantConsentButton;
 }
 
 const Map<AppLanguage, L10nStrings> _strings = {
@@ -1628,6 +1636,7 @@ const Map<AppLanguage, L10nStrings> _strings = {
     calcAccountEmailInvalidError: 'Enter a valid email.',
     calcCalculationFailedError: 'Calculation failed. Please review the inputs.',
     calcFieldRequiredError: '{label} must be a valid number.',
+    calcFieldOutOfRangeError: '{label} must be at most {max}.',
     calcErrorLabelQuantity: 'Quantity',
     calcErrorLabelDensity: 'Density',
     calcErrorLabelWasteFactor: 'Waste factor',
@@ -1944,6 +1953,10 @@ const Map<AppLanguage, L10nStrings> _strings = {
     aiAssistantPremiumGateBody:
         'Unlock Premium to ask the AI assistant about your calculations and general welding-standard concepts.',
     aiAssistantPremiumGateButton: 'Unlock Premium',
+    aiAssistantConsentTitle: 'Before you start chatting',
+    aiAssistantConsentBody:
+        'Your messages are sent to a third-party AI service to generate a response. Please avoid sharing sensitive personal information.',
+    aiAssistantConsentButton: 'I understand',
   ),
   AppLanguage.tr: L10nStrings(
     navBrand: 'Varyos Weld',
@@ -2377,6 +2390,7 @@ const Map<AppLanguage, L10nStrings> _strings = {
     calcCalculationFailedError:
         'Hesaplama başarısız oldu. Lütfen girişleri gözden geçirin.',
     calcFieldRequiredError: '{label} geçerli bir sayı olmalıdır.',
+    calcFieldOutOfRangeError: '{label} en fazla {max} olmalıdır.',
     calcErrorLabelQuantity: 'Adet',
     calcErrorLabelDensity: 'Yoğunluk',
     calcErrorLabelWasteFactor: 'Fire payı',
@@ -2692,6 +2706,10 @@ const Map<AppLanguage, L10nStrings> _strings = {
     aiAssistantPremiumGateBody:
         "Hesaplamalarınız ve genel kaynak standardı kavramları hakkında yapay zeka asistanına soru sormak için Premium'u açın.",
     aiAssistantPremiumGateButton: "Premium'u Aç",
+    aiAssistantConsentTitle: 'Sohbete başlamadan önce',
+    aiAssistantConsentBody:
+        'Mesajlarınız bir yanıt oluşturmak için üçüncü taraf bir yapay zeka hizmetine gönderilir. Lütfen hassas kişisel bilgi paylaşmayın.',
+    aiAssistantConsentButton: 'Anladım',
   ),
   AppLanguage.ru: L10nStrings(
     navBrand: 'Varyos Weld',
@@ -3137,6 +3155,7 @@ const Map<AppLanguage, L10nStrings> _strings = {
     calcCalculationFailedError:
         'Расчёт не выполнен. Пожалуйста, проверьте введённые данные.',
     calcFieldRequiredError: '{label} должно быть корректным числом.',
+    calcFieldOutOfRangeError: '{label} должно быть не более {max}.',
     calcErrorLabelQuantity: 'Количество',
     calcErrorLabelDensity: 'Плотность',
     calcErrorLabelWasteFactor: 'Припуск на потери',
@@ -3459,6 +3478,10 @@ const Map<AppLanguage, L10nStrings> _strings = {
     aiAssistantPremiumGateBody:
         'Откройте Premium, чтобы задавать ИИ-ассистенту вопросы о ваших расчётах и общих понятиях сварочных стандартов.',
     aiAssistantPremiumGateButton: 'Открыть Premium',
+    aiAssistantConsentTitle: 'Прежде чем начать чат',
+    aiAssistantConsentBody:
+        'Ваши сообщения отправляются стороннему ИИ-сервису для формирования ответа. Пожалуйста, не указывайте конфиденциальную личную информацию.',
+    aiAssistantConsentButton: 'Я понимаю',
   ),
   AppLanguage.de: L10nStrings(
     navBrand: 'Varyos Weld',
@@ -3899,6 +3922,7 @@ const Map<AppLanguage, L10nStrings> _strings = {
     calcCalculationFailedError:
         'Berechnung fehlgeschlagen. Bitte überprüfen Sie die Eingaben.',
     calcFieldRequiredError: '{label} muss eine gültige Zahl sein.',
+    calcFieldOutOfRangeError: '{label} darf höchstens {max} betragen.',
     calcErrorLabelQuantity: 'Anzahl',
     calcErrorLabelDensity: 'Dichte',
     calcErrorLabelWasteFactor: 'Verschnittfaktor',
@@ -4229,6 +4253,10 @@ const Map<AppLanguage, L10nStrings> _strings = {
     aiAssistantPremiumGateBody:
         'Schalten Sie Premium frei, um dem KI-Assistenten Fragen zu Ihren Berechnungen und allgemeinen Schweißnorm-Konzepten zu stellen.',
     aiAssistantPremiumGateButton: 'Premium freischalten',
+    aiAssistantConsentTitle: 'Bevor Sie chatten',
+    aiAssistantConsentBody:
+        'Ihre Nachrichten werden zur Erstellung einer Antwort an einen KI-Dienst eines Drittanbieters gesendet. Bitte teilen Sie keine sensiblen persönlichen Informationen mit.',
+    aiAssistantConsentButton: 'Ich verstehe',
   ),
   AppLanguage.hi: L10nStrings(
     navBrand: 'Varyos Weld',
@@ -4658,6 +4686,7 @@ const Map<AppLanguage, L10nStrings> _strings = {
     calcAccountEmailInvalidError: 'एक मान्य ईमेल दर्ज करें।',
     calcCalculationFailedError: 'गणना विफल रही। कृपया इनपुट की समीक्षा करें।',
     calcFieldRequiredError: '{label} एक मान्य संख्या होनी चाहिए।',
+    calcFieldOutOfRangeError: '{label} अधिकतम {max} होना चाहिए।',
     calcErrorLabelQuantity: 'मात्रा',
     calcErrorLabelDensity: 'डेंसिटी',
     calcErrorLabelWasteFactor: 'वेस्ट फैक्टर',
@@ -4990,6 +5019,10 @@ const Map<AppLanguage, L10nStrings> _strings = {
     aiAssistantPremiumGateBody:
         'अपनी कैलकुलेशन और सामान्य वेल्डिंग स्टैंडर्ड अवधारणाओं के बारे में एआई असिस्टेंट से पूछने के लिए प्रीमियम अनलॉक करें।',
     aiAssistantPremiumGateButton: 'प्रीमियम अनलॉक करें',
+    aiAssistantConsentTitle: 'चैट शुरू करने से पहले',
+    aiAssistantConsentBody:
+        'आपके मेसेज जवाब जनरेट करने के लिए एक थर्ड-पार्टी एआई सर्विस को भेजे जाते हैं। कृपया कोई संवेदनशील पर्सनल जानकारी शेयर न करें।',
+    aiAssistantConsentButton: 'मैं समझता हूँ',
   ),
 };
 

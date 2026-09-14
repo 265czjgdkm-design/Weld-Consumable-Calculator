@@ -1798,6 +1798,45 @@ class _CalculatorPageState extends State<CalculatorPage> {
     FieldKey.legSizeMm,
   };
 
+  // Plausibility ceilings for the dimension-entry fields above, so an
+  // obvious typo (e.g. 500 mm keyed in where 50 mm was meant) is rejected
+  // with a clear error instead of silently accepted. Deliberately generous
+  // -- each one sits well above the largest values seen in real heavy-
+  // industrial welding, so no genuinely unusual-but-real input is blocked.
+  static const Map<FieldKey, double> _dimensionMaxBounds = {
+    // Large-diameter line pipe/pressure-vessel nozzles run into the 1-2 m
+    // range; 3000 mm leaves headroom above that.
+    FieldKey.pipeOdMm: 3000,
+    FieldKey.pipeOdAMm: 3000,
+    FieldKey.pipeOdBMm: 3000,
+    // Heavy pressure-vessel/forged wall sections rarely exceed a few
+    // hundred mm; 500 mm is roughly 2x that.
+    FieldKey.thicknessMm: 500,
+    FieldKey.thicknessAMm: 500,
+    FieldKey.thicknessBMm: 500,
+    // Real root gaps run 0-6 mm; even a generously wide repair-weld
+    // fit-up rarely exceeds ~25 mm, so 50 mm already doubles that.
+    FieldKey.rootGapMm: 50,
+    // Root face (land) is a fraction of thickness; 100 mm covers even
+    // very thick-section allowances.
+    FieldKey.rootFaceMm: 100,
+    // A bevel angle is a physical angle and can never reach/exceed 180
+    // degrees. WeldCalculator's groove-specific checks already cap this
+    // tighter (<90 deg for V-groove types), but bounding it here too
+    // rejects a bad value before any groove-specific math runs.
+    FieldKey.bevelAngleDeg: 180,
+    FieldKey.secondaryBevelAngleDeg: 180,
+    // Bounded by the same reasoning as thickness above -- break height
+    // can never exceed the plate-thickness ceiling.
+    FieldKey.breakHeightMm: 500,
+    // Cap reinforcement passes add a few mm at most; 100 mm is generous.
+    FieldKey.capOverlapMm: 100,
+    FieldKey.capHeightMm: 100,
+    // Heavy structural/shipbuilding fillets can reach several tens of mm;
+    // 200 mm leaves ample headroom above that.
+    FieldKey.legSizeMm: 200,
+  };
+
   List<InputFieldSpec> _wizardDimensionFields(L10nStrings strings) =>
       _visibleFieldSpecs(
         strings,
@@ -3179,16 +3218,66 @@ class _CalculatorPageState extends State<CalculatorPage> {
           strings,
         ),
         lengthPerPieceMm: _parseOptional(FieldKey.lengthMm),
-        pipeOdMm: _resolvePipeOdForCalculation(),
-        thicknessMm: _resolveThicknessForCalculation(),
-        rootGapMm: _parseOptional(FieldKey.rootGapMm),
-        rootFaceMm: _parseOptional(FieldKey.rootFaceMm),
-        bevelAngleDeg: _parseOptional(FieldKey.bevelAngleDeg),
-        secondaryBevelAngleDeg: _parseOptional(FieldKey.secondaryBevelAngleDeg),
-        breakHeightMm: _parseOptional(FieldKey.breakHeightMm),
-        capOverlapMm: _parseOptional(FieldKey.capOverlapMm),
-        capHeightMm: _parseOptional(FieldKey.capHeightMm),
-        legSizeMm: _parseOptional(FieldKey.legSizeMm),
+        pipeOdMm: _checkDimensionBound(
+          _resolvePipeOdForCalculation(),
+          FieldKey.pipeOdMm,
+          strings.calcFieldPipeOdLabel,
+          strings,
+        ),
+        thicknessMm: _checkDimensionBound(
+          _resolveThicknessForCalculation(),
+          FieldKey.thicknessMm,
+          strings.calcFieldThicknessLabel,
+          strings,
+        ),
+        rootGapMm: _checkDimensionBound(
+          _parseOptional(FieldKey.rootGapMm),
+          FieldKey.rootGapMm,
+          strings.calcFieldRootGapLabel,
+          strings,
+        ),
+        rootFaceMm: _checkDimensionBound(
+          _parseOptional(FieldKey.rootFaceMm),
+          FieldKey.rootFaceMm,
+          strings.calcFieldRootFaceLabel,
+          strings,
+        ),
+        bevelAngleDeg: _checkDimensionBound(
+          _parseOptional(FieldKey.bevelAngleDeg),
+          FieldKey.bevelAngleDeg,
+          strings.calcFieldBevelAngleLabel,
+          strings,
+        ),
+        secondaryBevelAngleDeg: _checkDimensionBound(
+          _parseOptional(FieldKey.secondaryBevelAngleDeg),
+          FieldKey.secondaryBevelAngleDeg,
+          strings.calcFieldSecondaryAngleLabel,
+          strings,
+        ),
+        breakHeightMm: _checkDimensionBound(
+          _parseOptional(FieldKey.breakHeightMm),
+          FieldKey.breakHeightMm,
+          strings.calcFieldBreakHeightLabel,
+          strings,
+        ),
+        capOverlapMm: _checkDimensionBound(
+          _parseOptional(FieldKey.capOverlapMm),
+          FieldKey.capOverlapMm,
+          strings.calcFieldCapOverlapLabel,
+          strings,
+        ),
+        capHeightMm: _checkDimensionBound(
+          _parseOptional(FieldKey.capHeightMm),
+          FieldKey.capHeightMm,
+          strings.calcFieldCapHeightLabel,
+          strings,
+        ),
+        legSizeMm: _checkDimensionBound(
+          _parseOptional(FieldKey.legSizeMm),
+          FieldKey.legSizeMm,
+          strings.calcFieldLegSizeLabel,
+          strings,
+        ),
         gtawTransitionMm: _parseOptional(FieldKey.gtawTransitionMm),
         wireDiameterMm: _parseOptional(FieldKey.wireDiameterMm),
         electrodeDiameterMm: _parseOptional(FieldKey.electrodeDiameterMm),
@@ -3433,6 +3522,30 @@ class _CalculatorPageState extends State<CalculatorPage> {
     final value = _controllers[key]!.text.trim();
     if (value.isEmpty) return null;
     return double.tryParse(value.replaceAll(',', '.'));
+  }
+
+  /// Rejects a physically-implausible dimension value against
+  /// [_dimensionMaxBounds] instead of silently accepting it -- see that
+  /// map's comment for the reasoning behind each ceiling. Fields with no
+  /// entry there (or no value at all) pass through unchanged.
+  double? _checkDimensionBound(
+    double? value,
+    FieldKey key,
+    String label,
+    L10nStrings strings,
+  ) {
+    final max = _dimensionMaxBounds[key];
+    if (value == null || max == null || value <= max) return value;
+    final unit = key == FieldKey.bevelAngleDeg ||
+            key == FieldKey.secondaryBevelAngleDeg
+        ? '°'
+        : ' mm';
+    throw _RequiredFieldMissingException(
+      key,
+      strings.calcFieldOutOfRangeError
+          .replaceFirst('{label}', label)
+          .replaceFirst('{max}', '${max.toStringAsFixed(0)}$unit'),
+    );
   }
 
   double? _parsePreviewValue(FieldKey key) {
