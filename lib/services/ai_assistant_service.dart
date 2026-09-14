@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:math';
 
@@ -32,19 +33,29 @@ class AiAssistantService {
     required String locale,
   }) async {
     final clientId = await _getOrCreateClientId();
-    final response = await http
-        .post(
-          Uri.parse(AiAssistantConfig.chatApiUrl),
-          headers: {
-            'Content-Type': 'application/json',
-            'X-Client-Id': clientId,
-          },
-          body: jsonEncode({
-            'messages': messages.map((message) => message.toJson()).toList(),
-            'locale': locale,
-          }),
-        )
-        .timeout(const Duration(seconds: 30));
+    final http.Response response;
+    try {
+      response = await http
+          .post(
+            Uri.parse(AiAssistantConfig.chatApiUrl),
+            headers: {
+              'Content-Type': 'application/json',
+              'X-Client-Id': clientId,
+            },
+            body: jsonEncode({
+              'messages': messages.map((message) => message.toJson()).toList(),
+              'locale': locale,
+            }),
+          )
+          .timeout(const Duration(seconds: 30));
+    } on TimeoutException {
+      // Distinct from a generic network failure so the UI can show
+      // aiAssistantErrorTimeout instead of the generic network-error
+      // message -- see ai_assistant_screen.dart's _errorMessageFor, which
+      // already had a 'timeout' branch wired for the worker's own 504 but
+      // could never reach it from a client-side timeout before this catch.
+      throw const AiAssistantException('timeout');
+    }
     final body = _decode(response.body);
     final reply = body['reply'];
     if (reply is String) return reply;
