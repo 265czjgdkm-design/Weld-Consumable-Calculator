@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 
 import '../l10n/app_locale_scope.dart';
@@ -12,6 +14,15 @@ import 'widgets/optional_number_field.dart';
 /// explicitly deferred follow-up. Chemical composition / CET / Pcm are
 /// captured as raw data only -- no carbon-equivalent calculation is done
 /// here, that's a separate future task pending formula research.
+final _idRandom = math.Random();
+
+/// `DateTime.now().microsecondsSinceEpoch` only has millisecond resolution
+/// on Flutter Web (the JS clock has no microsecond component), so two
+/// materials added within the same millisecond would otherwise collide and
+/// silently share an id -- appending random entropy avoids that.
+String _generateMaterialId() =>
+    '${DateTime.now().microsecondsSinceEpoch}-${_idRandom.nextInt(1 << 32)}';
+
 class BaseMaterialScreen extends StatefulWidget {
   const BaseMaterialScreen({super.key});
 
@@ -46,12 +57,16 @@ class _BaseMaterialScreenState extends State<BaseMaterialScreen> {
   Future<void> _addMaterial() async {
     final result = await showDialog<_BaseMaterialFormResult>(
       context: context,
-      builder: (context) => const _BaseMaterialFormDialog(),
+      builder: (context) => _BaseMaterialFormDialog(
+        existingNames: _materials
+            .map((item) => item.name.trim().toLowerCase())
+            .toSet(),
+      ),
     );
     if (result == null) return;
 
     final material = CustomBaseMaterial(
-      id: DateTime.now().microsecondsSinceEpoch.toString(),
+      id: _generateMaterialId(),
       name: result.name,
       designation: result.designation,
       notes: result.notes,
@@ -85,7 +100,13 @@ class _BaseMaterialScreenState extends State<BaseMaterialScreen> {
   Future<void> _editMaterial(CustomBaseMaterial material) async {
     final result = await showDialog<_BaseMaterialFormResult>(
       context: context,
-      builder: (context) => _BaseMaterialFormDialog(initial: material),
+      builder: (context) => _BaseMaterialFormDialog(
+        initial: material,
+        existingNames: _materials
+            .where((item) => item.id != material.id)
+            .map((item) => item.name.trim().toLowerCase())
+            .toSet(),
+      ),
     );
     if (result == null) return;
 
@@ -118,9 +139,15 @@ class _BaseMaterialScreenState extends State<BaseMaterialScreen> {
       cetPercent: result.cetPercent,
       pcmPercent: result.pcmPercent,
     );
-    final materials = _materials
-        .map((item) => item.id == updated.id ? updated : item)
-        .toList();
+    // Re-sort by recency (matching CustomBaseMaterialStore.load()'s own
+    // sort) instead of leaving the edited item at its old list index --
+    // otherwise the in-memory order would silently disagree with the order
+    // the same data reloads in on the next app launch.
+    final materials =
+        _materials
+            .map((item) => item.id == updated.id ? updated : item)
+            .toList()
+          ..sort((a, b) => b.updatedAtEpochMs.compareTo(a.updatedAtEpochMs));
     await _store.save(materials);
     if (!mounted) return;
     setState(() => _materials = materials);
@@ -356,9 +383,15 @@ String? _positiveFieldError(L10nStrings strings, OptionalNumberParseResult resul
 /// -- see calculator_page.dart's `_PresetNameDialog` for why disposing them
 /// right after `showDialog` returns crashes Flutter web.
 class _BaseMaterialFormDialog extends StatefulWidget {
-  const _BaseMaterialFormDialog({this.initial});
+  const _BaseMaterialFormDialog({this.initial, this.existingNames = const {}});
 
   final CustomBaseMaterial? initial;
+
+  /// Trimmed, lowercased names of every *other* material already in the
+  /// library -- used to flag (not block) a name collision as the user
+  /// types, so two entries don't end up indistinguishable in the
+  /// calculator's "My Materials" dropdown.
+  final Set<String> existingNames;
 
   @override
   State<_BaseMaterialFormDialog> createState() =>
@@ -410,9 +443,34 @@ class _BaseMaterialFormDialogState extends State<_BaseMaterialFormDialog> {
   String? _cetError;
   String? _pcmError;
   Map<String, String?> _elementErrors = const {};
+  String? _duplicateNameWarning;
+
+  @override
+  void initState() {
+    super.initState();
+    _nameController.addListener(_updateDuplicateNameWarning);
+  }
+
+  // Non-blocking: flags a name already used by another library entry as the
+  // user types, so two entries don't end up indistinguishable in the
+  // calculator's "My Materials" dropdown -- but doesn't stop the save,
+  // since a legitimate reason to reuse a name (e.g. two heats of the same
+  // spec) isn't this form's call to make.
+  void _updateDuplicateNameWarning() {
+    final normalized = _nameController.text.trim().toLowerCase();
+    final isDuplicate =
+        normalized.isNotEmpty && widget.existingNames.contains(normalized);
+    final warning = isDuplicate
+        ? AppLocaleScope.stringsOf(context).materialFieldDuplicateNameWarning
+        : null;
+    if (warning != _duplicateNameWarning) {
+      setState(() => _duplicateNameWarning = warning);
+    }
+  }
 
   @override
   void dispose() {
+    _nameController.removeListener(_updateDuplicateNameWarning);
     _nameController.dispose();
     _designationController.dispose();
     _notesController.dispose();
@@ -545,6 +603,9 @@ class _BaseMaterialFormDialogState extends State<_BaseMaterialFormDialog> {
               decoration: InputDecoration(
                 labelText: strings.baseMaterialFieldName,
                 errorText: _nameError,
+                helperText: _duplicateNameWarning,
+                helperStyle: const TextStyle(color: Color(0xFFB06B00)),
+                helperMaxLines: 2,
               ),
             ),
             const SizedBox(height: 12),

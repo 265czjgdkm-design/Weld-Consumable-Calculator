@@ -106,6 +106,7 @@ class L10nStrings {
     required this.materialFieldPcm,
     required this.materialFieldInvalidNumber,
     required this.materialFieldOutOfRange,
+    required this.materialFieldDuplicateNameWarning,
     required this.consumableFamilyCarbonSteel,
     required this.consumableFamilyStainlessSteel,
     required this.consumableFamilyDissimilar,
@@ -705,6 +706,7 @@ class L10nStrings {
   final String materialFieldPcm;
   final String materialFieldInvalidNumber;
   final String materialFieldOutOfRange;
+  final String materialFieldDuplicateNameWarning;
   final String consumableFamilyCarbonSteel;
   final String consumableFamilyStainlessSteel;
   final String consumableFamilyDissimilar;
@@ -1329,6 +1331,8 @@ const Map<AppLanguage, L10nStrings> _strings = {
     materialFieldPcm: 'Pcm (%)',
     materialFieldInvalidNumber: 'Enter a valid number',
     materialFieldOutOfRange: 'Enter a value in the valid range',
+    materialFieldDuplicateNameWarning:
+        'Another material in your library already uses this name',
     consumableFamilyCarbonSteel: 'Carbon Steel',
     consumableFamilyStainlessSteel: 'Stainless Steel',
     consumableFamilyDissimilar: 'Dissimilar',
@@ -2086,6 +2090,8 @@ const Map<AppLanguage, L10nStrings> _strings = {
     materialFieldPcm: 'Pcm (%)',
     materialFieldInvalidNumber: 'Geçerli bir sayı gir',
     materialFieldOutOfRange: 'Geçerli aralıkta bir değer gir',
+    materialFieldDuplicateNameWarning:
+        'Kütüphanenizde bu isimde başka bir malzeme zaten var',
     consumableFamilyCarbonSteel: 'Karbon Çeliği',
     consumableFamilyStainlessSteel: 'Paslanmaz Çelik',
     consumableFamilyDissimilar: 'Farklı Metal',
@@ -2848,6 +2854,8 @@ const Map<AppLanguage, L10nStrings> _strings = {
     materialFieldPcm: 'Pcm (%)',
     materialFieldInvalidNumber: 'Введите корректное число',
     materialFieldOutOfRange: 'Введите значение в допустимом диапазоне',
+    materialFieldDuplicateNameWarning:
+        'В вашей библиотеке уже есть материал с этим названием',
     consumableFamilyCarbonSteel: 'Углеродистая сталь',
     consumableFamilyStainlessSteel: 'Нержавеющая сталь',
     consumableFamilyDissimilar: 'Разнородные металлы',
@@ -3628,6 +3636,8 @@ const Map<AppLanguage, L10nStrings> _strings = {
     materialFieldPcm: 'Pcm (%)',
     materialFieldInvalidNumber: 'Geben Sie eine gültige Zahl ein',
     materialFieldOutOfRange: 'Geben Sie einen Wert im gültigen Bereich ein',
+    materialFieldDuplicateNameWarning:
+        'Ein anderes Material in Ihrer Bibliothek verwendet diesen Namen bereits',
     consumableFamilyCarbonSteel: 'Kohlenstoffstahl',
     consumableFamilyStainlessSteel: 'Nichtrostender Stahl',
     consumableFamilyDissimilar: 'Mischverbindung',
@@ -4410,6 +4420,8 @@ const Map<AppLanguage, L10nStrings> _strings = {
     materialFieldPcm: 'Pcm (%)',
     materialFieldInvalidNumber: 'मान्य संख्या दर्ज करें',
     materialFieldOutOfRange: 'मान्य सीमा में एक मान दर्ज करें',
+    materialFieldDuplicateNameWarning:
+        'आपकी लाइब्रेरी में यह नाम पहले से ही किसी अन्य मटेरियल द्वारा उपयोग किया जा रहा है',
     consumableFamilyCarbonSteel: 'कार्बन स्टील',
     consumableFamilyStainlessSteel: 'स्टेनलेस स्टील',
     consumableFamilyDissimilar: 'डिसिमिलर मेटल',
