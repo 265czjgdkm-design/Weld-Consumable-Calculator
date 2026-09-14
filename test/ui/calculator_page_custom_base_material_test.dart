@@ -7,6 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:weld_consumable_calculator/app.dart';
 import 'package:weld_consumable_calculator/models/base_material_selection.dart';
 import 'package:weld_consumable_calculator/models/custom_material_models.dart';
+import 'package:weld_consumable_calculator/models/weld_models.dart' show InputPreset;
 
 const _customMaterial = CustomBaseMaterial(
   id: 'base-custom-1',
@@ -106,6 +107,69 @@ void main() {
       expect(
         find.textContaining('Acme S355', findRichText: true),
         findsWidgets,
+      );
+    },
+  );
+
+  testWidgets(
+    'applying a starter template preserves an already-selected base '
+    'material instead of silently clearing it (reviewer finding #2: '
+    'built-in templates have no opinion on base metal, so they must not '
+    'wipe out one the user already picked)',
+    (tester) async {
+      final originalPhysicalSize = tester.view.physicalSize;
+      final originalDevicePixelRatio = tester.view.devicePixelRatio;
+      tester.view.physicalSize = const Size(800, 3000);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(() {
+        tester.view.physicalSize = originalPhysicalSize;
+        tester.view.devicePixelRatio = originalDevicePixelRatio;
+      });
+
+      await _pumpToConsumableStep(tester);
+
+      // Select the custom base material on the consumable step.
+      await tester.tap(
+        find.byWidgetPredicate(
+          (widget) => widget is DropdownButtonFormField<BaseMaterialSelection?>,
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Acme S355').last);
+      await tester.pumpAndSettle();
+      expect(
+        find.textContaining('Selected base material: Acme S355'),
+        findsOneWidget,
+      );
+
+      // Back to the dimensions step, where the Starting Template picker
+      // lives, and apply a built-in template. Uses a template on the
+      // wizard's own default process (GTAW) deliberately, since the mobile
+      // wizard's Starting Template list is filtered to the current process
+      // (see _buildStarterPresetSection's filterByCurrentProcess) -- a
+      // cross-process template like the GMAW one wouldn't even appear here.
+      await tester.ensureVisible(find.text('Back'));
+      await tester.tap(find.text('Back')); // consumable -> dimensions
+      await tester.pumpAndSettle();
+
+      await tester.tap(
+        find.byWidgetPredicate(
+          (widget) => widget is DropdownButtonFormField<InputPreset>,
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('SS Pipe Single V / GTAW').last);
+      await tester.pumpAndSettle();
+
+      // Forward again to the consumable step and confirm the base material
+      // selection survived the template application untouched.
+      await tester.ensureVisible(find.text('Continue'));
+      await tester.tap(find.text('Continue')); // dimensions -> consumable
+      await tester.pumpAndSettle();
+
+      expect(
+        find.textContaining('Selected base material: Acme S355'),
+        findsOneWidget,
       );
     },
   );

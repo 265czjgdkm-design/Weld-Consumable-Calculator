@@ -1558,6 +1558,12 @@ class _CalculatorPageState extends State<CalculatorPage> {
                           '(${_baseMaterialSelection!.material.designation})',
               ),
             ),
+          ] else if (_baseMaterialsLoaded && displayedCustomOptions.isEmpty) ...[
+            const SizedBox(height: 12),
+            PanelNote(
+              icon: Icons.info_outline,
+              text: strings.calcBaseMaterialEmptyLibraryHint,
+            ),
           ],
         ],
       ),
@@ -2740,11 +2746,18 @@ class _CalculatorPageState extends State<CalculatorPage> {
     _jointGeometryMode = data.jointGeometryMode;
     _jointAlignment = data.jointAlignment;
     _consumableSelection = data.consumableSelection;
-    // Direct assignment (not a _setControllerValue-style no-op-on-null
-    // helper) -- a preset/template saved without a base material must
-    // clear any stale value from before this preset was applied, matching
-    // the bug class the cap-dimension fields hit (see _clearCapDimensionFields).
-    _baseMaterialSelection = data.baseMaterialSelection;
+    // Loading a real saved calculation (usePresetDiameters: false, via
+    // _applyUserPreset) must fully overwrite the base material -- including
+    // clearing it -- to match what the user actually had saved, same as the
+    // cap-dimension fields (see _clearCapDimensionFields). A built-in
+    // starter TEMPLATE (usePresetDiameters: true) is different: it's a
+    // fixed geometry/process catalog entry with no opinion on base metal
+    // (its own WeldInputPresetData.baseMaterialSelection is always null),
+    // so overwriting here would silently wipe out a base material the user
+    // had already picked before applying the template. Preserve it instead.
+    if (!usePresetDiameters) {
+      _baseMaterialSelection = data.baseMaterialSelection;
+    }
 
     _applyProcessFieldDefaults();
     _syncConsumableForProcess();

@@ -294,6 +294,7 @@ class L10nStrings {
     required this.calcBaseMaterialSectionSubtitle,
     required this.calcBaseMaterialNotSpecifiedOption,
     required this.calcSelectedBaseMaterialNote,
+    required this.calcBaseMaterialEmptyLibraryHint,
     required this.drawingLabelFilletWeldFace,
     required this.drawingLabelTJoint,
     required this.drawingLabelSmawFillCap,
@@ -892,6 +893,7 @@ class L10nStrings {
   final String calcBaseMaterialSectionSubtitle;
   final String calcBaseMaterialNotSpecifiedOption;
   final String calcSelectedBaseMaterialNote;
+  final String calcBaseMaterialEmptyLibraryHint;
   final String drawingLabelFilletWeldFace;
   final String drawingLabelTJoint;
   final String drawingLabelSmawFillCap;
@@ -1581,6 +1583,9 @@ const Map<AppLanguage, L10nStrings> _strings = {
         'Optionally record the base material this calculation applies to, from your library.',
     calcBaseMaterialNotSpecifiedOption: 'Not specified',
     calcSelectedBaseMaterialNote: 'Selected base material: {value}',
+    calcBaseMaterialEmptyLibraryHint:
+        "You haven't saved any base materials yet -- add one from "
+        "the Base Material library on the Home screen to select it here.",
     drawingLabelFilletWeldFace: 'fillet weld face',
     drawingLabelTJoint: 'T-joint',
     drawingLabelSmawFillCap: 'SMAW fill / cap',
@@ -2339,6 +2344,9 @@ const Map<AppLanguage, L10nStrings> _strings = {
         'kitaplığınızdan kaydedin.',
     calcBaseMaterialNotSpecifiedOption: 'Belirtilmedi',
     calcSelectedBaseMaterialNote: 'Seçilen ana malzeme: {value}',
+    calcBaseMaterialEmptyLibraryHint:
+        'Henüz kayıtlı bir ana malzemeniz yok -- burada seçebilmek için '
+        'Ana Sayfa\'daki Ana Malzeme kitaplığından bir tane ekleyin.',
     drawingLabelFilletWeldFace: 'köşe kaynağı yüzeyi',
     drawingLabelTJoint: 'T-birleşimi',
     drawingLabelSmawFillCap: 'SMAW dolgu / kapak',
@@ -3106,6 +3114,9 @@ const Map<AppLanguage, L10nStrings> _strings = {
         'этот расчёт, из вашей библиотеки.',
     calcBaseMaterialNotSpecifiedOption: 'Не указано',
     calcSelectedBaseMaterialNote: 'Выбранный основной металл: {value}',
+    calcBaseMaterialEmptyLibraryHint:
+        'У вас пока нет сохранённых основных металлов -- добавьте его в '
+        'библиотеке основных металлов на главном экране, чтобы выбрать здесь.',
     drawingLabelFilletWeldFace: 'поверхность углового шва',
     drawingLabelTJoint: 'Т-образное соединение',
     drawingLabelSmawFillCap: 'SMAW заполнение / облицовка',
@@ -3880,6 +3891,10 @@ const Map<AppLanguage, L10nStrings> _strings = {
         'Ihrer Bibliothek zu.',
     calcBaseMaterialNotSpecifiedOption: 'Nicht angegeben',
     calcSelectedBaseMaterialNote: 'Ausgewählter Grundwerkstoff: {value}',
+    calcBaseMaterialEmptyLibraryHint:
+        'Sie haben noch keinen Grundwerkstoff gespeichert -- fügen Sie einen '
+        'über die Grundwerkstoff-Bibliothek auf dem Startbildschirm hinzu, '
+        'um ihn hier auszuwählen.',
     drawingLabelFilletWeldFace: 'Kehlnahtoberfläche',
     drawingLabelTJoint: 'T-Verbindung',
     drawingLabelSmawFillCap: 'SMAW Füllung / Decklage',
@@ -4651,6 +4666,9 @@ const Map<AppLanguage, L10nStrings> _strings = {
         'लाइब्रेरी से रिकॉर्ड करें।',
     calcBaseMaterialNotSpecifiedOption: 'निर्दिष्ट नहीं',
     calcSelectedBaseMaterialNote: 'चयनित बेस मटेरियल: {value}',
+    calcBaseMaterialEmptyLibraryHint:
+        'आपने अभी तक कोई बेस मटेरियल सेव नहीं किया है -- इसे यहाँ चुनने के लिए '
+        'होम स्क्रीन पर बेस मटेरियल लाइब्रेरी से एक जोड़ें।',
     drawingLabelFilletWeldFace: 'फिलेट वेल्ड फेस',
     drawingLabelTJoint: 'T-जॉइंट',
     drawingLabelSmawFillCap: 'SMAW फिल / कैप',
