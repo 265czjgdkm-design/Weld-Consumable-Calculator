@@ -86,6 +86,7 @@ enum BasisKey {
   groove,
   classification,
   fillerMetalFamily,
+  baseMaterial,
   density,
   wasteAllowance,
   quantity,
@@ -130,6 +131,9 @@ extension BasisKeyX on BasisKey {
     BasisKey.groove => strings.basisGroove,
     BasisKey.classification => strings.basisClassification,
     BasisKey.fillerMetalFamily => strings.basisFillerMetalFamily,
+    // Reuses the existing "Base Material" library-screen title rather than
+    // adding a near-duplicate string (see coder task decision #4/instr. 4).
+    BasisKey.baseMaterial => strings.baseMaterialTitle,
     BasisKey.density => strings.basisDensity,
     BasisKey.wasteAllowance => strings.basisWasteAllowance,
     BasisKey.quantity => strings.basisQuantity,

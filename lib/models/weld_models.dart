@@ -1,4 +1,5 @@
 import '../l10n/strings.dart';
+import 'base_material_selection.dart';
 import 'consumable_selection.dart';
 
 enum JointType { pipeButt, plateButt, fillet }
@@ -719,6 +720,7 @@ class WeldInputPresetData {
     this.depositionRateMode = DepositionRateMode.preset,
     this.jointGeometryMode = JointGeometryMode.equal,
     this.jointAlignment = JointAlignment.centerline,
+    this.baseMaterialSelection,
     this.densityGPerCm3,
     this.lengthPerPieceMm,
     this.pipeOdMm,
@@ -752,6 +754,9 @@ class WeldInputPresetData {
   final DepositionRateMode depositionRateMode;
   final JointGeometryMode jointGeometryMode;
   final JointAlignment jointAlignment;
+  // Optional -- unlike consumableSelection, no base material is required to
+  // run a calculation. `null` means "not specified".
+  final BaseMaterialSelection? baseMaterialSelection;
   final double quantity;
   final double wasteFactorPercent;
   final double? densityGPerCm3;
@@ -793,6 +798,10 @@ class WeldInputPresetData {
     'depositionRateMode': depositionRateMode.name,
     'jointGeometryMode': jointGeometryMode.name,
     'jointAlignment': jointAlignment.name,
+    // Older app builds simply don't read this key -- there is no legacy
+    // equivalent to preserve (this field didn't exist before this feature).
+    if (baseMaterialSelection != null)
+      'baseMaterialSelection': baseMaterialSelection!.toJson(),
     'quantity': quantity,
     'wasteFactorPercent': wasteFactorPercent,
     if (densityGPerCm3 != null) 'densityGPerCm3': densityGPerCm3,
@@ -857,6 +866,13 @@ class WeldInputPresetData {
     jointAlignment: json['jointAlignment'] == null
         ? JointAlignment.centerline
         : JointAlignment.values.byName(json['jointAlignment'] as String),
+    // Absent on every preset saved before this feature existed (and on any
+    // row an older app build wrote) -- null just means "not specified".
+    baseMaterialSelection: json['baseMaterialSelection'] != null
+        ? BaseMaterialSelection.fromJson(
+            json['baseMaterialSelection'] as Map<String, dynamic>,
+          )
+        : null,
     densityGPerCm3: _nullableDouble(json['densityGPerCm3']),
     lengthPerPieceMm: _nullableDouble(json['lengthPerPieceMm']),
     pipeOdMm: _nullableDouble(json['pipeOdMm']),

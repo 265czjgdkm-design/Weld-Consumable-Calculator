@@ -10,10 +10,12 @@ import '../core/welding_defaults.dart';
 import '../l10n/app_language.dart';
 import '../l10n/app_locale_scope.dart';
 import '../l10n/strings.dart';
+import '../models/base_material_selection.dart';
 import '../models/consumable_selection.dart';
 import '../models/custom_material_models.dart';
 import '../models/saved_report.dart';
 import '../models/weld_models.dart';
+import '../services/custom_base_material_store.dart';
 import '../services/custom_filler_material_store.dart';
 import '../services/entitlement_service.dart';
 import '../services/legal_links.dart';
@@ -87,10 +89,22 @@ class _CalculatorPageState extends State<CalculatorPage> {
   final PresetSyncService _presetSyncService = const PresetSyncService();
   final CustomFillerMaterialStore _fillerMaterialStore =
       const CustomFillerMaterialStore();
+  final CustomBaseMaterialStore _baseMaterialStore =
+      const CustomBaseMaterialStore();
   final ScrollController _pageScrollController = ScrollController();
   final ScrollController _inputColumnScrollController = ScrollController();
   final ScrollController _drawingColumnScrollController = ScrollController();
   static const _customDiameterValue = 'custom';
+  // See the comment at its one use site in _buildBaseMaterialSection.
+  static const _baseMaterialGroupHeaderSentinel = BaseMaterialSelection(
+    CustomBaseMaterial(
+      id: '__base_material_group_header__',
+      name: '',
+      designation: '',
+      notes: '',
+      updatedAtEpochMs: -1,
+    ),
+  );
 
   final Map<FieldKey, TextEditingController> _controllers = {
     for (final key in FieldKey.values) key: TextEditingController(),
@@ -122,6 +136,15 @@ class _CalculatorPageState extends State<CalculatorPage> {
   // material to compare doesn't lose the ability to select the original
   // "(as saved)" entry again (see finding #4 / user decision).
   ConsumableSelection? _pinnedStaleCustomSelection;
+  // Optional -- unlike _consumableSelection, no base material is required
+  // to run a calculation, so `null` ("not specified") is the default and a
+  // valid end state, not just a transient loading value.
+  BaseMaterialSelection? _baseMaterialSelection;
+  List<CustomBaseMaterial> _customBaseMaterials = const [];
+  bool _baseMaterialsLoaded = false;
+  // Same stale-snapshot pinning as _pinnedStaleCustomSelection above, for
+  // the base-material dropdown's own library list.
+  BaseMaterialSelection? _pinnedStaleBaseMaterialSelection;
   InputPreset _inputPreset = InputPreset.custom;
   // Bumped whenever a starter-preset process-switch confirmation is
   // cancelled, so the dropdown (keyed on `_inputPreset` + this) remounts
@@ -155,6 +178,13 @@ class _CalculatorPageState extends State<CalculatorPage> {
       setState(() {
         _customFillerMaterials = materials;
         _fillerMaterialsLoaded = true;
+      });
+    });
+    _baseMaterialStore.load().then((materials) {
+      if (!mounted) return;
+      setState(() {
+        _customBaseMaterials = materials;
+        _baseMaterialsLoaded = true;
       });
     });
     final presetToLoad = widget.presetToLoad;
@@ -451,6 +481,8 @@ class _CalculatorPageState extends State<CalculatorPage> {
                 _consumableSelection.typicalBaseMetalsTextFor(strings),
               ),
             ),
+            const SizedBox(height: 14),
+            _buildBaseMaterialSection(context),
           ],
         ),
         rateBasisSection: _buildRateBasisSection(context),
@@ -1411,6 +1443,128 @@ class _CalculatorPageState extends State<CalculatorPage> {
   }
 
   /// Extracted so the mobile wizard's consumable step can reuse the exact
+  /// same section as the desktop [_buildInputParametersCard]. Optional --
+  /// unlike [_buildConsumableClassificationSection], this app has no
+  /// built-in base-material catalog to pick from (confirmed by grep before
+  /// this feature was added), so the dropdown only ever offers "Not
+  /// specified" plus the user's own library entries. No process/groove
+  /// filtering is applied for the same reason custom filler materials
+  /// aren't filtered (see coder task decision #4) -- base-metal chemistry
+  /// has no meaningful process/groove compatibility dimension in this app.
+  Widget _buildBaseMaterialSection(BuildContext context) {
+    final strings = AppLocaleScope.stringsOf(context);
+    final customOptions = _customBaseMaterials
+        .map(BaseMaterialSelection.new)
+        .toList();
+    // Same live-library-vs-saved-snapshot reconciliation as
+    // _buildConsumableClassificationSection above -- see its comment for
+    // the full reasoning. `null` ("not specified") is always a valid
+    // selection and can never go stale, so only a non-null snapshot needs
+    // this handling.
+    final selectedSnapshot = _baseMaterialSelection;
+    final isCurrentSelectionMissing =
+        selectedSnapshot != null && !customOptions.contains(selectedSnapshot);
+    if (_baseMaterialsLoaded &&
+        isCurrentSelectionMissing &&
+        _pinnedStaleBaseMaterialSelection == null) {
+      _pinnedStaleBaseMaterialSelection = selectedSnapshot;
+    }
+    final pinnedSnapshot = _pinnedStaleBaseMaterialSelection;
+    final displayedCustomOptions = [
+      ...customOptions,
+      if (isCurrentSelectionMissing && selectedSnapshot != pinnedSnapshot)
+        selectedSnapshot,
+      if (pinnedSnapshot != null && !customOptions.contains(pinnedSnapshot))
+        pinnedSnapshot,
+    ];
+    final showGroupHeader =
+        _baseMaterialsLoaded && displayedCustomOptions.isNotEmpty;
+    String optionLabel(BaseMaterialSelection selection) =>
+        _baseMaterialsLoaded && selection == pinnedSnapshot
+        ? '${selection.label}${strings.calcAsSavedSuffix}'
+        : selection.label;
+
+    return InputPanelSection(
+      icon: Icons.layers_outlined,
+      title: strings.baseMaterialTitle,
+      subtitle: strings.calcBaseMaterialSectionSubtitle,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildDropdownFrame(
+            DropdownButtonFormField<BaseMaterialSelection?>(
+              initialValue: _baseMaterialSelection,
+              isExpanded: true,
+              decoration: InputDecoration(labelText: strings.baseMaterialTitle),
+              selectedItemBuilder: (context) => [
+                _buildDropdownSelectedText(
+                  strings.calcBaseMaterialNotSpecifiedOption,
+                ),
+                if (displayedCustomOptions.isNotEmpty) ...[
+                  if (showGroupHeader) _buildDropdownSelectedText(''),
+                  for (final selection in displayedCustomOptions)
+                    _buildDropdownSelectedText(optionLabel(selection)),
+                ],
+              ],
+              items: [
+                DropdownMenuItem<BaseMaterialSelection?>(
+                  value: null,
+                  child: Text(strings.calcBaseMaterialNotSpecifiedOption),
+                ),
+                if (displayedCustomOptions.isNotEmpty) ...[
+                  if (showGroupHeader)
+                    DropdownMenuItem<BaseMaterialSelection?>(
+                      // A disabled header still participates in
+                      // DropdownButton's "exactly one item matches the
+                      // current value" assertion -- an unnamed `value:`
+                      // here would default to null, which collides with
+                      // the real "Not specified" (null) item above and
+                      // crashes the dropdown whenever nothing is selected
+                      // (the filler dropdown's own disabled-header item
+                      // gets away without a value because its selection
+                      // type is never null; this one can be). This
+                      // sentinel can never equal a real selection or null.
+                      value: _baseMaterialGroupHeaderSentinel,
+                      enabled: false,
+                      child: Text(
+                        strings.calcMyMaterialsHeader,
+                        style: const TextStyle(fontWeight: FontWeight.w700),
+                      ),
+                    ),
+                  for (final selection in displayedCustomOptions)
+                    DropdownMenuItem(
+                      value: selection,
+                      child: Text(
+                        optionLabel(selection),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                ],
+              ],
+              onChanged: (value) {
+                setState(() => _baseMaterialSelection = value);
+              },
+            ),
+          ),
+          if (_baseMaterialSelection != null) ...[
+            const SizedBox(height: 12),
+            PanelNote(
+              icon: Icons.verified_outlined,
+              text: strings.calcSelectedBaseMaterialNote.replaceFirst(
+                '{value}',
+                _baseMaterialSelection!.material.designation.trim().isEmpty
+                    ? _baseMaterialSelection!.label
+                    : '${_baseMaterialSelection!.label} '
+                          '(${_baseMaterialSelection!.material.designation})',
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  /// Extracted so the mobile wizard's consumable step can reuse the exact
   /// same section as the desktop [_buildInputParametersCard].
   Widget _buildRateBasisSection(BuildContext context) {
     final strings = AppLocaleScope.stringsOf(context);
@@ -1492,6 +1646,8 @@ class _CalculatorPageState extends State<CalculatorPage> {
               context,
               availableConsumables,
             ),
+            const SizedBox(height: 14),
+            _buildBaseMaterialSection(context),
             const SizedBox(height: 14),
             _buildRateBasisSection(context),
             const SizedBox(height: 14),
@@ -1796,45 +1952,6 @@ class _CalculatorPageState extends State<CalculatorPage> {
     FieldKey.capOverlapMm,
     FieldKey.capHeightMm,
     FieldKey.legSizeMm,
-  };
-
-  // Plausibility ceilings for the dimension-entry fields above, so an
-  // obvious typo (e.g. 500 mm keyed in where 50 mm was meant) is rejected
-  // with a clear error instead of silently accepted. Deliberately generous
-  // -- each one sits well above the largest values seen in real heavy-
-  // industrial welding, so no genuinely unusual-but-real input is blocked.
-  static const Map<FieldKey, double> _dimensionMaxBounds = {
-    // Large-diameter line pipe/pressure-vessel nozzles run into the 1-2 m
-    // range; 3000 mm leaves headroom above that.
-    FieldKey.pipeOdMm: 3000,
-    FieldKey.pipeOdAMm: 3000,
-    FieldKey.pipeOdBMm: 3000,
-    // Heavy pressure-vessel/forged wall sections rarely exceed a few
-    // hundred mm; 500 mm is roughly 2x that.
-    FieldKey.thicknessMm: 500,
-    FieldKey.thicknessAMm: 500,
-    FieldKey.thicknessBMm: 500,
-    // Real root gaps run 0-6 mm; even a generously wide repair-weld
-    // fit-up rarely exceeds ~25 mm, so 50 mm already doubles that.
-    FieldKey.rootGapMm: 50,
-    // Root face (land) is a fraction of thickness; 100 mm covers even
-    // very thick-section allowances.
-    FieldKey.rootFaceMm: 100,
-    // A bevel angle is a physical angle and can never reach/exceed 180
-    // degrees. WeldCalculator's groove-specific checks already cap this
-    // tighter (<90 deg for V-groove types), but bounding it here too
-    // rejects a bad value before any groove-specific math runs.
-    FieldKey.bevelAngleDeg: 180,
-    FieldKey.secondaryBevelAngleDeg: 180,
-    // Bounded by the same reasoning as thickness above -- break height
-    // can never exceed the plate-thickness ceiling.
-    FieldKey.breakHeightMm: 500,
-    // Cap reinforcement passes add a few mm at most; 100 mm is generous.
-    FieldKey.capOverlapMm: 100,
-    FieldKey.capHeightMm: 100,
-    // Heavy structural/shipbuilding fillets can reach several tens of mm;
-    // 200 mm leaves ample headroom above that.
-    FieldKey.legSizeMm: 200,
   };
 
   List<InputFieldSpec> _wizardDimensionFields(L10nStrings strings) =>
@@ -2584,6 +2701,11 @@ class _CalculatorPageState extends State<CalculatorPage> {
     _jointGeometryMode = data.jointGeometryMode;
     _jointAlignment = data.jointAlignment;
     _consumableSelection = data.consumableSelection;
+    // Direct assignment (not a _setControllerValue-style no-op-on-null
+    // helper) -- a preset/template saved without a base material must
+    // clear any stale value from before this preset was applied, matching
+    // the bug class the cap-dimension fields hit (see _clearCapDimensionFields).
+    _baseMaterialSelection = data.baseMaterialSelection;
 
     _applyProcessFieldDefaults();
     _syncConsumableForProcess();
@@ -2825,6 +2947,7 @@ class _CalculatorPageState extends State<CalculatorPage> {
     depositionRateMode: _depositionRateMode,
     jointGeometryMode: _jointGeometryMode,
     jointAlignment: _jointAlignment,
+    baseMaterialSelection: _baseMaterialSelection,
     quantity: _parsePresetValue(FieldKey.quantity, 'Quantity') ?? 1,
     wasteFactorPercent:
         _parsePresetValue(FieldKey.wasteFactor, 'Waste allowance') ??
@@ -3218,66 +3341,16 @@ class _CalculatorPageState extends State<CalculatorPage> {
           strings,
         ),
         lengthPerPieceMm: _parseOptional(FieldKey.lengthMm),
-        pipeOdMm: _checkDimensionBound(
-          _resolvePipeOdForCalculation(),
-          FieldKey.pipeOdMm,
-          strings.calcFieldPipeOdLabel,
-          strings,
-        ),
-        thicknessMm: _checkDimensionBound(
-          _resolveThicknessForCalculation(),
-          FieldKey.thicknessMm,
-          strings.calcFieldThicknessLabel,
-          strings,
-        ),
-        rootGapMm: _checkDimensionBound(
-          _parseOptional(FieldKey.rootGapMm),
-          FieldKey.rootGapMm,
-          strings.calcFieldRootGapLabel,
-          strings,
-        ),
-        rootFaceMm: _checkDimensionBound(
-          _parseOptional(FieldKey.rootFaceMm),
-          FieldKey.rootFaceMm,
-          strings.calcFieldRootFaceLabel,
-          strings,
-        ),
-        bevelAngleDeg: _checkDimensionBound(
-          _parseOptional(FieldKey.bevelAngleDeg),
-          FieldKey.bevelAngleDeg,
-          strings.calcFieldBevelAngleLabel,
-          strings,
-        ),
-        secondaryBevelAngleDeg: _checkDimensionBound(
-          _parseOptional(FieldKey.secondaryBevelAngleDeg),
-          FieldKey.secondaryBevelAngleDeg,
-          strings.calcFieldSecondaryAngleLabel,
-          strings,
-        ),
-        breakHeightMm: _checkDimensionBound(
-          _parseOptional(FieldKey.breakHeightMm),
-          FieldKey.breakHeightMm,
-          strings.calcFieldBreakHeightLabel,
-          strings,
-        ),
-        capOverlapMm: _checkDimensionBound(
-          _parseOptional(FieldKey.capOverlapMm),
-          FieldKey.capOverlapMm,
-          strings.calcFieldCapOverlapLabel,
-          strings,
-        ),
-        capHeightMm: _checkDimensionBound(
-          _parseOptional(FieldKey.capHeightMm),
-          FieldKey.capHeightMm,
-          strings.calcFieldCapHeightLabel,
-          strings,
-        ),
-        legSizeMm: _checkDimensionBound(
-          _parseOptional(FieldKey.legSizeMm),
-          FieldKey.legSizeMm,
-          strings.calcFieldLegSizeLabel,
-          strings,
-        ),
+        pipeOdMm: _resolvePipeOdForCalculation(),
+        thicknessMm: _resolveThicknessForCalculation(),
+        rootGapMm: _parseOptional(FieldKey.rootGapMm),
+        rootFaceMm: _parseOptional(FieldKey.rootFaceMm),
+        bevelAngleDeg: _parseOptional(FieldKey.bevelAngleDeg),
+        secondaryBevelAngleDeg: _parseOptional(FieldKey.secondaryBevelAngleDeg),
+        breakHeightMm: _parseOptional(FieldKey.breakHeightMm),
+        capOverlapMm: _parseOptional(FieldKey.capOverlapMm),
+        capHeightMm: _parseOptional(FieldKey.capHeightMm),
+        legSizeMm: _parseOptional(FieldKey.legSizeMm),
         gtawTransitionMm: _parseOptional(FieldKey.gtawTransitionMm),
         wireDiameterMm: _parseOptional(FieldKey.wireDiameterMm),
         electrodeDiameterMm: _parseOptional(FieldKey.electrodeDiameterMm),
@@ -3486,6 +3559,8 @@ class _CalculatorPageState extends State<CalculatorPage> {
       _inputPreset = InputPreset.custom;
       _selectedUserPresetId = null;
       _pinnedStaleCustomSelection = null;
+      _baseMaterialSelection = null;
+      _pinnedStaleBaseMaterialSelection = null;
       _applyProcessFieldDefaults();
       _consumableSelection = BuiltInConsumableSelection(
         WeldingDefaults.defaultConsumableFor(_weldingProcess),
@@ -3522,30 +3597,6 @@ class _CalculatorPageState extends State<CalculatorPage> {
     final value = _controllers[key]!.text.trim();
     if (value.isEmpty) return null;
     return double.tryParse(value.replaceAll(',', '.'));
-  }
-
-  /// Rejects a physically-implausible dimension value against
-  /// [_dimensionMaxBounds] instead of silently accepting it -- see that
-  /// map's comment for the reasoning behind each ceiling. Fields with no
-  /// entry there (or no value at all) pass through unchanged.
-  double? _checkDimensionBound(
-    double? value,
-    FieldKey key,
-    String label,
-    L10nStrings strings,
-  ) {
-    final max = _dimensionMaxBounds[key];
-    if (value == null || max == null || value <= max) return value;
-    final unit = key == FieldKey.bevelAngleDeg ||
-            key == FieldKey.secondaryBevelAngleDeg
-        ? '°'
-        : ' mm';
-    throw _RequiredFieldMissingException(
-      key,
-      strings.calcFieldOutOfRangeError
-          .replaceFirst('{label}', label)
-          .replaceFirst('{max}', '${max.toStringAsFixed(0)}$unit'),
-    );
   }
 
   double? _parsePreviewValue(FieldKey key) {
@@ -3692,6 +3743,19 @@ class _CalculatorPageState extends State<CalculatorPage> {
         _consumableSelection.family.label,
         _consumableSelection.family.labelFor(strings),
       ),
+      // Optional -- only shown once a base material is actually attached
+      // (see coder task decision on BaseMaterialSelection?/null semantics),
+      // unlike Classification/Filler Metal Family above which are always
+      // present.
+      if (_baseMaterialSelection != null)
+        CalculationBasisItem(
+          BasisKey.baseMaterial,
+          'Base Material',
+          _baseMaterialSelection!.material.designation.trim().isEmpty
+              ? _baseMaterialSelection!.label
+              : '${_baseMaterialSelection!.label} '
+                    '(${_baseMaterialSelection!.material.designation})',
+        ),
       CalculationBasisItem(
         BasisKey.density,
         'Density',

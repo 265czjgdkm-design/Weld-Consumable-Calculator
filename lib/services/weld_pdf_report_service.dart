@@ -1098,6 +1098,7 @@ class WeldPdfReportService {
       BasisKey.groove,
       BasisKey.classification,
       BasisKey.fillerMetalFamily,
+      BasisKey.baseMaterial,
       BasisKey.density,
       BasisKey.wasteAllowance,
       BasisKey.quantity,
