@@ -1,6 +1,6 @@
 # Marketing Site
 
-Landing page for Weld Consumable Calculator (`index.html`, `privacy.html`) plus
+Landing page for Weld Consumable Calculator (`index.html`; `privacy.html`/`terms.html` are stubs pointing to varyosweld-landing) plus
 the real calculator running as a Flutter web build under `app/`.
 
 `app/` is a build artifact — it is git-ignored and must be regenerated whenever

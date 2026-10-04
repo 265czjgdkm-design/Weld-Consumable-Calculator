@@ -39,4 +39,4 @@ If the App's data practices change in the future, this policy will be updated an
 
 ## Contact
 
-For privacy questions, including account deletion requests, contact: 5gwzkfmzrk@privaterelay.appleid.com
+For privacy questions, including account deletion requests, contact: team@varyosweld.com
