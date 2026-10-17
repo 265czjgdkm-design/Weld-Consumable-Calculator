@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:math';
 
+import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -24,7 +25,10 @@ class AiAssistantException implements Exception {
 /// Same `http.post` + timeout + JSON decode/error style as
 /// [PresetSyncService].
 class AiAssistantService {
-  const AiAssistantService();
+  const AiAssistantService({this.client});
+
+  /// Injectable for tests; defaults to the top-level `http` functions.
+  final http.Client? client;
 
   static const _clientIdKey = 'ai_assistant_client_id_v1';
 
@@ -33,24 +37,17 @@ class AiAssistantService {
     required String locale,
   }) async {
     final clientId = await _getOrCreateClientId();
-    final recent = messages.length > AiAssistantConfig.maxHistoryMessages
-        ? messages.sublist(messages.length - AiAssistantConfig.maxHistoryMessages)
-        : messages;
+    final recent = prepareMessages(messages);
     final http.Response response;
     try {
-      response = await http
-          .post(
-            Uri.parse(AiAssistantConfig.chatApiUrl),
-            headers: {
-              'Content-Type': 'application/json',
-              'X-Client-Id': clientId,
-            },
-            body: jsonEncode({
-              'messages': recent.map((message) => message.toJson()).toList(),
-              'locale': locale,
-            }),
-          )
-          .timeout(const Duration(seconds: 25));
+      response = await (client?.post ?? http.post)(
+        Uri.parse(AiAssistantConfig.chatApiUrl),
+        headers: {'Content-Type': 'application/json', 'X-Client-Id': clientId},
+        body: jsonEncode({
+          'messages': recent.map((message) => message.toJson()).toList(),
+          'locale': locale,
+        }),
+      ).timeout(const Duration(seconds: 25));
     } on TimeoutException {
       // Distinct from a generic network failure so the UI can show
       // aiAssistantErrorTimeout instead of the generic network-error
@@ -62,9 +59,34 @@ class AiAssistantService {
     final body = _decode(response.body);
     final reply = body['reply'];
     if (reply is String) return reply;
-    throw AiAssistantException(
-      body['error']?.toString() ?? 'upstream_error',
+    throw AiAssistantException(body['error']?.toString() ?? 'upstream_error');
+  }
+
+  /// Last [AiAssistantConfig.maxHistoryMessages] messages, starting at the
+  /// first user turn, with long assistant replies truncated.
+  @visibleForTesting
+  static List<ChatMessage> prepareMessages(List<ChatMessage> messages) {
+    final start = max(
+      0,
+      messages.length - AiAssistantConfig.maxHistoryMessages,
     );
+    var recent = messages.sublist(start);
+    final firstUser = recent.indexWhere((m) => m.role == ChatRole.user);
+    if (firstUser > 0) recent = recent.sublist(firstUser);
+    return recent.map((message) {
+      if (message.role != ChatRole.assistant ||
+          message.content.length <=
+              AiAssistantConfig.maxAssistantMessageLength) {
+        return message;
+      }
+      return ChatMessage(
+        role: message.role,
+        content: message.content.substring(
+          0,
+          AiAssistantConfig.maxAssistantMessageLength,
+        ),
+      );
+    }).toList();
   }
 
   Map<String, dynamic> _decode(String body) {

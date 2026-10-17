@@ -122,6 +122,18 @@ void main() {
     },
   );
 
+  testWidgets('input cap counts visible characters, not UTF-16 units', (
+    tester,
+  ) async {
+    await pumpScreen(tester, isPremium: true);
+
+    await tester.enterText(find.byType(TextField), 'नमस्ते 😀' * 300);
+    final field = tester.widget<TextField>(find.byType(TextField));
+    final text = field.controller!.text;
+    expect(text.characters.length, AiAssistantConfig.maxMessageLength);
+    expect(text.characters.length, lessThan(text.length));
+  });
+
   testWidgets('chat input is capped to the worker max message length', (
     tester,
   ) async {
