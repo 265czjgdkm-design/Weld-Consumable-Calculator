@@ -593,6 +593,8 @@ class L10nStrings {
     required this.aiAssistantSuggestionPreheatPrompt,
     required this.aiAssistantSuggestionCoolingLabel,
     required this.aiAssistantSuggestionCoolingPrompt,
+    required this.aiAssistantSuggestionResultLabel,
+    required this.aiAssistantSuggestionResultPrompt,
     required this.aiAssistantErrorRateLimited,
     required this.aiAssistantErrorBadRequest,
     required this.aiAssistantErrorTimeout,
@@ -1204,6 +1206,8 @@ class L10nStrings {
   final String aiAssistantSuggestionPreheatPrompt;
   final String aiAssistantSuggestionCoolingLabel;
   final String aiAssistantSuggestionCoolingPrompt;
+  final String aiAssistantSuggestionResultLabel;
+  final String aiAssistantSuggestionResultPrompt;
   final String aiAssistantErrorRateLimited;
   final String aiAssistantErrorBadRequest;
   final String aiAssistantErrorTimeout;
@@ -1947,7 +1951,7 @@ const Map<AppLanguage, L10nStrings> _strings = {
     dashboardAiAssistant: 'AI Assistant',
     aiAssistantScreenTitle: 'AI Assistant',
     aiAssistantScreenSubtitle:
-        "Ask about this app's calculators or general welding-standard concepts.",
+        "Ask how to fill in and read this app's calculators.",
     aiAssistantInputHint: 'Ask a question...',
     aiAssistantSuggestionFillerLabel: 'Filler/Consumable Calculator',
     aiAssistantSuggestionFillerPrompt:
@@ -1958,6 +1962,9 @@ const Map<AppLanguage, L10nStrings> _strings = {
     aiAssistantSuggestionCoolingLabel: 'Cooling Time (t8/5) Calculator',
     aiAssistantSuggestionCoolingPrompt:
         'What does the Cooling Time (t8/5) Calculator calculate, and how should I use it?',
+    aiAssistantSuggestionResultLabel: 'Understand my result',
+    aiAssistantSuggestionResultPrompt:
+        'Why might my calculator result look too high or too low, and what should I check?',
     aiAssistantErrorRateLimited:
         'Too many messages -- please wait a bit and try again.',
     aiAssistantErrorBadRequest:
@@ -1970,7 +1977,7 @@ const Map<AppLanguage, L10nStrings> _strings = {
         'The assistant is temporarily unavailable. Please try again.',
     aiAssistantPremiumGateTitle: 'AI Assistant is a Premium feature',
     aiAssistantPremiumGateBody:
-        'Unlock Premium to ask the AI assistant about your calculations and general welding-standard concepts.',
+        "Unlock Premium to ask the AI assistant how to use this app's calculators and read their results.",
     aiAssistantPremiumGateButton: 'Unlock Premium',
     aiAssistantConsentTitle: 'Before you start chatting',
     aiAssistantConsentBody:
@@ -2712,7 +2719,7 @@ const Map<AppLanguage, L10nStrings> _strings = {
     dashboardAiAssistant: 'Yapay Zeka Asistanı',
     aiAssistantScreenTitle: 'Yapay Zeka Asistanı',
     aiAssistantScreenSubtitle:
-        'Uygulamanın hesaplayıcıları veya genel kaynak standardı kavramları hakkında soru sorun.',
+        'Uygulamanın hesaplayıcılarını nasıl dolduracağınızı ve sonuçları nasıl okuyacağınızı sorun.',
     aiAssistantInputHint: 'Bir soru sorun...',
     aiAssistantSuggestionFillerLabel: 'Dolgu/Sarf Malzeme Hesaplayıcı',
     aiAssistantSuggestionFillerPrompt:
@@ -2723,6 +2730,9 @@ const Map<AppLanguage, L10nStrings> _strings = {
     aiAssistantSuggestionCoolingLabel: 'Soğuma Süresi (t8/5) Hesaplayıcı',
     aiAssistantSuggestionCoolingPrompt:
         'Soğuma Süresi (t8/5) Hesaplayıcı ne hesaplıyor ve nasıl kullanmalıyım?',
+    aiAssistantSuggestionResultLabel: 'Sonucumu anlama',
+    aiAssistantSuggestionResultPrompt:
+        'Hesaplayıcı sonucum neden çok yüksek veya düşük çıkmış olabilir, neleri kontrol etmeliyim?',
     aiAssistantErrorRateLimited:
         'Çok fazla mesaj gönderildi -- lütfen biraz bekleyip tekrar deneyin.',
     aiAssistantErrorBadRequest: 'Bu mesaj gönderilemedi. Lütfen tekrar deneyin.',
@@ -2733,7 +2743,7 @@ const Map<AppLanguage, L10nStrings> _strings = {
     aiAssistantErrorUpstream: 'Asistan şu anda kullanılamıyor. Lütfen tekrar deneyin.',
     aiAssistantPremiumGateTitle: 'Yapay Zeka Asistanı bir Premium özelliktir',
     aiAssistantPremiumGateBody:
-        "Hesaplamalarınız ve genel kaynak standardı kavramları hakkında yapay zeka asistanına soru sormak için Premium'u açın.",
+        "Uygulamanın hesaplayıcılarını kullanma ve sonuçlarını okuma konusunda yapay zeka asistanına soru sormak için Premium'u açın.",
     aiAssistantPremiumGateButton: "Premium'u Aç",
     aiAssistantConsentTitle: 'Sohbete başlamadan önce',
     aiAssistantConsentBody:
@@ -3495,7 +3505,7 @@ const Map<AppLanguage, L10nStrings> _strings = {
     dashboardAiAssistant: 'ИИ-ассистент',
     aiAssistantScreenTitle: 'ИИ-ассистент',
     aiAssistantScreenSubtitle:
-        'Задавайте вопросы о калькуляторах приложения или об общих понятиях сварочных стандартов.',
+        'Спрашивайте, как заполнять калькуляторы приложения и читать результаты.',
     aiAssistantInputHint: 'Задайте вопрос...',
     aiAssistantSuggestionFillerLabel: 'Калькулятор присадочного материала',
     aiAssistantSuggestionFillerPrompt:
@@ -3506,6 +3516,9 @@ const Map<AppLanguage, L10nStrings> _strings = {
     aiAssistantSuggestionCoolingLabel: 'Калькулятор времени охлаждения (t8/5)',
     aiAssistantSuggestionCoolingPrompt:
         'Что рассчитывает калькулятор времени охлаждения (t8/5) и как его использовать?',
+    aiAssistantSuggestionResultLabel: 'Понять результат',
+    aiAssistantSuggestionResultPrompt:
+        'Почему результат калькулятора может быть слишком высоким или низким и что проверить?',
     aiAssistantErrorRateLimited:
         'Слишком много сообщений -- подождите немного и попробуйте снова.',
     aiAssistantErrorBadRequest: 'Не удалось отправить это сообщение. Попробуйте снова.',
@@ -3515,7 +3528,7 @@ const Map<AppLanguage, L10nStrings> _strings = {
     aiAssistantErrorUpstream: 'Ассистент временно недоступен. Попробуйте снова.',
     aiAssistantPremiumGateTitle: 'ИИ-ассистент -- функция Premium',
     aiAssistantPremiumGateBody:
-        'Откройте Premium, чтобы задавать ИИ-ассистенту вопросы о ваших расчётах и общих понятиях сварочных стандартов.',
+        'Откройте Premium, чтобы спрашивать ИИ-ассистента, как пользоваться калькуляторами приложения и читать результаты.',
     aiAssistantPremiumGateButton: 'Открыть Premium',
     aiAssistantConsentTitle: 'Прежде чем начать чат',
     aiAssistantConsentBody:
@@ -4278,7 +4291,7 @@ const Map<AppLanguage, L10nStrings> _strings = {
     dashboardAiAssistant: 'KI-Assistent',
     aiAssistantScreenTitle: 'KI-Assistent',
     aiAssistantScreenSubtitle:
-        'Stellen Sie Fragen zu den Rechnern dieser App oder zu allgemeinen Konzepten von Schweißnormen.',
+        'Fragen Sie, wie Sie die Rechner dieser App ausfüllen und die Ergebnisse lesen.',
     aiAssistantInputHint: 'Frage eingeben...',
     aiAssistantSuggestionFillerLabel: 'Zusatzwerkstoff-Rechner',
     aiAssistantSuggestionFillerPrompt:
@@ -4289,6 +4302,9 @@ const Map<AppLanguage, L10nStrings> _strings = {
     aiAssistantSuggestionCoolingLabel: 'Abkühlzeit-Rechner (t8/5)',
     aiAssistantSuggestionCoolingPrompt:
         'Was berechnet der Abkühlzeit-Rechner (t8/5) und wie sollte ich ihn verwenden?',
+    aiAssistantSuggestionResultLabel: 'Mein Ergebnis verstehen',
+    aiAssistantSuggestionResultPrompt:
+        'Warum könnte mein Rechnerergebnis zu hoch oder zu niedrig sein und was sollte ich prüfen?',
     aiAssistantErrorRateLimited:
         'Zu viele Nachrichten -- bitte warten Sie kurz und versuchen Sie es erneut.',
     aiAssistantErrorBadRequest:
@@ -4301,7 +4317,7 @@ const Map<AppLanguage, L10nStrings> _strings = {
         'Der Assistent ist vorübergehend nicht verfügbar. Bitte erneut versuchen.',
     aiAssistantPremiumGateTitle: 'Der KI-Assistent ist eine Premium-Funktion',
     aiAssistantPremiumGateBody:
-        'Schalten Sie Premium frei, um dem KI-Assistenten Fragen zu Ihren Berechnungen und allgemeinen Schweißnorm-Konzepten zu stellen.',
+        'Schalten Sie Premium frei, um dem KI-Assistenten Fragen zur Nutzung der Rechner und zum Lesen der Ergebnisse zu stellen.',
     aiAssistantPremiumGateButton: 'Premium freischalten',
     aiAssistantConsentTitle: 'Bevor Sie chatten',
     aiAssistantConsentBody:
@@ -5056,7 +5072,7 @@ const Map<AppLanguage, L10nStrings> _strings = {
     dashboardAiAssistant: 'एआई असिस्टेंट',
     aiAssistantScreenTitle: 'एआई असिस्टेंट',
     aiAssistantScreenSubtitle:
-        'ऐप के कैलकुलेटर या सामान्य वेल्डिंग स्टैंडर्ड अवधारणाओं के बारे में पूछें।',
+        'ऐप के कैलकुलेटर भरने और नतीजे समझने के बारे में पूछें।',
     aiAssistantInputHint: 'एक सवाल पूछें...',
     aiAssistantSuggestionFillerLabel: 'फिलर/कंज्यूमेबल कैलकुलेटर',
     aiAssistantSuggestionFillerPrompt:
@@ -5067,6 +5083,9 @@ const Map<AppLanguage, L10nStrings> _strings = {
     aiAssistantSuggestionCoolingLabel: 'कूलिंग टाइम (t8/5) कैलकुलेटर',
     aiAssistantSuggestionCoolingPrompt:
         'कूलिंग टाइम (t8/5) कैलकुलेटर क्या कैलकुलेट करता है और मुझे इसे कैसे उपयोग करना चाहिए?',
+    aiAssistantSuggestionResultLabel: 'नतीजा समझें',
+    aiAssistantSuggestionResultPrompt:
+        'मेरा कैलकुलेटर नतीजा बहुत ज़्यादा या कम क्यों आ सकता है और मुझे क्या जांचना चाहिए?',
     aiAssistantErrorRateLimited:
         'बहुत सारे मेसेज भेजे गए -- कृपया थोड़ी देर रुकें और फिर कोशिश करें।',
     aiAssistantErrorBadRequest: 'यह मेसेज भेजा नहीं जा सका। कृपया फिर से कोशिश करें।',
@@ -5077,7 +5096,7 @@ const Map<AppLanguage, L10nStrings> _strings = {
     aiAssistantErrorUpstream: 'असिस्टेंट अभी उपलब्ध नहीं है। कृपया फिर से कोशिश करें।',
     aiAssistantPremiumGateTitle: 'एआई असिस्टेंट एक प्रीमियम फीचर है',
     aiAssistantPremiumGateBody:
-        'अपनी कैलकुलेशन और सामान्य वेल्डिंग स्टैंडर्ड अवधारणाओं के बारे में एआई असिस्टेंट से पूछने के लिए प्रीमियम अनलॉक करें।',
+        'ऐप के कैलकुलेटर इस्तेमाल करने और नतीजे पढ़ने के बारे में एआई असिस्टेंट से पूछने के लिए प्रीमियम अनलॉक करें।',
     aiAssistantPremiumGateButton: 'प्रीमियम अनलॉक करें',
     aiAssistantConsentTitle: 'चैट शुरू करने से पहले',
     aiAssistantConsentBody:

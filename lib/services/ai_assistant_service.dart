@@ -33,6 +33,9 @@ class AiAssistantService {
     required String locale,
   }) async {
     final clientId = await _getOrCreateClientId();
+    final recent = messages.length > AiAssistantConfig.maxHistoryMessages
+        ? messages.sublist(messages.length - AiAssistantConfig.maxHistoryMessages)
+        : messages;
     final http.Response response;
     try {
       response = await http
@@ -43,11 +46,11 @@ class AiAssistantService {
               'X-Client-Id': clientId,
             },
             body: jsonEncode({
-              'messages': messages.map((message) => message.toJson()).toList(),
+              'messages': recent.map((message) => message.toJson()).toList(),
               'locale': locale,
             }),
           )
-          .timeout(const Duration(seconds: 30));
+          .timeout(const Duration(seconds: 25));
     } on TimeoutException {
       // Distinct from a generic network failure so the UI can show
       // aiAssistantErrorTimeout instead of the generic network-error

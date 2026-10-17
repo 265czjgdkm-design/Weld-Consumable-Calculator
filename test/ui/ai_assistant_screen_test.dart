@@ -8,6 +8,7 @@ import 'package:weld_consumable_calculator/l10n/app_locale.dart';
 import 'package:weld_consumable_calculator/l10n/app_locale_scope.dart';
 import 'package:weld_consumable_calculator/l10n/strings.dart';
 import 'package:weld_consumable_calculator/models/chat_message.dart';
+import 'package:weld_consumable_calculator/services/ai_assistant_config.dart';
 import 'package:weld_consumable_calculator/services/ai_assistant_service.dart';
 import 'package:weld_consumable_calculator/services/entitlement_service.dart';
 import 'package:weld_consumable_calculator/ui/ai_assistant_screen.dart';
@@ -96,7 +97,7 @@ void main() {
   );
 
   testWidgets(
-    'premium user sees the chat input and the 3 quick-suggestion chips',
+    'premium user sees the chat input and the 4 quick-suggestion chips',
     (tester) async {
       await pumpScreen(tester, isPremium: true);
 
@@ -113,9 +114,23 @@ void main() {
         find.text(strings.aiAssistantSuggestionCoolingLabel),
         findsOneWidget,
       );
+      expect(
+        find.text(strings.aiAssistantSuggestionResultLabel),
+        findsOneWidget,
+      );
       expect(find.text(strings.aiAssistantPremiumGateTitle), findsNothing);
     },
   );
+
+  testWidgets('chat input is capped to the worker max message length', (
+    tester,
+  ) async {
+    await pumpScreen(tester, isPremium: true);
+
+    await tester.enterText(find.byType(TextField), 'a' * 1000);
+    final field = tester.widget<TextField>(find.byType(TextField));
+    expect(field.controller!.text.length, AiAssistantConfig.maxMessageLength);
+  });
 
   testWidgets(
     'premium user tapping a suggestion chip sends the prompt and shows the '

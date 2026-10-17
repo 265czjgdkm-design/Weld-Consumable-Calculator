@@ -8,6 +8,7 @@ import '../l10n/app_language.dart';
 import '../l10n/app_locale_scope.dart';
 import '../l10n/strings.dart';
 import '../models/chat_message.dart';
+import '../services/ai_assistant_config.dart';
 import '../services/ai_assistant_service.dart';
 import '../services/ai_consent_store.dart';
 import '../services/entitlement_service.dart';
@@ -15,10 +16,9 @@ import '../services/purchases_config.dart';
 import 'calculator_page/calculator_page_widgets.dart';
 import 'widgets/welding_loader.dart';
 
-/// In-app AI chat that answers questions about this app's calculators and
-/// general welding-standard concepts (see the implementation plan's
-/// systemPrompt.ts for the exact scope/copyright rules the Worker enforces
-/// server-side). Premium-gated the same way PDF export is gated in
+/// In-app AI chat that answers questions about this app's three calculators
+/// only (see the Worker's systemPrompt.ts for the scope/copyright rules it
+/// enforces server-side). Premium-gated the same way PDF export is gated in
 /// calculator_page.dart -- see [EntitlementService].
 class AiAssistantScreen extends StatefulWidget {
   AiAssistantScreen({
@@ -228,6 +228,11 @@ class _AiAssistantScreenState extends State<AiAssistantScreen> {
               child: TextField(
                 controller: _inputController,
                 enabled: !_isSending,
+                inputFormatters: [
+                  LengthLimitingTextInputFormatter(
+                    AiAssistantConfig.maxMessageLength,
+                  ),
+                ],
                 decoration: InputDecoration(
                   hintText: strings.aiAssistantInputHint,
                 ),
@@ -263,6 +268,10 @@ class _AiAssistantScreenState extends State<AiAssistantScreen> {
           ActionChip(
             label: Text(strings.aiAssistantSuggestionCoolingLabel),
             onPressed: () => _send(strings.aiAssistantSuggestionCoolingPrompt),
+          ),
+          ActionChip(
+            label: Text(strings.aiAssistantSuggestionResultLabel),
+            onPressed: () => _send(strings.aiAssistantSuggestionResultPrompt),
           ),
         ],
       ),
