@@ -3,12 +3,10 @@
 class PurchasesConfig {
   const PurchasesConfig._();
 
-  /// RevenueCat public API key for this app, from the RevenueCat dashboard
-  /// (Project Settings -> API Keys -> Apple App Store key). This is a
-  /// placeholder until the Apple Developer Program account and an App Store
-  /// Connect subscription product exist -- swap it for the real key here
-  /// once both are set up.
-  static const String appleApiKey = 'appl_REPLACE_ME';
+  /// RevenueCat public (client-side) SDK key for the App Store app, from the
+  /// RevenueCat dashboard (project 8afb31f2 -> API keys). Public keys are
+  /// designed to ship inside the app binary; this is not a secret.
+  static const String appleApiKey = 'appl_dnWrEEzgbHjJgzdekHctpNmrrQi';
 
   static const String entitlementId = 'premium';
 
