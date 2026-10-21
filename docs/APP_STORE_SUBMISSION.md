@@ -17,8 +17,8 @@ App Store Connect → the app → Subscriptions → create group "Varyos Premium
 
 | Reference name | Product ID | Duration | Suggested price |
 |---|---|---|---|
-| Premium Monthly | `varyos_premium_monthly` | 1 month | Tier ≈ $2.99 |
-| Premium Yearly  | `varyos_premium_yearly`  | 1 year  | Tier ≈ $19.99 |
+| Premium Monthly | `varyos_premium_monthly` | 1 month | $1.99 (set 2026-10-21, 148 countries, EU excluded) |
+| Premium Yearly  | `varyos_premium_yearly`  | 1 year  | $14.99 (set 2026-10-21, 148 countries, EU excluded) |
 
 For each: display name + description (EN/TR), a review screenshot of the paywall, and review notes.
 The app reads the real localized price from the store, so prices can be changed here freely.
