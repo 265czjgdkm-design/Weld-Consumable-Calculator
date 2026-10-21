@@ -206,6 +206,7 @@ class L10nStrings {
     required this.heatInputVerifiedProcessesNote,
     required this.commonBack,
     required this.commonContinue,
+    required this.commonClose,
     required this.commonCalculate,
     required this.commonReset,
     required this.commonUpdate,
@@ -530,7 +531,6 @@ class L10nStrings {
     required this.accountDeletingMessage,
     required this.accountDeleteSuccessTitle,
     required this.accountDeleteSuccessBody,
-    required this.accountDeletePartialFailureBody,
     required this.dashboardAccountCardLabel,
     required this.dashboardAccountCardGuestValue,
     required this.authFormConsentPrefix,
@@ -606,6 +606,33 @@ class L10nStrings {
     required this.aiAssistantConsentTitle,
     required this.aiAssistantConsentBody,
     required this.aiAssistantConsentButton,
+    required this.paywallBenefitPdf,
+    required this.paywallBenefitReport,
+    required this.paywallBenefitAi,
+    required this.paywallBenefitCancel,
+    required this.paywallPlanMonthly,
+    required this.paywallPlanYearly,
+    required this.paywallPeriodMonth,
+    required this.paywallPeriodYear,
+    required this.paywallSaveBadge,
+    required this.paywallComingSoon,
+    required this.paywallComingSoonNote,
+    required this.paywallRestore,
+    required this.paywallAutoRenewDisclosure,
+    required this.paywallPremiumUnlocked,
+    required this.paywallPurchaseCompleted,
+    required this.paywallPurchaseFailed,
+    required this.paywallRestored,
+    required this.paywallNothingToRestore,
+    required this.paywallRestoreFailed,
+    required this.aiAssistantConsentDecline,
+    required this.accountWithdrawAiConsentButton,
+    required this.accountWithdrawAiConsentDone,
+    required this.accountManageSubscriptionsButton,
+    required this.accountSubscriptionNote,
+    required this.accountDeleteFailedTitle,
+    required this.accountDeleteRetryButton,
+    required this.accountDeleteFailedBody,
   });
 
   final String navBrand;
@@ -808,6 +835,7 @@ class L10nStrings {
   final String heatInputVerifiedProcessesNote;
   final String commonBack;
   final String commonContinue;
+  final String commonClose;
   final String commonCalculate;
   final String commonReset;
   final String commonUpdate;
@@ -1139,7 +1167,6 @@ class L10nStrings {
   final String accountDeletingMessage;
   final String accountDeleteSuccessTitle;
   final String accountDeleteSuccessBody;
-  final String accountDeletePartialFailureBody;
   final String dashboardAccountCardLabel;
   final String dashboardAccountCardGuestValue;
   final String authFormConsentPrefix;
@@ -1219,6 +1246,33 @@ class L10nStrings {
   final String aiAssistantConsentTitle;
   final String aiAssistantConsentBody;
   final String aiAssistantConsentButton;
+  final String paywallBenefitPdf;
+  final String paywallBenefitReport;
+  final String paywallBenefitAi;
+  final String paywallBenefitCancel;
+  final String paywallPlanMonthly;
+  final String paywallPlanYearly;
+  final String paywallPeriodMonth;
+  final String paywallPeriodYear;
+  final String paywallSaveBadge;
+  final String paywallComingSoon;
+  final String paywallComingSoonNote;
+  final String paywallRestore;
+  final String paywallAutoRenewDisclosure;
+  final String paywallPremiumUnlocked;
+  final String paywallPurchaseCompleted;
+  final String paywallPurchaseFailed;
+  final String paywallRestored;
+  final String paywallNothingToRestore;
+  final String paywallRestoreFailed;
+  final String aiAssistantConsentDecline;
+  final String accountWithdrawAiConsentButton;
+  final String accountWithdrawAiConsentDone;
+  final String accountManageSubscriptionsButton;
+  final String accountSubscriptionNote;
+  final String accountDeleteFailedTitle;
+  final String accountDeleteRetryButton;
+  final String accountDeleteFailedBody;
 }
 
 const Map<AppLanguage, L10nStrings> _strings = {
@@ -1469,6 +1523,7 @@ const Map<AppLanguage, L10nStrings> _strings = {
         "Arc thermal efficiency is only verified in EN 1011-2 for SAW, SMAW, and GMAW/MAG. For other processes, switch to 'Enter directly' and provide Q from another source.",
     commonBack: 'Back',
     commonContinue: 'Continue',
+    commonClose: 'Close',
     commonCalculate: 'Calculate',
     commonReset: 'Reset',
     commonUpdate: 'Update',
@@ -1872,13 +1927,11 @@ const Map<AppLanguage, L10nStrings> _strings = {
     accountSignInSuccess: 'Signed in as {email}.',
     accountDeleteConfirmTitle: 'Delete account?',
     accountDeleteConfirmBody:
-        'This will sign you out and permanently delete your saved calculations from this device and from the cloud. Your registered email will also be removed from our systems -- this part is handled manually and may take up to 30 days to complete. Your name, if you entered one, was never sent anywhere and stays on this device only.',
+        "This will sign you out and permanently delete the email address you registered with and your saved calculations, both from this device and from our servers. Your name, if you entered one, was never sent anywhere and stays on this device only. This cannot be undone.\n\nDeleting your account does not cancel an Apple subscription.",
     accountDeletingMessage: 'Deleting your account...',
     accountDeleteSuccessTitle: 'Account Deleted',
     accountDeleteSuccessBody:
-        'Your local data and cloud-synced saved calculations have been removed.',
-    accountDeletePartialFailureBody:
-        "You've been signed out and local data was cleared, but some cloud-synced data may not have been fully removed. Please check your connection and try again, or contact support.",
+        "Your email address and saved calculations were deleted from our servers and from this device. If you have an Apple subscription, it is still active until you cancel it with Manage subscriptions.",
     dashboardAccountCardLabel: 'Account',
     dashboardAccountCardGuestValue: 'Guest',
     authFormConsentPrefix: 'By registering, you agree to our',
@@ -1981,8 +2034,41 @@ const Map<AppLanguage, L10nStrings> _strings = {
     aiAssistantPremiumGateButton: 'Unlock Premium',
     aiAssistantConsentTitle: 'Before you start chatting',
     aiAssistantConsentBody:
-        'Your messages are sent to a third-party AI service to generate a response. Please avoid sharing sensitive personal information.',
-    aiAssistantConsentButton: 'I understand',
+        "To answer you, your messages are sent to a third-party AI service: Cloudflare Workers AI (Meta Llama 3.3 70B).\n\nWhat is sent: the text of your chat messages, the app language, a random device ID, and your IP address (used only for rate limiting and kept for at most 24 hours).\n\nVaryos does not store your messages, and they are not used for model training.\n\nPlease avoid sharing sensitive personal information. You can withdraw this consent at any time from the Account screen.",
+    aiAssistantConsentButton: "Agree & continue",
+    paywallBenefitPdf: "Client-ready PDF export for every estimate",
+    paywallBenefitReport: "Report-grade layout with engineering basis included",
+    paywallBenefitAi: "Unlimited AI assistant Q&A on your calculations",
+    paywallBenefitCancel:
+        "Cancel anytime in your Apple ID subscription settings",
+    paywallPlanMonthly: "Monthly",
+    paywallPlanYearly: "Yearly",
+    paywallPeriodMonth: "per month",
+    paywallPeriodYear: "per year",
+    paywallSaveBadge: "Save {percent}% vs. monthly",
+    paywallComingSoon: "Premium -- Coming Soon",
+    paywallComingSoonNote:
+        "Premium subscriptions are coming soon. Pricing will be shown here once available.",
+    paywallRestore: "Restore Purchases",
+    paywallAutoRenewDisclosure:
+        "Payment is charged to your Apple ID account at confirmation of purchase. The subscription renews automatically at the price shown for the chosen period unless it is cancelled at least 24 hours before the end of the current period. Your account is charged for renewal within 24 hours before the end of the current period. Manage or cancel anytime in your Apple ID account settings after purchase.",
+    paywallPremiumUnlocked: "Premium unlocked.",
+    paywallPurchaseCompleted: "Purchase completed.",
+    paywallPurchaseFailed: "Purchase failed. Please try again.",
+    paywallRestored: "Purchases restored.",
+    paywallNothingToRestore: "No previous purchase found.",
+    paywallRestoreFailed: "Restore failed. Please try again.",
+    aiAssistantConsentDecline: "Not now",
+    accountWithdrawAiConsentButton: "Withdraw AI consent",
+    accountWithdrawAiConsentDone:
+        "AI consent withdrawn. You will be asked again before using the AI assistant.",
+    accountManageSubscriptionsButton: "Manage subscriptions",
+    accountSubscriptionNote:
+        "Deleting your account does not cancel an Apple subscription. To stop renewals, cancel it in your Apple ID subscription settings.",
+    accountDeleteFailedTitle: "Deletion not confirmed",
+    accountDeleteRetryButton: "Retry",
+    accountDeleteFailedBody:
+        "Your data was cleared on this device, but we could not confirm deletion on our servers, so your email and cloud-synced calculations may still be stored there. Check your connection and tap Retry. If you close this, you can sign in again with the same email and delete the account again.",
   ),
   AppLanguage.tr: L10nStrings(
     navBrand: 'Varyos Weld',
@@ -2230,6 +2316,7 @@ const Map<AppLanguage, L10nStrings> _strings = {
         "Ark ısıl verimi EN 1011-2'de yalnızca SAW, SMAW ve GMAW/MAG için doğrulanmıştır. Diğer yöntemler için 'Doğrudan gir' seçeneğine geçip Q değerini başka bir kaynaktan girin.",
     commonBack: 'Geri',
     commonContinue: 'Devam Et',
+    commonClose: 'Kapat',
     commonCalculate: 'Hesapla',
     commonReset: 'Sıfırla',
     commonUpdate: 'Güncelle',
@@ -2641,13 +2728,11 @@ const Map<AppLanguage, L10nStrings> _strings = {
     accountSignInSuccess: '{email} olarak giriş yapıldı.',
     accountDeleteConfirmTitle: 'Hesap silinsin mi?',
     accountDeleteConfirmBody:
-        'Bu işlem sizi çıkış yaptıracak ve kayıtlı hesaplamalarınızı hem bu cihazdan hem de buluttan kalıcı olarak silecektir. Kayıtlı e-posta adresiniz de sistemlerimizden kaldırılacaktır -- bu kısım manuel olarak işlenir ve tamamlanması en fazla 30 gün sürebilir. Adınız girildiyse yalnızca bu cihazda saklanır ve hiçbir yere gönderilmez.',
+        "Bu işlem oturumunuzu kapatır; kayıt olduğunuz e-posta adresinizi ve kayıtlı hesaplamalarınızı hem bu cihazdan hem de sunucularımızdan kalıcı olarak siler. Adınızı girdiyseniz bile hiçbir yere gönderilmedi, yalnızca bu cihazda kalır. Bu işlem geri alınamaz.\n\nHesabınızı silmek bir Apple aboneliğini iptal etmez.",
     accountDeletingMessage: 'Hesabınız siliniyor...',
     accountDeleteSuccessTitle: 'Hesap Silindi',
     accountDeleteSuccessBody:
-        'Yerel verileriniz ve bulutla eşitlenen kayıtlı hesaplamalarınız kaldırıldı.',
-    accountDeletePartialFailureBody:
-        'Çıkış yapıldı ve yerel veriler temizlendi, ancak buluttaki bazı veriler tam olarak kaldırılamamış olabilir. Bağlantınızı kontrol edip tekrar deneyin veya destek ile iletişime geçin.',
+        "E-posta adresiniz ve kayıtlı hesaplamalarınız sunucularımızdan ve bu cihazdan silindi. Bir Apple aboneliğiniz varsa, Abonelikleri yönet bölümünden iptal edene kadar aktif kalır.",
     dashboardAccountCardLabel: 'Hesap',
     dashboardAccountCardGuestValue: 'Misafir',
     authFormConsentPrefix: 'Kayıt olarak',
@@ -2714,7 +2799,8 @@ const Map<AppLanguage, L10nStrings> _strings = {
     pdfBasisGroupProcess: 'Yöntem Parametreleri',
     pdfBasisGroupOther: 'Diğer',
     pdfExportSuccessToast: 'PDF raporu başarıyla dışa aktarıldı.',
-    pdfExportFailureToast: 'PDF dışa aktarma başarısız oldu. Lütfen tekrar deneyin.',
+    pdfExportFailureToast:
+        'PDF dışa aktarma başarısız oldu. Lütfen tekrar deneyin.',
     dashboardAssistantSectionTitle: 'Asistan',
     dashboardAiAssistant: 'Yapay Zeka Asistanı',
     aiAssistantScreenTitle: 'Yapay Zeka Asistanı',
@@ -2735,20 +2821,57 @@ const Map<AppLanguage, L10nStrings> _strings = {
         'Hesaplayıcı sonucum neden çok yüksek veya düşük çıkmış olabilir, neleri kontrol etmeliyim?',
     aiAssistantErrorRateLimited:
         'Çok fazla mesaj gönderildi -- lütfen biraz bekleyip tekrar deneyin.',
-    aiAssistantErrorBadRequest: 'Bu mesaj gönderilemedi. Lütfen tekrar deneyin.',
+    aiAssistantErrorBadRequest:
+        'Bu mesaj gönderilemedi. Lütfen tekrar deneyin.',
     aiAssistantErrorTimeout:
         'Asistan yanıt vermekte çok uzun sürdü. Lütfen tekrar deneyin.',
     aiAssistantErrorNetwork:
         'Asistana bağlanılamadı. İnternet bağlantınızı kontrol edip tekrar deneyin.',
-    aiAssistantErrorUpstream: 'Asistan şu anda kullanılamıyor. Lütfen tekrar deneyin.',
+    aiAssistantErrorUpstream:
+        'Asistan şu anda kullanılamıyor. Lütfen tekrar deneyin.',
     aiAssistantPremiumGateTitle: 'Yapay Zeka Asistanı bir Premium özelliktir',
     aiAssistantPremiumGateBody:
         "Uygulamanın hesaplayıcılarını kullanma ve sonuçlarını okuma konusunda yapay zeka asistanına soru sormak için Premium'u açın.",
     aiAssistantPremiumGateButton: "Premium'u Aç",
     aiAssistantConsentTitle: 'Sohbete başlamadan önce',
     aiAssistantConsentBody:
-        'Mesajlarınız bir yanıt oluşturmak için üçüncü taraf bir yapay zeka hizmetine gönderilir. Lütfen hassas kişisel bilgi paylaşmayın.',
-    aiAssistantConsentButton: 'Anladım',
+        "Size yanıt verebilmek için mesajlarınız üçüncü taraf bir yapay zekâ hizmetine gönderilir: Cloudflare Workers AI (Meta Llama 3.3 70B).\n\nGönderilenler: sohbet mesajlarınızın metni, uygulama dili, rastgele oluşturulmuş bir cihaz kimliği ve IP adresiniz (yalnızca istek sınırlaması için kullanılır ve en fazla 24 saat saklanır).\n\nVaryos mesajlarınızı saklamaz ve mesajlarınız model eğitimi için kullanılmaz.\n\nLütfen hassas kişisel bilgileri paylaşmaktan kaçının. Bu izni istediğiniz zaman Hesap ekranından geri çekebilirsiniz.",
+    aiAssistantConsentButton: "Kabul et ve devam et",
+    paywallBenefitPdf: "Her hesaplama için müşteriye hazır PDF dışa aktarma",
+    paywallBenefitReport:
+        "Mühendislik dayanağını içeren rapor kalitesinde düzen",
+    paywallBenefitAi:
+        "Hesaplamalarınız hakkında sınırsız yapay zekâ asistanı soru-cevabı",
+    paywallBenefitCancel:
+        "Apple Kimliği abonelik ayarlarından istediğiniz zaman iptal edin",
+    paywallPlanMonthly: "Aylık",
+    paywallPlanYearly: "Yıllık",
+    paywallPeriodMonth: "aylık",
+    paywallPeriodYear: "yıllık",
+    paywallSaveBadge: "Aylığa göre %{percent} tasarruf",
+    paywallComingSoon: "Premium -- Yakında",
+    paywallComingSoonNote:
+        "Premium abonelikler yakında geliyor. Fiyatlar kullanıma açıldığında burada gösterilecek.",
+    paywallRestore: "Satın Alımları Geri Yükle",
+    paywallAutoRenewDisclosure:
+        "Ödeme, satın alma onayında Apple Kimliği hesabınızdan tahsil edilir. Abonelik, mevcut dönemin bitiminden en az 24 saat önce iptal edilmezse seçilen dönem için gösterilen fiyattan otomatik olarak yenilenir. Yenileme ücreti, mevcut dönemin bitiminden önceki 24 saat içinde hesabınızdan tahsil edilir. Satın aldıktan sonra Apple Kimliği hesap ayarlarınızdan istediğiniz zaman yönetebilir veya iptal edebilirsiniz.",
+    paywallPremiumUnlocked: "Premium etkinleştirildi.",
+    paywallPurchaseCompleted: "Satın alma tamamlandı.",
+    paywallPurchaseFailed: "Satın alma başarısız oldu. Lütfen tekrar deneyin.",
+    paywallRestored: "Satın alımlar geri yüklendi.",
+    paywallNothingToRestore: "Önceki bir satın alma bulunamadı.",
+    paywallRestoreFailed: "Geri yükleme başarısız oldu. Lütfen tekrar deneyin.",
+    aiAssistantConsentDecline: "Şimdi değil",
+    accountWithdrawAiConsentButton: "Yapay zekâ iznini geri çek",
+    accountWithdrawAiConsentDone:
+        "Yapay zekâ izni geri çekildi. Yapay zekâ asistanını kullanmadan önce tekrar sorulacak.",
+    accountManageSubscriptionsButton: "Abonelikleri yönet",
+    accountSubscriptionNote:
+        "Hesabınızı silmek bir Apple aboneliğini iptal etmez. Yenilemeyi durdurmak için Apple Kimliği abonelik ayarlarınızdan iptal edin.",
+    accountDeleteFailedTitle: "Silme doğrulanamadı",
+    accountDeleteRetryButton: "Tekrar dene",
+    accountDeleteFailedBody:
+        "Verileriniz bu cihazdan silindi, ancak sunucularımızdaki silme işlemini doğrulayamadık; e-postanız ve bulutla eşitlenen hesaplamalarınız hâlâ orada saklanıyor olabilir. Bağlantınızı kontrol edip Tekrar dene'ye dokunun. Kapatırsanız aynı e-posta ile tekrar giriş yapıp hesabı yeniden silebilirsiniz.",
   ),
   AppLanguage.ru: L10nStrings(
     navBrand: 'Varyos Weld',
@@ -3000,6 +3123,7 @@ const Map<AppLanguage, L10nStrings> _strings = {
         'Тепловой КПД дуги проверен в EN 1011-2 только для SAW, SMAW и GMAW/MAG. Для других процессов переключитесь на «Ввести напрямую» и укажите Q из другого источника.',
     commonBack: 'Назад',
     commonContinue: 'Далее',
+    commonClose: 'Закрыть',
     commonCalculate: 'Рассчитать',
     commonReset: 'Сбросить',
     commonUpdate: 'Обновить',
@@ -3424,15 +3548,13 @@ const Map<AppLanguage, L10nStrings> _strings = {
     // TODO: unverified translation -- legal/formal phrasing, needs
     // native-speaker review.
     accountDeleteConfirmBody:
-        'Это приведёт к выходу из аккаунта и безвозвратному удалению ваших сохранённых расчётов с этого устройства и из облака. Ваш зарегистрированный email также будет удалён из наших систем -- это делается вручную и может занять до 30 дней. Ваше имя, если вы его указали, хранится только на этом устройстве и никуда не передаётся.',
+        "Вы выйдете из аккаунта, а адрес электронной почты, с которым вы регистрировались, и ваши сохранённые расчёты будут безвозвратно удалены как с этого устройства, так и с наших серверов. Ваше имя, если вы его вводили, никуда не отправлялось и хранится только на этом устройстве. Это действие нельзя отменить.\n\nУдаление аккаунта не отменяет подписку Apple.",
     accountDeletingMessage: 'Удаление аккаунта...',
     accountDeleteSuccessTitle: 'Аккаунт удалён',
     accountDeleteSuccessBody:
-        'Ваши локальные данные и синхронизированные с облаком расчёты были удалены.',
+        "Ваш адрес электронной почты и сохранённые расчёты удалены с наших серверов и с этого устройства. Если у вас есть подписка Apple, она остаётся активной, пока вы не отмените её через «Управление подписками».",
     // TODO: unverified translation -- legal/formal phrasing, needs
     // native-speaker review.
-    accountDeletePartialFailureBody:
-        'Вы вышли из аккаунта, и локальные данные были очищены, но некоторые облачные данные могли быть удалены не полностью. Проверьте подключение и повторите попытку или обратитесь в поддержку.',
     dashboardAccountCardLabel: 'Аккаунт',
     dashboardAccountCardGuestValue: 'Гость',
     authFormConsentPrefix: 'Регистрируясь, вы соглашаетесь с нашими «',
@@ -3521,19 +3643,55 @@ const Map<AppLanguage, L10nStrings> _strings = {
         'Почему результат калькулятора может быть слишком высоким или низким и что проверить?',
     aiAssistantErrorRateLimited:
         'Слишком много сообщений -- подождите немного и попробуйте снова.',
-    aiAssistantErrorBadRequest: 'Не удалось отправить это сообщение. Попробуйте снова.',
-    aiAssistantErrorTimeout: 'Ассистент слишком долго отвечал. Попробуйте снова.',
+    aiAssistantErrorBadRequest:
+        'Не удалось отправить это сообщение. Попробуйте снова.',
+    aiAssistantErrorTimeout:
+        'Ассистент слишком долго отвечал. Попробуйте снова.',
     aiAssistantErrorNetwork:
         'Нет соединения с ассистентом. Проверьте интернет и попробуйте снова.',
-    aiAssistantErrorUpstream: 'Ассистент временно недоступен. Попробуйте снова.',
+    aiAssistantErrorUpstream:
+        'Ассистент временно недоступен. Попробуйте снова.',
     aiAssistantPremiumGateTitle: 'ИИ-ассистент -- функция Premium',
     aiAssistantPremiumGateBody:
         'Откройте Premium, чтобы спрашивать ИИ-ассистента, как пользоваться калькуляторами приложения и читать результаты.',
     aiAssistantPremiumGateButton: 'Открыть Premium',
     aiAssistantConsentTitle: 'Прежде чем начать чат',
     aiAssistantConsentBody:
-        'Ваши сообщения отправляются стороннему ИИ-сервису для формирования ответа. Пожалуйста, не указывайте конфиденциальную личную информацию.',
-    aiAssistantConsentButton: 'Я понимаю',
+        "Чтобы ответить вам, ваши сообщения отправляются стороннему ИИ-сервису: Cloudflare Workers AI (Meta Llama 3.3 70B).\n\nЧто отправляется: текст ваших сообщений в чате, язык приложения, случайный идентификатор устройства и ваш IP-адрес (используется только для ограничения частоты запросов и хранится не более 24 часов).\n\nVaryos не хранит ваши сообщения, и они не используются для обучения модели.\n\nПожалуйста, не передавайте конфиденциальные личные данные. Вы можете отозвать это согласие в любой момент на экране аккаунта.",
+    aiAssistantConsentButton: "Согласиться и продолжить",
+    paywallBenefitPdf: "Экспорт PDF для клиента по каждой смете",
+    paywallBenefitReport: "Оформление уровня отчёта с инженерным обоснованием",
+    paywallBenefitAi: "Неограниченные вопросы ИИ-ассистенту по вашим расчётам",
+    paywallBenefitCancel: "Отмена в любое время в настройках подписок Apple ID",
+    paywallPlanMonthly: "Ежемесячно",
+    paywallPlanYearly: "Ежегодно",
+    paywallPeriodMonth: "в месяц",
+    paywallPeriodYear: "в год",
+    paywallSaveBadge: "Экономия {percent}% по сравнению с ежемесячной",
+    paywallComingSoon: "Premium -- скоро",
+    paywallComingSoonNote:
+        "Подписка Premium скоро появится. Цены будут показаны здесь, когда она станет доступна.",
+    paywallRestore: "Восстановить покупки",
+    paywallAutoRenewDisclosure:
+        "Оплата списывается с вашей учётной записи Apple ID при подтверждении покупки. Подписка автоматически продлевается по цене, указанной для выбранного периода, если не отменить её минимум за 24 часа до окончания текущего периода. Плата за продление списывается в течение 24 часов до окончания текущего периода. После покупки управлять подпиской или отменить её можно в настройках учётной записи Apple ID.",
+    paywallPremiumUnlocked: "Premium активирован.",
+    paywallPurchaseCompleted: "Покупка завершена.",
+    paywallPurchaseFailed: "Не удалось совершить покупку. Попробуйте ещё раз.",
+    paywallRestored: "Покупки восстановлены.",
+    paywallNothingToRestore: "Предыдущих покупок не найдено.",
+    paywallRestoreFailed:
+        "Не удалось восстановить покупки. Попробуйте ещё раз.",
+    aiAssistantConsentDecline: "Не сейчас",
+    accountWithdrawAiConsentButton: "Отозвать согласие на ИИ",
+    accountWithdrawAiConsentDone:
+        "Согласие на ИИ отозвано. Перед использованием ИИ-ассистента вас спросят снова.",
+    accountManageSubscriptionsButton: "Управление подписками",
+    accountSubscriptionNote:
+        "Удаление аккаунта не отменяет подписку Apple. Чтобы остановить продления, отмените её в настройках подписок Apple ID.",
+    accountDeleteFailedTitle: "Удаление не подтверждено",
+    accountDeleteRetryButton: "Повторить",
+    accountDeleteFailedBody:
+        "Данные на этом устройстве удалены, но мы не смогли подтвердить удаление на наших серверах, поэтому ваш адрес электронной почты и синхронизированные расчёты могут всё ещё храниться там. Проверьте подключение и нажмите «Повторить». Если вы закроете это окно, вы сможете снова войти с тем же адресом и повторно удалить аккаунт.",
   ),
   AppLanguage.de: L10nStrings(
     navBrand: 'Varyos Weld',
@@ -3786,6 +3944,7 @@ const Map<AppLanguage, L10nStrings> _strings = {
         'Der thermische Lichtbogenwirkungsgrad ist in EN 1011-2 nur für SAW, SMAW und GMAW/MAG verifiziert. Wechseln Sie für andere Verfahren zu "Direkt eingeben" und geben Sie Q aus einer anderen Quelle an.',
     commonBack: 'Zurück',
     commonContinue: 'Weiter',
+    commonClose: 'Schließen',
     commonCalculate: 'Berechnen',
     commonReset: 'Zurücksetzen',
     commonUpdate: 'Aktualisieren',
@@ -4210,15 +4369,13 @@ const Map<AppLanguage, L10nStrings> _strings = {
     // TODO: unverified translation -- legal/formal phrasing, needs
     // native-speaker review.
     accountDeleteConfirmBody:
-        'Dadurch werden Sie abgemeldet und Ihre gespeicherten Berechnungen werden dauerhaft von diesem Gerät und aus der Cloud gelöscht. Ihre registrierte E-Mail-Adresse wird ebenfalls aus unseren Systemen entfernt -- dies erfolgt manuell und kann bis zu 30 Tage dauern. Ihr Name, falls angegeben, wird nur auf diesem Gerät gespeichert und niemals übertragen.',
+        "Sie werden abgemeldet, und die E-Mail-Adresse, mit der Sie sich registriert haben, sowie Ihre gespeicherten Berechnungen werden dauerhaft von diesem Gerät und von unseren Servern gelöscht. Ihr Name, falls eingegeben, wurde nie irgendwohin gesendet und bleibt nur auf diesem Gerät. Dies kann nicht rückgängig gemacht werden.\n\nDas Löschen Ihres Kontos kündigt kein Apple-Abo.",
     accountDeletingMessage: 'Konto wird gelöscht...',
     accountDeleteSuccessTitle: 'Konto gelöscht',
     accountDeleteSuccessBody:
-        'Ihre lokalen Daten und mit der Cloud synchronisierten gespeicherten Berechnungen wurden entfernt.',
+        "Ihre E-Mail-Adresse und Ihre gespeicherten Berechnungen wurden von unseren Servern und von diesem Gerät gelöscht. Ein Apple-Abo bleibt aktiv, bis Sie es über „Abos verwalten“ kündigen.",
     // TODO: unverified translation -- legal/formal phrasing, needs
     // native-speaker review.
-    accountDeletePartialFailureBody:
-        'Sie wurden abgemeldet und lokale Daten wurden gelöscht, aber einige Cloud-Daten wurden möglicherweise nicht vollständig entfernt. Bitte prüfen Sie Ihre Verbindung und versuchen Sie es erneut, oder kontaktieren Sie den Support.',
     dashboardAccountCardLabel: 'Konto',
     dashboardAccountCardGuestValue: 'Gast',
     authFormConsentPrefix: 'Mit der Registrierung stimmen Sie unserer',
@@ -4321,8 +4478,45 @@ const Map<AppLanguage, L10nStrings> _strings = {
     aiAssistantPremiumGateButton: 'Premium freischalten',
     aiAssistantConsentTitle: 'Bevor Sie chatten',
     aiAssistantConsentBody:
-        'Ihre Nachrichten werden zur Erstellung einer Antwort an einen KI-Dienst eines Drittanbieters gesendet. Bitte teilen Sie keine sensiblen persönlichen Informationen mit.',
-    aiAssistantConsentButton: 'Ich verstehe',
+        "Um Ihnen zu antworten, werden Ihre Nachrichten an einen KI-Dienst eines Drittanbieters gesendet: Cloudflare Workers AI (Meta Llama 3.3 70B).\n\nWas gesendet wird: der Text Ihrer Chat-Nachrichten, die App-Sprache, eine zufällige Geräte-ID und Ihre IP-Adresse (nur zur Ratenbegrenzung verwendet und höchstens 24 Stunden gespeichert).\n\nVaryos speichert Ihre Nachrichten nicht, und sie werden nicht für das Modelltraining verwendet.\n\nBitte geben Sie keine sensiblen persönlichen Daten ein. Sie können diese Einwilligung jederzeit im Konto-Bildschirm widerrufen.",
+    aiAssistantConsentButton: "Zustimmen & fortfahren",
+    paywallBenefitPdf: "Kundenfertiger PDF-Export für jede Kalkulation",
+    paywallBenefitReport:
+        "Berichtstaugliches Layout inklusive technischer Grundlage",
+    paywallBenefitAi:
+        "Unbegrenzte Fragen an den KI-Assistenten zu Ihren Berechnungen",
+    paywallBenefitCancel:
+        "Jederzeit in den Abo-Einstellungen Ihrer Apple-ID kündbar",
+    paywallPlanMonthly: "Monatlich",
+    paywallPlanYearly: "Jährlich",
+    paywallPeriodMonth: "pro Monat",
+    paywallPeriodYear: "pro Jahr",
+    paywallSaveBadge: "{percent} % sparen gegenüber monatlich",
+    paywallComingSoon: "Premium -- demnächst",
+    paywallComingSoonNote:
+        "Premium-Abos kommen bald. Die Preise werden hier angezeigt, sobald sie verfügbar sind.",
+    paywallRestore: "Käufe wiederherstellen",
+    paywallAutoRenewDisclosure:
+        "Die Zahlung wird bei Kaufbestätigung Ihrem Apple-ID-Konto belastet. Das Abo verlängert sich automatisch zum angezeigten Preis für den gewählten Zeitraum, sofern es nicht mindestens 24 Stunden vor Ablauf des aktuellen Zeitraums gekündigt wird. Die Verlängerung wird innerhalb von 24 Stunden vor Ablauf des aktuellen Zeitraums berechnet. Nach dem Kauf können Sie das Abo jederzeit in den Einstellungen Ihres Apple-ID-Kontos verwalten oder kündigen.",
+    paywallPremiumUnlocked: "Premium freigeschaltet.",
+    paywallPurchaseCompleted: "Kauf abgeschlossen.",
+    paywallPurchaseFailed:
+        "Kauf fehlgeschlagen. Bitte versuchen Sie es erneut.",
+    paywallRestored: "Käufe wiederhergestellt.",
+    paywallNothingToRestore: "Kein früherer Kauf gefunden.",
+    paywallRestoreFailed:
+        "Wiederherstellung fehlgeschlagen. Bitte versuchen Sie es erneut.",
+    aiAssistantConsentDecline: "Nicht jetzt",
+    accountWithdrawAiConsentButton: "KI-Einwilligung widerrufen",
+    accountWithdrawAiConsentDone:
+        "KI-Einwilligung widerrufen. Vor der nächsten Nutzung des KI-Assistenten werden Sie erneut gefragt.",
+    accountManageSubscriptionsButton: "Abos verwalten",
+    accountSubscriptionNote:
+        "Das Löschen Ihres Kontos kündigt kein Apple-Abo. Um Verlängerungen zu stoppen, kündigen Sie es in den Abo-Einstellungen Ihrer Apple-ID.",
+    accountDeleteFailedTitle: "Löschung nicht bestätigt",
+    accountDeleteRetryButton: "Erneut versuchen",
+    accountDeleteFailedBody:
+        "Ihre Daten wurden auf diesem Gerät gelöscht, aber wir konnten die Löschung auf unseren Servern nicht bestätigen. Ihre E-Mail-Adresse und cloudsynchronisierte Berechnungen könnten dort noch gespeichert sein. Prüfen Sie Ihre Verbindung und tippen Sie auf „Erneut versuchen“. Wenn Sie dies schließen, können Sie sich mit derselben E-Mail erneut anmelden und das Konto erneut löschen.",
   ),
   AppLanguage.hi: L10nStrings(
     navBrand: 'Varyos Weld',
@@ -4571,6 +4765,7 @@ const Map<AppLanguage, L10nStrings> _strings = {
         "आर्क थर्मल एफिशिएंसी EN 1011-2 में केवल SAW, SMAW और GMAW/MAG के लिए वेरिफाई की गई है। अन्य प्रोसेस के लिए 'सीधे दर्ज करें' पर स्विच करें और Q किसी अन्य स्रोत से दर्ज करें।",
     commonBack: 'वापस',
     commonContinue: 'जारी रखें',
+    commonClose: 'बंद करें',
     commonCalculate: 'गणना करें',
     commonReset: 'रीसेट करें',
     commonUpdate: 'अपडेट करें',
@@ -4987,15 +5182,13 @@ const Map<AppLanguage, L10nStrings> _strings = {
     // TODO: unverified translation -- legal/formal phrasing, needs
     // native-speaker review.
     accountDeleteConfirmBody:
-        'इससे आप साइन आउट हो जाएंगे और आपकी सेव की गई कैलकुलेशन इस डिवाइस और क्लाउड दोनों से स्थायी रूप से डिलीट हो जाएंगी। आपका रजिस्टर्ड ईमेल भी हमारे सिस्टम से हटा दिया जाएगा -- यह हिस्सा मैन्युअल रूप से किया जाता है और पूरा होने में 30 दिन तक लग सकते हैं। आपका नाम, अगर आपने डाला है, केवल इस डिवाइस पर सेव रहता है और कभी कहीं नहीं भेजा जाता।',
+        "इससे आप साइन आउट हो जाएँगे और जिस ईमेल से आपने रजिस्टर किया था तथा आपकी सहेजी गई गणनाएँ, इस डिवाइस और हमारे सर्वर दोनों से हमेशा के लिए हटा दी जाएँगी। आपका नाम, यदि आपने दर्ज किया था, कहीं नहीं भेजा गया और केवल इसी डिवाइस पर रहता है। इसे वापस नहीं किया जा सकता।\n\nअकाउंट डिलीट करने से Apple सब्सक्रिप्शन रद्द नहीं होता।",
     accountDeletingMessage: 'आपका अकाउंट डिलीट किया जा रहा है...',
     accountDeleteSuccessTitle: 'अकाउंट डिलीट हो गया',
     accountDeleteSuccessBody:
-        'आपका लोकल डेटा और क्लाउड-सिंक्ड सेव की गई कैलकुलेशन हटा दी गई हैं।',
+        "आपका ईमेल पता और सहेजी गई गणनाएँ हमारे सर्वर और इस डिवाइस से हटा दी गईं। यदि आपके पास Apple सब्सक्रिप्शन है, तो वह तब तक सक्रिय रहेगा जब तक आप उसे \"सब्सक्रिप्शन प्रबंधित करें\" से रद्द नहीं करते।",
     // TODO: unverified translation -- legal/formal phrasing, needs
     // native-speaker review.
-    accountDeletePartialFailureBody:
-        'आपको साइन आउट कर दिया गया है और लोकल डेटा साफ़ कर दिया गया है, लेकिन हो सकता है कुछ क्लाउड डेटा पूरी तरह से न हटा हो। कृपया अपना कनेक्शन जांचें और फिर से कोशिश करें, या सपोर्ट से संपर्क करें।',
     dashboardAccountCardLabel: 'अकाउंट',
     dashboardAccountCardGuestValue: 'गेस्ट',
     // TODO: unverified translation -- needs native-speaker review of the
@@ -5088,20 +5281,55 @@ const Map<AppLanguage, L10nStrings> _strings = {
         'मेरा कैलकुलेटर नतीजा बहुत ज़्यादा या कम क्यों आ सकता है और मुझे क्या जांचना चाहिए?',
     aiAssistantErrorRateLimited:
         'बहुत सारे मेसेज भेजे गए -- कृपया थोड़ी देर रुकें और फिर कोशिश करें।',
-    aiAssistantErrorBadRequest: 'यह मेसेज भेजा नहीं जा सका। कृपया फिर से कोशिश करें।',
+    aiAssistantErrorBadRequest:
+        'यह मेसेज भेजा नहीं जा सका। कृपया फिर से कोशिश करें।',
     aiAssistantErrorTimeout:
         'असिस्टेंट को जवाब देने में बहुत समय लगा। कृपया फिर से कोशिश करें।',
     aiAssistantErrorNetwork:
         'असिस्टेंट से कनेक्शन नहीं हो पाया। अपना इंटरनेट चेक करें और फिर से कोशिश करें।',
-    aiAssistantErrorUpstream: 'असिस्टेंट अभी उपलब्ध नहीं है। कृपया फिर से कोशिश करें।',
+    aiAssistantErrorUpstream:
+        'असिस्टेंट अभी उपलब्ध नहीं है। कृपया फिर से कोशिश करें।',
     aiAssistantPremiumGateTitle: 'एआई असिस्टेंट एक प्रीमियम फीचर है',
     aiAssistantPremiumGateBody:
         'ऐप के कैलकुलेटर इस्तेमाल करने और नतीजे पढ़ने के बारे में एआई असिस्टेंट से पूछने के लिए प्रीमियम अनलॉक करें।',
     aiAssistantPremiumGateButton: 'प्रीमियम अनलॉक करें',
     aiAssistantConsentTitle: 'चैट शुरू करने से पहले',
     aiAssistantConsentBody:
-        'आपके मेसेज जवाब जनरेट करने के लिए एक थर्ड-पार्टी एआई सर्विस को भेजे जाते हैं। कृपया कोई संवेदनशील पर्सनल जानकारी शेयर न करें।',
-    aiAssistantConsentButton: 'मैं समझता हूँ',
+        "आपको जवाब देने के लिए आपके संदेश एक थर्ड-पार्टी AI सेवा को भेजे जाते हैं: Cloudflare Workers AI (Meta Llama 3.3 70B)।\n\nक्या भेजा जाता है: आपके चैट संदेशों का टेक्स्ट, ऐप की भाषा, एक रैंडम डिवाइस ID और आपका IP पता (केवल रेट लिमिटिंग के लिए उपयोग होता है और अधिकतम 24 घंटे रखा जाता है)।\n\nVaryos आपके संदेश स्टोर नहीं करता, और उनका उपयोग मॉडल ट्रेनिंग के लिए नहीं किया जाता।\n\nकृपया संवेदनशील व्यक्तिगत जानकारी साझा करने से बचें। आप यह सहमति कभी भी अकाउंट स्क्रीन से वापस ले सकते हैं।",
+    aiAssistantConsentButton: "सहमत हों और जारी रखें",
+    paywallBenefitPdf: "हर अनुमान के लिए क्लाइंट-रेडी PDF एक्सपोर्ट",
+    paywallBenefitReport: "इंजीनियरिंग आधार सहित रिपोर्ट-स्तरीय लेआउट",
+    paywallBenefitAi: "आपकी गणनाओं पर AI असिस्टेंट से असीमित सवाल-जवाब",
+    paywallBenefitCancel:
+        "Apple ID की सब्सक्रिप्शन सेटिंग्स से कभी भी रद्द करें",
+    paywallPlanMonthly: "मासिक",
+    paywallPlanYearly: "वार्षिक",
+    paywallPeriodMonth: "प्रति माह",
+    paywallPeriodYear: "प्रति वर्ष",
+    paywallSaveBadge: "मासिक की तुलना में {percent}% बचत",
+    paywallComingSoon: "Premium -- जल्द आ रहा है",
+    paywallComingSoonNote:
+        "Premium सब्सक्रिप्शन जल्द आ रहे हैं। उपलब्ध होने पर कीमतें यहाँ दिखाई जाएँगी।",
+    paywallRestore: "खरीदारी पुनर्स्थापित करें",
+    paywallAutoRenewDisclosure:
+        "खरीदारी की पुष्टि होने पर भुगतान आपके Apple ID खाते से लिया जाता है। यदि वर्तमान अवधि समाप्त होने से कम से कम 24 घंटे पहले रद्द न किया जाए, तो सब्सक्रिप्शन चुनी गई अवधि के लिए दिखाई गई कीमत पर अपने-आप नवीनीकृत हो जाता है। नवीनीकरण का शुल्क वर्तमान अवधि समाप्त होने से पहले के 24 घंटों में लिया जाता है। खरीदारी के बाद आप अपनी Apple ID खाता सेटिंग्स में कभी भी इसे प्रबंधित या रद्द कर सकते हैं।",
+    paywallPremiumUnlocked: "Premium अनलॉक हो गया।",
+    paywallPurchaseCompleted: "खरीदारी पूरी हुई।",
+    paywallPurchaseFailed: "खरीदारी विफल रही। कृपया फिर से प्रयास करें।",
+    paywallRestored: "खरीदारी पुनर्स्थापित हो गई।",
+    paywallNothingToRestore: "कोई पिछली खरीदारी नहीं मिली।",
+    paywallRestoreFailed: "पुनर्स्थापना विफल रही। कृपया फिर से प्रयास करें।",
+    aiAssistantConsentDecline: "अभी नहीं",
+    accountWithdrawAiConsentButton: "AI सहमति वापस लें",
+    accountWithdrawAiConsentDone:
+        "AI सहमति वापस ले ली गई। AI असिस्टेंट उपयोग करने से पहले आपसे फिर पूछा जाएगा।",
+    accountManageSubscriptionsButton: "सब्सक्रिप्शन प्रबंधित करें",
+    accountSubscriptionNote:
+        "अकाउंट डिलीट करने से Apple सब्सक्रिप्शन रद्द नहीं होता। नवीनीकरण रोकने के लिए इसे अपनी Apple ID सब्सक्रिप्शन सेटिंग्स में रद्द करें।",
+    accountDeleteFailedTitle: "डिलीट की पुष्टि नहीं हुई",
+    accountDeleteRetryButton: "फिर से प्रयास करें",
+    accountDeleteFailedBody:
+        "आपका डेटा इस डिवाइस से हटा दिया गया है, लेकिन हम हमारे सर्वर पर डिलीट होने की पुष्टि नहीं कर सके, इसलिए आपका ईमेल और क्लाउड-सिंक की गई गणनाएँ अभी भी वहाँ मौजूद हो सकती हैं। अपना कनेक्शन जाँचें और \"फिर से प्रयास करें\" दबाएँ। यदि आप इसे बंद करते हैं, तो उसी ईमेल से फिर साइन इन करके अकाउंट दोबारा डिलीट कर सकते हैं।",
   ),
 };
 

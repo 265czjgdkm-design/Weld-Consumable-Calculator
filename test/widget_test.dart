@@ -73,11 +73,15 @@ class _FakeEntitlementService extends EntitlementService {
   }
 }
 
-Package _fakePackage(String identifier) {
+Package _fakePackage(
+  String identifier, {
+  double price = 2.99,
+  String priceString = '\$2.99',
+}) {
   return Package(
     identifier,
     PackageType.custom,
-    StoreProduct(identifier, 'description', 'title', 2.99, '\$2.99', 'USD'),
+    StoreProduct(identifier, 'description', 'title', price, priceString, 'USD'),
     const PresentedOfferingContext(PurchasesConfig.offeringId, null, null),
   );
 }
@@ -85,7 +89,11 @@ Package _fakePackage(String identifier) {
 Offering _fakeOffering() {
   return Offering(PurchasesConfig.offeringId, 'description', const {}, [
     _fakePackage(PurchasesConfig.monthlyPackageId),
-    _fakePackage(PurchasesConfig.yearlyPackageId),
+    _fakePackage(
+      PurchasesConfig.yearlyPackageId,
+      price: 19.99,
+      priceString: '\$19.99',
+    ),
   ]);
 }
 
@@ -197,6 +205,8 @@ Future<void> _pumpCalculatorWithPreset(
 }
 
 void main() {
+  final strings = stringsFor(AppLanguage.en);
+
   setUp(() {
     SharedPreferences.setMockInitialValues({});
   });
@@ -562,10 +572,10 @@ void main() {
         find.text('Client-ready PDF export for every estimate'),
         findsOneWidget,
       );
-      expect(find.text('Restore Purchases'), findsOneWidget);
+      expect(find.text(strings.paywallRestore), findsOneWidget);
 
       final comingSoonButton = tester.widget<FilledButton>(
-        find.widgetWithText(FilledButton, 'Premium -- Coming Soon'),
+        find.widgetWithText(FilledButton, strings.paywallComingSoon),
       );
       expect(comingSoonButton.onPressed, isNull);
 
@@ -584,7 +594,6 @@ void main() {
     (tester) async {
       final mockPlatform = _MockUrlLauncherPlatform();
       UrlLauncherPlatform.instance = mockPlatform;
-      final strings = stringsFor(AppLanguage.en);
 
       await _pumpCalculatorToSummary(
         tester,
@@ -631,10 +640,16 @@ void main() {
       await tester.tap(find.text('Unlock PDF'));
       await tester.pumpAndSettle();
 
-      expect(find.text('Monthly -- \$2.99/mo'), findsOneWidget);
-      expect(find.text('Yearly -- \$19.99/yr (save ~44%)'), findsOneWidget);
+      expect(find.text('\$2.99'), findsOneWidget);
+      expect(find.text('\$19.99'), findsOneWidget);
+      expect(find.text(strings.paywallPeriodMonth), findsOneWidget);
+      expect(find.text(strings.paywallPeriodYear), findsOneWidget);
+      expect(
+        find.text(strings.paywallSaveBadge.replaceFirst('{percent}', '44')),
+        findsOneWidget,
+      );
 
-      await tester.tap(find.text('Monthly -- \$2.99/mo'));
+      await tester.tap(find.text('\$2.99'));
       await tester.pumpAndSettle();
 
       expect(find.text('Export PDF'), findsOneWidget);
@@ -667,9 +682,9 @@ void main() {
       await tester.tap(find.text('Unlock PDF'));
       await tester.pumpAndSettle();
 
-      expect(find.text('Monthly -- \$2.99/mo'), findsOneWidget);
-      expect(find.text('Yearly -- \$19.99/yr (save ~44%)'), findsNothing);
-      expect(find.text('Premium -- Coming Soon'), findsNothing);
+      expect(find.text('\$2.99'), findsOneWidget);
+      expect(find.text('\$19.99'), findsNothing);
+      expect(find.text(strings.paywallComingSoon), findsNothing);
     },
   );
 
@@ -705,7 +720,7 @@ void main() {
         ),
       );
 
-      expect(find.text('Premium -- Coming Soon'), findsOneWidget);
+      expect(find.text(strings.paywallComingSoon), findsOneWidget);
       expect(
         loggedMessages.any(
           (message) => message.contains('no monthly or annual package'),
@@ -730,13 +745,13 @@ void main() {
       await tester.tap(find.text('Unlock PDF'));
       await tester.pumpAndSettle();
 
-      await tester.tap(find.text('Restore Purchases'));
+      await tester.tap(find.text(strings.paywallRestore));
       await tester.pumpAndSettle();
 
       // Sheet dismissed (not left open on top of the result) and the
       // message actually renders instead of painting underneath it.
       expect(find.text('Varyos Weld Premium'), findsNothing);
-      expect(find.text('Restore failed. Please try again.'), findsOneWidget);
+      expect(find.text(strings.paywallRestoreFailed), findsOneWidget);
     },
   );
 
@@ -758,11 +773,11 @@ void main() {
       await tester.tap(find.text('Unlock PDF'));
       await tester.pumpAndSettle();
 
-      await tester.tap(find.text('Restore Purchases'));
+      await tester.tap(find.text(strings.paywallRestore));
       await tester.pumpAndSettle();
 
       expect(find.text('Varyos Weld Premium'), findsNothing);
-      expect(find.text('Purchases restored.'), findsOneWidget);
+      expect(find.text(strings.paywallRestored), findsOneWidget);
       expect(find.text('Export PDF'), findsOneWidget);
     },
   );
@@ -787,7 +802,7 @@ void main() {
       await tester.tap(find.text('Unlock PDF'));
       await tester.pumpAndSettle();
 
-      await tester.tap(find.text('Restore Purchases'));
+      await tester.tap(find.text(strings.paywallRestore));
       await tester.pump(); // starts the still-pending restore call
 
       // User dismisses the sheet via the barrier while the restore call is
@@ -806,7 +821,7 @@ void main() {
       // The CalculatorPage (and its computed result) is still here -- a
       // naive unconditional pop would have destroyed the whole wizard.
       expect(find.text('Export PDF'), findsOneWidget);
-      expect(find.text('Purchases restored.'), findsOneWidget);
+      expect(find.text(strings.paywallRestored), findsOneWidget);
     },
   );
 

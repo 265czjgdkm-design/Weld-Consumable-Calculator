@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 
 import '../l10n/app_locale_scope.dart';
 import '../l10n/strings.dart';
+import '../services/account_deletion_service.dart';
+import '../services/ai_consent_store.dart';
 import '../services/legal_links.dart';
 import '../services/preset_sync_service.dart';
 import '../services/user_account_store.dart';
@@ -16,7 +18,14 @@ import 'widgets/welding_loader.dart';
 /// anywhere in this app's model -- an email is simply what identifies an
 /// account (see [UserAccountStore]).
 class AccountScreen extends StatefulWidget {
-  const AccountScreen({super.key});
+  const AccountScreen({
+    super.key,
+    this.accountDeletionService = const AccountDeletionService(),
+    this.consentStore = const AiConsentStore(),
+  });
+
+  final AccountDeletionService accountDeletionService;
+  final AiConsentStore consentStore;
 
   @override
   State<AccountScreen> createState() => _AccountScreenState();
@@ -36,6 +45,7 @@ class _AccountScreenState extends State<AccountScreen> {
   String? _emailError;
   bool _loading = true;
   bool _busy = false;
+  bool _aiConsentGiven = false;
 
   @override
   void initState() {
@@ -53,8 +63,10 @@ class _AccountScreenState extends State<AccountScreen> {
     final email = await _accountStore.getEmail();
     final firstName = await _accountStore.getFirstName();
     final lastName = await _accountStore.getLastName();
+    final aiConsentGiven = await widget.consentStore.isAcknowledged();
     if (!mounted) return;
     setState(() {
+      _aiConsentGiven = aiConsentGiven;
       _email = email;
       _firstName = firstName;
       _lastName = lastName;
@@ -155,31 +167,8 @@ class _AccountScreenState extends State<AccountScreen> {
 
     setState(() => _busy = true);
 
-    // Cloud presets are listed and deleted one by one -- this achieves full
-    // cloud deletion with zero backend changes, reusing the existing
-    // list/delete API. A failure partway through must not leave the user
-    // in an ambiguous state: the local/account clear below always runs
-    // regardless, and the outcome message is chosen based on whether every
-    // cloud delete actually succeeded.
-    var cloudFullyDeleted = true;
-    try {
-      final result = await _presetSyncService.list(email);
-      if (result.skippedCount > 0) {
-        // Rows the cloud response couldn't parse are never reached by the
-        // delete loop below -- claiming full success would be dishonest.
-        cloudFullyDeleted = false;
-      }
-      for (final preset in result.presets) {
-        try {
-          await _presetSyncService.delete(email, preset.id);
-        } catch (_) {
-          cloudFullyDeleted = false;
-        }
-      }
-    } catch (_) {
-      cloudFullyDeleted = false;
-    }
-
+    // Local data is cleared on confirm regardless of the server outcome;
+    // the email is kept in a local variable so Retry can still address it.
     await _accountStore.clear();
     await _presetStore.save(const []);
 
@@ -188,18 +177,48 @@ class _AccountScreenState extends State<AccountScreen> {
       _email = null;
       _firstName = null;
       _lastName = null;
-      _busy = false;
     });
+
+    var deleted = false;
+    while (true) {
+      try {
+        await widget.accountDeletionService.deleteAccount(email);
+        deleted = true;
+      } catch (_) {
+        deleted = false;
+      }
+      if (!mounted) return;
+      // Busy (spinner) only covers the in-flight request, not the dialogs.
+      setState(() => _busy = false);
+      if (deleted) break;
+      final retry = await showDialog<bool>(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => AlertDialog(
+          title: Text(strings.accountDeleteFailedTitle),
+          content: Text(strings.accountDeleteFailedBody),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: Text(strings.commonClose),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: Text(strings.accountDeleteRetryButton),
+            ),
+          ],
+        ),
+      );
+      if (!mounted) return;
+      if (retry != true) return;
+      setState(() => _busy = true);
+    }
 
     await showDialog<void>(
       context: context,
       builder: (context) => AlertDialog(
         title: Text(strings.accountDeleteSuccessTitle),
-        content: Text(
-          cloudFullyDeleted
-              ? strings.accountDeleteSuccessBody
-              : strings.accountDeletePartialFailureBody,
-        ),
+        content: Text(strings.accountDeleteSuccessBody),
         actions: [
           FilledButton(
             onPressed: () => Navigator.of(context).pop(),
@@ -210,6 +229,14 @@ class _AccountScreenState extends State<AccountScreen> {
     );
     if (!mounted) return;
     Navigator.of(context).pop();
+  }
+
+  Future<void> _withdrawAiConsent() async {
+    final strings = AppLocaleScope.stringsOf(context);
+    await widget.consentStore.revoke();
+    if (!mounted) return;
+    setState(() => _aiConsentGiven = false);
+    _showMessage(strings.accountWithdrawAiConsentDone);
   }
 
   Future<void> _openLegalLink(String url) async {
@@ -252,6 +279,25 @@ class _AccountScreenState extends State<AccountScreen> {
                       ),
                     ),
                   ),
+                  const SizedBox(height: 16),
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton(
+                      onPressed: () =>
+                          _openLegalLink(LegalLinks.manageSubscriptionsUrl),
+                      child: Text(strings.accountManageSubscriptionsButton),
+                    ),
+                  ),
+                  if (_aiConsentGiven) ...[
+                    const SizedBox(height: 10),
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton(
+                        onPressed: _withdrawAiConsent,
+                        child: Text(strings.accountWithdrawAiConsentButton),
+                      ),
+                    ),
+                  ],
                   const SizedBox(height: 24),
                   const Divider(height: 1),
                   const SizedBox(height: 16),
@@ -332,6 +378,13 @@ class _AccountScreenState extends State<AccountScreen> {
                   )
                 : Text(strings.accountDeleteAccountButton),
           ),
+        ),
+        const SizedBox(height: 10),
+        Text(
+          strings.accountSubscriptionNote,
+          style: Theme.of(
+            context,
+          ).textTheme.bodySmall?.copyWith(color: const Color(0xFF607482)),
         ),
         if (_busy) ...[
           const SizedBox(height: 10),

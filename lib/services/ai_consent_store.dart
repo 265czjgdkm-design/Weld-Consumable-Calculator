@@ -18,4 +18,9 @@ class AiConsentStore {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_acknowledgedKey, true);
   }
+
+  Future<void> revoke() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_acknowledgedKey);
+  }
 }

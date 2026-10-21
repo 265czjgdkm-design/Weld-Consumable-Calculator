@@ -5,15 +5,31 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:url_launcher_platform_interface/link.dart';
+import 'package:url_launcher_platform_interface/url_launcher_platform_interface.dart';
 
 import 'package:weld_consumable_calculator/l10n/app_locale.dart';
 import 'package:weld_consumable_calculator/l10n/app_locale_scope.dart';
 import 'package:weld_consumable_calculator/l10n/app_language.dart';
 import 'package:weld_consumable_calculator/l10n/strings.dart';
 import 'package:weld_consumable_calculator/models/weld_models.dart';
+import 'package:weld_consumable_calculator/services/ai_consent_store.dart';
 import 'package:weld_consumable_calculator/services/user_account_store.dart';
 import 'package:weld_consumable_calculator/services/user_preset_store.dart';
 import 'package:weld_consumable_calculator/ui/account_screen.dart';
+
+class _MockUrlLauncherPlatform extends UrlLauncherPlatform {
+  String? lastLaunchedUrl;
+
+  @override
+  LinkDelegate? get linkDelegate => null;
+
+  @override
+  Future<bool> launchUrl(String url, LaunchOptions options) async {
+    lastLaunchedUrl = url;
+    return true;
+  }
+}
 
 Future<void> _pumpAccountScreen(WidgetTester tester) async {
   await tester.pumpWidget(
@@ -135,30 +151,21 @@ void main() {
     );
 
     testWidgets(
-      'Delete Account: Confirm lists then deletes every cloud preset, and '
-      'clears the local account + preset cache',
+      'Delete Account: Confirm sends one deleteAccount request for the '
+      'email, clears local account + presets, and shows the success text',
       (tester) async {
-        final cloudPreset1 = UserWeldPreset(
-          id: 'cloud-1',
-          name: 'Cloud Preset 1',
+        final localPreset = UserWeldPreset(
+          id: 'local-1',
+          name: 'Local Preset',
           updatedAtEpochMs: 1000,
-          data: InputPreset.csPlateSingleVGmaw.data!,
-        );
-        final cloudPreset2 = UserWeldPreset(
-          id: 'cloud-2',
-          name: 'Cloud Preset 2',
-          updatedAtEpochMs: 2000,
           data: InputPreset.csPlateSingleVGmaw.data!,
         );
         SharedPreferences.setMockInitialValues({
           'user_account_email_v1': 'user@example.com',
-          'user_weld_presets_v1': jsonEncode([
-            cloudPreset1.toJson(),
-            cloudPreset2.toJson(),
-          ]),
+          'user_weld_presets_v1': jsonEncode([localPreset.toJson()]),
         });
 
-        final deletedIds = <String>[];
+        final bodies = <Map<String, dynamic>>[];
         await http.runWithClient(
           () async {
             await _pumpAccountScreen(tester);
@@ -173,55 +180,86 @@ void main() {
               findsOneWidget,
             );
             expect(find.text(strings.accountDeleteSuccessBody), findsOneWidget);
+            expect(find.text(strings.accountDeleteFailedTitle), findsNothing);
 
             await tester.tap(find.text(strings.commonContinue));
             await tester.pumpAndSettle();
           },
           () => MockClient((request) async {
-            final uri = request.url;
-            if (request.method == 'GET' &&
-                uri.queryParameters['action'] == 'listPresets') {
-              return http.Response(
-                jsonEncode({
-                  'ok': true,
-                  'presets': [cloudPreset1.toJson(), cloudPreset2.toJson()],
-                }),
-                200,
-              );
-            }
-            final body = jsonDecode(request.body) as Map<String, dynamic>;
-            if (body['action'] == 'delete') {
-              deletedIds.add(body['presetId'] as String);
-              return http.Response(jsonEncode({'ok': true}), 200);
-            }
-            return http.Response(jsonEncode({'ok': false}), 200);
+            bodies.add(jsonDecode(request.body) as Map<String, dynamic>);
+            return http.Response(jsonEncode({'ok': true}), 200);
           }),
         );
 
-        expect(deletedIds.toSet(), {'cloud-1', 'cloud-2'});
-
-        const accountStore = UserAccountStore();
-        expect(await accountStore.getEmail(), isNull);
-
-        const presetStore = UserPresetStore();
-        expect((await presetStore.load()).presets, isEmpty);
+        expect(bodies, [
+          {'action': 'deleteAccount', 'email': 'user@example.com'},
+        ]);
+        expect(await const UserAccountStore().getEmail(), isNull);
+        expect((await const UserPresetStore().load()).presets, isEmpty);
       },
     );
 
     testWidgets(
-      'Delete Account: a cloud delete failure still fully clears local '
-      'state, but shows the partial-failure message instead of claiming '
-      'full success',
+      'Delete Account: a failed request shows the error with Retry (never '
+      'the success text), still clears local state, and Retry re-sends '
+      'the request for the same email until it succeeds',
       (tester) async {
-        final cloudPreset = UserWeldPreset(
-          id: 'cloud-1',
-          name: 'Cloud Preset',
-          updatedAtEpochMs: 1000,
-          data: InputPreset.csPlateSingleVGmaw.data!,
-        );
         SharedPreferences.setMockInitialValues({
           'user_account_email_v1': 'user@example.com',
-          'user_weld_presets_v1': jsonEncode([cloudPreset.toJson()]),
+        });
+
+        var calls = 0;
+        final emails = <String>[];
+        await http.runWithClient(
+          () async {
+            await _pumpAccountScreen(tester);
+
+            await tester.tap(find.text(strings.accountDeleteAccountButton));
+            await tester.pumpAndSettle();
+            await tester.tap(find.text(strings.commonDelete));
+            await tester.pumpAndSettle();
+
+            expect(find.text(strings.accountDeleteFailedTitle), findsOneWidget);
+            expect(find.text(strings.accountDeleteFailedBody), findsOneWidget);
+            expect(find.text(strings.accountDeleteSuccessTitle), findsNothing);
+            expect(await const UserAccountStore().getEmail(), isNull);
+
+            await tester.tap(find.text(strings.accountDeleteRetryButton));
+            await tester.pumpAndSettle();
+
+            expect(find.text(strings.accountDeleteFailedTitle), findsNothing);
+            expect(
+              find.text(strings.accountDeleteSuccessTitle),
+              findsOneWidget,
+            );
+            await tester.tap(find.text(strings.commonContinue));
+            await tester.pumpAndSettle();
+          },
+          () => MockClient((request) async {
+            calls++;
+            emails.add(
+              (jsonDecode(request.body) as Map<String, dynamic>)['email']
+                  as String,
+            );
+            // First attempt: server error. Second attempt: success.
+            return calls == 1
+                ? http.Response('Internal error', 500)
+                : http.Response(jsonEncode({'ok': true}), 200);
+          }),
+        );
+
+        expect(calls, 2);
+        expect(emails, ['user@example.com', 'user@example.com']);
+      },
+    );
+
+    testWidgets(
+      'Delete Account: an ok:false response (e.g. a backend without the '
+      'deleteAccount action) is treated as a failure, and closing the error '
+      'leaves the user on the screen',
+      (tester) async {
+        SharedPreferences.setMockInitialValues({
+          'user_account_email_v1': 'user@example.com',
         });
 
         await http.runWithClient(
@@ -233,35 +271,64 @@ void main() {
             await tester.tap(find.text(strings.commonDelete));
             await tester.pumpAndSettle();
 
-            expect(
-              find.text(strings.accountDeletePartialFailureBody),
-              findsOneWidget,
-            );
-
-            await tester.tap(find.text(strings.commonContinue));
+            expect(find.text(strings.accountDeleteFailedTitle), findsOneWidget);
+            await tester.tap(find.text(strings.commonClose));
             await tester.pumpAndSettle();
-          },
-          () => MockClient((request) async {
-            if (request.method == 'GET') {
-              return http.Response(
-                jsonEncode({
-                  'ok': true,
-                  'presets': [cloudPreset.toJson()],
-                }),
-                200,
-              );
-            }
-            // The delete call fails -- network/server error.
-            return http.Response('Internal error', 500);
-          }),
-        );
 
-        // The account is still fully cleared locally regardless of the
-        // cloud failure.
-        const accountStore = UserAccountStore();
-        expect(await accountStore.getEmail(), isNull);
-        const presetStore = UserPresetStore();
-        expect((await presetStore.load()).presets, isEmpty);
+            expect(find.text(strings.accountDeleteSuccessTitle), findsNothing);
+            expect(find.text(strings.accountGuestStateTitle), findsOneWidget);
+          },
+          () => MockClient(
+            (request) async => http.Response(
+              jsonEncode({'ok': false, 'error': 'Unknown action.'}),
+              200,
+            ),
+          ),
+        );
+      },
+    );
+
+    testWidgets('Manage subscriptions opens the App Store subscriptions page', (
+      tester,
+    ) async {
+      SharedPreferences.setMockInitialValues({
+        'user_account_email_v1': 'user@example.com',
+      });
+      final mockPlatform = _MockUrlLauncherPlatform();
+      UrlLauncherPlatform.instance = mockPlatform;
+
+      await _pumpAccountScreen(tester);
+      expect(find.text(strings.accountSubscriptionNote), findsOneWidget);
+
+      await tester.ensureVisible(
+        find.text(strings.accountManageSubscriptionsButton),
+      );
+      await tester.tap(find.text(strings.accountManageSubscriptionsButton));
+      await tester.pumpAndSettle();
+
+      expect(
+        mockPlatform.lastLaunchedUrl,
+        'https://apps.apple.com/account/subscriptions',
+      );
+    });
+
+    testWidgets(
+      'Withdraw AI consent clears the stored consent and hides the button',
+      (tester) async {
+        SharedPreferences.setMockInitialValues({
+          'user_account_email_v1': 'user@example.com',
+          'ai_consent_acknowledged_v1': true,
+        });
+
+        await _pumpAccountScreen(tester);
+        await tester.ensureVisible(
+          find.text(strings.accountWithdrawAiConsentButton),
+        );
+        await tester.tap(find.text(strings.accountWithdrawAiConsentButton));
+        await tester.pumpAndSettle();
+
+        expect(await const AiConsentStore().isAcknowledged(), isFalse);
+        expect(find.text(strings.accountWithdrawAiConsentButton), findsNothing);
       },
     );
   });
@@ -342,10 +409,7 @@ void main() {
 
             // Sign in as alice: her pre-existing local preset gets
             // uploaded and the local cache gets tagged as hers.
-            await tester.enterText(
-              find.byType(TextField),
-              'alice@example.com',
-            );
+            await tester.enterText(find.byType(TextField), 'alice@example.com');
             await tester.tap(find.text(strings.accountSignInButton));
             await tester.pumpAndSettle();
             expect(find.text('alice@example.com'), findsNWidgets(2));
@@ -399,63 +463,57 @@ void main() {
       },
     );
 
-    testWidgets(
-      'Sign in: a failed preset upload during migration skips the '
-      'cloud-authoritative refresh instead of wiping local presets with a '
-      'stale empty cloud list (reviewer finding #2)',
-      (tester) async {
-        final localPreset = UserWeldPreset(
-          id: 'local-1',
-          name: 'Local Preset',
-          updatedAtEpochMs: 1000,
-          data: InputPreset.csPlateSingleVGmaw.data!,
-        );
-        SharedPreferences.setMockInitialValues({
-          'user_weld_presets_v1': jsonEncode([localPreset.toJson()]),
-        });
+    testWidgets('Sign in: a failed preset upload during migration skips the '
+        'cloud-authoritative refresh instead of wiping local presets with a '
+        'stale empty cloud list (reviewer finding #2)', (tester) async {
+      final localPreset = UserWeldPreset(
+        id: 'local-1',
+        name: 'Local Preset',
+        updatedAtEpochMs: 1000,
+        data: InputPreset.csPlateSingleVGmaw.data!,
+      );
+      SharedPreferences.setMockInitialValues({
+        'user_weld_presets_v1': jsonEncode([localPreset.toJson()]),
+      });
 
-        var listCalled = false;
-        await http.runWithClient(
-          () async {
-            await _pumpAccountScreen(tester);
+      var listCalled = false;
+      await http.runWithClient(
+        () async {
+          await _pumpAccountScreen(tester);
 
-            await tester.enterText(
-              find.byType(TextField),
-              'existing@example.com',
-            );
-            await tester.tap(find.text(strings.accountSignInButton));
-            await tester.pumpAndSettle();
-          },
-          () => MockClient((request) async {
-            if (request.method == 'GET') {
-              // Reads still work -- only the write side is down (e.g.
-              // quota exceeded or a revoked write permission).
-              listCalled = true;
-              return http.Response(
-                jsonEncode({'ok': true, 'presets': []}),
-                200,
-              );
-            }
-            return http.Response('Internal error', 500);
-          }),
-        );
+          await tester.enterText(
+            find.byType(TextField),
+            'existing@example.com',
+          );
+          await tester.tap(find.text(strings.accountSignInButton));
+          await tester.pumpAndSettle();
+        },
+        () => MockClient((request) async {
+          if (request.method == 'GET') {
+            // Reads still work -- only the write side is down (e.g.
+            // quota exceeded or a revoked write permission).
+            listCalled = true;
+            return http.Response(jsonEncode({'ok': true, 'presets': []}), 200);
+          }
+          return http.Response('Internal error', 500);
+        }),
+      );
 
-        expect(
-          listCalled,
-          isFalse,
-          reason:
-              'the cloud-authoritative refresh must be skipped entirely '
-              'after a failed migration upload, or it would wipe local '
-              'data with a cloud list that does not reflect the failed '
-              'upload',
-        );
+      expect(
+        listCalled,
+        isFalse,
+        reason:
+            'the cloud-authoritative refresh must be skipped entirely '
+            'after a failed migration upload, or it would wipe local '
+            'data with a cloud list that does not reflect the failed '
+            'upload',
+      );
 
-        const presetStore = UserPresetStore();
-        final survivingPresets = (await presetStore.load()).presets;
-        expect(survivingPresets, hasLength(1));
-        expect(survivingPresets.single.id, 'local-1');
-      },
-    );
+      const presetStore = UserPresetStore();
+      final survivingPresets = (await presetStore.load()).presets;
+      expect(survivingPresets, hasLength(1));
+      expect(survivingPresets.single.id, 'local-1');
+    });
 
     testWidgets(
       'an invalid email shows a validation error and does not sign in',
@@ -560,10 +618,7 @@ void main() {
           () async {
             await _pumpAccountScreen(tester);
 
-            await tester.enterText(
-              find.byType(TextField),
-              'User@Example.com',
-            );
+            await tester.enterText(find.byType(TextField), 'User@Example.com');
             await tester.tap(find.text(strings.accountSignInButton));
             await tester.pumpAndSettle();
 
@@ -601,71 +656,6 @@ void main() {
           reason:
               'every cloud call must use the lowercased email, not the '
               'raw-typed "User@Example.com": $requestedEmails',
-        );
-      },
-    );
-
-    testWidgets(
-      'Delete Account: skippedCount > 0 from list() is treated as a '
-      'partial failure even when every returned preset deletes fine '
-      '(reviewer finding #3)',
-      (tester) async {
-        SharedPreferences.setMockInitialValues({
-          'user_account_email_v1': 'user@example.com',
-          'user_weld_presets_v1': jsonEncode([]),
-        });
-
-        final goodPreset = UserWeldPreset(
-          id: 'cloud-good',
-          name: 'Cloud Good',
-          updatedAtEpochMs: 1000,
-          data: InputPreset.csPlateSingleVGmaw.data!,
-        );
-
-        await http.runWithClient(
-          () async {
-            await _pumpAccountScreen(tester);
-
-            await tester.tap(find.text(strings.accountDeleteAccountButton));
-            await tester.pumpAndSettle();
-            await tester.tap(find.text(strings.commonDelete));
-            await tester.pumpAndSettle();
-
-            // One row was unparseable (skippedCount: 1 in list()'s
-            // response) even though the one returned preset's delete()
-            // call below succeeds -- this must still show the honest
-            // partial-failure message, not full success.
-            expect(
-              find.text(strings.accountDeletePartialFailureBody),
-              findsOneWidget,
-            );
-            expect(
-              find.text(strings.accountDeleteSuccessBody),
-              findsNothing,
-            );
-
-            await tester.tap(find.text(strings.commonContinue));
-            await tester.pumpAndSettle();
-          },
-          () => MockClient((request) async {
-            if (request.method == 'GET') {
-              return http.Response(
-                jsonEncode({
-                  'ok': true,
-                  'presets': [
-                    goodPreset.toJson(),
-                    // Unparseable: missing required 'data' field, so
-                    // PresetSyncService.list counts it in skippedCount
-                    // instead of returning it in `presets`.
-                    {'id': 'unparseable-1', 'name': 'Broken'},
-                  ],
-                }),
-                200,
-              );
-            }
-            // Every delete() call succeeds.
-            return http.Response(jsonEncode({'ok': true}), 200);
-          }),
         );
       },
     );

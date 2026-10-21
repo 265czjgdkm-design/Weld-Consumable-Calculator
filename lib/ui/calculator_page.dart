@@ -18,7 +18,6 @@ import '../models/weld_models.dart';
 import '../services/custom_base_material_store.dart';
 import '../services/custom_filler_material_store.dart';
 import '../services/entitlement_service.dart';
-import '../services/legal_links.dart';
 import '../services/pdf_report_exporter.dart';
 import '../services/preset_sync_service.dart';
 import '../services/purchases_config.dart';
@@ -27,6 +26,7 @@ import '../services/user_account_store.dart';
 import '../services/user_preset_store.dart';
 import '../services/user_preset_sync.dart';
 import '../services/weld_pdf_report_service.dart';
+import 'paywall_shared.dart';
 import 'widgets/weld_drawing_preview.dart';
 import 'calculator_page/calculator_page_models.dart';
 import 'calculator_page/calculator_page_widgets.dart';
@@ -1558,7 +1558,8 @@ class _CalculatorPageState extends State<CalculatorPage> {
                           '(${_baseMaterialSelection!.material.designation})',
               ),
             ),
-          ] else if (_baseMaterialsLoaded && displayedCustomOptions.isEmpty) ...[
+          ] else if (_baseMaterialsLoaded &&
+              displayedCustomOptions.isEmpty) ...[
             const SizedBox(height: 12),
             PanelNote(
               icon: Icons.info_outline,
@@ -3713,8 +3714,8 @@ class _CalculatorPageState extends State<CalculatorPage> {
   ) {
     final max = _dimensionMaxBounds[key];
     if (value == null || max == null || value <= max) return value;
-    final unit = key == FieldKey.bevelAngleDeg ||
-            key == FieldKey.secondaryBevelAngleDeg
+    final unit =
+        key == FieldKey.bevelAngleDeg || key == FieldKey.secondaryBevelAngleDeg
         ? '°'
         : ' mm';
     throw _RequiredFieldMissingException(
@@ -4256,6 +4257,7 @@ class _PaywallSheetState extends State<_PaywallSheet> {
   }
 
   Future<void> _purchase(Package package) async {
+    final strings = AppLocaleScope.stringsOf(context);
     setState(() => _purchasingPackageId = package.identifier);
     final navigator = Navigator.of(context);
     final sheetRoute = ModalRoute.of(context);
@@ -4267,7 +4269,11 @@ class _PaywallSheetState extends State<_PaywallSheet> {
       widget.onEntitlementChanged(isActive);
       if (!mounted) return;
       _dismissSheetIfCurrent(navigator, sheetRoute);
-      widget.onMessage(isActive ? 'Premium unlocked.' : 'Purchase completed.');
+      widget.onMessage(
+        isActive
+            ? strings.paywallPremiumUnlocked
+            : strings.paywallPurchaseCompleted,
+      );
       return;
     } on PlatformException catch (error) {
       if (PurchasesErrorHelper.getErrorCode(error) ==
@@ -4276,17 +4282,18 @@ class _PaywallSheetState extends State<_PaywallSheet> {
       } else {
         if (!mounted) return;
         _dismissSheetIfCurrent(navigator, sheetRoute);
-        widget.onMessage('Purchase failed. Please try again.');
+        widget.onMessage(strings.paywallPurchaseFailed);
       }
     } catch (error) {
       if (!mounted) return;
       _dismissSheetIfCurrent(navigator, sheetRoute);
-      widget.onMessage('Purchase failed. Please try again.');
+      widget.onMessage(strings.paywallPurchaseFailed);
     }
     if (mounted) setState(() => _purchasingPackageId = null);
   }
 
   Future<void> _restore() async {
+    final strings = AppLocaleScope.stringsOf(context);
     setState(() => _restoring = true);
     final navigator = Navigator.of(context);
     final sheetRoute = ModalRoute.of(context);
@@ -4300,12 +4307,12 @@ class _PaywallSheetState extends State<_PaywallSheet> {
       // invisible.
       _dismissSheetIfCurrent(navigator, sheetRoute);
       widget.onMessage(
-        isActive ? 'Purchases restored.' : 'No previous purchase found.',
+        isActive ? strings.paywallRestored : strings.paywallNothingToRestore,
       );
     } catch (error) {
       if (!mounted) return;
       _dismissSheetIfCurrent(navigator, sheetRoute);
-      widget.onMessage('Restore failed. Please try again.');
+      widget.onMessage(strings.paywallRestoreFailed);
     } finally {
       if (mounted) setState(() => _restoring = false);
     }
@@ -4329,39 +4336,9 @@ class _PaywallSheetState extends State<_PaywallSheet> {
     );
   }
 
-  Widget _buildPurchaseButton({
-    required String label,
-    required Package package,
-  }) {
-    final busy = _purchasingPackageId == package.identifier;
-    final disabled = _purchasingPackageId != null || _restoring;
-    return SizedBox(
-      width: double.infinity,
-      child: FilledButton(
-        onPressed: disabled ? null : () => _purchase(package),
-        style: FilledButton.styleFrom(
-          backgroundColor: const Color(0xFF12191B),
-          padding: const EdgeInsets.symmetric(vertical: 16),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-        ),
-        child: busy
-            ? const SizedBox(
-                width: 18,
-                height: 18,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2.2,
-                  color: Colors.white,
-                ),
-              )
-            : Text(label),
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
+    final strings = AppLocaleScope.stringsOf(context);
     return Padding(
       padding: EdgeInsets.only(
         bottom: MediaQuery.of(context).viewInsets.bottom,
@@ -4373,166 +4350,113 @@ class _PaywallSheetState extends State<_PaywallSheet> {
           color: Colors.white,
           borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
         ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Center(
-              child: Container(
-                width: 40,
-                height: 4,
-                margin: const EdgeInsets.only(bottom: 18),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFD2DCE3),
-                  borderRadius: BorderRadius.circular(999),
-                ),
-              ),
-            ),
-            Row(
-              children: [
-                Container(
-                  width: 46,
-                  height: 46,
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  margin: const EdgeInsets.only(bottom: 18),
                   decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(14),
-                    color: const Color(0xFFFF6A35),
+                    color: const Color(0xFFD2DCE3),
+                    borderRadius: BorderRadius.circular(999),
                   ),
-                  alignment: Alignment.center,
-                  child: const Icon(
-                    Icons.workspace_premium_outlined,
-                    color: Colors.white,
-                  ),
-                ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Text(
-                    'Varyos Weld Premium',
-                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 18),
-            _buildPaywallBenefit(
-              icon: Icons.picture_as_pdf_outlined,
-              text: 'Client-ready PDF export for every estimate',
-            ),
-            const SizedBox(height: 10),
-            _buildPaywallBenefit(
-              icon: Icons.badge_outlined,
-              text: 'Report-grade layout with engineering basis included',
-            ),
-            const SizedBox(height: 10),
-            _buildPaywallBenefit(
-              icon: Icons.event_repeat_outlined,
-              text: 'Cancel anytime from Settings',
-            ),
-            const SizedBox(height: 22),
-            if (_loadingOffering)
-              const Center(child: CircularProgressIndicator())
-            else if (_hasAnyPackage) ...[
-              if (_monthlyPackage != null) ...[
-                _buildPurchaseButton(
-                  label: 'Monthly -- \$2.99/mo',
-                  package: _monthlyPackage!,
-                ),
-                if (_yearlyPackage != null) const SizedBox(height: 10),
-              ],
-              if (_yearlyPackage != null)
-                _buildPurchaseButton(
-                  label: 'Yearly -- \$19.99/yr (save ~44%)',
-                  package: _yearlyPackage!,
-                ),
-            ] else
-              SizedBox(
-                width: double.infinity,
-                child: FilledButton(
-                  onPressed: null,
-                  style: FilledButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                  ),
-                  child: const Text('Premium -- Coming Soon'),
                 ),
               ),
-            const SizedBox(height: 10),
-            Center(
-              child: TextButton(
-                onPressed: (_restoring || _purchasingPackageId != null)
-                    ? null
-                    : _restore,
-                child: _restoring
-                    ? const SizedBox(
-                        width: 18,
-                        height: 18,
-                        child: CircularProgressIndicator(strokeWidth: 2.2),
-                      )
-                    : const Text('Restore Purchases'),
+              Row(
+                children: [
+                  Container(
+                    width: 46,
+                    height: 46,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(14),
+                      color: const Color(0xFFFF6A35),
+                    ),
+                    alignment: Alignment.center,
+                    child: const Icon(
+                      Icons.workspace_premium_outlined,
+                      color: Colors.white,
+                    ),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Text(
+                      'Varyos Weld Premium',
+                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ),
+                ],
               ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              _hasAnyPackage
-                  ? 'Auto-renewing subscription. Cancel anytime from Settings.'
-                  : 'Premium subscriptions are coming soon. Planned pricing (\$2.99/mo, \$19.99/yr) is shown for reference and subject to change.',
-              textAlign: TextAlign.center,
-              style: Theme.of(
-                context,
-              ).textTheme.bodySmall?.copyWith(color: const Color(0xFF8398A5)),
-            ),
-            const SizedBox(height: 6),
-            _buildPaywallLegalLinks(context),
-          ],
+              const SizedBox(height: 18),
+              _buildPaywallBenefit(
+                icon: Icons.picture_as_pdf_outlined,
+                text: strings.paywallBenefitPdf,
+              ),
+              const SizedBox(height: 10),
+              _buildPaywallBenefit(
+                icon: Icons.badge_outlined,
+                text: strings.paywallBenefitReport,
+              ),
+              const SizedBox(height: 10),
+              _buildPaywallBenefit(
+                icon: Icons.event_repeat_outlined,
+                text: strings.paywallBenefitCancel,
+              ),
+              const SizedBox(height: 22),
+              if (_loadingOffering)
+                const Center(child: CircularProgressIndicator())
+              else if (_hasAnyPackage)
+                PaywallPackageButtons(
+                  monthly: _monthlyPackage,
+                  yearly: _yearlyPackage,
+                  purchasingPackageId: _purchasingPackageId,
+                  disabled: _purchasingPackageId != null || _restoring,
+                  onPurchase: _purchase,
+                )
+              else
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton(
+                    onPressed: null,
+                    style: FilledButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                    ),
+                    child: Text(strings.paywallComingSoon),
+                  ),
+                ),
+              const SizedBox(height: 10),
+              Center(
+                child: TextButton(
+                  onPressed: (_restoring || _purchasingPackageId != null)
+                      ? null
+                      : _restore,
+                  child: _restoring
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2.2),
+                        )
+                      : Text(strings.paywallRestore),
+                ),
+              ),
+              const SizedBox(height: 4),
+              PaywallLegalFooter(
+                hasPackages: _hasAnyPackage,
+                onLinkError: widget.onMessage,
+              ),
+            ],
+          ),
         ),
       ),
     );
-  }
-
-  Widget _buildPaywallLegalLinks(BuildContext context) {
-    final strings = AppLocaleScope.stringsOf(context);
-    return Center(
-      child: Wrap(
-        alignment: WrapAlignment.center,
-        children: [
-          GestureDetector(
-            onTap: () =>
-                _openPaywallLegalLink(context, LegalLinks.privacyPolicyUrl),
-            child: Text(
-              strings.legalPrivacyPolicyLinkLabel,
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: const Color(0xFF12191B),
-                decoration: TextDecoration.underline,
-              ),
-            ),
-          ),
-          const Text('  ·  ', style: TextStyle(color: Color(0xFF8398A5))),
-          GestureDetector(
-            onTap: () =>
-                _openPaywallLegalLink(context, LegalLinks.termsOfUseUrl),
-            child: Text(
-              strings.legalTermsOfUseLinkLabel,
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: const Color(0xFF12191B),
-                decoration: TextDecoration.underline,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Future<void> _openPaywallLegalLink(BuildContext context, String url) async {
-    try {
-      await LegalLinks.open(url);
-    } catch (_) {
-      if (!context.mounted) return;
-      widget.onMessage(AppLocaleScope.stringsOf(context).legalLinkOpenError);
-    }
   }
 }
 

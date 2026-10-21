@@ -12,8 +12,10 @@ import '../services/ai_assistant_config.dart';
 import '../services/ai_assistant_service.dart';
 import '../services/ai_consent_store.dart';
 import '../services/entitlement_service.dart';
+import '../services/legal_links.dart';
 import '../services/purchases_config.dart';
 import 'calculator_page/calculator_page_widgets.dart';
+import 'paywall_shared.dart';
 import 'widgets/welding_loader.dart';
 
 /// In-app AI chat that answers questions about this app's three calculators
@@ -65,6 +67,18 @@ class _AiAssistantScreenState extends State<AiAssistantScreen> {
     if (!mounted) return;
     setState(() => _consentAcknowledged = true);
   }
+
+  Future<void> _openPrivacyPolicy() async {
+    try {
+      await LegalLinks.open(LegalLinks.privacyPolicyUrl);
+    } catch (_) {
+      if (!mounted) return;
+      _showMessage(AppLocaleScope.stringsOf(context).legalLinkOpenError);
+    }
+  }
+
+  // "Not now": leave the screen without storing any consent.
+  void _declineConsent() => Navigator.of(context).maybePop();
 
   Future<void> _initEntitlement() async {
     try {
@@ -128,7 +142,9 @@ class _AiAssistantScreenState extends State<AiAssistantScreen> {
       );
       if (!mounted) return;
       setState(
-        () => _messages.add(ChatMessage(role: ChatRole.assistant, content: reply)),
+        () => _messages.add(
+          ChatMessage(role: ChatRole.assistant, content: reply),
+        ),
       );
     } catch (error) {
       if (!mounted) return;
@@ -307,15 +323,31 @@ class _AiAssistantScreenState extends State<AiAssistantScreen> {
                   const SizedBox(height: 8),
                   Text(
                     strings.aiAssistantConsentBody,
-                    textAlign: TextAlign.center,
+                    textAlign: TextAlign.start,
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                       color: const Color(0xFF607482),
                     ),
                   ),
-                  const SizedBox(height: 16),
-                  FilledButton(
-                    onPressed: _acknowledgeConsent,
-                    child: Text(strings.aiAssistantConsentButton),
+                  const SizedBox(height: 8),
+                  TextButton(
+                    onPressed: _openPrivacyPolicy,
+                    child: Text(strings.legalPrivacyPolicyLinkLabel),
+                  ),
+                  const SizedBox(height: 8),
+                  SizedBox(
+                    width: double.infinity,
+                    child: FilledButton(
+                      onPressed: _acknowledgeConsent,
+                      child: Text(strings.aiAssistantConsentButton),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton(
+                      onPressed: _declineConsent,
+                      child: Text(strings.aiAssistantConsentDecline),
+                    ),
                   ),
                 ],
               ),
@@ -546,32 +578,9 @@ class _AiAssistantPaywallSheetState extends State<_AiAssistantPaywallSheet> {
     }
   }
 
-  Widget _buildPurchaseButton({
-    required String label,
-    required Package package,
-  }) {
-    final busy = _purchasingPackageId == package.identifier;
-    final disabled = _purchasingPackageId != null || _restoring;
-    return SizedBox(
-      width: double.infinity,
-      child: FilledButton(
-        onPressed: disabled ? null : () => _purchase(package),
-        style: FilledButton.styleFrom(
-          backgroundColor: const Color(0xFF12191B),
-          padding: const EdgeInsets.symmetric(vertical: 16),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-        ),
-        child: busy
-            ? const WeldingLoader(size: 18, bladeColor: Colors.white)
-            : Text(label),
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
+    final strings = AppLocaleScope.stringsOf(context);
     return Padding(
       padding: EdgeInsets.only(
         bottom: MediaQuery.of(context).viewInsets.bottom,
@@ -583,100 +592,104 @@ class _AiAssistantPaywallSheetState extends State<_AiAssistantPaywallSheet> {
           color: Colors.white,
           borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
         ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Center(
-              child: Container(
-                width: 40,
-                height: 4,
-                margin: const EdgeInsets.only(bottom: 18),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFD2DCE3),
-                  borderRadius: BorderRadius.circular(999),
-                ),
-              ),
-            ),
-            Row(
-              children: [
-                Container(
-                  width: 46,
-                  height: 46,
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  margin: const EdgeInsets.only(bottom: 18),
                   decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(14),
-                    color: const Color(0xFFFF6A35),
+                    color: const Color(0xFFD2DCE3),
+                    borderRadius: BorderRadius.circular(999),
                   ),
-                  alignment: Alignment.center,
-                  child: const Icon(
-                    Icons.workspace_premium_outlined,
-                    color: Colors.white,
-                  ),
-                ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Text(
-                    'Varyos Weld Premium',
-                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 18),
-            const Text('Unlimited AI assistant Q&A on your calculations'),
-            const SizedBox(height: 10),
-            const Text('Client-ready PDF export for every estimate'),
-            const SizedBox(height: 10),
-            const Text('Cancel anytime from Settings'),
-            const SizedBox(height: 22),
-            if (_loadingOffering)
-              const Center(
-                child: WeldingLoader(size: 36, bladeColor: Color(0xFF12191B)),
-              )
-            else if (_hasAnyPackage) ...[
-              if (_monthlyPackage != null) ...[
-                _buildPurchaseButton(
-                  label: 'Monthly -- \$2.99/mo',
-                  package: _monthlyPackage!,
-                ),
-                if (_yearlyPackage != null) const SizedBox(height: 10),
-              ],
-              if (_yearlyPackage != null)
-                _buildPurchaseButton(
-                  label: 'Yearly -- \$19.99/yr (save ~44%)',
-                  package: _yearlyPackage!,
-                ),
-            ] else
-              SizedBox(
-                width: double.infinity,
-                child: FilledButton(
-                  onPressed: null,
-                  style: FilledButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                  ),
-                  child: const Text('Premium -- Coming Soon'),
                 ),
               ),
-            const SizedBox(height: 10),
-            Center(
-              child: TextButton(
-                onPressed: (_restoring || _purchasingPackageId != null)
-                    ? null
-                    : _restore,
-                child: _restoring
-                    ? const WeldingLoader(
-                        size: 18,
-                        bladeColor: Color(0xFF12191B),
-                      )
-                    : const Text('Restore Purchases'),
+              Row(
+                children: [
+                  Container(
+                    width: 46,
+                    height: 46,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(14),
+                      color: const Color(0xFFFF6A35),
+                    ),
+                    alignment: Alignment.center,
+                    child: const Icon(
+                      Icons.workspace_premium_outlined,
+                      color: Colors.white,
+                    ),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Text(
+                      'Varyos Weld Premium',
+                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ),
+                ],
               ),
-            ),
-          ],
+              const SizedBox(height: 18),
+              Text(strings.paywallBenefitAi),
+              const SizedBox(height: 10),
+              Text(strings.paywallBenefitPdf),
+              const SizedBox(height: 10),
+              Text(strings.paywallBenefitCancel),
+              const SizedBox(height: 22),
+              if (_loadingOffering)
+                const Center(
+                  child: WeldingLoader(size: 36, bladeColor: Color(0xFF12191B)),
+                )
+              else if (_hasAnyPackage)
+                PaywallPackageButtons(
+                  monthly: _monthlyPackage,
+                  yearly: _yearlyPackage,
+                  purchasingPackageId: _purchasingPackageId,
+                  disabled: _purchasingPackageId != null || _restoring,
+                  onPurchase: _purchase,
+                )
+              else
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton(
+                    onPressed: null,
+                    style: FilledButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                    ),
+                    child: Text(strings.paywallComingSoon),
+                  ),
+                ),
+              const SizedBox(height: 10),
+              Center(
+                child: TextButton(
+                  onPressed: (_restoring || _purchasingPackageId != null)
+                      ? null
+                      : _restore,
+                  child: _restoring
+                      ? const WeldingLoader(
+                          size: 18,
+                          bladeColor: Color(0xFF12191B),
+                        )
+                      : Text(strings.paywallRestore),
+                ),
+              ),
+              const SizedBox(height: 4),
+              PaywallLegalFooter(
+                hasPackages: _hasAnyPackage,
+                onLinkError: (message) => ScaffoldMessenger.maybeOf(
+                  context,
+                )?.showSnackBar(SnackBar(content: Text(message))),
+              ),
+            ],
+          ),
         ),
       ),
     );

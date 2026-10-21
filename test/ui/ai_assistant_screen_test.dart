@@ -10,6 +10,7 @@ import 'package:weld_consumable_calculator/l10n/strings.dart';
 import 'package:weld_consumable_calculator/models/chat_message.dart';
 import 'package:weld_consumable_calculator/services/ai_assistant_config.dart';
 import 'package:weld_consumable_calculator/services/ai_assistant_service.dart';
+import 'package:weld_consumable_calculator/services/ai_consent_store.dart';
 import 'package:weld_consumable_calculator/services/entitlement_service.dart';
 import 'package:weld_consumable_calculator/ui/ai_assistant_screen.dart';
 
@@ -81,20 +82,16 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  testWidgets(
-    'non-premium user sees the premium gate, not the chat input',
-    (tester) async {
-      await pumpScreen(tester, isPremium: false);
+  testWidgets('non-premium user sees the premium gate, not the chat input', (
+    tester,
+  ) async {
+    await pumpScreen(tester, isPremium: false);
 
-      expect(find.text(strings.aiAssistantPremiumGateTitle), findsOneWidget);
-      expect(find.text(strings.aiAssistantPremiumGateButton), findsOneWidget);
-      expect(find.byType(TextField), findsNothing);
-      expect(
-        find.text(strings.aiAssistantSuggestionFillerLabel),
-        findsNothing,
-      );
-    },
-  );
+    expect(find.text(strings.aiAssistantPremiumGateTitle), findsOneWidget);
+    expect(find.text(strings.aiAssistantPremiumGateButton), findsOneWidget);
+    expect(find.byType(TextField), findsNothing);
+    expect(find.text(strings.aiAssistantSuggestionFillerLabel), findsNothing);
+  });
 
   testWidgets(
     'premium user sees the chat input and the 4 quick-suggestion chips',
@@ -225,6 +222,7 @@ void main() {
     (tester) async {
       await pumpScreen(tester, isPremium: true, consentAcknowledged: false);
 
+      await tester.ensureVisible(find.text(strings.aiAssistantConsentButton));
       await tester.tap(find.text(strings.aiAssistantConsentButton));
       await tester.pumpAndSettle();
 
@@ -240,4 +238,73 @@ void main() {
       expect(find.byType(TextField), findsOneWidget);
     },
   );
+
+  testWidgets(
+    'consent gate names the provider, the data sent and the no-storage / '
+    'no-training promise, and offers Agree & continue, Not now and a '
+    'Privacy Policy link',
+    (tester) async {
+      await pumpScreen(tester, isPremium: true, consentAcknowledged: false);
+
+      expect(strings.aiAssistantConsentBody, contains('Cloudflare Workers AI'));
+      expect(strings.aiAssistantConsentBody, contains('Meta Llama 3.3 70B'));
+      expect(strings.aiAssistantConsentBody, contains('IP address'));
+      expect(strings.aiAssistantConsentBody, contains('24 hours'));
+      expect(strings.aiAssistantConsentBody, contains('model training'));
+      expect(find.text(strings.aiAssistantConsentBody), findsOneWidget);
+      expect(find.text('Agree & continue'), findsOneWidget);
+      expect(find.text('Not now'), findsOneWidget);
+      expect(find.text(strings.legalPrivacyPolicyLinkLabel), findsOneWidget);
+    },
+  );
+
+  testWidgets('"Not now" leaves the screen and stores no consent', (
+    tester,
+  ) async {
+    SharedPreferences.setMockInitialValues({});
+    await tester.pumpWidget(
+      AppLocaleScope(
+        locale: AppLocale(),
+        child: MaterialApp(
+          home: Builder(
+            builder: (context) => Scaffold(
+              body: TextButton(
+                onPressed: () => Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (_) => AiAssistantScreen(
+                      entitlementService: _FakeEntitlementService(
+                        isPremium: true,
+                      ),
+                    ),
+                  ),
+                ),
+                child: const Text('open ai'),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.tap(find.text('open ai'));
+    await tester.pumpAndSettle();
+    expect(find.text(strings.aiAssistantConsentTitle), findsOneWidget);
+
+    await tester.ensureVisible(find.text(strings.aiAssistantConsentDecline));
+    await tester.tap(find.text(strings.aiAssistantConsentDecline));
+    await tester.pumpAndSettle();
+
+    expect(find.text(strings.aiAssistantConsentTitle), findsNothing);
+    expect(find.text('open ai'), findsOneWidget);
+    expect(await const AiConsentStore().isAcknowledged(), isFalse);
+  });
+
+  testWidgets('"Agree & continue" persists the consent', (tester) async {
+    await pumpScreen(tester, isPremium: true, consentAcknowledged: false);
+
+    await tester.ensureVisible(find.text(strings.aiAssistantConsentButton));
+    await tester.tap(find.text(strings.aiAssistantConsentButton));
+    await tester.pumpAndSettle();
+
+    expect(await const AiConsentStore().isAcknowledged(), isTrue);
+  });
 }
