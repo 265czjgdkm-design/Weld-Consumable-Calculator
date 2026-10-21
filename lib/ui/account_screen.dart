@@ -167,19 +167,12 @@ class _AccountScreenState extends State<AccountScreen> {
 
     setState(() => _busy = true);
 
-    // Local data is cleared on confirm regardless of the server outcome;
-    // the email is kept in a local variable so Retry can still address it.
-    await _accountStore.clear();
-    await _presetStore.save(const []);
-
-    if (!mounted) return;
-    setState(() {
-      _email = null;
-      _firstName = null;
-      _lastName = null;
-    });
-
+    // The screen stays signed-in (with the "Deleting..." message, and back
+    // navigation blocked via PopScope) until the server answers. Local data
+    // is then cleared regardless of the outcome; the email is kept in a
+    // local variable so Retry can still address it.
     var deleted = false;
+    var localCleared = false;
     while (true) {
       try {
         await widget.accountDeletionService.deleteAccount(email);
@@ -187,9 +180,18 @@ class _AccountScreenState extends State<AccountScreen> {
       } catch (_) {
         deleted = false;
       }
+      if (!localCleared) {
+        await _accountStore.clear();
+        await _presetStore.save(const []);
+        localCleared = true;
+      }
       if (!mounted) return;
-      // Busy (spinner) only covers the in-flight request, not the dialogs.
-      setState(() => _busy = false);
+      setState(() {
+        _email = null;
+        _firstName = null;
+        _lastName = null;
+        _busy = false;
+      });
       if (deleted) break;
       final retry = await showDialog<bool>(
         context: context,
@@ -214,6 +216,7 @@ class _AccountScreenState extends State<AccountScreen> {
       setState(() => _busy = true);
     }
 
+    if (!mounted) return;
     await showDialog<void>(
       context: context,
       builder: (context) => AlertDialog(
@@ -252,59 +255,62 @@ class _AccountScreenState extends State<AccountScreen> {
   Widget build(BuildContext context) {
     final strings = AppLocaleScope.stringsOf(context);
 
-    return Scaffold(
-      appBar: AppBar(title: Text(strings.accountScreenTitle)),
-      body: _loading
-          ? const Center(
-              child: WeldingLoader(size: 36, bladeColor: Color(0xFF12191B)),
-            )
-          : SingleChildScrollView(
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Card(
-                    child: Padding(
-                      padding: const EdgeInsets.all(20),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          _buildIdentityHeader(strings),
-                          const SizedBox(height: 20),
-                          if (_email != null)
-                            _buildSignedInState(strings)
-                          else
-                            _buildGuestState(strings),
-                        ],
+    return PopScope(
+      canPop: !_busy,
+      child: Scaffold(
+        appBar: AppBar(title: Text(strings.accountScreenTitle)),
+        body: _loading
+            ? const Center(
+                child: WeldingLoader(size: 36, bladeColor: Color(0xFF12191B)),
+              )
+            : SingleChildScrollView(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Card(
+                      child: Padding(
+                        padding: const EdgeInsets.all(20),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            _buildIdentityHeader(strings),
+                            const SizedBox(height: 20),
+                            if (_email != null)
+                              _buildSignedInState(strings)
+                            else
+                              _buildGuestState(strings),
+                          ],
+                        ),
                       ),
                     ),
-                  ),
-                  const SizedBox(height: 16),
-                  SizedBox(
-                    width: double.infinity,
-                    child: OutlinedButton(
-                      onPressed: () =>
-                          _openLegalLink(LegalLinks.manageSubscriptionsUrl),
-                      child: Text(strings.accountManageSubscriptionsButton),
-                    ),
-                  ),
-                  if (_aiConsentGiven) ...[
-                    const SizedBox(height: 10),
+                    const SizedBox(height: 16),
                     SizedBox(
                       width: double.infinity,
                       child: OutlinedButton(
-                        onPressed: _withdrawAiConsent,
-                        child: Text(strings.accountWithdrawAiConsentButton),
+                        onPressed: () =>
+                            _openLegalLink(LegalLinks.manageSubscriptionsUrl),
+                        child: Text(strings.accountManageSubscriptionsButton),
                       ),
                     ),
+                    if (_aiConsentGiven) ...[
+                      const SizedBox(height: 10),
+                      SizedBox(
+                        width: double.infinity,
+                        child: OutlinedButton(
+                          onPressed: _withdrawAiConsent,
+                          child: Text(strings.accountWithdrawAiConsentButton),
+                        ),
+                      ),
+                    ],
+                    const SizedBox(height: 24),
+                    const Divider(height: 1),
+                    const SizedBox(height: 16),
+                    _buildLegalLinks(strings),
                   ],
-                  const SizedBox(height: 24),
-                  const Divider(height: 1),
-                  const SizedBox(height: 16),
-                  _buildLegalLinks(strings),
-                ],
+                ),
               ),
-            ),
+      ),
     );
   }
 

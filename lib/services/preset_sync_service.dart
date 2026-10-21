@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
 import '../models/weld_models.dart';
+import 'apps_script_http.dart';
 import 'signup_config.dart';
 
 /// Talks to the Apps Script Web App backing account-based preset sync
@@ -25,9 +26,9 @@ class PresetSyncService {
   Future<({List<UserWeldPreset> presets, int skippedCount})> list(
     String email,
   ) async {
-    final uri = Uri.parse(SignupConfig.presetApiUrl).replace(
-      queryParameters: {'action': 'listPresets', 'email': email},
-    );
+    final uri = Uri.parse(
+      SignupConfig.presetApiUrl,
+    ).replace(queryParameters: {'action': 'listPresets', 'email': email});
     final response = await http.get(uri).timeout(const Duration(seconds: 10));
     final body = _decode(response.body);
     if (body['ok'] != true) {
@@ -51,16 +52,15 @@ class PresetSyncService {
   }
 
   Future<void> save(String email, UserWeldPreset preset) async {
-    final response = await http
-        .post(
-          Uri.parse(SignupConfig.presetApiUrl),
-          body: jsonEncode({
-            'action': 'save',
-            'email': email,
-            'preset': preset.toJson(),
-          }),
-        )
-        .timeout(const Duration(seconds: 10));
+    final response = await appsScriptPost(
+      Uri.parse(SignupConfig.presetApiUrl),
+      body: jsonEncode({
+        'action': 'save',
+        'email': email,
+        'preset': preset.toJson(),
+      }),
+      timeout: const Duration(seconds: 10),
+    );
     final body = _decode(response.body);
     if (body['ok'] != true) {
       throw Exception(body['error']?.toString() ?? 'Preset save failed.');
@@ -68,16 +68,15 @@ class PresetSyncService {
   }
 
   Future<void> delete(String email, String presetId) async {
-    final response = await http
-        .post(
-          Uri.parse(SignupConfig.presetApiUrl),
-          body: jsonEncode({
-            'action': 'delete',
-            'email': email,
-            'presetId': presetId,
-          }),
-        )
-        .timeout(const Duration(seconds: 10));
+    final response = await appsScriptPost(
+      Uri.parse(SignupConfig.presetApiUrl),
+      body: jsonEncode({
+        'action': 'delete',
+        'email': email,
+        'presetId': presetId,
+      }),
+      timeout: const Duration(seconds: 10),
+    );
     final body = _decode(response.body);
     if (body['ok'] != true) {
       throw Exception(body['error']?.toString() ?? 'Preset delete failed.');

@@ -295,66 +295,86 @@ class _AiAssistantScreenState extends State<AiAssistantScreen> {
   }
 
   Widget _buildConsentGate(L10nStrings strings) {
-    // Same scrollable-card shape as _buildPremiumGate below -- see that
-    // method's comment for why this can't just be Center-ed.
-    return SingleChildScrollView(
-      child: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 420),
-          child: Card(
-            child: Padding(
-              padding: const EdgeInsets.all(24),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Icon(
-                    Icons.privacy_tip_outlined,
-                    size: 40,
-                    color: Color(0xFF12191B),
-                  ),
-                  const SizedBox(height: 12),
-                  Text(
-                    strings.aiAssistantConsentTitle,
-                    textAlign: TextAlign.center,
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w700,
+    // The disclosure text scrolls; the two decision buttons are pinned in a
+    // bottom bar so they are always visible (long copy, small phones, and
+    // longer locales like TR/RU would otherwise push them below the fold).
+    return Column(
+      children: [
+        Expanded(
+          child: SingleChildScrollView(
+            child: Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 420),
+                child: Card(
+                  child: Padding(
+                    padding: const EdgeInsets.all(20),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(
+                          Icons.privacy_tip_outlined,
+                          size: 36,
+                          color: Color(0xFF12191B),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          strings.aiAssistantConsentTitle,
+                          textAlign: TextAlign.center,
+                          style: Theme.of(context).textTheme.titleMedium
+                              ?.copyWith(fontWeight: FontWeight.w700),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          strings.aiAssistantConsentBody,
+                          textAlign: TextAlign.start,
+                          style: Theme.of(context).textTheme.bodyMedium
+                              ?.copyWith(color: const Color(0xFF607482)),
+                        ),
+                        const SizedBox(height: 4),
+                        TextButton(
+                          onPressed: _openPrivacyPolicy,
+                          child: Text(strings.legalPrivacyPolicyLinkLabel),
+                        ),
+                      ],
                     ),
                   ),
-                  const SizedBox(height: 8),
-                  Text(
-                    strings.aiAssistantConsentBody,
-                    textAlign: TextAlign.start,
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: const Color(0xFF607482),
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  TextButton(
-                    onPressed: _openPrivacyPolicy,
-                    child: Text(strings.legalPrivacyPolicyLinkLabel),
-                  ),
-                  const SizedBox(height: 8),
-                  SizedBox(
-                    width: double.infinity,
-                    child: FilledButton(
-                      onPressed: _acknowledgeConsent,
-                      child: Text(strings.aiAssistantConsentButton),
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  SizedBox(
-                    width: double.infinity,
-                    child: OutlinedButton(
-                      onPressed: _declineConsent,
-                      child: Text(strings.aiAssistantConsentDecline),
-                    ),
-                  ),
-                ],
+                ),
               ),
             ),
           ),
         ),
-      ),
+        SafeArea(
+          top: false,
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 420),
+              child: Padding(
+                padding: const EdgeInsets.only(top: 10),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    SizedBox(
+                      width: double.infinity,
+                      child: FilledButton(
+                        onPressed: _acknowledgeConsent,
+                        child: Text(strings.aiAssistantConsentButton),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton(
+                        onPressed: _declineConsent,
+                        child: Text(strings.aiAssistantConsentDecline),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 

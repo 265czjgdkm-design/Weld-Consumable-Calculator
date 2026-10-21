@@ -1,132 +1,33 @@
 /**
  * Varyos Weld -- `deleteAccount` action for the existing Apps Script Web App.
+ * Varyos Weld -- mevcut Apps Script Web App icin `deleteAccount` islemi.
  *
- * The Web App's own source (Kod.gs: doGet/doPost for listPresets/save/delete,
- * plus the welcome-email trigger) is NOT in any local repo, so this file is a
- * self-contained addition to paste into that same Apps Script project.
+ * ======================== INSTRUCTIONS (EN) ========================
+ * 1. Open the Apps Script project behind the Web App /exec URL
+ *    (SignupConfig.presetApiUrl in lib/services/signup_config.dart).
+ * 2. Add a new script file (+ > Script), name it delete_account, and paste
+ *    this ENTIRE file into it. Do not edit the IDs below.
+ * 3. In the existing doPost(e): wrap its whole body in the SAME lock this
+ *    file uses, so a save/delete cannot interleave with an account deletion:
  *
- * WHAT IT DOES
- *   Given {"action":"deleteAccount","email":"user@example.com"} it removes,
- *   case-insensitively, every row for that email from
- *     1. the signup sheet (the Google Form's linked response sheet, i.e. the
- *        spreadsheet this script is bound to), and
- *     2. the presets sheet ("Varyos Weld - Presets" spreadsheet).
- *   and returns {"ok":true,"deletedRows":N}. On any problem it returns
- *   {"ok":false,"error":"..."} -- the app only shows "deleted" on ok:true.
+ *      function doPost(e) {
+ *        var lock = LockService.getScriptLock();
+ *        if (!lock.tryLock(25000)) {
+ *          return ContentService.createTextOutput(JSON.stringify(
+ *            {ok: false, error: 'Server busy, please retry.'}))
+ *            .setMimeType(ContentService.MimeType.JSON);
+ *        }
+ *        try {
+ *          ... your existing code ...
+ *        } finally {
+ *          lock.releaseLock();
+ *        }
+ *      }
  *
- * HOW ROWS ARE MATCHED
- *   For every sheet in those spreadsheets, a column counts as the email
- *   column if its header (row 1) contains "email" (case-insensitive), e.g.
- *   "Email", "Email Address", "email". A row is deleted when ANY such column
- *   equals the email (trimmed, lowercased). If a sheet has no such header,
- *   it is left alone and reported in the log -- set EMAIL_COLUMN_OVERRIDES
- *   below if your presets sheet uses a header without the word "email".
- *
- * PASTE INSTRUCTIONS: see the bottom of this file.
- */
-
-var DELETE_ACCOUNT_CONFIG = {
-  // Name of the presets spreadsheet (created lazily by the existing script).
-  PRESETS_SPREADSHEET_NAME: 'Varyos Weld - Presets',
-  // Optional: {'<sheet name>': <1-based column index>} to force the email
-  // column for a sheet whose header does not contain "email".
-  EMAIL_COLUMN_OVERRIDES: {}
-};
-
-/** Entry point called from doPost. Always returns a plain object. */
-function handleDeleteAccount_(email) {
-  var target = String(email || '').trim().toLowerCase();
-  if (!target || target.indexOf('@') < 1) {
-    return { ok: false, error: 'A valid email is required.' };
-  }
-
-  // Serialise against the existing save/delete handlers' writes.
-  var lock = LockService.getScriptLock();
-  if (!lock.tryLock(20000)) {
-    return { ok: false, error: 'Server busy, please retry.' };
-  }
-  try {
-    var deleted = 0;
-    var spreadsheets = [];
-
-    var bound = SpreadsheetApp.getActiveSpreadsheet();
-    if (bound) spreadsheets.push(bound);
-
-    var files = DriveApp.getFilesByName(
-      DELETE_ACCOUNT_CONFIG.PRESETS_SPREADSHEET_NAME);
-    while (files.hasNext()) {
-      var presets = SpreadsheetApp.open(files.next());
-      var alreadyListed = bound && presets.getId() === bound.getId();
-      if (!alreadyListed) spreadsheets.push(presets);
-    }
-
-    for (var i = 0; i < spreadsheets.length; i++) {
-      var sheets = spreadsheets[i].getSheets();
-      for (var j = 0; j < sheets.length; j++) {
-        deleted += deleteRowsForEmail_(sheets[j], target);
-      }
-    }
-    SpreadsheetApp.flush();
-    return { ok: true, deletedRows: deleted };
-  } catch (err) {
-    return { ok: false, error: String(err && err.message || err) };
-  } finally {
-    lock.releaseLock();
-  }
-}
-
-/** Deletes matching rows (bottom-up) in one sheet; returns how many. */
-function deleteRowsForEmail_(sheet, target) {
-  var lastRow = sheet.getLastRow();
-  var lastCol = sheet.getLastColumn();
-  if (lastRow < 2 || lastCol < 1) return 0;
-
-  var emailCols = [];
-  var override = DELETE_ACCOUNT_CONFIG.EMAIL_COLUMN_OVERRIDES[sheet.getName()];
-  if (override) {
-    emailCols.push(override - 1);
-  } else {
-    var headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
-    for (var c = 0; c < headers.length; c++) {
-      if (String(headers[c]).toLowerCase().indexOf('email') !== -1) {
-        emailCols.push(c);
-      }
-    }
-  }
-  if (emailCols.length === 0) {
-    console.log('deleteAccount: no email column in sheet "' +
-        sheet.getName() + '", skipped.');
-    return 0;
-  }
-
-  // Values are compared as strings: Sheets may coerce cells to other types
-  // (the same coercion class that once made preset deletes silently no-op).
-  var values = sheet.getRange(2, 1, lastRow - 1, lastCol).getValues();
-  var deleted = 0;
-  for (var r = values.length - 1; r >= 0; r--) {
-    for (var k = 0; k < emailCols.length; k++) {
-      var cell = String(values[r][emailCols[k]]).trim().toLowerCase();
-      if (cell === target) {
-        sheet.deleteRow(r + 2);
-        deleted++;
-        break;
-      }
-    }
-  }
-  return deleted;
-}
-
-/*
- * ===================== PASTE INSTRUCTIONS =====================
- * 1. Open the Apps Script project that backs the Web App (the one whose
- *    /exec URL is SignupConfig.presetApiUrl in lib/services/signup_config.dart;
- *    script.google.com -> the project bound to the signup Google Sheet, or
- *    Extensions -> Apps Script from that sheet).
- * 2. Add a new file (+ -> Script), name it delete_account, paste this whole
- *    file in.
- * 3. In the existing doPost(e), after the JSON body is parsed (variable name
- *    may differ; here it is `data`) and BEFORE the "unknown action" fallback,
- *    add:
+ *    (Script locks are not re-entrant across callers, so handleDeleteAccount_
+ *    below does NOT take the lock itself -- doPost must hold it.)
+ * 4. Inside doPost, after the JSON body is parsed (variable shown as `data`;
+ *    use your own name) and BEFORE the "unknown action" fallback, add:
  *
  *      if (data.action === 'deleteAccount') {
  *        return ContentService
@@ -134,21 +35,164 @@ function deleteRowsForEmail_(sheet, target) {
  *          .setMimeType(ContentService.MimeType.JSON);
  *      }
  *
- *    (Match however the existing handlers build their JSON response -- the
- *    app only requires a JSON body with "ok": true on success.)
- * 4. Run handleDeleteAccount_ once manually from the editor (e.g. via a
- *    throwaway wrapper: function t(){ Logger.log(handleDeleteAccount_(
- *    'nobody@example.com')); }) and approve the new Drive permission prompt
- *    (DriveApp is used to find the presets spreadsheet by name). Expect
- *    {"ok":true,"deletedRows":0}.
- * 5. Deploy -> Manage deployments -> edit the EXISTING deployment -> Version:
- *    New version -> Deploy. Do NOT create a new deployment: that would change
- *    the /exec URL the app is hard-coded to.
- * 6. Verify end to end with a test email you signed up with:
+ * 5. In the editor run this once and approve the permission prompts
+ *    (Spreadsheet + Forms access):
+ *
+ *      function testDeleteAccount() {
+ *        Logger.log(JSON.stringify(handleDeleteAccount_('nobody@example.com')));
+ *      }
+ *
+ *    Expected: {"ok":true,"deletedSheetRows":0,"deletedFormResponses":0}.
+ *    If it says ok:false, read the error: a sheet/column/form was not found.
+ * 6. Deploy > Manage deployments > pencil on the EXISTING deployment >
+ *    Version: New version > Deploy. Do NOT create a new deployment (the
+ *    /exec URL the app uses would change).
+ * 7. Test with an email you signed up with:
  *      curl -sL -X POST '<presetApiUrl>' \
  *        -d '{"action":"deleteAccount","email":"you@example.com"}'
- *    -> {"ok":true,"deletedRows":N}; check the sheets no longer contain it.
- *    Until step 5 is done, the app's Delete Account shows the failure +
- *    Retry dialog (an old script answers ok:false / unknown action).
- * ==============================================================
+ *    Then confirm the email is gone from BOTH spreadsheets AND from the
+ *    Google Form's Responses tab.
+ *
+ * ======================== TALIMATLAR (TR) ========================
+ * 1. Web App /exec adresinin arkasindaki Apps Script projesini acin
+ *    (lib/services/signup_config.dart icindeki presetApiUrl).
+ * 2. Yeni bir dosya ekleyin (+ > Komut dosyasi), adi delete_account olsun ve
+ *    bu dosyanin TAMAMINI yapistirin. Asagidaki ID'leri degistirmeyin.
+ * 3. Mevcut doPost(e) fonksiyonunun TUM govdesini, bu dosyadaki ile ayni
+ *    kilitle (LockService.getScriptLock) sarin; boylece kaydetme/silme
+ *    islemleri hesap silme ile ic ice gecmez. Ornek yukaridaki (EN) 3.
+ *    maddede. handleDeleteAccount_ kilidi KENDISI almaz; doPost tutmalidir.
+ * 4. doPost icinde, JSON govde ayristirildiktan sonra ve "bilinmeyen islem"
+ *    kosulundan ONCE, yukaridaki (EN) 4. maddedeki
+ *    `if (data.action === 'deleteAccount') {...}` blogunu ekleyin
+ *    (degisken adiniz `data` degilse kendi adinizi kullanin).
+ * 5. Duzenleyicide testDeleteAccount fonksiyonunu bir kez calistirin ve
+ *    istenen izinleri (Tablolar + Formlar) onaylayin. Beklenen sonuc:
+ *    {"ok":true,"deletedSheetRows":0,"deletedFormResponses":0}.
+ *    ok:false donerse hata mesajini okuyun (sayfa/sutun/form bulunamadi).
+ * 6. Dagit > Dagitimlari yonet > MEVCUT dagitimin kalem simgesi > Surum:
+ *    Yeni surum > Dagit. Yeni dagitim OLUSTURMAYIN (uygulamadaki /exec
+ *    adresi degisir).
+ * 7. Kayit oldugunuz bir e-posta ile curl testi yapin (yukaridaki EN 7) ve
+ *    e-postanin IKI tablodan ve Google Form'un Yanitlar sekmesinden de
+ *    silindigini kontrol edin.
+ * ==================================================================
+ *
+ * WHAT IT DELETES (all matched case-insensitively on the trimmed email):
+ *   - rows in sheet "Form Yanitlari 1" of the signup spreadsheet,
+ *   - rows in sheet "Presets" of the presets spreadsheet,
+ *   - the matching responses stored in the Google Form itself (deleting a
+ *     sheet row does NOT remove the Form's own copy).
+ * It returns {ok:false} -- never ok:true -- if either spreadsheet, either
+ * sheet, either email column or the Form cannot be found/opened, or if
+ * anything throws. "Found nothing to scan" is never reported as success.
  */
+
+var DELETE_ACCOUNT_IDS = {
+  SIGNUP_SPREADSHEET_ID: '11htQFYKQQh2DxKsLb6O66-9lNe7JtELYbrqqgElJf60',
+  SIGNUP_SHEET_NAME: 'Form Yanıtları 1',
+  PRESETS_SPREADSHEET_ID: '14U4zIJitFKBJhSZ3CbU2Df4EMSrW1PmtiDAoZRKcCTQ',
+  PRESETS_SHEET_NAME: 'Presets',
+  FORM_ID: '11u33WAjqnwWUWaDsmRlsZtIJTz0xpePrtTMWLkntFdk'
+};
+
+var DELETE_ACCOUNT_EMAIL_HEADER = /e-?mail|e-?posta/i;
+
+/** Called from doPost (which must already hold the script lock). */
+function handleDeleteAccount_(email) {
+  var target = String(email || '').trim().toLowerCase();
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(target)) {
+    return { ok: false, error: 'A valid email is required.' };
+  }
+  try {
+    var ids = DELETE_ACCOUNT_IDS;
+    var signupSheet = openSheetOrThrow_(
+        ids.SIGNUP_SPREADSHEET_ID, ids.SIGNUP_SHEET_NAME);
+    var presetsSheet = openSheetOrThrow_(
+        ids.PRESETS_SPREADSHEET_ID, ids.PRESETS_SHEET_NAME);
+    var form = FormApp.openById(ids.FORM_ID);
+
+    var signupCol = findEmailColumnOrThrow_(signupSheet);
+    var presetsCol = findEmailColumnOrThrow_(presetsSheet);
+
+    var sheetRows = deleteRowsForEmail_(signupSheet, signupCol, target) +
+        deleteRowsForEmail_(presetsSheet, presetsCol, target);
+    var formResponses = deleteFormResponsesForEmail_(form, target);
+    SpreadsheetApp.flush();
+    return {
+      ok: true,
+      deletedSheetRows: sheetRows,
+      deletedFormResponses: formResponses
+    };
+  } catch (err) {
+    return { ok: false, error: String((err && err.message) || err) };
+  }
+}
+
+function openSheetOrThrow_(spreadsheetId, sheetName) {
+  var spreadsheet = SpreadsheetApp.openById(spreadsheetId);
+  var sheet = spreadsheet.getSheetByName(sheetName);
+  if (!sheet) {
+    throw new Error('Sheet "' + sheetName + '" not found in ' + spreadsheetId);
+  }
+  return sheet;
+}
+
+/** 1-based column index of the first header matching the email pattern. */
+function findEmailColumnOrThrow_(sheet) {
+  var lastCol = sheet.getLastColumn();
+  if (lastCol < 1) {
+    throw new Error('Sheet "' + sheet.getName() + '" has no columns.');
+  }
+  var headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
+  for (var c = 0; c < headers.length; c++) {
+    if (DELETE_ACCOUNT_EMAIL_HEADER.test(String(headers[c]))) return c + 1;
+  }
+  throw new Error('No email column in sheet "' + sheet.getName() + '".');
+}
+
+function normalizeEmail_(value) {
+  return String(value).trim().toLowerCase();
+}
+
+/** Deletes matching rows bottom-up; re-checks each row right before delete. */
+function deleteRowsForEmail_(sheet, emailCol, target) {
+  var lastRow = sheet.getLastRow();
+  if (lastRow < 2) return 0;
+  var cells = sheet.getRange(2, emailCol, lastRow - 1, 1).getValues();
+  var deleted = 0;
+  for (var i = cells.length - 1; i >= 0; i--) {
+    if (normalizeEmail_(cells[i][0]) !== target) continue;
+    var row = i + 2;
+    // Rows may have shifted/changed since the snapshot: confirm again.
+    if (normalizeEmail_(sheet.getRange(row, emailCol).getValue()) !== target) {
+      continue;
+    }
+    sheet.deleteRow(row);
+    deleted++;
+  }
+  return deleted;
+}
+
+/** Deletes Form responses where any text answer (or the respondent email) matches. */
+function deleteFormResponsesForEmail_(form, target) {
+  var responses = form.getResponses();
+  var deleted = 0;
+  for (var i = 0; i < responses.length; i++) {
+    var response = responses[i];
+    var matches = false;
+    var respondent = response.getRespondentEmail && response.getRespondentEmail();
+    if (respondent && normalizeEmail_(respondent) === target) matches = true;
+    var items = response.getItemResponses();
+    for (var j = 0; j < items.length && !matches; j++) {
+      var answer = items[j].getResponse();
+      var text = Array.isArray(answer) ? answer.join(',') : answer;
+      if (normalizeEmail_(text) === target) matches = true;
+    }
+    if (matches) {
+      form.deleteResponse(response.getId());
+      deleted++;
+    }
+  }
+  return deleted;
+}

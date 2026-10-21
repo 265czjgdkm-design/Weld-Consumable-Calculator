@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 
+import 'apps_script_http.dart';
 import 'signup_config.dart';
 
 /// Asks the Apps Script backend (same Web App as [PresetSyncService]) to
@@ -18,10 +19,11 @@ class AccountDeletionService {
   final http.Client? client;
 
   Future<void> deleteAccount(String email) async {
-    final response = await (client?.post ?? http.post)(
+    final response = await appsScriptPost(
       Uri.parse(SignupConfig.presetApiUrl),
       body: jsonEncode({'action': 'deleteAccount', 'email': email}),
-    ).timeout(const Duration(seconds: 20));
+      client: client,
+    );
     final decoded = jsonDecode(response.body);
     if (decoded is! Map || decoded['ok'] != true) {
       throw Exception(

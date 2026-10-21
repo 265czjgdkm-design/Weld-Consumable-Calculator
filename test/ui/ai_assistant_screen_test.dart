@@ -307,4 +307,38 @@ void main() {
 
     expect(await const AiConsentStore().isAcknowledged(), isTrue);
   });
+
+  for (final language in [AppLanguage.tr, AppLanguage.ru]) {
+    testWidgets('consent gate keeps both buttons visible without scrolling at '
+        '375x667 (${language.code})', (tester) async {
+      tester.view.physicalSize = const Size(375, 667);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+      SharedPreferences.setMockInitialValues({});
+      final locale = AppLocale();
+      await locale.setLanguage(language);
+      await tester.pumpWidget(
+        AppLocaleScope(
+          locale: locale,
+          child: MaterialApp(
+            home: AiAssistantScreen(
+              entitlementService: _FakeEntitlementService(isPremium: true),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final localized = stringsFor(language);
+      for (final label in [
+        localized.aiAssistantConsentButton,
+        localized.aiAssistantConsentDecline,
+      ]) {
+        final rect = tester.getRect(find.text(label));
+        expect(rect.top, greaterThanOrEqualTo(0), reason: label);
+        expect(rect.bottom, lessThanOrEqualTo(667), reason: label);
+        expect(tester.takeException(), isNull);
+      }
+    });
+  }
 }

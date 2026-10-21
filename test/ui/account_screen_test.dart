@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
@@ -284,6 +285,67 @@ void main() {
               200,
             ),
           ),
+        );
+      },
+    );
+
+    testWidgets(
+      'Delete Account: while the request is in flight the screen stays '
+      'signed-in with the deleting message, back is blocked, and the '
+      'failure dialog still appears afterwards',
+      (tester) async {
+        SharedPreferences.setMockInitialValues({
+          'user_account_email_v1': 'user@example.com',
+        });
+
+        final gate = Completer<void>();
+        await http.runWithClient(
+          () async {
+            await tester.pumpWidget(
+              AppLocaleScope(
+                locale: AppLocale(),
+                child: MaterialApp(
+                  home: Builder(
+                    builder: (context) => TextButton(
+                      onPressed: () => Navigator.of(context).push(
+                        MaterialPageRoute<void>(
+                          builder: (_) => const AccountScreen(),
+                        ),
+                      ),
+                      child: const Text('open account'),
+                    ),
+                  ),
+                ),
+              ),
+            );
+            await tester.tap(find.text('open account'));
+            await tester.pumpAndSettle();
+
+            await tester.tap(find.text(strings.accountDeleteAccountButton));
+            await tester.pumpAndSettle();
+            await tester.tap(find.text(strings.commonDelete));
+            await tester.pump();
+            await tester.pump();
+
+            expect(find.text(strings.accountDeletingMessage), findsOneWidget);
+            expect(find.text(strings.accountGuestStateTitle), findsNothing);
+            expect(
+              await const UserAccountStore().getEmail(),
+              'user@example.com',
+            );
+            await tester.binding.handlePopRoute();
+            await tester.pump();
+            expect(find.text(strings.accountScreenTitle), findsOneWidget);
+
+            gate.complete();
+            await tester.pumpAndSettle();
+            expect(find.text(strings.accountDeleteFailedTitle), findsOneWidget);
+            expect(await const UserAccountStore().getEmail(), isNull);
+          },
+          () => MockClient((request) async {
+            await gate.future;
+            return http.Response('Internal error', 500);
+          }),
         );
       },
     );
