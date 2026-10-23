@@ -11,6 +11,10 @@ import 'purchases_config.dart';
 class EntitlementService {
   EntitlementService();
 
+  /// TestFlight-only unlock: set by `--dart-define=TESTER_PREMIUM=true` on a
+  /// build meant for internal testers. Never pass it to an App Store build.
+  static const bool testerPremium = bool.fromEnvironment('TESTER_PREMIUM');
+
   /// [PurchasesConfig.appleApiKey] is a placeholder until the real
   /// RevenueCat API key exists, so this must not let a configure failure
   /// crash app startup.
@@ -28,6 +32,7 @@ class EntitlementService {
   }
 
   Future<bool> isPremiumActive() async {
+    if (testerPremium) return true;
     final customerInfo = await Purchases.getCustomerInfo();
     return customerInfo.entitlements.active.containsKey(
       PurchasesConfig.entitlementId,
@@ -41,9 +46,10 @@ class EntitlementService {
     late final StreamController<bool> controller;
     void listener(CustomerInfo customerInfo) {
       controller.add(
-        customerInfo.entitlements.active.containsKey(
-          PurchasesConfig.entitlementId,
-        ),
+        testerPremium ||
+            customerInfo.entitlements.active.containsKey(
+              PurchasesConfig.entitlementId,
+            ),
       );
     }
 
