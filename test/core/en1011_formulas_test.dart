@@ -177,25 +177,35 @@ void main() {
       expect(q, closeTo(1.2, 0.0001));
     });
 
-    test('SMAW: eff=0.85, 30V, 200A, 300mm/min -> 1.02 kJ/mm', () {
+    test('SMAW: eff=0.8, 30V, 200A, 300mm/min -> 0.96 kJ/mm', () {
       final q = computeHeatInputKJPerMm(
         efficiency: arcThermalEfficiencyFor(ArcProcess.smaw),
         voltageV: 30,
         currentA: 200,
         travelSpeedMmPerMin: 300,
       );
-      expect(q, closeTo(1.02, 0.0001));
+      expect(q, closeTo(0.96, 0.0001));
     });
 
-    test('GMAW/MAG: eff=0.85, 30V, 200A, 300mm/min -> 1.02 kJ/mm', () {
+    test('GMAW/MAG: eff=0.8, 30V, 200A, 300mm/min -> 0.96 kJ/mm', () {
       final q = computeHeatInputKJPerMm(
         efficiency: arcThermalEfficiencyFor(ArcProcess.gmawMag),
         voltageV: 30,
         currentA: 200,
         travelSpeedMmPerMin: 300,
       );
-      expect(q, closeTo(1.02, 0.0001));
+      expect(q, closeTo(0.96, 0.0001));
     });
+  });
+
+  test('MAG 25V, 200A, 5mm/s (300mm/min) -> 0.80 kJ/mm', () {
+    final q = computeHeatInputKJPerMm(
+      efficiency: arcThermalEfficiencyFor(ArcProcess.gmawMag),
+      voltageV: 25,
+      currentA: 200,
+      travelSpeedMmPerMin: 300,
+    );
+    expect(q, closeTo(0.80, 0.0001));
   });
 
   group('computeCevIiw and computePcmItoBessyo', () {

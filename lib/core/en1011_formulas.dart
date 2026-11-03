@@ -7,7 +7,7 @@
 // quantity from `WeldingDefaults.efficiencyFor` in welding_defaults.dart
 // (that one is deposition/metal-transfer efficiency, e.g. SMAW=0.65; this
 // one is arc thermal efficiency for heat-input calculations, e.g.
-// SMAW=0.85). Do not merge or reuse one for the other.
+// SMAW=0.8). Do not merge or reuse one for the other.
 
 import 'dart:math' as math;
 
@@ -207,13 +207,14 @@ void _assertT0Valid(double t0) {
 
 // ---------------------------------------------------------------------
 // Net heat input (Q) from arc parameters -- only for the 3 processes
-// EN 1011-2 verifies arc thermal efficiency for.
+// EN 1011-1 Table 1 efficiency is used for.
 // ---------------------------------------------------------------------
 
 enum ArcProcess { saw, smaw, gmawMag }
 
-/// Arc thermal efficiency, verified against EN 1011-2 Annex D.6 for
-/// exactly these 3 processes. This is NOT the same quantity as
+/// Arc thermal efficiency per EN 1011-1 Table 1 (SMAW 0.8, MIG/MAG/FCAW 0.8,
+/// SAW 1.0), see https://www.ssab.com/en/support/how-to-process/how-to-weld/welding-heat-input/heat-input
+/// -- for exactly these 3 processes. This is NOT the same quantity as
 /// WeldingDefaults.efficiencyFor in welding_defaults.dart (deposition
 /// efficiency) -- do not conflate, do not reuse that function's switch.
 double arcThermalEfficiencyFor(ArcProcess process) {
@@ -221,9 +222,9 @@ double arcThermalEfficiencyFor(ArcProcess process) {
     case ArcProcess.saw:
       return 1.0;
     case ArcProcess.smaw:
-      return 0.85;
+      return 0.8;
     case ArcProcess.gmawMag:
-      return 0.85;
+      return 0.8;
   }
 }
 
