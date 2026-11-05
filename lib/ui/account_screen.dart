@@ -50,6 +50,7 @@ class _AccountScreenState extends State<AccountScreen> {
   String? _emailError;
   bool _loading = true;
   bool _busy = false;
+  bool _restoringPurchases = false;
   bool _aiConsentGiven = false;
 
   @override
@@ -257,6 +258,8 @@ class _AccountScreenState extends State<AccountScreen> {
   }
 
   Future<void> _restorePurchases() async {
+    if (_restoringPurchases) return;
+    setState(() => _restoringPurchases = true);
     final strings = AppLocaleScope.stringsOf(context);
     final messenger = ScaffoldMessenger.of(context);
     String message;
@@ -271,6 +274,7 @@ class _AccountScreenState extends State<AccountScreen> {
       debugPrint('Restore purchases failed: $error');
       message = strings.paywallRestoreFailed;
     }
+    if (mounted) setState(() => _restoringPurchases = false);
     messenger.showSnackBar(SnackBar(content: Text(message)));
   }
 
@@ -325,8 +329,15 @@ class _AccountScreenState extends State<AccountScreen> {
                     SizedBox(
                       width: double.infinity,
                       child: OutlinedButton.icon(
-                        icon: const Icon(Icons.restore),
-                        onPressed: _restorePurchases,
+                        icon: _restoringPurchases
+                            ? const WeldingLoader(
+                                size: 18,
+                                bladeColor: Color(0xFF12191B),
+                              )
+                            : const Icon(Icons.restore),
+                        onPressed: _restoringPurchases
+                            ? null
+                            : _restorePurchases,
                         label: Text(strings.paywallRestore),
                       ),
                     ),

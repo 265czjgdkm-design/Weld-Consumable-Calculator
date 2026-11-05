@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../l10n/app_locale_scope.dart';
@@ -35,12 +37,22 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
       widget.entitlementService ?? EntitlementService();
   String? _accountEmail;
   bool _isPremium = false;
+  StreamSubscription<bool>? _premiumSub;
 
   @override
   void initState() {
     super.initState();
     _loadAccountEmail();
     _loadPremium();
+    _premiumSub = _entitlementService.premiumStatusStream().listen((isPremium) {
+      if (mounted) setState(() => _isPremium = isPremium);
+    });
+  }
+
+  @override
+  void dispose() {
+    _premiumSub?.cancel();
+    super.dispose();
   }
 
   Future<void> _loadPremium() async {
@@ -103,18 +115,13 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
       );
       return;
     }
-    await showPremiumPaywall(
-      context,
-      entitlementService: entitlementService,
-      onEntitlementChanged: (isPremium) {
-        if (!mounted || !isPremium) return;
-        Navigator.of(context).push(
-          MaterialPageRoute(
-            builder: (context) =>
-                AiAssistantScreen(entitlementService: entitlementService),
-          ),
-        );
-      },
+    await _openPremiumPaywall();
+    if (!mounted || !_isPremium) return;
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) =>
+            AiAssistantScreen(entitlementService: entitlementService),
+      ),
     );
   }
 

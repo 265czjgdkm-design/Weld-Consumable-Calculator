@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -8,6 +10,9 @@ import 'package:weld_consumable_calculator/l10n/app_language.dart';
 import 'package:weld_consumable_calculator/l10n/app_locale.dart';
 import 'package:weld_consumable_calculator/l10n/app_locale_scope.dart';
 import 'package:weld_consumable_calculator/services/entitlement_service.dart';
+import 'package:weld_consumable_calculator/services/purchases_config.dart';
+import 'package:weld_consumable_calculator/ui/ai_assistant_screen.dart';
+import 'package:weld_consumable_calculator/ui/premium_paywall.dart';
 import 'package:weld_consumable_calculator/l10n/strings.dart';
 import 'package:weld_consumable_calculator/ui/account_screen.dart';
 import 'package:weld_consumable_calculator/ui/base_material_screen.dart';
@@ -24,12 +29,50 @@ import 'package:weld_consumable_calculator/ui/saved_reports_screen.dart';
 /// this matters specifically for the button-color assertions below, since
 /// the reviewer's Finding 1 was only ever visible under the app's actual
 /// `filledButtonTheme`, never under an untheemed `MaterialApp`.
+CustomerInfo _activeCustomerInfo() {
+  final entitlement = EntitlementInfo(
+    PurchasesConfig.entitlementId,
+    true,
+    true,
+    '2026-01-01T00:00:00Z',
+    '2026-01-01T00:00:00Z',
+    PurchasesConfig.monthlyPackageId,
+    false,
+  );
+  return CustomerInfo(
+    EntitlementInfos(
+      {PurchasesConfig.entitlementId: entitlement},
+      {PurchasesConfig.entitlementId: entitlement},
+    ),
+    const {},
+    [PurchasesConfig.monthlyPackageId],
+    [PurchasesConfig.monthlyPackageId],
+    const [],
+    '2026-01-01T00:00:00Z',
+    'u',
+    const {},
+    '2026-01-01T00:00:00Z',
+  );
+}
+
 class _FakeEntitlementService extends EntitlementService {
+  final statusController = StreamController<bool>.broadcast();
+  bool premium = false;
+
   @override
-  Future<bool> isPremiumActive() async => false;
+  Future<bool> isPremiumActive() async => premium;
 
   @override
   Future<Offering?> currentOffering() async => null;
+
+  @override
+  Stream<bool> premiumStatusStream() => statusController.stream;
+
+  @override
+  Future<CustomerInfo> restorePurchases() async {
+    premium = true;
+    return _activeCustomerInfo();
+  }
 }
 
 Future<void> _gotoDashboard(WidgetTester tester) async {
@@ -60,7 +103,10 @@ BoxDecoration _tileDecoration(WidgetTester tester, String label) {
       as BoxDecoration;
 }
 
-Future<void> _pumpHome(WidgetTester tester) async {
+Future<void> _pumpHome(
+  WidgetTester tester, [
+  _FakeEntitlementService? service,
+]) async {
   SharedPreferences.setMockInitialValues({});
   final locale = AppLocale();
   await locale.setLanguage(AppLanguage.en);
@@ -69,7 +115,7 @@ Future<void> _pumpHome(WidgetTester tester) async {
       locale: locale,
       child: MaterialApp(
         home: HomeDashboardScreen(
-          entitlementService: _FakeEntitlementService(),
+          entitlementService: service ?? _FakeEntitlementService(),
         ),
       ),
     ),
@@ -277,5 +323,38 @@ void main() {
     await tester.tap(find.text(strings.premiumSettingsRow));
     await tester.pumpAndSettle();
     expect(find.text(strings.paywallRestore), findsNWidgets(2));
+  });
+
+  testWidgets('restoring from the AI gate closes the paywall, then opens the '
+      'AI screen, and the home card turns into Premium active', (tester) async {
+    final service = _FakeEntitlementService();
+    await _pumpHome(tester, service);
+    await tester.ensureVisible(find.text(strings.dashboardAiAssistant));
+    await tester.tap(find.text(strings.dashboardAiAssistant));
+    await tester.pumpAndSettle();
+    expect(find.byType(PremiumPaywallSheet), findsOneWidget);
+
+    await tester.tap(find.text(strings.paywallRestore));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(AiAssistantScreen), findsOneWidget);
+    tester.state<NavigatorState>(find.byType(Navigator).first).pop();
+    await tester.pumpAndSettle();
+    expect(find.byType(PremiumPaywallSheet, skipOffstage: false), findsNothing);
+    expect(find.text(strings.premiumEntryTitle), findsNothing);
+    expect(find.text(strings.premiumActiveLabel), findsOneWidget);
+  });
+
+  testWidgets('home Premium card follows the entitlement stream', (
+    tester,
+  ) async {
+    final service = _FakeEntitlementService();
+    await _pumpHome(tester, service);
+    expect(find.text(strings.premiumEntryTitle), findsOneWidget);
+
+    service.statusController.add(true);
+    await tester.pumpAndSettle();
+    expect(find.text(strings.premiumEntryTitle), findsNothing);
+    expect(find.text(strings.premiumActiveLabel), findsOneWidget);
   });
 }

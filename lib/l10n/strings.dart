@@ -618,6 +618,7 @@ class L10nStrings {
     required this.paywallRestore,
     required this.paywallLoadFailed,
     required this.paywallRetry,
+    required this.paywallPurchasePending,
     required this.premiumEntryTitle,
     required this.premiumActiveLabel,
     required this.premiumSettingsRow,
@@ -1261,6 +1262,7 @@ class L10nStrings {
   final String paywallRestore;
   final String paywallLoadFailed;
   final String paywallRetry;
+  final String paywallPurchasePending;
   final String premiumEntryTitle;
   final String premiumActiveLabel;
   final String premiumSettingsRow;
@@ -2056,6 +2058,7 @@ const Map<AppLanguage, L10nStrings> _strings = {
     paywallLoadFailed:
         "Couldn't load plans. Check your connection and try again.",
     paywallRetry: "Retry",
+    paywallPurchasePending: "Purchase pending approval. Premium unlocks once it is approved.",
     premiumEntryTitle: "Go Premium — PDF reports + AI assistant",
     premiumActiveLabel: "Premium active ✓",
     premiumSettingsRow: "Go Premium",
@@ -2862,6 +2865,7 @@ const Map<AppLanguage, L10nStrings> _strings = {
     paywallLoadFailed:
         "Planlar yüklenemedi. Bağlantınızı kontrol edip tekrar deneyin.",
     paywallRetry: "Tekrar dene",
+    paywallPurchasePending: "Satın alma onay bekliyor. Onaylandığında Premium etkinleşecek.",
     premiumEntryTitle: "Premium'a Geç — PDF rapor + AI asistan",
     premiumActiveLabel: "Premium aktif ✓",
     premiumSettingsRow: "Premium'a Geç",
@@ -3684,6 +3688,7 @@ const Map<AppLanguage, L10nStrings> _strings = {
     paywallLoadFailed:
         "Не удалось загрузить тарифы. Проверьте подключение и повторите попытку.",
     paywallRetry: "Повторить",
+    paywallPurchasePending: "Покупка ожидает подтверждения. Premium активируется после одобрения.",
     premiumEntryTitle: "Перейти на Premium — PDF-отчёты + ИИ-ассистент",
     premiumActiveLabel: "Premium активен ✓",
     premiumSettingsRow: "Оформить Premium",
@@ -4511,6 +4516,7 @@ const Map<AppLanguage, L10nStrings> _strings = {
     paywallLoadFailed:
         "Tarife konnten nicht geladen werden. Prüfen Sie Ihre Verbindung und versuchen Sie es erneut.",
     paywallRetry: "Erneut versuchen",
+    paywallPurchasePending: "Kauf wartet auf Genehmigung. Premium wird nach der Freigabe aktiviert.",
     premiumEntryTitle: "Premium holen — PDF-Berichte + KI-Assistent",
     premiumActiveLabel: "Premium aktiv ✓",
     premiumSettingsRow: "Premium holen",
@@ -5329,6 +5335,7 @@ const Map<AppLanguage, L10nStrings> _strings = {
     paywallLoadFailed:
         "प्लान लोड नहीं हो सके। अपना कनेक्शन जाँचें और फिर कोशिश करें।",
     paywallRetry: "पुनः प्रयास करें",
+    paywallPurchasePending: "खरीदारी स्वीकृति की प्रतीक्षा में है। स्वीकृत होने पर Premium सक्रिय होगा।",
     premiumEntryTitle: "Premium लें — PDF रिपोर्ट + एआई असिस्टेंट",
     premiumActiveLabel: "Premium सक्रिय ✓",
     premiumSettingsRow: "Premium लें",

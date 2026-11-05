@@ -131,8 +131,7 @@ class _PremiumPaywallSheetState extends State<PremiumPaywallSheet> {
       );
       final isActive = _isEntitlementActive(customerInfo);
       widget.onEntitlementChanged(isActive);
-      if (!mounted) return;
-      _dismissSheetIfCurrent(navigator, sheetRoute);
+      if (mounted) _dismissSheetIfCurrent(navigator, sheetRoute);
       widget.onMessage(
         isActive
             ? strings.paywallPremiumUnlocked
@@ -140,17 +139,19 @@ class _PremiumPaywallSheetState extends State<PremiumPaywallSheet> {
       );
       return;
     } on PlatformException catch (error) {
-      if (PurchasesErrorHelper.getErrorCode(error) ==
-          PurchasesErrorCode.purchaseCancelledError) {
+      final code = PurchasesErrorHelper.getErrorCode(error);
+      if (code == PurchasesErrorCode.purchaseCancelledError) {
         // User backed out of the store sheet -- not an error worth surfacing.
       } else {
-        if (!mounted) return;
-        _dismissSheetIfCurrent(navigator, sheetRoute);
-        widget.onMessage(strings.paywallPurchaseFailed);
+        if (mounted) _dismissSheetIfCurrent(navigator, sheetRoute);
+        widget.onMessage(
+          code == PurchasesErrorCode.paymentPendingError
+              ? strings.paywallPurchasePending
+              : strings.paywallPurchaseFailed,
+        );
       }
     } catch (error) {
-      if (!mounted) return;
-      _dismissSheetIfCurrent(navigator, sheetRoute);
+      if (mounted) _dismissSheetIfCurrent(navigator, sheetRoute);
       widget.onMessage(strings.paywallPurchaseFailed);
     }
     if (mounted) setState(() => _purchasingPackageId = null);
@@ -165,16 +166,14 @@ class _PremiumPaywallSheetState extends State<PremiumPaywallSheet> {
       final customerInfo = await widget.entitlementService.restorePurchases();
       final isActive = _isEntitlementActive(customerInfo);
       widget.onEntitlementChanged(isActive);
-      if (!mounted) return;
       // Dismiss before messaging, otherwise the SnackBar paints underneath
       // the still-open sheet.
-      _dismissSheetIfCurrent(navigator, sheetRoute);
+      if (mounted) _dismissSheetIfCurrent(navigator, sheetRoute);
       widget.onMessage(
         isActive ? strings.paywallRestored : strings.paywallNothingToRestore,
       );
     } catch (error) {
-      if (!mounted) return;
-      _dismissSheetIfCurrent(navigator, sheetRoute);
+      if (mounted) _dismissSheetIfCurrent(navigator, sheetRoute);
       widget.onMessage(strings.paywallRestoreFailed);
     } finally {
       if (mounted) setState(() => _restoring = false);
