@@ -3,7 +3,6 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:purchases_flutter/purchases_flutter.dart';
 
 import '../core/weld_calculator.dart';
 import '../core/welding_defaults.dart';
@@ -20,13 +19,12 @@ import '../services/custom_filler_material_store.dart';
 import '../services/entitlement_service.dart';
 import '../services/pdf_report_exporter.dart';
 import '../services/preset_sync_service.dart';
-import '../services/purchases_config.dart';
 import '../services/saved_report_store.dart';
 import '../services/user_account_store.dart';
 import '../services/user_preset_store.dart';
 import '../services/user_preset_sync.dart';
 import '../services/weld_pdf_report_service.dart';
-import 'paywall_shared.dart';
+import 'premium_paywall.dart';
 import 'widgets/weld_drawing_preview.dart';
 import 'calculator_page/calculator_page_models.dart';
 import 'calculator_page/calculator_page_widgets.dart';
@@ -3579,23 +3577,16 @@ class _CalculatorPageState extends State<CalculatorPage> {
   /// export). Fetches the RevenueCat `default` offering when opened: if it's
   /// missing the expected monthly/yearly packages (the expected state until
   /// the real API key and an App Store Connect subscription product exist),
-  /// [_PaywallSheet] renders a disabled "coming soon" state instead of real
-  /// purchase buttons.
+  /// the shared paywall shows a retry state instead of purchase buttons.
   Future<void> _showPaywall() {
-    return showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (sheetContext) {
-        return _PaywallSheet(
-          entitlementService: widget.entitlementService,
-          onEntitlementChanged: (isPremium) {
-            if (!mounted) return;
-            setState(() => _isPremium = isPremium);
-          },
-          onMessage: _showMessage,
-        );
+    return showPremiumPaywall(
+      context,
+      entitlementService: widget.entitlementService,
+      onEntitlementChanged: (isPremium) {
+        if (!mounted) return;
+        setState(() => _isPremium = isPremium);
       },
+      onMessage: _showMessage,
     );
   }
 
@@ -4161,302 +4152,6 @@ class _CalculatorPageState extends State<CalculatorPage> {
     }
 
     return items;
-  }
-}
-
-/// Content of the premium paywall bottom sheet. A dedicated StatefulWidget
-/// (rather than a method on [_CalculatorPageState]) so fetching the
-/// RevenueCat offering and tracking in-flight purchase/restore calls have
-/// their own local state, independent of the page behind the sheet.
-class _PaywallSheet extends StatefulWidget {
-  const _PaywallSheet({
-    required this.entitlementService,
-    required this.onEntitlementChanged,
-    required this.onMessage,
-  });
-
-  final EntitlementService entitlementService;
-  final ValueChanged<bool> onEntitlementChanged;
-  final ValueChanged<String> onMessage;
-
-  @override
-  State<_PaywallSheet> createState() => _PaywallSheetState();
-}
-
-class _PaywallSheetState extends State<_PaywallSheet> {
-  Offering? _offering;
-  bool _loadingOffering = true;
-  String? _purchasingPackageId;
-  bool _restoring = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _loadOffering();
-  }
-
-  Future<void> _loadOffering() async {
-    Offering? offering;
-    try {
-      offering = await widget.entitlementService.currentOffering();
-    } catch (error) {
-      debugPrint('Failed to load RevenueCat offering: $error');
-    }
-    if (offering != null &&
-        _resolveMonthly(offering) == null &&
-        _resolveYearly(offering) == null) {
-      debugPrint(
-        'RevenueCat offering "${offering.identifier}" has no monthly or '
-        'annual package (checked package duration and the '
-        'PurchasesConfig custom ids) -- paywall has nothing purchasable.',
-      );
-    }
-    if (!mounted) return;
-    setState(() {
-      _offering = offering;
-      _loadingOffering = false;
-    });
-  }
-
-  // `.monthly`/`.annual` resolve by the package's actual duration, so they
-  // match whether the RevenueCat dashboard used its own predefined
-  // $rc_monthly/$rc_annual ids or the custom PurchasesConfig ids -- falling
-  // back to an exact custom-id match only keeps those constants meaningful
-  // as a reference if a dashboard ever uses them literally.
-  Package? _resolveMonthly(Offering offering) =>
-      offering.monthly ?? offering.getPackage(PurchasesConfig.monthlyPackageId);
-  Package? _resolveYearly(Offering offering) =>
-      offering.annual ?? offering.getPackage(PurchasesConfig.yearlyPackageId);
-
-  Package? get _monthlyPackage {
-    final offering = _offering;
-    return offering == null ? null : _resolveMonthly(offering);
-  }
-
-  Package? get _yearlyPackage {
-    final offering = _offering;
-    return offering == null ? null : _resolveYearly(offering);
-  }
-
-  // Render whichever packages actually exist rather than requiring both --
-  // an offering with only one configured is still real and purchasable.
-  bool get _hasAnyPackage => _monthlyPackage != null || _yearlyPackage != null;
-
-  bool _isEntitlementActive(CustomerInfo customerInfo) => customerInfo
-      .entitlements
-      .active
-      .containsKey(PurchasesConfig.entitlementId);
-
-  // The sheet's own route may already be `popping` (e.g. the user dismissed
-  // it via the barrier) by the time an in-flight purchase/restore call
-  // resolves -- popping unconditionally in that case pops the route
-  // *underneath* the sheet (the whole CalculatorPage). Capture the route
-  // before the await and only pop it if it's still current.
-  void _dismissSheetIfCurrent(NavigatorState navigator, ModalRoute? route) {
-    if (route?.isCurrent ?? false) navigator.pop();
-  }
-
-  Future<void> _purchase(Package package) async {
-    final strings = AppLocaleScope.stringsOf(context);
-    setState(() => _purchasingPackageId = package.identifier);
-    final navigator = Navigator.of(context);
-    final sheetRoute = ModalRoute.of(context);
-    try {
-      final customerInfo = await widget.entitlementService.purchasePackage(
-        package,
-      );
-      final isActive = _isEntitlementActive(customerInfo);
-      widget.onEntitlementChanged(isActive);
-      if (!mounted) return;
-      _dismissSheetIfCurrent(navigator, sheetRoute);
-      widget.onMessage(
-        isActive
-            ? strings.paywallPremiumUnlocked
-            : strings.paywallPurchaseCompleted,
-      );
-      return;
-    } on PlatformException catch (error) {
-      if (PurchasesErrorHelper.getErrorCode(error) ==
-          PurchasesErrorCode.purchaseCancelledError) {
-        // User backed out of the store sheet -- not an error worth surfacing.
-      } else {
-        if (!mounted) return;
-        _dismissSheetIfCurrent(navigator, sheetRoute);
-        widget.onMessage(strings.paywallPurchaseFailed);
-      }
-    } catch (error) {
-      if (!mounted) return;
-      _dismissSheetIfCurrent(navigator, sheetRoute);
-      widget.onMessage(strings.paywallPurchaseFailed);
-    }
-    if (mounted) setState(() => _purchasingPackageId = null);
-  }
-
-  Future<void> _restore() async {
-    final strings = AppLocaleScope.stringsOf(context);
-    setState(() => _restoring = true);
-    final navigator = Navigator.of(context);
-    final sheetRoute = ModalRoute.of(context);
-    try {
-      final customerInfo = await widget.entitlementService.restorePurchases();
-      final isActive = _isEntitlementActive(customerInfo);
-      widget.onEntitlementChanged(isActive);
-      if (!mounted) return;
-      // Dismiss the sheet before messaging, same as `_purchase` -- otherwise
-      // the SnackBar paints underneath the still-open sheet and is
-      // invisible.
-      _dismissSheetIfCurrent(navigator, sheetRoute);
-      widget.onMessage(
-        isActive ? strings.paywallRestored : strings.paywallNothingToRestore,
-      );
-    } catch (error) {
-      if (!mounted) return;
-      _dismissSheetIfCurrent(navigator, sheetRoute);
-      widget.onMessage(strings.paywallRestoreFailed);
-    } finally {
-      if (mounted) setState(() => _restoring = false);
-    }
-  }
-
-  Widget _buildPaywallBenefit({required IconData icon, required String text}) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Icon(icon, size: 20, color: const Color(0xFF12191B)),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Text(
-            text,
-            style: Theme.of(
-              context,
-            ).textTheme.bodyMedium?.copyWith(color: const Color(0xFF33474F)),
-          ),
-        ),
-      ],
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final strings = AppLocaleScope.stringsOf(context);
-    return Padding(
-      padding: EdgeInsets.only(
-        bottom: MediaQuery.of(context).viewInsets.bottom,
-      ),
-      child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.fromLTRB(24, 16, 24, 26),
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-        ),
-        child: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Center(
-                child: Container(
-                  width: 40,
-                  height: 4,
-                  margin: const EdgeInsets.only(bottom: 18),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFD2DCE3),
-                    borderRadius: BorderRadius.circular(999),
-                  ),
-                ),
-              ),
-              Row(
-                children: [
-                  Container(
-                    width: 46,
-                    height: 46,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(14),
-                      color: const Color(0xFFFF6A35),
-                    ),
-                    alignment: Alignment.center,
-                    child: const Icon(
-                      Icons.workspace_premium_outlined,
-                      color: Colors.white,
-                    ),
-                  ),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: Text(
-                      'Varyos Weld Premium',
-                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 18),
-              _buildPaywallBenefit(
-                icon: Icons.picture_as_pdf_outlined,
-                text: strings.paywallBenefitPdf,
-              ),
-              const SizedBox(height: 10),
-              _buildPaywallBenefit(
-                icon: Icons.badge_outlined,
-                text: strings.paywallBenefitReport,
-              ),
-              const SizedBox(height: 10),
-              _buildPaywallBenefit(
-                icon: Icons.event_repeat_outlined,
-                text: strings.paywallBenefitCancel,
-              ),
-              const SizedBox(height: 22),
-              if (_loadingOffering)
-                const Center(child: CircularProgressIndicator())
-              else if (_hasAnyPackage)
-                PaywallPackageButtons(
-                  monthly: _monthlyPackage,
-                  yearly: _yearlyPackage,
-                  purchasingPackageId: _purchasingPackageId,
-                  disabled: _purchasingPackageId != null || _restoring,
-                  onPurchase: _purchase,
-                )
-              else
-                SizedBox(
-                  width: double.infinity,
-                  child: FilledButton(
-                    onPressed: null,
-                    style: FilledButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                    ),
-                    child: Text(strings.paywallComingSoon),
-                  ),
-                ),
-              const SizedBox(height: 10),
-              Center(
-                child: TextButton(
-                  onPressed: (_restoring || _purchasingPackageId != null)
-                      ? null
-                      : _restore,
-                  child: _restoring
-                      ? const SizedBox(
-                          width: 18,
-                          height: 18,
-                          child: CircularProgressIndicator(strokeWidth: 2.2),
-                        )
-                      : Text(strings.paywallRestore),
-                ),
-              ),
-              const SizedBox(height: 4),
-              PaywallLegalFooter(
-                hasPackages: _hasAnyPackage,
-                onLinkError: widget.onMessage,
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
   }
 }
 

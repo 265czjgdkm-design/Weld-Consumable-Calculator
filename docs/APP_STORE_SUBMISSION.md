@@ -73,7 +73,12 @@ Registration (email) is optional and only enables preset sync; in-app account de
 Home > Account card > Delete Account.
 
 Premium (auto-renewable, monthly/yearly) unlocks PDF report export and the AI assistant.
-Please use a Sandbox account to test the purchase; Restore Purchases is on the paywall.
+Where to find the in-app purchases (works the same on iPhone and iPad):
+ - Home > "Go Premium" card (right below the Account card) > Monthly / Yearly plans + Restore Purchases
+ - Home > Account card > "Go Premium" and "Restore Purchases" buttons
+ - Home > AI Assistant > Unlock Premium
+ - Home > Filler Consumption (any calculator) > Calculate > Unlock PDF
+Please use a Sandbox account to test the purchase.
 
 AI assistant: before first use the app shows a consent screen naming the provider
 (Cloudflare Workers AI, Meta Llama 3.3 70B) and what is sent; nothing is sent unless the user taps

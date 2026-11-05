@@ -149,17 +149,11 @@ class PaywallPackageButtons extends StatelessWidget {
   }
 }
 
-/// Auto-renew disclosure (or the coming-soon note when there is nothing to
-/// buy) plus tappable Privacy Policy / Terms of Use links. Shared by both
-/// paywalls so they can't drift apart.
+/// Auto-renew disclosure plus tappable Privacy Policy / Terms of Use links. Shared so the
+/// paywall can't drift apart.
 class PaywallLegalFooter extends StatelessWidget {
-  const PaywallLegalFooter({
-    super.key,
-    required this.hasPackages,
-    required this.onLinkError,
-  });
+  const PaywallLegalFooter({super.key, required this.onLinkError});
 
-  final bool hasPackages;
   final ValueChanged<String> onLinkError;
 
   Future<void> _open(BuildContext context, String url) async {
@@ -181,9 +175,7 @@ class PaywallLegalFooter extends StatelessWidget {
     return Column(
       children: [
         Text(
-          hasPackages
-              ? strings.paywallAutoRenewDisclosure
-              : strings.paywallComingSoonNote,
+          strings.paywallAutoRenewDisclosure,
           textAlign: TextAlign.center,
           style: Theme.of(
             context,

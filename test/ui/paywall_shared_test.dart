@@ -30,7 +30,7 @@ class _MockUrlLauncherPlatform extends UrlLauncherPlatform {
 class _FakeEntitlementService extends EntitlementService {
   _FakeEntitlementService(this.offering);
 
-  final Offering? offering;
+  Offering? offering;
 
   @override
   Future<bool> isPremiumActive() async => false;
@@ -58,6 +58,7 @@ Future<void> _pumpAiPaywall(
   WidgetTester tester,
   Offering? offering, {
   AppLanguage language = AppLanguage.en,
+  _FakeEntitlementService? service,
 }) async {
   SharedPreferences.setMockInitialValues({});
   final locale = AppLocale();
@@ -67,7 +68,7 @@ Future<void> _pumpAiPaywall(
       locale: locale,
       child: MaterialApp(
         home: AiAssistantScreen(
-          entitlementService: _FakeEntitlementService(offering),
+          entitlementService: service ?? _FakeEntitlementService(offering),
         ),
       ),
     ),
@@ -130,15 +131,28 @@ void main() {
     expect(mockPlatform.lastLaunchedUrl, 'https://varyosweld.com/terms.html');
   });
 
-  testWidgets('AI paywall falls back to coming-soon copy, with no price, '
-      'when no offering is available', (tester) async {
-    await _pumpAiPaywall(tester, null);
+  testWidgets('paywall shows a retry state (not coming-soon) when no '
+      'offering loads, keeps Restore + legal links, and Retry refetches', (
+    tester,
+  ) async {
+    final service = _FakeEntitlementService(null);
+    await _pumpAiPaywall(tester, null, service: service);
 
-    expect(find.text(strings.paywallComingSoon), findsOneWidget);
-    expect(find.text(strings.paywallComingSoonNote), findsOneWidget);
-    expect(find.text(strings.paywallAutoRenewDisclosure), findsNothing);
+    expect(find.text(strings.paywallLoadFailed), findsOneWidget);
+    expect(find.text(strings.paywallRetry), findsOneWidget);
+    expect(find.text(strings.paywallRestore), findsOneWidget);
+    expect(find.text(strings.paywallAutoRenewDisclosure), findsOneWidget);
     expect(find.text(strings.legalPrivacyPolicyLinkLabel), findsOneWidget);
     expect(find.text(strings.legalTermsOfUseLinkLabel), findsOneWidget);
+
+    service.offering = _offering();
+    await tester.tap(find.text(strings.paywallRetry));
+    await tester.pumpAndSettle();
+    expect(find.text(strings.paywallLoadFailed), findsNothing);
+    expect(find.text('3,49 €'), findsOneWidget);
+    expect(find.text('24,99 €'), findsOneWidget);
+    expect(find.text(strings.paywallPlanMonthly), findsOneWidget);
+    expect(find.text(strings.paywallPlanYearly), findsOneWidget);
   });
 
   testWidgets('AI paywall copy is localized', (tester) async {

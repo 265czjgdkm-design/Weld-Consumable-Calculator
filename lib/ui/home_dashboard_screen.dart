@@ -12,6 +12,7 @@ import 'calculator_page/calculator_page_widgets.dart';
 import 'cooling_time_calculator_screen.dart';
 import 'filler_material_screen.dart';
 import 'preheat_calculator_screen.dart';
+import 'premium_paywall.dart';
 import 'saved_calculations_screen.dart';
 import 'saved_reports_screen.dart';
 
@@ -19,7 +20,9 @@ import 'saved_reports_screen.dart';
 /// single centered column of entry points into the app's main flows, with
 /// the same top nav bar treatment as [CalculatorPage] for brand continuity.
 class HomeDashboardScreen extends StatefulWidget {
-  const HomeDashboardScreen({super.key});
+  const HomeDashboardScreen({super.key, this.entitlementService});
+
+  final EntitlementService? entitlementService;
 
   @override
   State<HomeDashboardScreen> createState() => _HomeDashboardScreenState();
@@ -28,12 +31,38 @@ class HomeDashboardScreen extends StatefulWidget {
 class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
   static const _accountStore = UserAccountStore();
 
+  late final EntitlementService _entitlementService =
+      widget.entitlementService ?? EntitlementService();
   String? _accountEmail;
+  bool _isPremium = false;
 
   @override
   void initState() {
     super.initState();
     _loadAccountEmail();
+    _loadPremium();
+  }
+
+  Future<void> _loadPremium() async {
+    bool isPremium = false;
+    try {
+      isPremium = await _entitlementService.isPremiumActive();
+    } catch (error) {
+      debugPrint('Failed to read entitlement status: $error');
+    }
+    if (!mounted) return;
+    setState(() => _isPremium = isPremium);
+  }
+
+  Future<void> _openPremiumPaywall() {
+    return showPremiumPaywall(
+      context,
+      entitlementService: _entitlementService,
+      onEntitlementChanged: (isPremium) {
+        if (!mounted) return;
+        setState(() => _isPremium = isPremium);
+      },
+    );
   }
 
   Future<void> _loadAccountEmail() async {
@@ -43,18 +72,21 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
   }
 
   Future<void> _openAccountScreen() async {
-    await Navigator.of(
-      context,
-    ).push(MaterialPageRoute(builder: (context) => const AccountScreen()));
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) =>
+            AccountScreen(entitlementService: _entitlementService),
+      ),
+    );
     _loadAccountEmail();
+    _loadPremium();
   }
 
-  /// Gates the whole AI assistant screen at the dashboard-button level
-  /// (rather than reusing calculator_page.dart's private `_PaywallSheet`,
-  /// which isn't reachable from here) -- non-premium users see the paywall
-  /// directly instead of ever landing on the chat screen.
+  /// Gates the whole AI assistant screen at the dashboard-button level --
+  /// non-premium users see the paywall directly instead of ever landing on
+  /// the chat screen.
   Future<void> _openAiAssistant() async {
-    final entitlementService = EntitlementService();
+    final entitlementService = _entitlementService;
     bool isPremium = false;
     try {
       isPremium = await entitlementService.isPremiumActive();
@@ -71,7 +103,7 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
       );
       return;
     }
-    await showAiAssistantPaywall(
+    await showPremiumPaywall(
       context,
       entitlementService: entitlementService,
       onEntitlementChanged: (isPremium) {
@@ -126,6 +158,12 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
                               email: _accountEmail,
                               onTap: _openAccountScreen,
                             ),
+                            const SizedBox(height: 12),
+                            _PremiumEntryCard(
+                              strings: strings,
+                              isPremium: _isPremium,
+                              onTap: _openPremiumPaywall,
+                            ),
                             const SizedBox(height: 20),
                             _DashboardSectionTitle(
                               strings.dashboardCalculatorsSectionTitle,
@@ -156,8 +194,7 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
                                 ),
                                 _DashboardTile(
                                   icon: Icons.ac_unit_outlined,
-                                  label:
-                                      strings.dashboardCoolingTimeCalculator,
+                                  label: strings.dashboardCoolingTimeCalculator,
                                   style: _TileStyle.primary,
                                   onPressed: () => Navigator.of(context).push(
                                     MaterialPageRoute(
@@ -310,6 +347,87 @@ class _AccountEntryCard extends StatelessWidget {
   }
 }
 
+/// Always-visible Premium entry (full paywall with plans + Restore) so
+/// reviewers and users never have to discover it via the AI tile. Shows a
+/// small passive "Premium active" state once entitled.
+class _PremiumEntryCard extends StatelessWidget {
+  const _PremiumEntryCard({
+    required this.strings,
+    required this.isPremium,
+    required this.onTap,
+  });
+
+  final L10nStrings strings;
+  final bool isPremium;
+  final VoidCallback onTap;
+
+  static const _brandOrange = Color(0xFFFF6A35);
+
+  @override
+  Widget build(BuildContext context) {
+    if (isPremium) {
+      return Align(
+        alignment: Alignment.centerLeft,
+        child: Chip(
+          avatar: const Icon(
+            Icons.workspace_premium,
+            size: 18,
+            color: _brandOrange,
+          ),
+          label: Text(strings.premiumActiveLabel),
+        ),
+      );
+    }
+    return Container(
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFF1B2326), Color(0xFF0B0F10)],
+        ),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: _brandOrange.withValues(alpha: 0.55)),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Material(
+        type: MaterialType.transparency,
+        child: InkWell(
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            child: Row(
+              children: [
+                const Icon(
+                  Icons.workspace_premium_outlined,
+                  color: _brandOrange,
+                  size: 30,
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        strings.premiumEntryTitle,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w800,
+                          fontSize: 15,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const Icon(Icons.chevron_right, color: Colors.white70),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _DashboardSectionTitle extends StatelessWidget {
   const _DashboardSectionTitle(this.title);
 
@@ -350,8 +468,7 @@ class _DashboardTileGrid extends StatelessWidget {
           spacing: spacing,
           runSpacing: spacing,
           children: [
-            for (final tile in tiles)
-              SizedBox(width: tileWidth, child: tile),
+            for (final tile in tiles) SizedBox(width: tileWidth, child: tile),
           ],
         );
       },
@@ -441,10 +558,7 @@ class _DashboardTile extends StatelessWidget {
           child: InkWell(
             onTap: onPressed,
             child: Padding(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 12,
-                vertical: 14,
-              ),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [

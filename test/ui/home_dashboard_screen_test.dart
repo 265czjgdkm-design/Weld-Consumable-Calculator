@@ -3,7 +3,11 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:weld_consumable_calculator/app.dart';
+import 'package:purchases_flutter/purchases_flutter.dart';
 import 'package:weld_consumable_calculator/l10n/app_language.dart';
+import 'package:weld_consumable_calculator/l10n/app_locale.dart';
+import 'package:weld_consumable_calculator/l10n/app_locale_scope.dart';
+import 'package:weld_consumable_calculator/services/entitlement_service.dart';
 import 'package:weld_consumable_calculator/l10n/strings.dart';
 import 'package:weld_consumable_calculator/ui/account_screen.dart';
 import 'package:weld_consumable_calculator/ui/base_material_screen.dart';
@@ -20,6 +24,14 @@ import 'package:weld_consumable_calculator/ui/saved_reports_screen.dart';
 /// this matters specifically for the button-color assertions below, since
 /// the reviewer's Finding 1 was only ever visible under the app's actual
 /// `filledButtonTheme`, never under an untheemed `MaterialApp`.
+class _FakeEntitlementService extends EntitlementService {
+  @override
+  Future<bool> isPremiumActive() async => false;
+
+  @override
+  Future<Offering?> currentOffering() async => null;
+}
+
 Future<void> _gotoDashboard(WidgetTester tester) async {
   SharedPreferences.setMockInitialValues({
     'signup_gate_resolved_v1': true,
@@ -46,6 +58,23 @@ BoxDecoration _tileDecoration(WidgetTester tester, String label) {
   );
   return tester.widget<Container>(containerFinder.first).decoration
       as BoxDecoration;
+}
+
+Future<void> _pumpHome(WidgetTester tester) async {
+  SharedPreferences.setMockInitialValues({});
+  final locale = AppLocale();
+  await locale.setLanguage(AppLanguage.en);
+  await tester.pumpWidget(
+    AppLocaleScope(
+      locale: locale,
+      child: MaterialApp(
+        home: HomeDashboardScreen(
+          entitlementService: _FakeEntitlementService(),
+        ),
+      ),
+    ),
+  );
+  await tester.pumpAndSettle();
 }
 
 void main() {
@@ -175,10 +204,7 @@ void main() {
       expect(accentDecoration.gradient, equals(primaryGradients.first));
       expect(accentDecoration.border, isNotNull);
       expect(
-        _tileDecoration(
-          tester,
-          strings.dashboardFillerConsumption,
-        ).border,
+        _tileDecoration(tester, strings.dashboardFillerConsumption).border,
         isNull,
       );
       // ...and the primary/accent dark surfaces are genuinely different from
@@ -213,5 +239,43 @@ void main() {
 
     expect(find.text('user@example.com'), findsOneWidget);
     expect(find.text(strings.dashboardAccountCardGuestValue), findsNothing);
+  });
+
+  testWidgets('Premium card is visible on the dashboard and opens the full '
+      'paywall with Restore and legal links', (tester) async {
+    await _pumpHome(tester);
+
+    expect(find.text(strings.premiumEntryTitle), findsOneWidget);
+    await tester.tap(find.text(strings.premiumEntryTitle));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Varyos Weld Premium'), findsOneWidget);
+    expect(find.text(strings.paywallRestore), findsOneWidget);
+    expect(find.text(strings.paywallRetry), findsOneWidget);
+    expect(find.text(strings.paywallAutoRenewDisclosure), findsOneWidget);
+    expect(find.text(strings.legalTermsOfUseLinkLabel), findsOneWidget);
+  });
+
+  testWidgets('Premium card is visible on a wide iPad-sized screen', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1640, 2360);
+    tester.view.devicePixelRatio = 2.0;
+    addTearDown(tester.view.reset);
+    await _pumpHome(tester);
+    expect(find.text(strings.premiumEntryTitle), findsOneWidget);
+    final top = tester.getTopLeft(find.text(strings.premiumEntryTitle)).dy;
+    expect(top, lessThan(2360 / 2.0 / 2));
+  });
+
+  testWidgets('account screen has a Premium / Restore purchases row', (
+    tester,
+  ) async {
+    await _pumpHome(tester);
+    await tester.tap(find.text(strings.dashboardAccountCardGuestValue));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text(strings.premiumSettingsRow));
+    await tester.pumpAndSettle();
+    expect(find.text(strings.paywallRestore), findsNWidgets(2));
   });
 }

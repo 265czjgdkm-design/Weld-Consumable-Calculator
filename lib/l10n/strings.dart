@@ -615,9 +615,12 @@ class L10nStrings {
     required this.paywallPeriodMonth,
     required this.paywallPeriodYear,
     required this.paywallSaveBadge,
-    required this.paywallComingSoon,
-    required this.paywallComingSoonNote,
     required this.paywallRestore,
+    required this.paywallLoadFailed,
+    required this.paywallRetry,
+    required this.premiumEntryTitle,
+    required this.premiumActiveLabel,
+    required this.premiumSettingsRow,
     required this.paywallAutoRenewDisclosure,
     required this.paywallPremiumUnlocked,
     required this.paywallPurchaseCompleted,
@@ -1255,9 +1258,12 @@ class L10nStrings {
   final String paywallPeriodMonth;
   final String paywallPeriodYear;
   final String paywallSaveBadge;
-  final String paywallComingSoon;
-  final String paywallComingSoonNote;
   final String paywallRestore;
+  final String paywallLoadFailed;
+  final String paywallRetry;
+  final String premiumEntryTitle;
+  final String premiumActiveLabel;
+  final String premiumSettingsRow;
   final String paywallAutoRenewDisclosure;
   final String paywallPremiumUnlocked;
   final String paywallPurchaseCompleted;
@@ -2046,10 +2052,13 @@ const Map<AppLanguage, L10nStrings> _strings = {
     paywallPeriodMonth: "per month",
     paywallPeriodYear: "per year",
     paywallSaveBadge: "Save {percent}% vs. monthly",
-    paywallComingSoon: "Premium -- Coming Soon",
-    paywallComingSoonNote:
-        "Premium subscriptions are coming soon. Pricing will be shown here once available.",
     paywallRestore: "Restore Purchases",
+    paywallLoadFailed:
+        "Couldn't load plans. Check your connection and try again.",
+    paywallRetry: "Retry",
+    premiumEntryTitle: "Go Premium — PDF reports + AI assistant",
+    premiumActiveLabel: "Premium active ✓",
+    premiumSettingsRow: "Go Premium",
     paywallAutoRenewDisclosure:
         "Payment is charged to your Apple ID account at confirmation of purchase. The subscription renews automatically at the price shown for the chosen period unless it is cancelled at least 24 hours before the end of the current period. Your account is charged for renewal within 24 hours before the end of the current period. Manage or cancel anytime in your Apple ID account settings after purchase.",
     paywallPremiumUnlocked: "Premium unlocked.",
@@ -2849,10 +2858,13 @@ const Map<AppLanguage, L10nStrings> _strings = {
     paywallPeriodMonth: "aylık",
     paywallPeriodYear: "yıllık",
     paywallSaveBadge: "Aylığa göre %{percent} tasarruf",
-    paywallComingSoon: "Premium -- Yakında",
-    paywallComingSoonNote:
-        "Premium abonelikler yakında geliyor. Fiyatlar kullanıma açıldığında burada gösterilecek.",
     paywallRestore: "Satın Alımları Geri Yükle",
+    paywallLoadFailed:
+        "Planlar yüklenemedi. Bağlantınızı kontrol edip tekrar deneyin.",
+    paywallRetry: "Tekrar dene",
+    premiumEntryTitle: "Premium'a Geç — PDF rapor + AI asistan",
+    premiumActiveLabel: "Premium aktif ✓",
+    premiumSettingsRow: "Premium'a Geç",
     paywallAutoRenewDisclosure:
         "Ödeme, satın alma onayında Apple Kimliği hesabınızdan tahsil edilir. Abonelik, mevcut dönemin bitiminden en az 24 saat önce iptal edilmezse seçilen dönem için gösterilen fiyattan otomatik olarak yenilenir. Yenileme ücreti, mevcut dönemin bitiminden önceki 24 saat içinde hesabınızdan tahsil edilir. Satın aldıktan sonra Apple Kimliği hesap ayarlarınızdan istediğiniz zaman yönetebilir veya iptal edebilirsiniz.",
     paywallPremiumUnlocked: "Premium etkinleştirildi.",
@@ -3668,10 +3680,13 @@ const Map<AppLanguage, L10nStrings> _strings = {
     paywallPeriodMonth: "в месяц",
     paywallPeriodYear: "в год",
     paywallSaveBadge: "Экономия {percent}% по сравнению с ежемесячной",
-    paywallComingSoon: "Premium -- скоро",
-    paywallComingSoonNote:
-        "Подписка Premium скоро появится. Цены будут показаны здесь, когда она станет доступна.",
     paywallRestore: "Восстановить покупки",
+    paywallLoadFailed:
+        "Не удалось загрузить тарифы. Проверьте подключение и повторите попытку.",
+    paywallRetry: "Повторить",
+    premiumEntryTitle: "Перейти на Premium — PDF-отчёты + ИИ-ассистент",
+    premiumActiveLabel: "Premium активен ✓",
+    premiumSettingsRow: "Оформить Premium",
     paywallAutoRenewDisclosure:
         "Оплата списывается с вашей учётной записи Apple ID при подтверждении покупки. Подписка автоматически продлевается по цене, указанной для выбранного периода, если не отменить её минимум за 24 часа до окончания текущего периода. Плата за продление списывается в течение 24 часов до окончания текущего периода. После покупки управлять подпиской или отменить её можно в настройках учётной записи Apple ID.",
     paywallPremiumUnlocked: "Premium активирован.",
@@ -4492,10 +4507,13 @@ const Map<AppLanguage, L10nStrings> _strings = {
     paywallPeriodMonth: "pro Monat",
     paywallPeriodYear: "pro Jahr",
     paywallSaveBadge: "{percent} % sparen gegenüber monatlich",
-    paywallComingSoon: "Premium -- demnächst",
-    paywallComingSoonNote:
-        "Premium-Abos kommen bald. Die Preise werden hier angezeigt, sobald sie verfügbar sind.",
     paywallRestore: "Käufe wiederherstellen",
+    paywallLoadFailed:
+        "Tarife konnten nicht geladen werden. Prüfen Sie Ihre Verbindung und versuchen Sie es erneut.",
+    paywallRetry: "Erneut versuchen",
+    premiumEntryTitle: "Premium holen — PDF-Berichte + KI-Assistent",
+    premiumActiveLabel: "Premium aktiv ✓",
+    premiumSettingsRow: "Premium holen",
     paywallAutoRenewDisclosure:
         "Die Zahlung wird bei Kaufbestätigung Ihrem Apple-ID-Konto belastet. Das Abo verlängert sich automatisch zum angezeigten Preis für den gewählten Zeitraum, sofern es nicht mindestens 24 Stunden vor Ablauf des aktuellen Zeitraums gekündigt wird. Die Verlängerung wird innerhalb von 24 Stunden vor Ablauf des aktuellen Zeitraums berechnet. Nach dem Kauf können Sie das Abo jederzeit in den Einstellungen Ihres Apple-ID-Kontos verwalten oder kündigen.",
     paywallPremiumUnlocked: "Premium freigeschaltet.",
@@ -5307,10 +5325,13 @@ const Map<AppLanguage, L10nStrings> _strings = {
     paywallPeriodMonth: "प्रति माह",
     paywallPeriodYear: "प्रति वर्ष",
     paywallSaveBadge: "मासिक की तुलना में {percent}% बचत",
-    paywallComingSoon: "Premium -- जल्द आ रहा है",
-    paywallComingSoonNote:
-        "Premium सब्सक्रिप्शन जल्द आ रहे हैं। उपलब्ध होने पर कीमतें यहाँ दिखाई जाएँगी।",
     paywallRestore: "खरीदारी पुनर्स्थापित करें",
+    paywallLoadFailed:
+        "प्लान लोड नहीं हो सके। अपना कनेक्शन जाँचें और फिर कोशिश करें।",
+    paywallRetry: "पुनः प्रयास करें",
+    premiumEntryTitle: "Premium लें — PDF रिपोर्ट + एआई असिस्टेंट",
+    premiumActiveLabel: "Premium सक्रिय ✓",
+    premiumSettingsRow: "Premium लें",
     paywallAutoRenewDisclosure:
         "खरीदारी की पुष्टि होने पर भुगतान आपके Apple ID खाते से लिया जाता है। यदि वर्तमान अवधि समाप्त होने से कम से कम 24 घंटे पहले रद्द न किया जाए, तो सब्सक्रिप्शन चुनी गई अवधि के लिए दिखाई गई कीमत पर अपने-आप नवीनीकृत हो जाता है। नवीनीकरण का शुल्क वर्तमान अवधि समाप्त होने से पहले के 24 घंटों में लिया जाता है। खरीदारी के बाद आप अपनी Apple ID खाता सेटिंग्स में कभी भी इसे प्रबंधित या रद्द कर सकते हैं।",
     paywallPremiumUnlocked: "Premium अनलॉक हो गया।",

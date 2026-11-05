@@ -574,13 +574,11 @@ void main() {
       );
       expect(find.text(strings.paywallRestore), findsOneWidget);
 
-      final comingSoonButton = tester.widget<FilledButton>(
-        find.widgetWithText(FilledButton, strings.paywallComingSoon),
-      );
-      expect(comingSoonButton.onPressed, isNull);
+      expect(find.text(strings.paywallLoadFailed), findsOneWidget);
+      expect(find.text(strings.paywallRetry), findsOneWidget);
 
       // Dismiss the sheet via its barrier and confirm PDF export is still
-      // locked -- nothing in the coming-soon state can unlock it.
+      // locked -- nothing in the load-failed state can unlock it.
       await tester.tapAt(const Offset(20, 20));
       await tester.pumpAndSettle();
 
@@ -609,6 +607,9 @@ void main() {
       expect(find.text(strings.legalPrivacyPolicyLinkLabel), findsOneWidget);
       expect(find.text(strings.legalTermsOfUseLinkLabel), findsOneWidget);
 
+      await tester.ensureVisible(
+        find.text(strings.legalPrivacyPolicyLinkLabel),
+      );
       await tester.tap(find.text(strings.legalPrivacyPolicyLinkLabel));
       await tester.pumpAndSettle();
       expect(
@@ -684,7 +685,7 @@ void main() {
 
       expect(find.text('\$2.99'), findsOneWidget);
       expect(find.text('\$19.99'), findsNothing);
-      expect(find.text(strings.paywallComingSoon), findsNothing);
+      expect(find.text(strings.paywallLoadFailed), findsNothing);
     },
   );
 
@@ -720,7 +721,7 @@ void main() {
         ),
       );
 
-      expect(find.text(strings.paywallComingSoon), findsOneWidget);
+      expect(find.text(strings.paywallLoadFailed), findsOneWidget);
       expect(
         loggedMessages.any(
           (message) => message.contains('no monthly or annual package'),

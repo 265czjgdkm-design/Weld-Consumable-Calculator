@@ -4,12 +4,15 @@ import '../l10n/app_locale_scope.dart';
 import '../l10n/strings.dart';
 import '../services/account_deletion_service.dart';
 import '../services/ai_consent_store.dart';
+import '../services/entitlement_service.dart';
 import '../services/legal_links.dart';
+import '../services/purchases_config.dart';
 import '../services/preset_sync_service.dart';
 import '../services/user_account_store.dart';
 import '../services/user_preset_store.dart';
 import '../services/user_preset_sync.dart';
 import 'calculator_page/calculator_page_widgets.dart';
+import 'premium_paywall.dart';
 import 'widgets/welding_loader.dart';
 
 /// Account management screen: shows the current account (email, optional
@@ -22,10 +25,12 @@ class AccountScreen extends StatefulWidget {
     super.key,
     this.accountDeletionService = const AccountDeletionService(),
     this.consentStore = const AiConsentStore(),
+    this.entitlementService,
   });
 
   final AccountDeletionService accountDeletionService;
   final AiConsentStore consentStore;
+  final EntitlementService? entitlementService;
 
   @override
   State<AccountScreen> createState() => _AccountScreenState();
@@ -251,6 +256,24 @@ class _AccountScreenState extends State<AccountScreen> {
     }
   }
 
+  Future<void> _restorePurchases() async {
+    final strings = AppLocaleScope.stringsOf(context);
+    final messenger = ScaffoldMessenger.of(context);
+    String message;
+    try {
+      final info = await (widget.entitlementService ?? EntitlementService())
+          .restorePurchases();
+      message =
+          info.entitlements.active.containsKey(PurchasesConfig.entitlementId)
+          ? strings.paywallRestored
+          : strings.paywallNothingToRestore;
+    } catch (error) {
+      debugPrint('Restore purchases failed: $error');
+      message = strings.paywallRestoreFailed;
+    }
+    messenger.showSnackBar(SnackBar(content: Text(message)));
+  }
+
   @override
   Widget build(BuildContext context) {
     final strings = AppLocaleScope.stringsOf(context);
@@ -285,6 +308,29 @@ class _AccountScreenState extends State<AccountScreen> {
                       ),
                     ),
                     const SizedBox(height: 16),
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton.icon(
+                        icon: const Icon(Icons.workspace_premium_outlined),
+                        onPressed: () => showPremiumPaywall(
+                          context,
+                          entitlementService:
+                              widget.entitlementService ?? EntitlementService(),
+                          onEntitlementChanged: (_) {},
+                        ),
+                        label: Text(strings.premiumSettingsRow),
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton.icon(
+                        icon: const Icon(Icons.restore),
+                        onPressed: _restorePurchases,
+                        label: Text(strings.paywallRestore),
+                      ),
+                    ),
+                    const SizedBox(height: 10),
                     SizedBox(
                       width: double.infinity,
                       child: OutlinedButton(

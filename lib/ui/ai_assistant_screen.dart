@@ -2,7 +2,6 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:purchases_flutter/purchases_flutter.dart';
 
 import '../l10n/app_language.dart';
 import '../l10n/app_locale_scope.dart';
@@ -13,9 +12,8 @@ import '../services/ai_assistant_service.dart';
 import '../services/ai_consent_store.dart';
 import '../services/entitlement_service.dart';
 import '../services/legal_links.dart';
-import '../services/purchases_config.dart';
 import 'calculator_page/calculator_page_widgets.dart';
-import 'paywall_shared.dart';
+import 'premium_paywall.dart';
 import 'widgets/welding_loader.dart';
 
 /// In-app AI chat that answers questions about this app's three calculators
@@ -416,7 +414,7 @@ class _AiAssistantScreenState extends State<AiAssistantScreen> {
                   ),
                   const SizedBox(height: 16),
                   FilledButton(
-                    onPressed: () => showAiAssistantPaywall(
+                    onPressed: () => showPremiumPaywall(
                       context,
                       entitlementService: widget.entitlementService,
                       onEntitlementChanged: (isPremium) {
@@ -459,256 +457,6 @@ class _MessageBubble extends StatelessWidget {
           message.content,
           style: TextStyle(
             color: isUser ? Colors.white : const Color(0xFF12191B),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-/// Opens a trimmed-down premium paywall for the AI assistant. Kept separate
-/// from calculator_page.dart's private `_PaywallSheet` (that one stays
-/// private/untouched) since this needs to be reachable both from
-/// home_dashboard_screen.dart (gate before navigating) and from this
-/// screen's own in-place gate above -- duplicating the small purchase/
-/// restore flow here once is simpler than making the calculator page's
-/// sheet cross-file-shared for a single other call site.
-Future<void> showAiAssistantPaywall(
-  BuildContext context, {
-  required EntitlementService entitlementService,
-  required ValueChanged<bool> onEntitlementChanged,
-}) {
-  return showModalBottomSheet<void>(
-    context: context,
-    isScrollControlled: true,
-    backgroundColor: Colors.transparent,
-    builder: (sheetContext) => _AiAssistantPaywallSheet(
-      entitlementService: entitlementService,
-      onEntitlementChanged: onEntitlementChanged,
-    ),
-  );
-}
-
-class _AiAssistantPaywallSheet extends StatefulWidget {
-  const _AiAssistantPaywallSheet({
-    required this.entitlementService,
-    required this.onEntitlementChanged,
-  });
-
-  final EntitlementService entitlementService;
-  final ValueChanged<bool> onEntitlementChanged;
-
-  @override
-  State<_AiAssistantPaywallSheet> createState() =>
-      _AiAssistantPaywallSheetState();
-}
-
-class _AiAssistantPaywallSheetState extends State<_AiAssistantPaywallSheet> {
-  Offering? _offering;
-  bool _loadingOffering = true;
-  String? _purchasingPackageId;
-  bool _restoring = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _loadOffering();
-  }
-
-  Future<void> _loadOffering() async {
-    Offering? offering;
-    try {
-      offering = await widget.entitlementService.currentOffering();
-    } catch (error) {
-      debugPrint('Failed to load RevenueCat offering: $error');
-    }
-    if (!mounted) return;
-    setState(() {
-      _offering = offering;
-      _loadingOffering = false;
-    });
-  }
-
-  Package? _resolveMonthly(Offering offering) =>
-      offering.monthly ?? offering.getPackage(PurchasesConfig.monthlyPackageId);
-  Package? _resolveYearly(Offering offering) =>
-      offering.annual ?? offering.getPackage(PurchasesConfig.yearlyPackageId);
-
-  Package? get _monthlyPackage {
-    final offering = _offering;
-    return offering == null ? null : _resolveMonthly(offering);
-  }
-
-  Package? get _yearlyPackage {
-    final offering = _offering;
-    return offering == null ? null : _resolveYearly(offering);
-  }
-
-  bool get _hasAnyPackage => _monthlyPackage != null || _yearlyPackage != null;
-
-  bool _isEntitlementActive(CustomerInfo customerInfo) => customerInfo
-      .entitlements
-      .active
-      .containsKey(PurchasesConfig.entitlementId);
-
-  void _dismissSheetIfCurrent(NavigatorState navigator, ModalRoute? route) {
-    if (route?.isCurrent ?? false) navigator.pop();
-  }
-
-  Future<void> _purchase(Package package) async {
-    setState(() => _purchasingPackageId = package.identifier);
-    final navigator = Navigator.of(context);
-    final sheetRoute = ModalRoute.of(context);
-    try {
-      final customerInfo = await widget.entitlementService.purchasePackage(
-        package,
-      );
-      final isActive = _isEntitlementActive(customerInfo);
-      widget.onEntitlementChanged(isActive);
-      if (!mounted) return;
-      _dismissSheetIfCurrent(navigator, sheetRoute);
-      return;
-    } on PlatformException catch (error) {
-      if (PurchasesErrorHelper.getErrorCode(error) ==
-          PurchasesErrorCode.purchaseCancelledError) {
-        // User backed out of the store sheet -- not an error worth surfacing.
-      } else if (mounted) {
-        _dismissSheetIfCurrent(navigator, sheetRoute);
-      }
-    } catch (_) {
-      if (mounted) _dismissSheetIfCurrent(navigator, sheetRoute);
-    }
-    if (mounted) setState(() => _purchasingPackageId = null);
-  }
-
-  Future<void> _restore() async {
-    setState(() => _restoring = true);
-    final navigator = Navigator.of(context);
-    final sheetRoute = ModalRoute.of(context);
-    try {
-      final customerInfo = await widget.entitlementService.restorePurchases();
-      final isActive = _isEntitlementActive(customerInfo);
-      widget.onEntitlementChanged(isActive);
-      if (!mounted) return;
-      _dismissSheetIfCurrent(navigator, sheetRoute);
-    } catch (_) {
-      if (mounted) _dismissSheetIfCurrent(navigator, sheetRoute);
-    } finally {
-      if (mounted) setState(() => _restoring = false);
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final strings = AppLocaleScope.stringsOf(context);
-    return Padding(
-      padding: EdgeInsets.only(
-        bottom: MediaQuery.of(context).viewInsets.bottom,
-      ),
-      child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.fromLTRB(24, 16, 24, 26),
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-        ),
-        child: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Center(
-                child: Container(
-                  width: 40,
-                  height: 4,
-                  margin: const EdgeInsets.only(bottom: 18),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFD2DCE3),
-                    borderRadius: BorderRadius.circular(999),
-                  ),
-                ),
-              ),
-              Row(
-                children: [
-                  Container(
-                    width: 46,
-                    height: 46,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(14),
-                      color: const Color(0xFFFF6A35),
-                    ),
-                    alignment: Alignment.center,
-                    child: const Icon(
-                      Icons.workspace_premium_outlined,
-                      color: Colors.white,
-                    ),
-                  ),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: Text(
-                      'Varyos Weld Premium',
-                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 18),
-              Text(strings.paywallBenefitAi),
-              const SizedBox(height: 10),
-              Text(strings.paywallBenefitPdf),
-              const SizedBox(height: 10),
-              Text(strings.paywallBenefitCancel),
-              const SizedBox(height: 22),
-              if (_loadingOffering)
-                const Center(
-                  child: WeldingLoader(size: 36, bladeColor: Color(0xFF12191B)),
-                )
-              else if (_hasAnyPackage)
-                PaywallPackageButtons(
-                  monthly: _monthlyPackage,
-                  yearly: _yearlyPackage,
-                  purchasingPackageId: _purchasingPackageId,
-                  disabled: _purchasingPackageId != null || _restoring,
-                  onPurchase: _purchase,
-                )
-              else
-                SizedBox(
-                  width: double.infinity,
-                  child: FilledButton(
-                    onPressed: null,
-                    style: FilledButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                    ),
-                    child: Text(strings.paywallComingSoon),
-                  ),
-                ),
-              const SizedBox(height: 10),
-              Center(
-                child: TextButton(
-                  onPressed: (_restoring || _purchasingPackageId != null)
-                      ? null
-                      : _restore,
-                  child: _restoring
-                      ? const WeldingLoader(
-                          size: 18,
-                          bladeColor: Color(0xFF12191B),
-                        )
-                      : Text(strings.paywallRestore),
-                ),
-              ),
-              const SizedBox(height: 4),
-              PaywallLegalFooter(
-                hasPackages: _hasAnyPackage,
-                onLinkError: (message) => ScaffoldMessenger.maybeOf(
-                  context,
-                )?.showSnackBar(SnackBar(content: Text(message))),
-              ),
-            ],
           ),
         ),
       ),
