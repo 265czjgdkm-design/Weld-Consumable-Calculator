@@ -254,10 +254,48 @@ void main() {
     );
   });
 
-  testWidgets('picker only offers materials with every CET element specified', (
-    tester,
-  ) async {
+  testWidgets('common structural steels are offered; unlimited elements are '
+      'filled with 0, flagged amber, and the CET warning is shown; '
+      'stainless is not offered', (tester) async {
     await _pumpScreen(tester);
+    await pickCatalog(tester, 'S355J2');
+
+    expect(fieldValue(tester, _strings.materialFieldCarbon), 0.20);
+    expect(fieldValue(tester, _strings.materialFieldManganese), 1.60);
+    expect(fieldValue(tester, _strings.materialFieldCopper), 0.55);
+    for (final label in [
+      _strings.materialFieldChromium,
+      _strings.materialFieldMolybdenum,
+      _strings.materialFieldNickel,
+    ]) {
+      expect(fieldValue(tester, label), 0);
+      expect(
+        tester.widget<TextField>(_fieldByLabel(label)).decoration!.suffixIcon,
+        isNotNull,
+      );
+    }
+    expect(
+      tester
+          .widget<TextField>(_fieldByLabel(_strings.materialFieldCarbon))
+          .decoration!
+          .suffixIcon,
+      isNull,
+    );
+    expect(
+      find.textContaining(_strings.preheatCetUnderestimatedWarning),
+      findsOneWidget,
+    );
+
+    // Typing a value clears that field's flag.
+    await _enterByLabel(tester, _strings.materialFieldChromium, '0.1');
+    expect(
+      tester
+          .widget<TextField>(_fieldByLabel(_strings.materialFieldChromium))
+          .decoration!
+          .suffixIcon,
+      isNull,
+    );
+
     final picker = find.byWidgetPredicate(
       (widget) =>
           widget is PickerField &&
@@ -266,15 +304,12 @@ void main() {
     await tester.ensureVisible(picker);
     await tester.tap(picker);
     await tester.pumpAndSettle();
-    await tester.enterText(
-      find.byKey(const ValueKey('picker-search')),
-      'S355J2',
-    );
+    await tester.enterText(find.byKey(const ValueKey('picker-search')), 'A36');
     await tester.pumpAndSettle();
-    expect(find.widgetWithText(ListTile, 'S355J2'), findsNothing);
+    expect(find.widgetWithText(ListTile, 'A36'), findsOneWidget);
     await tester.enterText(
       find.byKey(const ValueKey('picker-search')),
-      'API 5L',
+      '1.4301',
     );
     await tester.pumpAndSettle();
     expect(find.text(_strings.pickerNoResults), findsOneWidget);

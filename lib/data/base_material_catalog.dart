@@ -57,6 +57,17 @@ class CatalogBaseMaterial {
       ni != null &&
       cu != null;
 
+  /// CET element keys (as used by the preheat screen) that the standard
+  /// does not limit, so they are 0 in [toMaterial].
+  Set<String> get unlimitedCetElements => {
+    if (c == null) 'carbon',
+    if (mn == null) 'manganese',
+    if (cr == null) 'chromium',
+    if (mo == null) 'molybdenum',
+    if (ni == null) 'nickel',
+    if (cu == null) 'copper',
+  };
+
   CustomBaseMaterial toMaterial() => CustomBaseMaterial(
     id: id,
     name: name,
@@ -102,12 +113,18 @@ class BaseMaterialCatalog {
     _alu,
   ];
 
-  static List<CatalogBaseMaterial> get cetReady => [
+  /// Materials offered by the preheat calculator: every ferritic / low-alloy
+  /// steel. Elements the standard does not limit are filled with 0 and
+  /// flagged in the UI (see [CatalogBaseMaterial.unlimitedCetElements]).
+  static List<CatalogBaseMaterial> get cetApplicable => [
     for (final entry in entries)
-      if (entry.isCetReady) entry,
+      if (entry.cetApplicable) entry,
   ];
 
   static const List<CatalogBaseMaterial> entries = [
+    // VERIFIED C/Si/Mn/Cu (S235-S355, <=40 mm, ladle): https://www.arvedi.it/en/acciaieria/products/hot-rolled-steels/non-alloyed-structural-steels-as-per-en-10025-2/
+    // and EN 10025-2:2019 DoP https://hbisserbia.rs/wp-content/uploads/Hot-Rolled-Steel-S355J2_EN-10025-2_2019_DoP-35503.pdf (C 0.20, Mn 1.60, Si 0.55, Cu 0.55).
+    // S355K2 taken equal to S355J2. Cr/Ni/Mo are not limited by the table -> null.
     // --- EN 10025-2 non-alloy structural steel (limits for nominal thickness <= 40 mm; Cr/Ni/Mo not specified) ---
     CatalogBaseMaterial(
       'S235JR',
@@ -214,6 +231,8 @@ class BaseMaterialCatalog {
       cetApplicable: true,
     ),
 
+    // S355N/NL and S460N Cr/Ni/Mo/V/Cu verified: https://erdemir.com.tr/storage/uploads/2023/08/8e1a82ef85ce61f462edc41eb6fc09c2.pdf ,
+    // https://industeel.arcelormittal.com/fichier/dopil_s355nl_1-0546 ; S275N/S420N not independently verified.
     // --- EN 10025-3 normalised fine-grain steel ---
     CatalogBaseMaterial(
       'S275N',
@@ -336,6 +355,7 @@ class BaseMaterialCatalog {
       cetApplicable: true,
     ),
 
+    // S420M verified (supplier limits): https://metinvestholding.com/en/products/steel-grades/s420m ; S355M/S460M/ML not independently verified.
     // --- EN 10025-4 thermomechanically rolled steel ---
     CatalogBaseMaterial(
       'S355M',
@@ -413,6 +433,7 @@ class BaseMaterialCatalog {
       cetApplicable: true,
     ),
 
+    // S690Q verified (V 0.12 added): https://www.kalmarglobal.com/492a8f/globalassets/media/262878/262878_11021.0001---High-yield-strength-structural-steels--quenched-and-tempered.pdf ; S500Q not verified (V null).
     // --- EN 10025-6 quenched and tempered steel ---
     CatalogBaseMaterial(
       'S500Q',
@@ -440,9 +461,15 @@ class BaseMaterialCatalog {
       mo: 0.70,
       ni: 2.00,
       cu: 0.50,
+      v: 0.12,
       cetApplicable: true,
     ),
 
+    // P235GH-P355GH C/Si/Mn/Cr/Mo/Ni verified: https://www.arvedi.it/en/acciaieria/products/hot-rolled-steels/steels-for-pressure-vessels-as-per-en-10028-2/ ;
+    // Cu 0.30: https://www.steelestores.com/grade/en-p-355-gh-en-10028-2.html . 10CrMo9-10 (Mn corrected to 0.80), 13CrMo4-5:
+    // https://roymech.org/Useful_Tables/Matter/Steel_Data/Steel-10028.html , https://www.abtersteel.com/?p=3056 ; 16Mo3 Mn/Mo not verified.
+    // 15NiCuMoNb5 (C/Si/Mn/Cr/Ni/Cu): https://www.totalmateria.com/en-us/material/1051828 ; Mo not verified.
+    // X10CrMoVNb9-1 (C/Si/Mn/Cr/Ni): https://www.icastllp.com/material_db_pdf/BS%2010216-2%20EN%201.4903.pdf ; V from EN 10222-2 ladle; Cu not specified -> null.
     // --- EN 10028-2 / EN 10216-2 pressure-purpose steels ---
     CatalogBaseMaterial(
       'P235GH',
@@ -535,7 +562,7 @@ class BaseMaterialCatalog {
       '2.25Cr-1Mo creep-resistant steel (1.7380)',
       c: 0.14,
       si: 0.50,
-      mn: 0.70,
+      mn: 0.80,
       cr: 2.50,
       mo: 1.10,
       ni: 0.30,
@@ -571,6 +598,9 @@ class BaseMaterialCatalog {
       cetApplicable: true,
     ),
 
+    // A106 verified: https://www.wermac.org/pipes/astm_a106.html ; A333 Gr3/Gr6 verified: https://www.wermac.org/pipes/astm_a333.html (Gr6 Cr/Cu/Mo/Ni/V added);
+    // A516 (C by thickness, Mn, Si; Gr60 Mn raised to 1.20 for <=12.5 mm): https://leecosteel.com/a516-steel-plate/ ;
+    // A36: https://ferrobend.com/specifications/astm/plates/a36-a36m (Mn specified only for thicker plate -> null); A53 Gr B not independently verified.
     // --- ASTM carbon steel ---
     CatalogBaseMaterial(
       'A36',
@@ -588,7 +618,7 @@ class BaseMaterialCatalog {
       'Carbon steel pressure vessel plate for moderate / low temperature (C, Mn for thickness up to 12.5 mm)',
       c: 0.21,
       si: 0.40,
-      mn: 0.90,
+      mn: 1.20,
       cetApplicable: true,
     ),
     CatalogBaseMaterial(
@@ -664,6 +694,11 @@ class BaseMaterialCatalog {
       'Carbon steel pipe for low-temperature service (-45 C)',
       c: 0.30,
       mn: 1.06,
+      cr: 0.30,
+      mo: 0.12,
+      ni: 0.40,
+      cu: 0.40,
+      v: 0.08,
       cetApplicable: true,
     ),
     CatalogBaseMaterial(
@@ -677,6 +712,8 @@ class BaseMaterialCatalog {
       cetApplicable: true,
     ),
 
+    // A335 verified: https://www.wermac.org/pipes/astm_a335.html ; P91 Ni/V from the standard (not on wermac).
+    // A387 not verified beyond search summaries (Gr22 Mo corrected to 1.10).
     // --- ASTM A335 / A387 chrome-moly (Cu and Ni residuals not specified except P91) ---
     CatalogBaseMaterial(
       'A335 P1',
@@ -772,54 +809,107 @@ class BaseMaterialCatalog {
       si: 0.50,
       mn: 0.60,
       cr: 2.60,
-      mo: 1.13,
+      mo: 1.10,
       cetApplicable: true,
     ),
 
-    // --- API 5L line pipe: chemistry depends on PSL level and manufacturing route, so no limits are stored ---
+    // --- API 5L PSL2: C = seamless max, Mn = welded max (X42/X46 Mn not source-verified); Cu/Ni/Cr/Mo = PSL2 default
+    // limits (Mo 0.15 chosen over the 0.12 some sources give). Sources (via search summaries; verify against API 5L):
+    // https://tubingchina.com/Chemical-Composition-for-API-5L-PSL-2-Pipes.htm ,
+    // https://blog.projectmaterials.com/quick-answers/pipes/what-is-api-5l-x52/ ---
     CatalogBaseMaterial(
       'API 5L X42',
       'API 5L',
       _api,
-      'Line pipe, 290 MPa min yield. Enter composition per PSL / route',
+      'Line pipe, 290 MPa min yield. PSL2 maxima compiled from secondary sources',
+      c: 0.24,
+      mn: 1.3,
+      cr: 0.30,
+      mo: 0.15,
+      ni: 0.30,
+      cu: 0.50,
+      cetApplicable: true,
     ),
     CatalogBaseMaterial(
       'API 5L X46',
       'API 5L',
       _api,
-      'Line pipe, 320 MPa min yield. Enter composition per PSL / route',
+      'Line pipe, 320 MPa min yield. PSL2 maxima compiled from secondary sources',
+      c: 0.24,
+      mn: 1.4,
+      cr: 0.30,
+      mo: 0.15,
+      ni: 0.30,
+      cu: 0.50,
+      cetApplicable: true,
     ),
     CatalogBaseMaterial(
       'API 5L X52',
       'API 5L',
       _api,
-      'Line pipe, 360 MPa min yield. Enter composition per PSL / route',
+      'Line pipe, 360 MPa min yield. PSL2 maxima compiled from secondary sources',
+      c: 0.24,
+      mn: 1.4,
+      cr: 0.30,
+      mo: 0.15,
+      ni: 0.30,
+      cu: 0.50,
+      cetApplicable: true,
     ),
     CatalogBaseMaterial(
       'API 5L X56',
       'API 5L',
       _api,
-      'Line pipe, 390 MPa min yield. Enter composition per PSL / route',
+      'Line pipe, 390 MPa min yield. PSL2 maxima compiled from secondary sources',
+      c: 0.26,
+      mn: 1.4,
+      cr: 0.30,
+      mo: 0.15,
+      ni: 0.30,
+      cu: 0.50,
+      cetApplicable: true,
     ),
     CatalogBaseMaterial(
       'API 5L X60',
       'API 5L',
       _api,
-      'Line pipe, 415 MPa min yield. Enter composition per PSL / route',
+      'Line pipe, 415 MPa min yield. PSL2 maxima compiled from secondary sources',
+      c: 0.26,
+      mn: 1.45,
+      cr: 0.30,
+      mo: 0.15,
+      ni: 0.30,
+      cu: 0.50,
+      cetApplicable: true,
     ),
     CatalogBaseMaterial(
       'API 5L X65',
       'API 5L',
       _api,
-      'Line pipe, 450 MPa min yield. Enter composition per PSL / route',
+      'Line pipe, 450 MPa min yield. PSL2 maxima compiled from secondary sources',
+      c: 0.26,
+      mn: 1.65,
+      cr: 0.30,
+      mo: 0.15,
+      ni: 0.30,
+      cu: 0.50,
+      cetApplicable: true,
     ),
     CatalogBaseMaterial(
       'API 5L X70',
       'API 5L',
       _api,
-      'Line pipe, 485 MPa min yield. Enter composition per PSL / route',
+      'Line pipe, 485 MPa min yield. PSL2 maxima compiled from secondary sources',
+      c: 0.26,
+      mn: 1.85,
+      cr: 0.30,
+      mo: 0.15,
+      ni: 0.30,
+      cu: 0.50,
+      cetApplicable: true,
     ),
 
+    // EN 10088-2 verified: https://roymech.org/Useful_Tables/Matter/Steel_Data/Steel-10088.html ; 1.4845 and ASTM A240 values not independently verified.
     // --- Stainless steel (EN 10088-2 / ASTM A240 limits; CET does not apply) ---
     CatalogBaseMaterial(
       '1.4301 / 304',
@@ -1039,6 +1129,7 @@ class BaseMaterialCatalog {
       ni: 13.00,
     ),
 
+    // 6061 and 5083 verified: https://en.wikipedia.org/wiki/6061_aluminium_alloy , https://en.wikipedia.org/wiki/5083_aluminium_alloy ; other alloys not independently verified.
     // --- Aluminium (EN 573-3 / AA limits; Si, Mn, Cr, Cu maxima only, Mg not stored) ---
     CatalogBaseMaterial(
       '5052',

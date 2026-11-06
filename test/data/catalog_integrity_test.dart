@@ -82,20 +82,34 @@ void main() {
       }
     });
 
-    test('CET-ready materials have all six CET elements, none are guessed', () {
-      final ready = BaseMaterialCatalog.cetReady;
-      expect(ready, isNotEmpty);
-      for (final e in ready) {
-        for (final v in [e.c, e.mn, e.cr, e.mo, e.ni, e.cu]) {
-          expect(v, isNotNull, reason: e.id);
+    test(
+      'CET-applicable materials: unlimited elements are exactly the nulls',
+      () {
+        final applicable = BaseMaterialCatalog.cetApplicable;
+        expect(applicable.length, greaterThan(40));
+        for (final e in applicable) {
+          expect(e.c, isNotNull, reason: '${e.id} needs a carbon limit');
+          final nulls = {
+            if (e.mn == null) 'manganese',
+            if (e.cr == null) 'chromium',
+            if (e.mo == null) 'molybdenum',
+            if (e.ni == null) 'nickel',
+            if (e.cu == null) 'copper',
+          };
+          expect(e.unlimitedCetElements, nulls, reason: e.id);
         }
-      }
-      // Standards that do not limit Cr/Ni/Mo must stay out of the CET list.
-      final s355j2 = entries.firstWhere((e) => e.name == 'S355J2');
-      expect(s355j2.isCetReady, isFalse);
-      final api = entries.firstWhere((e) => e.name == 'API 5L X52');
-      expect(api.isCetReady, isFalse);
-    });
+        final s355j2 = entries.firstWhere((e) => e.name == 'S355J2');
+        expect(s355j2.unlimitedCetElements, {
+          'chromium',
+          'molybdenum',
+          'nickel',
+        });
+        expect(s355j2.isCetReady, isFalse);
+        expect(BaseMaterialCatalog.cetApplicable, contains(s355j2));
+        final ss = entries.firstWhere((e) => e.name == '1.4301 / 304');
+        expect(ss.cetApplicable, isFalse);
+      },
+    );
 
     test('known spot values', () {
       final p355 = entries.firstWhere((e) => e.name == 'P355GH');

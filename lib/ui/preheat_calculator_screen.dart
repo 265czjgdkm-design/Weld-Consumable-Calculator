@@ -128,6 +128,9 @@ class _PreheatCalculatorScreenState extends State<PreheatCalculatorScreen> {
   // fields, and whether the user has typed over them since.
   String? _pickedMaterialName;
   bool _compositionEdited = false;
+  // CET elements the picked catalog material's standard does not limit
+  // (filled with 0 and flagged amber until the user types a value).
+  Set<String> _unlimitedElements = const {};
 
   late final Map<String, FocusNode> _elementFocus = {
     for (final key in _elementKeys) key: FocusNode(),
@@ -190,11 +193,16 @@ class _PreheatCalculatorScreenState extends State<PreheatCalculatorScreen> {
   }
 
   void _loadMaterial(CustomBaseMaterial material) {
+    final unlimited =
+        BaseMaterialCatalog.byId(material.id)?.unlimitedCetElements ??
+        const <String>{};
     for (final key in _elementKeys) {
       final value = _elementValueOf(material, key);
-      _elementControllers[key]!.text = value?.toString() ?? '';
+      _elementControllers[key]!.text =
+          value?.toString() ?? (unlimited.contains(key) ? '0' : '');
     }
     setState(() {
+      _unlimitedElements = unlimited;
       _pickedMaterialName = material.name;
       _compositionEdited = false;
       _elementErrors = const {};
@@ -205,7 +213,7 @@ class _PreheatCalculatorScreenState extends State<PreheatCalculatorScreen> {
   Future<void> _pickMaterial() async {
     final strings = AppLocaleScope.stringsOf(context);
     final catalogByGroup = <String, List<CatalogBaseMaterial>>{};
-    for (final entry in BaseMaterialCatalog.cetReady) {
+    for (final entry in BaseMaterialCatalog.cetApplicable) {
       catalogByGroup.putIfAbsent(entry.group, () => []).add(entry);
     }
     final options = <PickerOption<CustomBaseMaterial>>[
@@ -459,6 +467,19 @@ class _PreheatCalculatorScreenState extends State<PreheatCalculatorScreen> {
                             helper: strings.preheatStandardMaxNote,
                             onTap: _pickMaterial,
                           ),
+                          if (_unlimitedElements.isNotEmpty) ...[
+                            const SizedBox(height: 10),
+                            Text(
+                              '${strings.preheatNotLimitedHint}: '
+                              '${[for (final key in _elementKeys)
+                                if (_unlimitedElements.contains(key)) _elementLabel(strings, key)].join(', ')}. '
+                              '${strings.preheatCetUnderestimatedWarning}',
+                              style: const TextStyle(
+                                color: Color(0xFFB45309),
+                                fontSize: 12,
+                              ),
+                            ),
+                          ],
                           const SizedBox(height: 14),
                           Wrap(
                             spacing: 12,
@@ -471,7 +492,19 @@ class _PreheatCalculatorScreenState extends State<PreheatCalculatorScreen> {
                                   errorText: _elementErrors[key],
                                   focusNode: _elementFocus[key],
                                   width: 130,
-                                  onChanged: _invalidateLoadedPcmOverride,
+                                  warningHint: _unlimitedElements.contains(key)
+                                      ? strings.preheatNotLimitedHint
+                                      : null,
+                                  onChanged: (value) {
+                                    if (_unlimitedElements.contains(key)) {
+                                      setState(
+                                        () => _unlimitedElements = {
+                                          ..._unlimitedElements,
+                                        }..remove(key),
+                                      );
+                                    }
+                                    _invalidateLoadedPcmOverride(value);
+                                  },
                                 ),
                             ],
                           ),

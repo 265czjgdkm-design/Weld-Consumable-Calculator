@@ -32,6 +32,7 @@ class OptionalNumberField extends StatelessWidget {
     this.width,
     this.onChanged,
     this.focusNode,
+    this.warningHint,
   });
 
   final TextEditingController controller;
@@ -41,13 +42,39 @@ class OptionalNumberField extends StatelessWidget {
   final ValueChanged<String>? onChanged;
   final FocusNode? focusNode;
 
+  /// Amber "check this value" marker (border, icon and tooltip) for a field
+  /// that was auto-filled with 0 because the standard sets no limit.
+  final String? warningHint;
+
   @override
   Widget build(BuildContext context) {
     final field = TextField(
       controller: controller,
       focusNode: focusNode,
       keyboardType: const TextInputType.numberWithOptions(decimal: true),
-      decoration: InputDecoration(labelText: label, errorText: errorText),
+      decoration: InputDecoration(
+        labelText: label,
+        errorText: errorText,
+        enabledBorder: warningHint == null
+            ? null
+            : OutlineInputBorder(
+                borderRadius: BorderRadius.circular(20),
+                borderSide: const BorderSide(
+                  color: Color(0xFFF59E0B),
+                  width: 2,
+                ),
+              ),
+        suffixIcon: warningHint == null
+            ? null
+            : Tooltip(
+                message: warningHint,
+                triggerMode: TooltipTriggerMode.tap,
+                child: const Icon(
+                  Icons.warning_amber_rounded,
+                  color: Color(0xFFD97706),
+                ),
+              ),
+      ),
       onChanged: onChanged,
     );
     if (width == null) return field;

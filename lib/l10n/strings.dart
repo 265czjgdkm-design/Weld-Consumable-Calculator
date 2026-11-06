@@ -294,6 +294,8 @@ class L10nStrings {
     required this.preheatBaseMaterialPickerLabel,
     required this.preheatCustomFromMaterial,
     required this.preheatStandardMaxNote,
+    required this.preheatNotLimitedHint,
+    required this.preheatCetUnderestimatedWarning,
     required this.calcInputPresetLabel,
     required this.calcConsumableDensityTitle,
     required this.calcConsumableDensitySubtitle,
@@ -935,6 +937,8 @@ class L10nStrings {
   final String preheatBaseMaterialPickerLabel;
   final String preheatCustomFromMaterial;
   final String preheatStandardMaxNote;
+  final String preheatNotLimitedHint;
+  final String preheatCetUnderestimatedWarning;
   final String calcInputPresetLabel;
   final String calcConsumableDensityTitle;
   final String calcConsumableDensitySubtitle;
@@ -1663,6 +1667,8 @@ const Map<AppLanguage, L10nStrings> _strings = {
     preheatBaseMaterialPickerLabel: 'Select base material',
     preheatCustomFromMaterial: 'Custom (from {material})',
     preheatStandardMaxNote: 'Standard maximum values - enter mill-certificate values if you have them',
+    preheatNotLimitedHint: 'Not limited by the standard - enter from mill certificate',
+    preheatCetUnderestimatedWarning: 'CET may be underestimated until these are entered',
     calcInputPresetLabel: 'Input Preset',
     calcConsumableDensityTitle: 'Consumable & Density',
     calcConsumableDensitySubtitle:
@@ -2470,6 +2476,8 @@ const Map<AppLanguage, L10nStrings> _strings = {
     preheatBaseMaterialPickerLabel: 'Ana malzeme seç',
     preheatCustomFromMaterial: 'Özel ({material} baz alınarak)',
     preheatStandardMaxNote: 'Standart maksimum değerler - sertifika değerleri varsa onları girin',
+    preheatNotLimitedHint: 'Standartta sınır yok - sertifikadan girin',
+    preheatCetUnderestimatedWarning: 'Bunlar girilene kadar CET olduğundan düşük hesaplanabilir',
     calcInputPresetLabel: 'Örnek seçimi',
     calcConsumableDensityTitle: 'Sarf Malzeme ve Yoğunluk',
     calcConsumableDensitySubtitle:
@@ -3292,6 +3300,8 @@ const Map<AppLanguage, L10nStrings> _strings = {
     preheatBaseMaterialPickerLabel: 'Выбрать основной металл',
     preheatCustomFromMaterial: 'Свой ({material})',
     preheatStandardMaxNote: 'Максимальные значения по стандарту - если есть сертификат, введите его значения',
+    preheatNotLimitedHint: 'В стандарте предела нет - введите из сертификата',
+    preheatCetUnderestimatedWarning: 'Пока значения не введены, CET может быть занижен',
     calcInputPresetLabel: 'Пример',
     calcConsumableDensityTitle: 'Присадочный материал и плотность',
     calcConsumableDensitySubtitle:
@@ -4119,6 +4129,8 @@ const Map<AppLanguage, L10nStrings> _strings = {
     preheatBaseMaterialPickerLabel: 'Grundwerkstoff wählen',
     preheatCustomFromMaterial: 'Benutzerdefiniert (aus {material})',
     preheatStandardMaxNote: 'Maximalwerte der Norm - Werte aus dem Abnahmezeugnis eingeben, falls vorhanden',
+    preheatNotLimitedHint: 'In der Norm nicht begrenzt - aus dem Abnahmezeugnis eingeben',
+    preheatCetUnderestimatedWarning: 'Bis dahin kann der CET zu niedrig ausfallen',
     calcInputPresetLabel: 'Beispiel',
     calcConsumableDensityTitle: 'Zusatzwerkstoff & Dichte',
     calcConsumableDensitySubtitle:
@@ -4945,6 +4957,8 @@ const Map<AppLanguage, L10nStrings> _strings = {
     preheatBaseMaterialPickerLabel: 'मूल धातु चुनें',
     preheatCustomFromMaterial: 'कस्टम ({material} से)',
     preheatStandardMaxNote: 'मानक के अधिकतम मान - सर्टिफिकेट के मान हों तो वही दर्ज करें',
+    preheatNotLimitedHint: 'मानक में सीमा नहीं - सर्टिफिकेट से दर्ज करें',
+    preheatCetUnderestimatedWarning: 'जब तक ये दर्ज नहीं होते, CET कम आँका जा सकता है',
     calcInputPresetLabel: 'उदाहरण',
     calcConsumableDensityTitle: 'कंज़्यूमेबल और डेंसिटी',
     calcConsumableDensitySubtitle:
