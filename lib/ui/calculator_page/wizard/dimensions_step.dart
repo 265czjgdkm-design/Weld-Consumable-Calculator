@@ -17,6 +17,7 @@ class WizardDimensionsStep extends StatelessWidget {
     required this.primaryDimensionFields,
     required this.capDimensionFields,
     required this.initiallyExpandCapSection,
+    this.capSectionKey,
     required this.onBack,
     required this.onContinue,
   });
@@ -29,6 +30,10 @@ class WizardDimensionsStep extends StatelessWidget {
   final List<Widget> primaryDimensionFields;
   final List<Widget> capDimensionFields;
   final bool initiallyExpandCapSection;
+
+  /// Changing this remounts the cap section so it re-reads
+  /// [initiallyExpandCapSection] (used to open it onto an invalid field).
+  final Key? capSectionKey;
   final VoidCallback onBack;
   final VoidCallback onContinue;
 
@@ -98,6 +103,7 @@ class WizardDimensionsStep extends StatelessWidget {
                       context,
                     ).copyWith(dividerColor: Colors.transparent),
                     child: ExpansionTile(
+                      key: capSectionKey,
                       initiallyExpanded: initiallyExpandCapSection,
                       tilePadding: EdgeInsets.zero,
                       childrenPadding: const EdgeInsets.only(top: 10),

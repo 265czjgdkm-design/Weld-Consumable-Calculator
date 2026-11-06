@@ -710,12 +710,14 @@ class InputPanelSection extends StatelessWidget {
     required this.title,
     required this.subtitle,
     required this.child,
+    this.trailing,
   });
 
   final IconData icon;
   final String title;
   final String subtitle;
   final Widget child;
+  final Widget? trailing;
 
   @override
   Widget build(BuildContext context) {
@@ -768,6 +770,7 @@ class InputPanelSection extends StatelessWidget {
                   ],
                 ),
               ),
+              ?trailing,
             ],
           ),
           const SizedBox(height: 14),
@@ -1229,37 +1232,43 @@ class CalculationBasisPanel extends StatelessWidget {
             ).textTheme.bodyMedium?.copyWith(color: const Color(0xFF607482)),
           ),
           const SizedBox(height: 14),
-          Wrap(
-            spacing: 10,
-            runSpacing: 10,
-            children: [
-              for (final item in items)
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 10,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: const Color(0xFFDCE5EB)),
-                  ),
-                  child: RichText(
-                    text: TextSpan(
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: const Color(0xFF15232D),
+          LayoutBuilder(
+            builder: (context, constraints) => Wrap(
+              spacing: 10,
+              runSpacing: 10,
+              children: [
+                for (final item in items)
+                  ConstrainedBox(
+                    constraints: BoxConstraints(maxWidth: constraints.maxWidth),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 10,
                       ),
-                      children: [
-                        TextSpan(
-                          text: '${item.key.labelFor(strings)}: ',
-                          style: const TextStyle(fontWeight: FontWeight.w700),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: const Color(0xFFDCE5EB)),
+                      ),
+                      child: RichText(
+                        text: TextSpan(
+                          style: Theme.of(context).textTheme.bodyMedium
+                              ?.copyWith(color: const Color(0xFF15232D)),
+                          children: [
+                            TextSpan(
+                              text: '${item.key.labelFor(strings)}: ',
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                            TextSpan(text: item.localizedValue),
+                          ],
                         ),
-                        TextSpan(text: item.localizedValue),
-                      ],
+                      ),
                     ),
                   ),
-                ),
-            ],
+              ],
+            ),
           ),
         ],
       ),

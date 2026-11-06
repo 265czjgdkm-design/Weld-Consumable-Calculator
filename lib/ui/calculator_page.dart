@@ -5,6 +5,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../core/weld_calculator.dart';
+import '../data/base_material_catalog.dart';
+import '../data/consumable_catalog.dart';
 import '../core/welding_defaults.dart';
 import '../l10n/app_language.dart';
 import '../l10n/app_locale_scope.dart';
@@ -33,6 +35,9 @@ import 'user_guide_screen.dart';
 import 'widgets/weld_drawing_preview.dart';
 import 'calculator_page/calculator_page_models.dart';
 import 'calculator_page/calculator_page_widgets.dart';
+import 'widgets/field_reveal.dart';
+import 'widgets/catalog_labels.dart';
+import 'widgets/searchable_picker.dart';
 import 'calculator_page/wizard/consumable_step.dart';
 import 'calculator_page/wizard/dimensions_step.dart';
 import 'calculator_page/wizard/process_selection_step.dart';
@@ -98,16 +103,6 @@ class _CalculatorPageState extends State<CalculatorPage> {
   final ScrollController _inputColumnScrollController = ScrollController();
   final ScrollController _drawingColumnScrollController = ScrollController();
   static const _customDiameterValue = 'custom';
-  // See the comment at its one use site in _buildBaseMaterialSection.
-  static const _baseMaterialGroupHeaderSentinel = BaseMaterialSelection(
-    CustomBaseMaterial(
-      id: '__base_material_group_header__',
-      name: '',
-      designation: '',
-      notes: '',
-      updatedAtEpochMs: -1,
-    ),
-  );
 
   final Map<FieldKey, TextEditingController> _controllers = {
     for (final key in FieldKey.values) key: TextEditingController(),
@@ -116,6 +111,8 @@ class _CalculatorPageState extends State<CalculatorPage> {
     for (final key in FieldKey.values) key: FocusNode(),
   };
   final Map<FieldKey, String> _diameterPresetModes = {};
+  final Map<FieldKey, String> _fieldErrors = {};
+  int _capSectionToken = 0;
 
   JointType _jointType = JointType.plateButt;
   GrooveType _grooveType = GrooveType.singleV;
@@ -460,6 +457,7 @@ class _CalculatorPageState extends State<CalculatorPage> {
             _buildFieldInput(field),
         ],
         initiallyExpandCapSection: _hasCapDimensionValues,
+        capSectionKey: ValueKey('cap-$_capSectionToken'),
         onBack: () {
           setState(() => _wizardStep = WizardStep.process);
           _resetWizardScroll();
@@ -1255,6 +1253,23 @@ class _CalculatorPageState extends State<CalculatorPage> {
       icon: Icons.auto_awesome_outlined,
       title: strings.calcStartingTemplateTitle,
       subtitle: strings.calcStartingTemplateSubtitle,
+      trailing: IconButton(
+        tooltip: strings.calcStartingTemplateTitle,
+        icon: const Icon(Icons.help_outline),
+        onPressed: () => showDialog<void>(
+          context: context,
+          builder: (dialogContext) => AlertDialog(
+            title: Text(strings.calcStartingTemplateTitle),
+            content: Text(strings.calcStartingTemplateInfo),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(dialogContext).pop(),
+                child: Text(strings.commonDone),
+              ),
+            ],
+          ),
+        ),
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -1342,6 +1357,7 @@ class _CalculatorPageState extends State<CalculatorPage> {
     final selectedSnapshot = _consumableSelection;
     final isCurrentSelectionMissing =
         selectedSnapshot is CustomConsumableSelection &&
+        !selectedSnapshot.material.id.startsWith(CatalogConsumable.idPrefix) &&
         !customSelections.contains(selectedSnapshot);
     if (_fillerMaterialsLoaded &&
         isCurrentSelectionMissing &&
@@ -1356,12 +1372,58 @@ class _CalculatorPageState extends State<CalculatorPage> {
       if (pinnedSnapshot != null && !customSelections.contains(pinnedSnapshot))
         pinnedSnapshot,
     ];
-    final showCustomGroupHeader =
-        _fillerMaterialsLoaded && displayedCustomSelections.isNotEmpty;
     String customSelectionLabel(ConsumableSelection selection) =>
         _fillerMaterialsLoaded && selection == pinnedSnapshot
-        ? '${selection.awsDisplayLabelFor(strings)}${strings.calcAsSavedSuffix}'
-        : selection.awsDisplayLabelFor(strings);
+        ? '${selection.label}${strings.calcAsSavedSuffix}'
+        : selection.label;
+    String consumableSubtitle(ConsumableSelection selection) => [
+      if (selection.awsSpecification != null) selection.awsSpecification!,
+      selection.family.labelFor(strings),
+    ].join(' · ');
+    List<PickerOption<ConsumableSelection>> pickerOptions() {
+      final groups = <String, List<PickerOption<ConsumableSelection>>>{};
+      void add(String group, ConsumableSelection selection, String title) {
+        groups
+            .putIfAbsent(group, () => [])
+            .add(
+              PickerOption(
+                value: selection,
+                title: title,
+                subtitle:
+                    '${consumableSubtitle(selection)} · '
+                    '${selection.descriptionFor(strings)}',
+                group: group,
+              ),
+            );
+      }
+
+      for (final selection in builtInSelections) {
+        add(selection.awsSpecification!, selection, selection.label);
+      }
+      for (final entry in ConsumableCatalog.forProcess(_weldingProcess)) {
+        add(
+          entry.specification,
+          CustomConsumableSelection(entry.toFiller()),
+          entry.label,
+        );
+      }
+      final ordered = <String>[
+        ...ConsumableCatalog.groupOrder.where(groups.containsKey),
+        ...groups.keys.where(
+          (group) => !ConsumableCatalog.groupOrder.contains(group),
+        ),
+      ];
+      return [
+        for (final selection in displayedCustomSelections)
+          PickerOption(
+            value: selection,
+            title: customSelectionLabel(selection),
+            subtitle: consumableSubtitle(selection),
+            group: strings.calcMyMaterialsHeader,
+          ),
+        for (final group in ordered) ...?groups[group],
+      ];
+    }
 
     return InputPanelSection(
       icon: Icons.inventory_2_outlined,
@@ -1370,62 +1432,27 @@ class _CalculatorPageState extends State<CalculatorPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _buildDropdownFrame(
-            DropdownButtonFormField<ConsumableSelection>(
-              initialValue: _consumableSelection,
-              isExpanded: true,
-              decoration: InputDecoration(
-                labelText: strings.calcConsumableClassificationLabel,
-                helperText: strings.calcConsumableClassificationHelper,
-              ),
-              selectedItemBuilder: (context) => [
-                for (final selection in builtInSelections)
-                  _buildDropdownSelectedText(
-                    selection.awsDisplayLabelFor(strings),
-                  ),
-                if (displayedCustomSelections.isNotEmpty) ...[
-                  if (showCustomGroupHeader) _buildDropdownSelectedText(''),
-                  for (final selection in displayedCustomSelections)
-                    _buildDropdownSelectedText(customSelectionLabel(selection)),
-                ],
-              ],
-              items: [
-                for (final selection in builtInSelections)
-                  DropdownMenuItem(
-                    value: selection,
-                    child: Text(
-                      selection.awsDisplayLabelFor(strings),
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                if (displayedCustomSelections.isNotEmpty) ...[
-                  if (showCustomGroupHeader)
-                    DropdownMenuItem<ConsumableSelection>(
-                      enabled: false,
-                      child: Text(
-                        strings.calcMyMaterialsHeader,
-                        style: const TextStyle(fontWeight: FontWeight.w700),
-                      ),
-                    ),
-                  for (final selection in displayedCustomSelections)
-                    DropdownMenuItem(
-                      value: selection,
-                      child: Text(
-                        customSelectionLabel(selection),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                ],
-              ],
-              onChanged: (value) {
-                if (value == null) return;
-                setState(() {
-                  _consumableSelection = value;
-                  _applyConsumableSelection(value);
-                  _result = null;
-                });
-              },
-            ),
+          PickerField(
+            label: strings.calcConsumableClassificationLabel,
+            helper: strings.calcConsumableClassificationHelper,
+            title: _consumableSelection is CustomConsumableSelection
+                ? customSelectionLabel(_consumableSelection)
+                : _consumableSelection.label,
+            subtitle: consumableSubtitle(_consumableSelection),
+            onTap: () async {
+              final picked = await showSearchablePicker<ConsumableSelection>(
+                context,
+                title: strings.calcConsumableClassificationLabel,
+                options: pickerOptions(),
+                selected: _consumableSelection,
+              );
+              if (picked == null || !mounted) return;
+              setState(() {
+                _consumableSelection = picked.value;
+                _applyConsumableSelection(picked.value);
+                _result = null;
+              });
+            },
           ),
           const SizedBox(height: 12),
           PanelNote(
@@ -1467,7 +1494,11 @@ class _CalculatorPageState extends State<CalculatorPage> {
     // this handling.
     final selectedSnapshot = _baseMaterialSelection;
     final isCurrentSelectionMissing =
-        selectedSnapshot != null && !customOptions.contains(selectedSnapshot);
+        selectedSnapshot != null &&
+        !selectedSnapshot.material.id.startsWith(
+          CatalogBaseMaterial.idPrefix,
+        ) &&
+        !customOptions.contains(selectedSnapshot);
     if (_baseMaterialsLoaded &&
         isCurrentSelectionMissing &&
         _pinnedStaleBaseMaterialSelection == null) {
@@ -1481,8 +1512,6 @@ class _CalculatorPageState extends State<CalculatorPage> {
       if (pinnedSnapshot != null && !customOptions.contains(pinnedSnapshot))
         pinnedSnapshot,
     ];
-    final showGroupHeader =
-        _baseMaterialsLoaded && displayedCustomOptions.isNotEmpty;
     String optionLabel(BaseMaterialSelection selection) =>
         _baseMaterialsLoaded && selection == pinnedSnapshot
         ? '${selection.label}${strings.calcAsSavedSuffix}'
@@ -1495,60 +1524,50 @@ class _CalculatorPageState extends State<CalculatorPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _buildDropdownFrame(
-            DropdownButtonFormField<BaseMaterialSelection?>(
-              initialValue: _baseMaterialSelection,
-              isExpanded: true,
-              decoration: InputDecoration(labelText: strings.baseMaterialTitle),
-              selectedItemBuilder: (context) => [
-                _buildDropdownSelectedText(
-                  strings.calcBaseMaterialNotSpecifiedOption,
-                ),
-                if (displayedCustomOptions.isNotEmpty) ...[
-                  if (showGroupHeader) _buildDropdownSelectedText(''),
-                  for (final selection in displayedCustomOptions)
-                    _buildDropdownSelectedText(optionLabel(selection)),
-                ],
-              ],
-              items: [
-                DropdownMenuItem<BaseMaterialSelection?>(
-                  value: null,
-                  child: Text(strings.calcBaseMaterialNotSpecifiedOption),
-                ),
-                if (displayedCustomOptions.isNotEmpty) ...[
-                  if (showGroupHeader)
-                    DropdownMenuItem<BaseMaterialSelection?>(
-                      // A disabled header still participates in
-                      // DropdownButton's "exactly one item matches the
-                      // current value" assertion -- an unnamed `value:`
-                      // here would default to null, which collides with
-                      // the real "Not specified" (null) item above and
-                      // crashes the dropdown whenever nothing is selected
-                      // (the filler dropdown's own disabled-header item
-                      // gets away without a value because its selection
-                      // type is never null; this one can be). This
-                      // sentinel can never equal a real selection or null.
-                      value: _baseMaterialGroupHeaderSentinel,
-                      enabled: false,
-                      child: Text(
-                        strings.calcMyMaterialsHeader,
-                        style: const TextStyle(fontWeight: FontWeight.w700),
+          PickerField(
+            label: strings.baseMaterialTitle,
+            title: _baseMaterialSelection == null
+                ? strings.calcBaseMaterialNotSpecifiedOption
+                : optionLabel(_baseMaterialSelection!),
+            subtitle: _baseMaterialSelection?.material.designation,
+            onTap: () async {
+              final catalogByGroup =
+                  <String, List<PickerOption<BaseMaterialSelection?>>>{};
+              for (final entry in BaseMaterialCatalog.entries) {
+                catalogByGroup
+                    .putIfAbsent(entry.group, () => [])
+                    .add(
+                      PickerOption(
+                        value: BaseMaterialSelection(entry.toMaterial()),
+                        title: entry.name,
+                        subtitle: '${entry.standard} · ${entry.description}',
+                        group: baseMaterialGroupLabel(strings, entry.group),
                       ),
-                    ),
+                    );
+              }
+              final picked = await showSearchablePicker<BaseMaterialSelection?>(
+                context,
+                title: strings.baseMaterialTitle,
+                selected: _baseMaterialSelection,
+                options: [
+                  PickerOption(
+                    value: null,
+                    title: strings.calcBaseMaterialNotSpecifiedOption,
+                  ),
                   for (final selection in displayedCustomOptions)
-                    DropdownMenuItem(
+                    PickerOption(
                       value: selection,
-                      child: Text(
-                        optionLabel(selection),
-                        overflow: TextOverflow.ellipsis,
-                      ),
+                      title: optionLabel(selection),
+                      subtitle: selection.material.designation,
+                      group: strings.calcMyMaterialsHeader,
                     ),
+                  for (final group in BaseMaterialCatalog.groupOrder)
+                    ...?catalogByGroup[group],
                 ],
-              ],
-              onChanged: (value) {
-                setState(() => _baseMaterialSelection = value);
-              },
-            ),
+              );
+              if (picked == null || !mounted) return;
+              setState(() => _baseMaterialSelection = picked.value);
+            },
           ),
           if (_baseMaterialSelection != null) ...[
             const SizedBox(height: 12),
@@ -1717,6 +1736,7 @@ class _CalculatorPageState extends State<CalculatorPage> {
                             context,
                           ).copyWith(dividerColor: Colors.transparent),
                           child: ExpansionTile(
+                            key: ValueKey('cap-$_capSectionToken'),
                             initiallyExpanded: _hasCapDimensionValues,
                             tilePadding: EdgeInsets.zero,
                             childrenPadding: const EdgeInsets.only(top: 10),
@@ -2586,6 +2606,14 @@ class _CalculatorPageState extends State<CalculatorPage> {
   // coder task decision #4).
   void _syncConsumableForProcess() {
     final selection = _consumableSelection;
+    if (selection is CustomConsumableSelection) {
+      final entry = ConsumableCatalog.byId(selection.material.id);
+      if (entry != null && !entry.processes.contains(_weldingProcess)) {
+        _consumableSelection = BuiltInConsumableSelection(
+          WeldingDefaults.defaultConsumableFor(_weldingProcess),
+        );
+      }
+    }
     if (selection is BuiltInConsumableSelection) {
       final available = WeldingDefaults.consumablesFor(_weldingProcess);
       if (!available.contains(selection.preset)) {
@@ -3148,23 +3176,51 @@ class _CalculatorPageState extends State<CalculatorPage> {
     gtawTransitionMm: _parsePreviewValue(FieldKey.gtawTransitionMm),
   );
 
-  Widget _buildFieldInput(InputFieldSpec field, {bool autofocus = false}) {
+  Widget _buildFieldInput(
+    InputFieldSpec field, {
+    bool autofocus = false,
+    bool shareFocusNode = true,
+    VoidCallback? onEdited,
+  }) {
     if (field.diameterOptions != null) {
       return _buildDiameterField(field);
     }
 
     return TextField(
       controller: _controllers[field.key],
-      focusNode: _fieldFocusNodes[field.key],
+      focusNode: shareFocusNode ? _fieldFocusNodes[field.key] : null,
       autofocus: autofocus,
       keyboardType: const TextInputType.numberWithOptions(decimal: true),
       inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]'))],
       decoration: InputDecoration(
         labelText: field.label,
         helperText: field.helperText,
+        errorText: _fieldErrors[field.key] ?? _liveBoundError(field),
       ),
-      onChanged: (_) => setState(() => _result = null),
+      onChanged: (_) {
+        setState(() {
+          _result = null;
+          _fieldErrors.remove(field.key);
+        });
+        onEdited?.call();
+      },
     );
+  }
+
+  /// Plausibility-ceiling error shown while typing (same message Calculate
+  /// would raise), so the user sees it without having to calculate first.
+  String? _liveBoundError(InputFieldSpec field) {
+    final max = _dimensionMaxBounds[field.key];
+    final value = _parseOptional(field.key);
+    if (max == null || value == null || value <= max) return null;
+    final unit =
+        field.key == FieldKey.bevelAngleDeg ||
+            field.key == FieldKey.secondaryBevelAngleDeg
+        ? '°'
+        : ' mm';
+    return AppLocaleScope.stringsOf(context).calcFieldOutOfRangeError
+        .replaceFirst('{label}', field.label)
+        .replaceFirst('{max}', '${max.toStringAsFixed(0)}$unit');
   }
 
   Widget _buildDiameterField(InputFieldSpec field) {
@@ -3379,8 +3435,53 @@ class _CalculatorPageState extends State<CalculatorPage> {
     _diameterPresetModes[key] = _customDiameterValue;
   }
 
+  // Fields the calculator treats as optional (it falls back to defaults or
+  // zero); every other visible field must hold a number to calculate.
+  static const _optionalFieldKeys = {
+    FieldKey.capOverlapMm,
+    FieldKey.capHeightMm,
+    FieldKey.wireDiameterMm,
+    FieldKey.electrodeDiameterMm,
+    FieldKey.gtawWireDiameterMm,
+    FieldKey.smawElectrodeDiameterMm,
+  };
+
+  /// Marks every visible required field that is blank/unparsable, jumps to
+  /// the wizard step of the first one, scrolls it into view, focuses it and
+  /// tells the user what is missing. Returns true if anything was missing.
+  bool _revealMissingRequiredFields(L10nStrings strings) {
+    final missing = <InputFieldSpec>[];
+    final errors = <FieldKey, String>{};
+    for (final field in _visibleFieldSpecs(strings)) {
+      if (_optionalFieldKeys.contains(field.key)) continue;
+      final text = _controllers[field.key]!.text.trim();
+      if (text.isEmpty) {
+        missing.add(field);
+        errors[field.key] = strings.fieldRequiredShort;
+      } else if (double.tryParse(text.replaceAll(',', '.')) == null) {
+        missing.add(field);
+        errors[field.key] = strings.materialFieldInvalidNumber;
+      }
+    }
+    if (missing.isEmpty) return false;
+    setState(() {
+      _result = null;
+      _fieldErrors
+        ..clear()
+        ..addAll(errors);
+      _wizardStep = _wizardStepForFieldKey(missing.first.key);
+    });
+    revealAndFocus(_fieldFocusNodes[missing.first.key]!);
+    showMissingFieldsSnack(context, strings, [
+      for (final field in missing) field.label,
+    ]);
+    return true;
+  }
+
   void _calculate() {
     final strings = AppLocaleScope.stringsOf(context);
+    if (_revealMissingRequiredFields(strings)) return;
+    _fieldErrors.clear();
     try {
       final input = WeldInputData(
         jointType: _jointType,
@@ -3487,11 +3588,14 @@ class _CalculatorPageState extends State<CalculatorPage> {
         _showResultsScreen = true;
       });
     } on _RequiredFieldMissingException catch (error) {
+      final key = _visibleFieldKeyFor(error.fieldKey);
       setState(() {
         _result = null;
-        _wizardStep = _wizardStepForFieldKey(error.fieldKey);
+        _wizardStep = _wizardStepForFieldKey(key);
+        _fieldErrors[key] = error.message;
+        if (_capDimensionFieldKeys.contains(key)) _capSectionToken++;
       });
-      _resetWizardScroll();
+      revealAndFocus(_fieldFocusNodes[key]!);
       _showMessage(error.message);
     } on InputValidationException catch (error) {
       setState(() => _result = null);
@@ -3518,7 +3622,37 @@ class _CalculatorPageState extends State<CalculatorPage> {
       }
     }
     if (field == null) return;
-    _showQuickEditSheet(field);
+    _showQuickEditSheetKeepingScroll(field);
+  }
+
+  // Opening the keyboard for the quick-edit sheet makes the underlying
+  // scrollables jump (the sheet's field used to share a FocusNode with the
+  // in-page field, which scrolled that field into view), leaving the user
+  // away from the drawing once the sheet closes. Snap every page scrollable
+  // back to where it was so the drawing is visible again, same zoom/state.
+  Future<void> _showQuickEditSheetKeepingScroll(InputFieldSpec field) async {
+    final controllers = [
+      _pageScrollController,
+      _inputColumnScrollController,
+      _drawingColumnScrollController,
+    ];
+    final offsets = [
+      for (final c in controllers) c.hasClients ? c.offset : null,
+    ];
+    await _showQuickEditSheet(field);
+    if (!mounted) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      for (var i = 0; i < controllers.length; i++) {
+        final offset = offsets[i];
+        final c = controllers[i];
+        if (offset == null || !c.hasClients) continue;
+        final target = offset.clamp(
+          c.position.minScrollExtent,
+          c.position.maxScrollExtent,
+        );
+        if ((c.offset - target).abs() > 0.5) c.jumpTo(target);
+      }
+    });
   }
 
   Future<void> _showQuickEditSheet(InputFieldSpec field) {
@@ -3560,7 +3694,14 @@ class _CalculatorPageState extends State<CalculatorPage> {
                   ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
                 ),
                 const SizedBox(height: 14),
-                _buildFieldInput(field, autofocus: true),
+                StatefulBuilder(
+                  builder: (context, setSheetState) => _buildFieldInput(
+                    field,
+                    autofocus: true,
+                    shareFocusNode: false,
+                    onEdited: () => setSheetState(() {}),
+                  ),
+                ),
                 const SizedBox(height: 18),
                 SizedBox(
                   width: double.infinity,
@@ -3675,6 +3816,22 @@ class _CalculatorPageState extends State<CalculatorPage> {
       _wizardStep = WizardStep.process;
     });
     _resetWizardScroll();
+  }
+
+  /// Unequal-geometry mode validates the governing (larger) of the A/B
+  /// values under the single thickness/OD key, but only the A/B fields are
+  /// on screen -- point the error at the one that actually caused it.
+  FieldKey _visibleFieldKeyFor(FieldKey key) {
+    if (!_isUnequalGeometry) return key;
+    final pair = switch (key) {
+      FieldKey.thicknessMm => (FieldKey.thicknessAMm, FieldKey.thicknessBMm),
+      FieldKey.pipeOdMm => (FieldKey.pipeOdAMm, FieldKey.pipeOdBMm),
+      _ => null,
+    };
+    if (pair == null) return key;
+    final a = _parseOptional(pair.$1) ?? double.negativeInfinity;
+    final b = _parseOptional(pair.$2) ?? double.negativeInfinity;
+    return a >= b ? pair.$1 : pair.$2;
   }
 
   double _parseRequired(FieldKey key, String label, L10nStrings strings) {

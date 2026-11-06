@@ -286,6 +286,24 @@ class L10nStrings {
     required this.calcWeldingProcessLabel,
     required this.calcStartingTemplateTitle,
     required this.calcStartingTemplateSubtitle,
+    required this.calcStartingTemplateInfo,
+    required this.pickerSearchHint,
+    required this.pickerNoResults,
+    required this.calcMissingFieldsSnack,
+    required this.fieldRequiredShort,
+    required this.preheatBaseMaterialPickerLabel,
+    required this.preheatCustomFromMaterial,
+    required this.preheatStandardMaxNote,
+    required this.preheatNotLimitedHint,
+    required this.preheatMethodBNotApplicable,
+    required this.baseGroupEn10025,
+    required this.baseGroupPressure,
+    required this.baseGroupAstmCarbon,
+    required this.baseGroupAstmCrMo,
+    required this.baseGroupApi,
+    required this.baseGroupStainless,
+    required this.baseGroupAluminium,
+    required this.preheatCetUnderestimatedWarning,
     required this.calcInputPresetLabel,
     required this.calcConsumableDensityTitle,
     required this.calcConsumableDensitySubtitle,
@@ -919,6 +937,24 @@ class L10nStrings {
   final String calcWeldingProcessLabel;
   final String calcStartingTemplateTitle;
   final String calcStartingTemplateSubtitle;
+  final String calcStartingTemplateInfo;
+  final String pickerSearchHint;
+  final String pickerNoResults;
+  final String calcMissingFieldsSnack;
+  final String fieldRequiredShort;
+  final String preheatBaseMaterialPickerLabel;
+  final String preheatCustomFromMaterial;
+  final String preheatStandardMaxNote;
+  final String preheatNotLimitedHint;
+  final String preheatMethodBNotApplicable;
+  final String baseGroupEn10025;
+  final String baseGroupPressure;
+  final String baseGroupAstmCarbon;
+  final String baseGroupAstmCrMo;
+  final String baseGroupApi;
+  final String baseGroupStainless;
+  final String baseGroupAluminium;
+  final String preheatCetUnderestimatedWarning;
   final String calcInputPresetLabel;
   final String calcConsumableDensityTitle;
   final String calcConsumableDensitySubtitle;
@@ -1637,10 +1673,26 @@ const Map<AppLanguage, L10nStrings> _strings = {
         'Defines how unequal members are aligned in the section sketch.',
     calcGrooveTypeLabel: 'Groove Type',
     calcWeldingProcessLabel: 'Welding Process',
-    calcStartingTemplateTitle: 'Starting Template',
-    calcStartingTemplateSubtitle:
-        'Loads a full example setup, including joint, dimensions, and '
-        'welding process, that you can then adjust.',
+    calcStartingTemplateTitle: 'Start from an example',
+    calcStartingTemplateSubtitle: 'Fills in a typical joint (e.g. 12 mm carbon steel pipe, single V, GTAW + SMAW) that you can then edit.',
+    calcStartingTemplateInfo: 'Ready-made typical setups (joint type, dimensions, welding process, filler). Pick one to fill all fields with sensible values, then change whatever differs from your job. Choose Custom to enter everything yourself.',
+    pickerSearchHint: 'Search (e.g. E7018, 308L, S355)',
+    pickerNoResults: 'No matches',
+    calcMissingFieldsSnack: '{count} field(s) missing: {fields}',
+    fieldRequiredShort: 'This field is required',
+    preheatBaseMaterialPickerLabel: 'Select base material',
+    preheatCustomFromMaterial: 'Custom (from {material})',
+    preheatStandardMaxNote: 'Standard maximum values - enter mill-certificate values if you have them',
+    preheatNotLimitedHint: 'Not limited by the standard - enter from mill certificate',
+    preheatMethodBNotApplicable: 'EN 1011-2 Method B is not valid for this composition - use manufacturer / code preheat values (e.g. EN 1011-2 Annex C, ASME B31.3) for Cr-Mo steels.',
+    baseGroupEn10025: 'EN 10025 structural steel',
+    baseGroupPressure: 'EN 10028 / 10216 pressure steel',
+    baseGroupAstmCarbon: 'ASTM carbon steel',
+    baseGroupAstmCrMo: 'ASTM chrome-moly (A335 / A387)',
+    baseGroupApi: 'API 5L line pipe',
+    baseGroupStainless: 'Stainless steel',
+    baseGroupAluminium: 'Aluminium',
+    preheatCetUnderestimatedWarning: 'CET may be underestimated until these are entered',
     calcInputPresetLabel: 'Input Preset',
     calcConsumableDensityTitle: 'Consumable & Density',
     calcConsumableDensitySubtitle:
@@ -2438,11 +2490,27 @@ const Map<AppLanguage, L10nStrings> _strings = {
         'Eşit olmayan elemanların kesit çiziminde nasıl hizalandığını tanımlar.',
     calcGrooveTypeLabel: 'Ağız Tipi',
     calcWeldingProcessLabel: 'Kaynak Yöntemi',
-    calcStartingTemplateTitle: 'Başlangıç Şablonu',
-    calcStartingTemplateSubtitle:
-        'Birleşim, ölçüler ve kaynak yöntemi dahil tam bir örnek kurulum '
-        'yükler; ardından bunu düzenleyebilirsiniz.',
-    calcInputPresetLabel: 'Giriş Şablonu',
+    calcStartingTemplateTitle: 'Hazır örnek ile başla',
+    calcStartingTemplateSubtitle: 'Tipik bir birleşimi doldurur (ör. 12 mm et kalınlıklı karbon çelik boru, tek V, TIG + elektrot); sonra düzenleyebilirsiniz.',
+    calcStartingTemplateInfo: 'Hazır tipik kurulumlardır (birleşim tipi, ölçüler, kaynak yöntemi, sarf malzeme). Birini seçince tüm alanlar makul değerlerle dolar; işinize uymayanları değiştirirsiniz. Her şeyi kendiniz girmek için Özel\'i seçin.',
+    pickerSearchHint: 'Ara (ör. E7018, 308L, S355)',
+    pickerNoResults: 'Eşleşme yok',
+    calcMissingFieldsSnack: '{count} alan eksik: {fields}',
+    fieldRequiredShort: 'Bu alan gerekli',
+    preheatBaseMaterialPickerLabel: 'Ana malzeme seç',
+    preheatCustomFromMaterial: 'Özel ({material} baz alınarak)',
+    preheatStandardMaxNote: 'Standart maksimum değerler - sertifika değerleri varsa onları girin',
+    preheatNotLimitedHint: 'Standartta sınır yok - sertifikadan girin',
+    preheatMethodBNotApplicable: 'EN 1011-2 B yöntemi bu bileşim için geçerli değil - Cr-Mo çelikleri için üretici/kod (ör. EN 1011-2 Ek C / ASME B31.3) ön ısıtma değerlerini kullanın.',
+    baseGroupEn10025: 'EN 10025 yapı çeliği',
+    baseGroupPressure: 'EN 10028 / 10216 basınçlı kap çeliği',
+    baseGroupAstmCarbon: 'ASTM karbon çeliği',
+    baseGroupAstmCrMo: 'ASTM krom-molibden (A335 / A387)',
+    baseGroupApi: 'API 5L boru hattı borusu',
+    baseGroupStainless: 'Paslanmaz çelik',
+    baseGroupAluminium: 'Alüminyum',
+    preheatCetUnderestimatedWarning: 'Bunlar girilene kadar CET olduğundan düşük hesaplanabilir',
+    calcInputPresetLabel: 'Örnek seçimi',
     calcConsumableDensityTitle: 'Sarf Malzeme ve Yoğunluk',
     calcConsumableDensitySubtitle:
         'AWS dolgu seçimi, aile bilgisi ve kaynak metali yoğunluk esası.',
@@ -3254,11 +3322,27 @@ const Map<AppLanguage, L10nStrings> _strings = {
         'Определяет, как неравные элементы выравниваются на эскизе сечения.',
     calcGrooveTypeLabel: 'Тип разделки',
     calcWeldingProcessLabel: 'Способ сварки',
-    calcStartingTemplateTitle: 'Начальный шаблон',
-    calcStartingTemplateSubtitle:
-        'Загружает полный пример настройки, включая соединение, размеры и '
-        'способ сварки, который затем можно изменить.',
-    calcInputPresetLabel: 'Шаблон ввода',
+    calcStartingTemplateTitle: 'Начать с готового примера',
+    calcStartingTemplateSubtitle: 'Заполняет типовое соединение (напр., стальная труба со стенкой 12 мм, V-разделка, TIG + MMA); затем его можно изменить.',
+    calcStartingTemplateInfo: 'Готовые типовые настройки (тип соединения, размеры, способ сварки, присадка). Выберите одну, и поля заполнятся разумными значениями; затем измените то, что отличается в вашей задаче. Чтобы ввести всё самому, выберите «Свой вариант».',
+    pickerSearchHint: 'Поиск (напр., E7018, 308L, S355)',
+    pickerNoResults: 'Совпадений нет',
+    calcMissingFieldsSnack: '{count} пол. не заполнено: {fields}',
+    fieldRequiredShort: 'Обязательное поле',
+    preheatBaseMaterialPickerLabel: 'Выбрать основной металл',
+    preheatCustomFromMaterial: 'Свой ({material})',
+    preheatStandardMaxNote: 'Максимальные значения по стандарту - если есть сертификат, введите его значения',
+    preheatNotLimitedHint: 'В стандарте предела нет - введите из сертификата',
+    preheatMethodBNotApplicable: 'Метод B по EN 1011-2 для этого состава недействителен - для Cr-Mo сталей используйте значения предварительного нагрева производителя/норм (напр., EN 1011-2 Прил. C, ASME B31.3).',
+    baseGroupEn10025: 'Конструкционная сталь EN 10025',
+    baseGroupPressure: 'Сталь для сосудов давления EN 10028 / 10216',
+    baseGroupAstmCarbon: 'Углеродистая сталь ASTM',
+    baseGroupAstmCrMo: 'Хромомолибденовая сталь ASTM (A335 / A387)',
+    baseGroupApi: 'Трубы API 5L',
+    baseGroupStainless: 'Нержавеющая сталь',
+    baseGroupAluminium: 'Алюминий',
+    preheatCetUnderestimatedWarning: 'Пока значения не введены, CET может быть занижен',
+    calcInputPresetLabel: 'Пример',
     calcConsumableDensityTitle: 'Присадочный материал и плотность',
     calcConsumableDensitySubtitle:
         'Выбор присадочного металла по AWS, информация о группе и основа плотности наплавленного металла.',
@@ -4075,11 +4159,27 @@ const Map<AppLanguage, L10nStrings> _strings = {
         'Legt fest, wie ungleiche Bauteile in der Querschnittsskizze ausgerichtet werden.',
     calcGrooveTypeLabel: 'Nahtform',
     calcWeldingProcessLabel: 'Schweißverfahren',
-    calcStartingTemplateTitle: 'Ausgangsvorlage',
-    calcStartingTemplateSubtitle:
-        'Lädt eine vollständige Beispieleinrichtung inklusive Verbindung, '
-        'Abmessungen und Schweißverfahren, die Sie anschließend anpassen können.',
-    calcInputPresetLabel: 'Eingabevorlage',
+    calcStartingTemplateTitle: 'Mit Beispiel starten',
+    calcStartingTemplateSubtitle: 'Füllt eine typische Verbindung aus (z. B. Stahlrohr, 12 mm Wanddicke, V-Naht, WIG + E-Hand), die Sie anschließend anpassen können.',
+    calcStartingTemplateInfo: 'Fertige typische Einstellungen (Verbindungsart, Abmessungen, Schweißverfahren, Zusatzwerkstoff). Wählen Sie eines, damit alle Felder sinnvoll vorbelegt werden, und ändern Sie dann, was bei Ihrem Auftrag abweicht. Wählen Sie Benutzerdefiniert, um alles selbst einzugeben.',
+    pickerSearchHint: 'Suchen (z. B. E7018, 308L, S355)',
+    pickerNoResults: 'Keine Treffer',
+    calcMissingFieldsSnack: '{count} Feld(er) fehlen: {fields}',
+    fieldRequiredShort: 'Pflichtfeld',
+    preheatBaseMaterialPickerLabel: 'Grundwerkstoff wählen',
+    preheatCustomFromMaterial: 'Benutzerdefiniert (aus {material})',
+    preheatStandardMaxNote: 'Maximalwerte der Norm - Werte aus dem Abnahmezeugnis eingeben, falls vorhanden',
+    preheatNotLimitedHint: 'In der Norm nicht begrenzt - aus dem Abnahmezeugnis eingeben',
+    preheatMethodBNotApplicable: 'EN 1011-2 Verfahren B gilt für diese Zusammensetzung nicht - für Cr-Mo-Stähle Vorwärmwerte des Herstellers/Regelwerks verwenden (z. B. EN 1011-2 Anhang C, ASME B31.3).',
+    baseGroupEn10025: 'Baustahl EN 10025',
+    baseGroupPressure: 'Druckbehälterstahl EN 10028 / 10216',
+    baseGroupAstmCarbon: 'ASTM-Kohlenstoffstahl',
+    baseGroupAstmCrMo: 'ASTM-Chrom-Molybdän-Stahl (A335 / A387)',
+    baseGroupApi: 'API-5L-Leitungsrohr',
+    baseGroupStainless: 'Nichtrostender Stahl',
+    baseGroupAluminium: 'Aluminium',
+    preheatCetUnderestimatedWarning: 'Bis dahin kann der CET zu niedrig ausfallen',
+    calcInputPresetLabel: 'Beispiel',
     calcConsumableDensityTitle: 'Zusatzwerkstoff & Dichte',
     calcConsumableDensitySubtitle:
         'AWS-Zusatzwerkstoffauswahl, Werkstoffgruppe und Dichtegrundlage des Schweißguts.',
@@ -4895,11 +4995,27 @@ const Map<AppLanguage, L10nStrings> _strings = {
         'यह परिभाषित करता है कि असमान मेंबर सेक्शन स्केच में कैसे अलाइन होते हैं।',
     calcGrooveTypeLabel: 'ग्रूव टाइप',
     calcWeldingProcessLabel: 'वेल्डिंग प्रोसेस',
-    calcStartingTemplateTitle: 'स्टार्टिंग टेम्पलेट',
-    calcStartingTemplateSubtitle:
-        'जॉइंट, डाइमेंशन और वेल्डिंग प्रोसेस सहित एक पूरा उदाहरण सेटअप '
-        'लोड करता है, जिसे आप बाद में एडजस्ट कर सकते हैं।',
-    calcInputPresetLabel: 'इनपुट प्रीसेट',
+    calcStartingTemplateTitle: 'तैयार उदाहरण से शुरू करें',
+    calcStartingTemplateSubtitle: 'एक सामान्य जोड़ भर देता है (जैसे 12 mm दीवार का कार्बन स्टील पाइप, सिंगल V, GTAW + SMAW), जिसे आप बाद में बदल सकते हैं।',
+    calcStartingTemplateInfo: 'तैयार सामान्य सेटअप (जोड़ का प्रकार, डाइमेंशन, वेल्डिंग प्रोसेस, फिलर)। एक चुनें तो सभी फ़ील्ड सही मानों से भर जाते हैं; फिर अपने काम से अलग मान बदलें। सब कुछ खुद भरने के लिए कस्टम चुनें।',
+    pickerSearchHint: 'खोजें (जैसे E7018, 308L, S355)',
+    pickerNoResults: 'कोई मिलान नहीं',
+    calcMissingFieldsSnack: '{count} फ़ील्ड खाली: {fields}',
+    fieldRequiredShort: 'यह फ़ील्ड ज़रूरी है',
+    preheatBaseMaterialPickerLabel: 'मूल धातु चुनें',
+    preheatCustomFromMaterial: 'कस्टम ({material} से)',
+    preheatStandardMaxNote: 'मानक के अधिकतम मान - सर्टिफिकेट के मान हों तो वही दर्ज करें',
+    preheatNotLimitedHint: 'मानक में सीमा नहीं - सर्टिफिकेट से दर्ज करें',
+    preheatMethodBNotApplicable: 'EN 1011-2 मेथड B इस कंपोज़िशन के लिए मान्य नहीं है - Cr-Mo स्टील के लिए निर्माता/कोड के प्रीहीट मान (जैसे EN 1011-2 Annex C, ASME B31.3) उपयोग करें।',
+    baseGroupEn10025: 'EN 10025 स्ट्रक्चरल स्टील',
+    baseGroupPressure: 'EN 10028 / 10216 प्रेशर स्टील',
+    baseGroupAstmCarbon: 'ASTM कार्बन स्टील',
+    baseGroupAstmCrMo: 'ASTM क्रोम-मोली (A335 / A387)',
+    baseGroupApi: 'API 5L लाइन पाइप',
+    baseGroupStainless: 'स्टेनलेस स्टील',
+    baseGroupAluminium: 'एल्युमीनियम',
+    preheatCetUnderestimatedWarning: 'जब तक ये दर्ज नहीं होते, CET कम आँका जा सकता है',
+    calcInputPresetLabel: 'उदाहरण',
     calcConsumableDensityTitle: 'कंज़्यूमेबल और डेंसिटी',
     calcConsumableDensitySubtitle:
         'AWS फिलर सिलेक्शन, फैमिली जानकारी, और वेल्ड मेटल डेंसिटी बेसिस।',

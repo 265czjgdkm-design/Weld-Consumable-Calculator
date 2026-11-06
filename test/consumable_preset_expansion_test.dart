@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:weld_consumable_calculator/ui/widgets/searchable_picker.dart';
 import 'package:weld_consumable_calculator/app.dart';
 import 'package:weld_consumable_calculator/core/welding_defaults.dart';
 import 'package:weld_consumable_calculator/l10n/app_language.dart';
@@ -105,14 +106,20 @@ void main() {
 
     await tester.tap(
       find.byWidgetPredicate(
-        (widget) => widget is DropdownButtonFormField<ConsumableSelection>,
+        (widget) =>
+            widget is PickerField && widget.label == 'AWS Classification',
       ),
     );
     await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byKey(const ValueKey('picker-search')),
+      ConsumablePreset.e7018a1.label,
+    );
+    await tester.pumpAndSettle();
 
-    expect(find.text(ConsumablePreset.e7018a1.awsDisplayLabel), findsWidgets);
+    expect(find.text(ConsumablePreset.e7018a1.label), findsWidgets);
 
-    await tester.tap(find.text(ConsumablePreset.e7018a1.awsDisplayLabel).last);
+    await tester.tap(find.text(ConsumablePreset.e7018a1.label).last);
     await tester.pumpAndSettle();
 
     expect(find.textContaining('Low Alloy Steel'), findsWidgets);

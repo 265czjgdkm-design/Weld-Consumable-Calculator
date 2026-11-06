@@ -83,6 +83,39 @@ enum PreheatRangeFlag {
   yieldStrengthOutOfRange, // valid up to 1000 N/mm^2
 }
 
+/// EN 1011-2 Annex C Method B validity limits of the chemical composition
+/// (wt.%): C 0.05-0.32, Si <= 0.8, Mn 0.5-1.9, Cr <= 1.5, Cu <= 0.7,
+/// Mo <= 0.75, Ni <= 2.5, V <= 0.18, B <= 0.005. Returns the element keys
+/// (as used by the preheat screen) whose value lies outside; the formula
+/// must not be presented as valid for such a composition. Lower limits are
+/// only checked for entered (> 0) values because a blank field means "not
+/// entered", not a measured zero.
+List<String> compositionOutsideMethodB(Map<String, double> wtPercent) {
+  const upper = {
+    'carbon': 0.32,
+    'silicon': 0.8,
+    'manganese': 1.9,
+    'chromium': 1.5,
+    'copper': 0.7,
+    'molybdenum': 0.75,
+    'nickel': 2.5,
+    'vanadium': 0.18,
+    'boron': 0.005,
+  };
+  const lower = {'carbon': 0.05, 'manganese': 0.5};
+  final outside = <String>[];
+  for (final entry in wtPercent.entries) {
+    final value = entry.value;
+    final max = upper[entry.key];
+    final min = lower[entry.key];
+    if ((max != null && value > max) ||
+        (min != null && value > 0 && value < min)) {
+      outside.add(entry.key);
+    }
+  }
+  return outside;
+}
+
 List<PreheatRangeFlag> checkPreheatRanges({
   required double cet,
   required double thicknessMm,
@@ -161,8 +194,7 @@ double computeT85TwoDSeconds({
   required double f2,
 }) {
   _assertT0Valid(t0);
-  final bracketTerm =
-      1 / math.pow(500 - t0, 2) - 1 / math.pow(800 - t0, 2);
+  final bracketTerm = 1 / math.pow(500 - t0, 2) - 1 / math.pow(800 - t0, 2);
   return (4300 - 4.3 * t0) *
       1e5 *
       (math.pow(heatInputKJPerMm, 2) / math.pow(thicknessMm, 2)) *
@@ -179,7 +211,8 @@ double computeTransitionThicknessMm({
   required double heatInputKJPerMm,
 }) {
   _assertT0Valid(t0);
-  final numerator = (4300 - 4.3 * t0) *
+  final numerator =
+      (4300 - 4.3 * t0) *
       1e5 *
       heatInputKJPerMm *
       (1 / (500 - t0) + 1 / (800 - t0));

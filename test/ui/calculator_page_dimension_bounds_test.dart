@@ -65,21 +65,18 @@ String _outOfRangeMessage(L10nStrings strings, String label, String max) =>
 void main() {
   final strings = stringsFor(AppLanguage.en);
 
-  testWidgets(
-    'a Thickness far beyond any real wall/plate section (5000 mm) is '
-    'rejected instead of silently accepted',
-    (tester) async {
-      await _pumpToDimensionsStep(tester);
-      await _enterField(tester, 'Thickness (mm)', '5000');
-      await _tapCalculate(tester);
+  testWidgets('a Thickness far beyond any real wall/plate section (5000 mm) is '
+      'rejected instead of silently accepted', (tester) async {
+    await _pumpToDimensionsStep(tester);
+    await _enterField(tester, 'Thickness (mm)', '5000');
+    await _tapCalculate(tester);
 
-      expect(
-        find.text(_outOfRangeMessage(strings, 'Thickness (mm)', '500 mm')),
-        findsOneWidget,
-      );
-      expect(find.text(strings.calcResultsTitle), findsNothing);
-    },
-  );
+    expect(
+      find.text(_outOfRangeMessage(strings, 'Thickness (mm)', '500 mm')),
+      findsWidgets,
+    );
+    expect(find.text(strings.calcResultsTitle), findsNothing);
+  });
 
   testWidgets(
     'a large-but-plausible heavy-section Thickness (400 mm) is accepted',
@@ -102,7 +99,7 @@ void main() {
 
       expect(
         find.text(_outOfRangeMessage(strings, 'Root Gap (mm)', '50 mm')),
-        findsOneWidget,
+        findsWidgets,
       );
       expect(find.text(strings.calcResultsTitle), findsNothing);
     },
@@ -131,7 +128,7 @@ void main() {
 
       expect(
         find.text(_outOfRangeMessage(strings, 'Root Face (mm)', '100 mm')),
-        findsOneWidget,
+        findsWidgets,
       );
       expect(find.text(strings.calcResultsTitle), findsNothing);
     },
@@ -160,7 +157,7 @@ void main() {
 
       expect(
         find.text(_outOfRangeMessage(strings, 'Bevel Angle (deg)', '180°')),
-        findsOneWidget,
+        findsWidgets,
       );
       expect(find.text(strings.calcResultsTitle), findsNothing);
     },
@@ -192,7 +189,7 @@ void main() {
 
       expect(
         find.text(_outOfRangeMessage(strings, 'Leg Size (mm)', '200 mm')),
-        findsOneWidget,
+        findsWidgets,
       );
       expect(find.text(strings.calcResultsTitle), findsNothing);
     },

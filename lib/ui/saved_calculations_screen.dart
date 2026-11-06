@@ -244,6 +244,8 @@ class _SavedCalculationsScreenState extends State<SavedCalculationsScreen> {
                               const SizedBox(height: 4),
                               Text(
                                 _summaryLine(strings, preset),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
                                 style: Theme.of(context).textTheme.bodySmall
                                     ?.copyWith(color: const Color(0xFF607482)),
                               ),
