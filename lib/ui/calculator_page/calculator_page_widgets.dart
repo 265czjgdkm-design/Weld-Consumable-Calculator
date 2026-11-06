@@ -4,9 +4,11 @@ import '../../core/basis_value_parsing.dart';
 import '../../core/weld_formulas.dart';
 import '../../l10n/app_language.dart';
 import '../../l10n/app_locale_scope.dart';
+import '../../l10n/premium_account_copy.dart';
 import '../../models/consumable_selection.dart';
 import '../../models/weld_models.dart';
 import '../widgets/result_card.dart';
+import '../user_guide_screen.dart';
 import 'calculator_page_models.dart';
 
 /// The Varyos brand mark: two struck blades meeting at one point of
@@ -87,7 +89,10 @@ class BackToDashboardButton extends StatelessWidget {
 }
 
 class TopNavigationBar extends StatelessWidget {
-  const TopNavigationBar({super.key});
+  const TopNavigationBar({super.key, this.showGuide = false});
+
+  /// Adds a user-guide (book) button next to the language picker.
+  final bool showGuide;
 
   @override
   Widget build(BuildContext context) {
@@ -127,46 +132,81 @@ class TopNavigationBar extends StatelessWidget {
                 child: const Center(child: VaryosMark(size: 20)),
               ),
               const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.baseline,
-                      textBaseline: TextBaseline.alphabetic,
-                      children: [
-                        Text(
-                          'VARYOS',
-                          style: Theme.of(context).textTheme.titleMedium
-                              ?.copyWith(
-                                fontWeight: FontWeight.w900,
-                                letterSpacing: 1.2,
-                              ),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.baseline,
+                    textBaseline: TextBaseline.alphabetic,
+                    children: [
+                      Text(
+                        'VARYOS',
+                        style: Theme.of(context).textTheme.titleMedium
+                            ?.copyWith(
+                              fontWeight: FontWeight.w900,
+                              letterSpacing: 1.2,
+                            ),
+                      ),
+                      const SizedBox(width: 6),
+                      const Text(
+                        'WELD',
+                        style: TextStyle(
+                          color: Color(0xFFFF6A35),
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 2,
                         ),
-                        const SizedBox(width: 6),
-                        const Text(
-                          'WELD',
-                          style: TextStyle(
-                            color: Color(0xFFFF6A35),
-                            fontSize: 11,
-                            fontWeight: FontWeight.w700,
-                            letterSpacing: 2,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
+                      ),
+                    ],
+                  ),
+                ],
               ),
             ],
           );
 
-          const pills = LanguagePickerButton();
+          final pills = showGuide
+              ? Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const LanguagePickerButton(),
+                    const SizedBox(width: 6),
+                    IconButton.outlined(
+                      constraints: const BoxConstraints.tightFor(
+                        width: 36,
+                        height: 36,
+                      ),
+                      iconSize: 18,
+                      padding: EdgeInsets.zero,
+                      tooltip: premiumAccountCopyFor(
+                        AppLocaleScope.of(context).language,
+                      ).guideRow,
+                      icon: const Icon(Icons.menu_book_outlined),
+                      onPressed: () => Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => const UserGuideScreen(),
+                        ),
+                      ),
+                    ),
+                  ],
+                )
+              : const LanguagePickerButton();
 
           if (stacked) {
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [identity, const SizedBox(height: 14), pills],
+            return Row(
+              children: [
+                Expanded(
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      alignment: Alignment.centerLeft,
+                      child: identity,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                pills,
+              ],
             );
           }
 

@@ -4,6 +4,7 @@ import '../core/en1011_formulas.dart';
 import '../l10n/app_locale_scope.dart';
 import '../l10n/strings.dart';
 import 'calculator_page/calculator_page_widgets.dart';
+import 'user_guide_screen.dart';
 import 'widgets/formula_breakdown_card.dart';
 import 'widgets/heat_input_field.dart';
 import 'widgets/optional_number_field.dart';
@@ -173,7 +174,8 @@ class _CoolingTimeCalculatorScreenState
                         color: const Color(0xFF607482),
                       ),
                     ),
-                    const SizedBox(height: 20),
+                    const GuideHowToLink(sectionId: 'cooling'),
+                    const SizedBox(height: 12),
                     InputPanelSection(
                       icon: Icons.device_thermostat_outlined,
                       title: strings.coolingTempCardTitle,

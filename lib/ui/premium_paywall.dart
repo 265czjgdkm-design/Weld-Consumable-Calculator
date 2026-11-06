@@ -3,9 +3,12 @@ import 'package:flutter/services.dart';
 import 'package:purchases_flutter/purchases_flutter.dart';
 
 import '../l10n/app_locale_scope.dart';
+import '../l10n/premium_account_copy.dart';
 import '../l10n/strings.dart';
 import '../services/entitlement_service.dart';
 import '../services/purchases_config.dart';
+import '../services/user_account_store.dart';
+import 'account_screen.dart';
 import 'paywall_shared.dart';
 import 'widgets/welding_loader.dart';
 
@@ -20,6 +23,8 @@ Future<void> showPremiumPaywall(
   ValueChanged<String>? onMessage,
 }) {
   final messenger = ScaffoldMessenger.maybeOf(context);
+  final navigator = Navigator.of(context);
+  final copy = premiumAccountCopyFor(AppLocaleScope.of(context).language);
   return showModalBottomSheet<void>(
     context: context,
     isScrollControlled: true,
@@ -32,6 +37,27 @@ Future<void> showPremiumPaywall(
           onMessage ??
           (message) =>
               messenger?.showSnackBar(SnackBar(content: Text(message))),
+      onPurchased: () async {
+        // A guest who just bought is offered (never forced) to tie Premium
+        // to an email; queued behind the "unlocked" snackbar.
+        if (await const UserAccountStore().getEmail() != null) return;
+        messenger?.showSnackBar(
+          SnackBar(
+            content: Text(copy.linkPromptText),
+            duration: const Duration(seconds: 12),
+            showCloseIcon: true,
+            action: SnackBarAction(
+              label: copy.linkPromptAction,
+              onPressed: () => navigator.push(
+                MaterialPageRoute(
+                  builder: (_) =>
+                      AccountScreen(entitlementService: entitlementService),
+                ),
+              ),
+            ),
+          ),
+        );
+      },
     ),
   );
 }
@@ -42,11 +68,13 @@ class PremiumPaywallSheet extends StatefulWidget {
     required this.entitlementService,
     required this.onEntitlementChanged,
     required this.onMessage,
+    this.onPurchased,
   });
 
   final EntitlementService entitlementService;
   final ValueChanged<bool> onEntitlementChanged;
   final ValueChanged<String> onMessage;
+  final VoidCallback? onPurchased;
 
   @override
   State<PremiumPaywallSheet> createState() => _PremiumPaywallSheetState();
@@ -137,6 +165,7 @@ class _PremiumPaywallSheetState extends State<PremiumPaywallSheet> {
             ? strings.paywallPremiumUnlocked
             : strings.paywallPurchaseCompleted,
       );
+      if (isActive) widget.onPurchased?.call();
       return;
     } on PlatformException catch (error) {
       final code = PurchasesErrorHelper.getErrorCode(error);

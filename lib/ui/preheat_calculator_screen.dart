@@ -11,6 +11,7 @@ import 'calculator_page/calculator_page_widgets.dart';
 import 'cooling_time_calculator_screen.dart';
 import 'widgets/formula_breakdown_card.dart';
 import 'widgets/heat_input_field.dart';
+import 'user_guide_screen.dart';
 import 'widgets/optional_number_field.dart';
 
 /// EN 1011-2 Annex C.3 (Method B) preheat temperature calculator. Lives
@@ -353,7 +354,8 @@ class _PreheatCalculatorScreenState extends State<PreheatCalculatorScreen> {
                         color: const Color(0xFF607482),
                       ),
                     ),
-                    const SizedBox(height: 20),
+                    const GuideHowToLink(sectionId: 'preheat'),
+                    const SizedBox(height: 12),
                     InputPanelSection(
                       icon: Icons.construction_outlined,
                       title: strings.preheatCompositionCardTitle,

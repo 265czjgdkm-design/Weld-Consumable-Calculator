@@ -320,6 +320,7 @@ void main() {
     await _pumpHome(tester);
     await tester.tap(find.text(strings.dashboardAccountCardGuestValue));
     await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text(strings.premiumSettingsRow));
     await tester.tap(find.text(strings.premiumSettingsRow));
     await tester.pumpAndSettle();
     expect(find.text(strings.paywallRestore), findsNWidgets(2));

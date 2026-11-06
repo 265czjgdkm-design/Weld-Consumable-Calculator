@@ -25,6 +25,7 @@ import '../services/user_preset_store.dart';
 import '../services/user_preset_sync.dart';
 import '../services/weld_pdf_report_service.dart';
 import 'premium_paywall.dart';
+import 'user_guide_screen.dart';
 import 'widgets/weld_drawing_preview.dart';
 import 'calculator_page/calculator_page_models.dart';
 import 'calculator_page/calculator_page_widgets.dart';
@@ -338,7 +339,8 @@ class _CalculatorPageState extends State<CalculatorPage> {
             children: [
               const BackToDashboardButton(),
               const TopNavigationBar(),
-              const SizedBox(height: 18),
+              const GuideHowToLink(sectionId: 'filler'),
+              const SizedBox(height: 8),
               ExperienceHero(
                 jointTypeLabel: _jointType.labelFor(strings),
                 grooveLabel: _grooveType.labelFor(strings),
@@ -2850,6 +2852,7 @@ class _CalculatorPageState extends State<CalculatorPage> {
       name = result.name;
       await _accountStore.setEmail(email);
       _accountEmail = email;
+      unawaited(widget.entitlementService.syncAccount(email));
       // No-op (uploads nothing) if the local cache belongs to a different,
       // previously signed-in account -- see the doc comment on
       // migrateLocalPresetsToAccount. A failed upload must not be followed

@@ -1,18 +1,21 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../l10n/app_locale_scope.dart';
+import '../l10n/premium_account_copy.dart';
 import '../l10n/strings.dart';
 import '../services/account_deletion_service.dart';
 import '../services/ai_consent_store.dart';
 import '../services/entitlement_service.dart';
 import '../services/legal_links.dart';
-import '../services/purchases_config.dart';
 import '../services/preset_sync_service.dart';
 import '../services/user_account_store.dart';
 import '../services/user_preset_store.dart';
 import '../services/user_preset_sync.dart';
 import 'calculator_page/calculator_page_widgets.dart';
 import 'premium_paywall.dart';
+import 'user_guide_screen.dart';
 import 'widgets/welding_loader.dart';
 
 /// Account management screen: shows the current account (email, optional
@@ -43,6 +46,9 @@ class _AccountScreenState extends State<AccountScreen> {
   static final _emailPattern = RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$');
 
   final _emailController = TextEditingController();
+  late final EntitlementService _entitlement =
+      widget.entitlementService ?? EntitlementService();
+  PremiumStatus _premiumStatus = const PremiumStatus();
 
   String? _email;
   String? _firstName;
@@ -78,6 +84,30 @@ class _AccountScreenState extends State<AccountScreen> {
       _lastName = lastName;
       _loading = false;
     });
+    // Not awaited: the SDK call must never keep the screen on its loader.
+    _refreshPremiumStatus();
+  }
+
+  Future<PremiumStatus> _readPremiumStatus() async {
+    try {
+      return await _entitlement.premiumStatus();
+    } catch (error) {
+      debugPrint('Failed to read premium status: $error');
+      return const PremiumStatus();
+    }
+  }
+
+  /// Fire-and-forget from the UI: RevenueCat calls must never hold up
+  /// sign-in/out, and the premium card refreshes once the id switch lands.
+  Future<void> _syncAccountAndRefresh(String? email) async {
+    await _entitlement.syncAccount(email);
+    await _refreshPremiumStatus();
+  }
+
+  Future<void> _refreshPremiumStatus() async {
+    final status = await _readPremiumStatus();
+    if (!mounted) return;
+    setState(() => _premiumStatus = status);
   }
 
   void _showMessage(String message) {
@@ -100,6 +130,7 @@ class _AccountScreenState extends State<AccountScreen> {
       _lastName = null;
     });
     _showMessage(strings.accountSignOutSuccess);
+    unawaited(_syncAccountAndRefresh(null));
   }
 
   Future<void> _signIn() async {
@@ -144,6 +175,7 @@ class _AccountScreenState extends State<AccountScreen> {
       _email = email;
       _busy = false;
     });
+    unawaited(_syncAccountAndRefresh(email));
     _showMessage(strings.accountSignInSuccess.replaceFirst('{email}', email));
   }
 
@@ -189,6 +221,7 @@ class _AccountScreenState extends State<AccountScreen> {
       if (!localCleared) {
         await _accountStore.clear();
         await _presetStore.save(const []);
+        unawaited(_entitlement.syncAccount(null));
         localCleared = true;
       }
       if (!mounted) return;
@@ -264,10 +297,10 @@ class _AccountScreenState extends State<AccountScreen> {
     final messenger = ScaffoldMessenger.of(context);
     String message;
     try {
-      final info = await (widget.entitlementService ?? EntitlementService())
-          .restorePurchases();
-      message =
-          info.entitlements.active.containsKey(PurchasesConfig.entitlementId)
+      final info = await _entitlement.restorePurchases();
+      final status = PremiumStatus.fromCustomerInfo(info);
+      if (mounted) setState(() => _premiumStatus = status);
+      message = status.isActive
           ? strings.paywallRestored
           : strings.paywallNothingToRestore;
     } catch (error) {
@@ -312,42 +345,22 @@ class _AccountScreenState extends State<AccountScreen> {
                       ),
                     ),
                     const SizedBox(height: 16),
+                    _buildPremiumCard(strings),
+                    const SizedBox(height: 10),
                     SizedBox(
                       width: double.infinity,
                       child: OutlinedButton.icon(
-                        icon: const Icon(Icons.workspace_premium_outlined),
-                        onPressed: () => showPremiumPaywall(
-                          context,
-                          entitlementService:
-                              widget.entitlementService ?? EntitlementService(),
-                          onEntitlementChanged: (_) {},
+                        icon: const Icon(Icons.menu_book_outlined),
+                        onPressed: () => Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => const UserGuideScreen(),
+                          ),
                         ),
-                        label: Text(strings.premiumSettingsRow),
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    SizedBox(
-                      width: double.infinity,
-                      child: OutlinedButton.icon(
-                        icon: _restoringPurchases
-                            ? const WeldingLoader(
-                                size: 18,
-                                bladeColor: Color(0xFF12191B),
-                              )
-                            : const Icon(Icons.restore),
-                        onPressed: _restoringPurchases
-                            ? null
-                            : _restorePurchases,
-                        label: Text(strings.paywallRestore),
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    SizedBox(
-                      width: double.infinity,
-                      child: OutlinedButton(
-                        onPressed: () =>
-                            _openLegalLink(LegalLinks.manageSubscriptionsUrl),
-                        child: Text(strings.accountManageSubscriptionsButton),
+                        label: Text(
+                          premiumAccountCopyFor(
+                            AppLocaleScope.of(context).language,
+                          ).guideRow,
+                        ),
                       ),
                     ),
                     if (_aiConsentGiven) ...[
@@ -367,6 +380,130 @@ class _AccountScreenState extends State<AccountScreen> {
                   ],
                 ),
               ),
+      ),
+    );
+  }
+
+  Widget _buildPremiumCard(L10nStrings strings) {
+    final language = AppLocaleScope.of(context).language;
+    final copy = premiumAccountCopyFor(language);
+    final status = _premiumStatus;
+    final theme = Theme.of(context);
+    final muted = theme.textTheme.bodySmall?.copyWith(
+      color: const Color(0xFF607482),
+    );
+    final statusText = switch (status.state) {
+      PremiumState.active => copy.statusActive,
+      PremiumState.expired => copy.statusExpired,
+      PremiumState.none => copy.statusNone,
+    };
+    final planText = switch (status.plan) {
+      PremiumPlan.monthly => copy.planMonthly,
+      PremiumPlan.yearly => copy.planYearly,
+      PremiumPlan.unknown => copy.planUnknown,
+    };
+    final expiry = status.expirationDate;
+    String? dateLine;
+    if (expiry != null && status.state != PremiumState.none) {
+      final template = status.state == PremiumState.expired
+          ? copy.expiredOn
+          : (status.willRenew ? copy.renewsOn : copy.endsOn);
+      dateLine = template.replaceFirst(
+        '{date}',
+        formatCopyDate(language, expiry),
+      );
+    }
+    final statusColor = switch (status.state) {
+      PremiumState.active => const Color(0xFF1E8E5A),
+      PremiumState.expired => theme.colorScheme.error,
+      PremiumState.none => const Color(0xFF607482),
+    };
+
+    return Card(
+      key: const Key('premium-status-card'),
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Icon(
+                  Icons.workspace_premium_outlined,
+                  color: Color(0xFFFF6A35),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    copy.cardTitle,
+                    style: theme.textTheme.titleMedium,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Text(
+              statusText,
+              style: TextStyle(
+                fontWeight: FontWeight.w800,
+                fontSize: 18,
+                color: statusColor,
+              ),
+            ),
+            if (status.state != PremiumState.none) ...[
+              const SizedBox(height: 4),
+              Text('${copy.planLabel}: $planText'),
+            ],
+            if (dateLine != null) ...[
+              const SizedBox(height: 2),
+              Text(dateLine),
+            ],
+            const SizedBox(height: 12),
+            Text(copy.appleIdNote, style: muted),
+            if (_email == null && status.isActive) ...[
+              const SizedBox(height: 8),
+              Text(copy.linkHint, style: muted),
+            ],
+            const SizedBox(height: 16),
+            if (!status.isActive) ...[
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton.icon(
+                  icon: const Icon(Icons.workspace_premium_outlined),
+                  onPressed: () => showPremiumPaywall(
+                    context,
+                    entitlementService: _entitlement,
+                    onEntitlementChanged: (_) => _refreshPremiumStatus(),
+                  ),
+                  label: Text(strings.premiumSettingsRow),
+                ),
+              ),
+              const SizedBox(height: 10),
+            ],
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                icon: _restoringPurchases
+                    ? const WeldingLoader(
+                        size: 18,
+                        bladeColor: Color(0xFF12191B),
+                      )
+                    : const Icon(Icons.restore),
+                onPressed: _restoringPurchases ? null : _restorePurchases,
+                label: Text(strings.paywallRestore),
+              ),
+            ),
+            const SizedBox(height: 10),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton(
+                onPressed: () =>
+                    _openLegalLink(LegalLinks.manageSubscriptionsUrl),
+                child: Text(strings.accountManageSubscriptionsButton),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

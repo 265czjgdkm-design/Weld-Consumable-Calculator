@@ -42,8 +42,7 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
   @override
   void initState() {
     super.initState();
-    _loadAccountEmail();
-    _loadPremium();
+    _syncAccountAndLoad();
     _premiumSub = _entitlementService.premiumStatusStream().listen((isPremium) {
       if (mounted) setState(() => _isPremium = isPremium);
     });
@@ -53,6 +52,17 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
   void dispose() {
     _premiumSub?.cancel();
     super.dispose();
+  }
+
+  /// Aligns the RevenueCat user id with the stored account on every launch
+  /// (covers sign-in on the email gate, which has no entitlement service).
+  Future<void> _syncAccountAndLoad() async {
+    final email = await _accountStore.getEmail();
+    if (!mounted) return;
+    setState(() => _accountEmail = email);
+    _loadPremium();
+    await _entitlementService.syncAccount(email);
+    await _loadPremium();
   }
 
   Future<void> _loadPremium() async {
@@ -147,7 +157,7 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const TopNavigationBar(),
+                    const TopNavigationBar(showGuide: true),
                     const SizedBox(height: 32),
                     Text(
                       strings.dashboardTitle,
