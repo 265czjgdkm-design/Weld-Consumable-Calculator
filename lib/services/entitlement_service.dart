@@ -1,7 +1,5 @@
 import 'dart:async';
-import 'dart:convert';
 
-import 'package:crypto/crypto.dart';
 import 'package:flutter/foundation.dart';
 import 'package:purchases_flutter/purchases_flutter.dart';
 
@@ -72,11 +70,6 @@ class EntitlementService {
     }
   }
 
-  /// Stable, non-PII RevenueCat app user id for a signed-in account: the
-  /// SHA-256 of the trimmed, lowercased email (never the email itself).
-  static String appUserIdFor(String email) =>
-      sha256.convert(utf8.encode(email.trim().toLowerCase())).toString();
-
   Future<PremiumStatus> premiumStatus() async {
     if (testerPremium) {
       return const PremiumStatus(state: PremiumState.active);
@@ -84,23 +77,23 @@ class EntitlementService {
     return PremiumStatus.fromCustomerInfo(await Purchases.getCustomerInfo());
   }
 
-  /// Aligns the RevenueCat app user id with the app account: logIn with
-  /// [appUserIdFor] when [email] is set, logOut when it is null. Never
-  /// throws -- a failure only means purchases stay on the current id.
-  Future<void> syncAccount(String? email) async {
+  /// Aligns the RevenueCat app user id with the auth account: logIn with
+  /// [appUserId] (the Firebase uid of a VERIFIED user, see
+  /// [AuthUser.revenueCatUserId]) or logOut when it is null. Never throws --
+  /// a failure only means purchases stay on the current id.
+  Future<void> syncAccount(String? appUserId) async {
     try {
-      if (email == null) {
+      if (appUserId == null) {
         if (await Purchases.isAnonymous) return;
         await Purchases.logOut();
         return;
       }
-      final userId = appUserIdFor(email);
-      if (await Purchases.appUserID == userId) return;
+      if (await Purchases.appUserID == appUserId) return;
       final wasAnonymous = await Purchases.isAnonymous;
       final before = wasAnonymous
           ? PremiumStatus.fromCustomerInfo(await Purchases.getCustomerInfo())
           : const PremiumStatus();
-      final result = await Purchases.logIn(userId);
+      final result = await Purchases.logIn(appUserId);
       // A brand-new id inherits the anonymous purchase automatically; an id
       // that already exists on the server does not, so pull it across with
       // a restore (RevenueCat's transfer behavior moves it to this id).

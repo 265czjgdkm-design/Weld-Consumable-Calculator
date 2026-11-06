@@ -12,6 +12,15 @@ class SignupConfig {
 
   static const String emailEntryField = 'entry.708179914';
 
+  // TODO(welcome-email): the Google Form currently has ONLY the email
+  // question. To send a personalised, localized welcome mail, add two short
+  // answer questions (first name, locale) to the form, paste their
+  // `entry.NNN` ids below and update the Apps Script as described in
+  // docs/apps_script/welcome_email_templates/README.md. While these are null
+  // they are simply not submitted.
+  static const String? firstNameEntryField = null;
+  static const String? localeEntryField = null;
+
   /// Apps Script Web App URL backing the account-based preset sync API
   /// (doGet/doPost in the same project as the welcome-email trigger, backed
   /// by a lazily-created "Varyos Weld - Presets" Google Sheet keyed by

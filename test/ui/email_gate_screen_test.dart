@@ -7,6 +7,7 @@ import 'package:url_launcher_platform_interface/url_launcher_platform_interface.
 import 'package:weld_consumable_calculator/l10n/app_locale.dart';
 import 'package:weld_consumable_calculator/l10n/app_locale_scope.dart';
 import 'package:weld_consumable_calculator/l10n/app_language.dart';
+import 'package:weld_consumable_calculator/l10n/auth_copy.dart';
 import 'package:weld_consumable_calculator/l10n/strings.dart';
 import 'package:weld_consumable_calculator/ui/email_gate_screen.dart';
 
@@ -43,12 +44,15 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      await tester.tap(find.text(strings.authChoiceRegisterButton));
+      await tester.tap(find.text(authCopyFor(AppLanguage.en).registerButton));
       await tester.pumpAndSettle();
 
       expect(find.text(strings.legalPrivacyPolicyLinkLabel), findsOneWidget);
       expect(find.text(strings.legalTermsOfUseLinkLabel), findsOneWidget);
 
+      await tester.ensureVisible(
+        find.text(strings.legalPrivacyPolicyLinkLabel),
+      );
       await tester.tap(find.text(strings.legalPrivacyPolicyLinkLabel));
       await tester.pumpAndSettle();
       expect(
@@ -56,6 +60,7 @@ void main() {
         'https://varyosweld.com/privacy.html',
       );
 
+      await tester.ensureVisible(find.text(strings.legalTermsOfUseLinkLabel));
       await tester.tap(find.text(strings.legalTermsOfUseLinkLabel));
       await tester.pumpAndSettle();
       expect(mockPlatform.lastLaunchedUrl, 'https://varyosweld.com/terms.html');
@@ -84,7 +89,7 @@ void main() {
         );
         await tester.pumpAndSettle();
 
-        await tester.tap(find.text(localeStrings.authChoiceRegisterButton));
+        await tester.tap(find.text(authCopyFor(language).registerButton));
         await tester.pumpAndSettle();
 
         final consentTexts = tester
@@ -113,7 +118,8 @@ void main() {
             localeStrings.legalTermsOfUseLinkLabel.length;
         final charAfterTerms = consentTexts[termsEnd];
         expect(
-          charAfterTerms == ' ' || !RegExp(r'[A-Za-zА-Яа-яऀ-ॿ]').hasMatch(charAfterTerms),
+          charAfterTerms == ' ' ||
+              !RegExp(r'[A-Za-zА-Яа-яऀ-ॿ]').hasMatch(charAfterTerms),
           isTrue,
           reason:
               'Suffix must not run directly into the Terms of Use label '

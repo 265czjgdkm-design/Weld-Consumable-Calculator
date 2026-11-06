@@ -11,7 +11,11 @@ import 'signup_config.dart';
 /// into a hidden iframe sidesteps that entirely -- browsers have always
 /// allowed cross-origin form posts; we just can't read the response, so we
 /// treat the iframe's `load` event as "submitted".
-Future<bool> submitSignupEmail(String email) async {
+Future<bool> submitSignupEmail(
+  String email, {
+  String? firstName,
+  String? locale,
+}) async {
   final frameName = 'signup_frame_${DateTime.now().microsecondsSinceEpoch}';
 
   final iframe = web.HTMLIFrameElement()
@@ -44,6 +48,18 @@ Future<bool> submitSignupEmail(String email) async {
     ..name = SignupConfig.emailEntryField
     ..value = email;
   form.append(input);
+  void addField(String? name, String? value) {
+    if (name == null || value == null) return;
+    form.append(
+      web.HTMLInputElement()
+        ..type = 'hidden'
+        ..name = name
+        ..value = value,
+    );
+  }
+
+  addField(SignupConfig.firstNameEntryField, firstName);
+  addField(SignupConfig.localeEntryField, locale);
 
   final completer = Completer<bool>();
   final timer = Timer(const Duration(seconds: 8), () {

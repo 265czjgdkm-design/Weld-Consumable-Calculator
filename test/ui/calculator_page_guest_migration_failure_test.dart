@@ -8,8 +8,11 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:weld_consumable_calculator/l10n/app_locale.dart';
 import 'package:weld_consumable_calculator/l10n/app_locale_scope.dart';
 import 'package:weld_consumable_calculator/models/weld_models.dart';
+import 'package:weld_consumable_calculator/services/auth_service.dart';
 import 'package:weld_consumable_calculator/services/user_preset_store.dart';
 import 'package:weld_consumable_calculator/ui/calculator_page.dart';
+
+import '../support/fake_auth_service.dart';
 
 /// See _FailingHttpClient in calculator_page_save_update_test.dart --
 /// PresetSyncService has no injectable client, so network is stubbed out
@@ -22,6 +25,10 @@ class _FailingHttpClient implements HttpClient {
 }
 
 void main() {
+  final auth = FakeAuthService();
+  setUp(() => AuthServices.instance = auth);
+  tearDown(() => AuthServices.instance = const UnavailableAuthService());
+
   testWidgets(
     'a guest saving a new preset while the migration upload fails keeps '
     'the pre-existing local preset instead of overwriting the local cache '
@@ -56,13 +63,18 @@ void main() {
         await tester.tap(find.text('Save as Preset'));
         await tester.pumpAndSettle();
 
+        // A guest is asked to create an account first; Sign in with Apple
+        // yields a verified account without any typing.
+        await tester.tap(find.text('Continue with Apple'));
+        await tester.pumpAndSettle();
+        expect(auth.appleSignIns, 1);
+
         final dialogTextFields = find.descendant(
           of: find.byType(AlertDialog),
           matching: find.byType(TextField),
         );
-        expect(dialogTextFields, findsNWidgets(2));
-        await tester.enterText(dialogTextFields.at(0), 'new@example.com');
-        await tester.enterText(dialogTextFields.at(1), 'New Preset');
+        expect(dialogTextFields, findsOneWidget);
+        await tester.enterText(dialogTextFields, 'New Preset');
         await tester.tap(find.text('Save'));
         await tester.pumpAndSettle();
 

@@ -8,6 +8,7 @@ import '../core/weld_calculator.dart';
 import '../core/welding_defaults.dart';
 import '../l10n/app_language.dart';
 import '../l10n/app_locale_scope.dart';
+import '../l10n/auth_copy.dart';
 import '../l10n/strings.dart';
 import '../models/base_material_selection.dart';
 import '../models/consumable_selection.dart';
@@ -24,6 +25,8 @@ import '../services/user_account_store.dart';
 import '../services/user_preset_store.dart';
 import '../services/user_preset_sync.dart';
 import '../services/weld_pdf_report_service.dart';
+import 'auth/account_prompt_sheet.dart';
+import 'auth/auth_flows.dart';
 import 'premium_paywall.dart';
 import 'user_guide_screen.dart';
 import 'widgets/weld_drawing_preview.dart';
@@ -2841,18 +2844,22 @@ class _CalculatorPageState extends State<CalculatorPage> {
     var email = _accountEmail;
     String name;
 
-    // A guest gets asked for both the account email and the preset name in
-    // one dialog rather than two showDialog calls back to back -- chaining
-    // separate dialogs here raced with Flutter's dialog-close transition
-    // and left a disposed TextEditingController attached to the tree.
     if (email == null) {
-      final result = await _promptAccountEmailAndPresetName();
-      if (result == null) return;
-      email = result.email;
-      name = result.name;
-      await _accountStore.setEmail(email);
+      // A preset needs a verified account (cloud sync is keyed by it).
+      final copy = authCopyFor(AppLocaleScope.of(context).language);
+      final outcome = await showAccountPrompt(
+        context,
+        title: copy.saveTitle,
+        body: copy.saveBody,
+        entitlementService: widget.entitlementService,
+      );
+      if (!mounted || outcome != AuthOutcome.verified) return;
+      email = await _accountStore.getEmail();
+      if (email == null || !mounted) return;
+      final promptedName = await _promptPresetName();
+      if (promptedName == null || promptedName.trim().isEmpty) return;
+      name = promptedName.trim();
       _accountEmail = email;
-      unawaited(widget.entitlementService.syncAccount(email));
       // No-op (uploads nothing) if the local cache belongs to a different,
       // previously signed-in account -- see the doc comment on
       // migrateLocalPresetsToAccount. A failed upload must not be followed
@@ -2984,13 +2991,6 @@ class _CalculatorPageState extends State<CalculatorPage> {
         setState(() => _isUserPresetBusy = false);
       }
     }
-  }
-
-  Future<({String email, String name})?> _promptAccountEmailAndPresetName() {
-    return showDialog<({String email, String name})>(
-      context: context,
-      builder: (context) => const _AccountEmailAndPresetNameDialog(),
-    );
   }
 
   WeldInputPresetData _captureCurrentPresetData() => WeldInputPresetData(
@@ -4226,81 +4226,3 @@ class _PresetNameDialogState extends State<_PresetNameDialog> {
 /// (rather than two `showDialog` calls back to back) -- see the note on
 /// [_PresetNameDialog] for why controller disposal has to be owned by the
 /// dialog's own State.
-class _AccountEmailAndPresetNameDialog extends StatefulWidget {
-  const _AccountEmailAndPresetNameDialog();
-
-  @override
-  State<_AccountEmailAndPresetNameDialog> createState() =>
-      _AccountEmailAndPresetNameDialogState();
-}
-
-class _AccountEmailAndPresetNameDialogState
-    extends State<_AccountEmailAndPresetNameDialog> {
-  static final _emailPattern = RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$');
-  final _emailController = TextEditingController();
-  final _nameController = TextEditingController();
-  String? _emailError;
-
-  @override
-  void dispose() {
-    _emailController.dispose();
-    _nameController.dispose();
-    super.dispose();
-  }
-
-  void _submit(L10nStrings strings) {
-    final email = _emailController.text.trim();
-    if (!_emailPattern.hasMatch(email)) {
-      setState(() => _emailError = strings.calcAccountEmailInvalidError);
-      return;
-    }
-    final name = _nameController.text.trim();
-    if (name.isEmpty) return;
-    Navigator.of(context).pop((email: email.toLowerCase(), name: name));
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final strings = AppLocaleScope.stringsOf(context);
-    return AlertDialog(
-      title: Text(strings.calcSaveWithAccountTitle),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(strings.calcSaveWithAccountBody),
-          const SizedBox(height: 12),
-          TextField(
-            controller: _emailController,
-            autofocus: true,
-            keyboardType: TextInputType.emailAddress,
-            decoration: InputDecoration(
-              labelText: strings.authFormEmailLabel,
-              errorText: _emailError,
-            ),
-          ),
-          const SizedBox(height: 12),
-          TextField(
-            controller: _nameController,
-            textInputAction: TextInputAction.done,
-            onSubmitted: (_) => _submit(strings),
-            decoration: InputDecoration(
-              labelText: strings.savedCalculationsRenameFieldLabel,
-              helperText: strings.calcPresetNameHelper,
-            ),
-          ),
-        ],
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(),
-          child: Text(strings.commonCancel),
-        ),
-        FilledButton(
-          onPressed: () => _submit(strings),
-          child: Text(strings.commonSave),
-        ),
-      ],
-    );
-  }
-}

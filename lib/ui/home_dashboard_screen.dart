@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../l10n/app_locale_scope.dart';
 import '../l10n/strings.dart';
+import '../services/account_session.dart';
 import '../services/entitlement_service.dart';
 import '../services/user_account_store.dart';
 import 'account_screen.dart';
@@ -54,14 +55,17 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
     super.dispose();
   }
 
-  /// Aligns the RevenueCat user id with the stored account on every launch
-  /// (covers sign-in on the email gate, which has no entitlement service).
+  /// Re-applies the Firebase session on every launch: refreshes an
+  /// unverified user, binds the verified email + RevenueCat uid, or clears
+  /// both when signed out.
   Future<void> _syncAccountAndLoad() async {
-    final email = await _accountStore.getEmail();
+    final stored = await _accountStore.getEmail();
     if (!mounted) return;
-    setState(() => _accountEmail = email);
+    setState(() => _accountEmail = stored);
     _loadPremium();
-    await _entitlementService.syncAccount(email);
+    await AccountSession.restore(entitlement: _entitlementService);
+    if (!mounted) return;
+    await _loadAccountEmail();
     await _loadPremium();
   }
 

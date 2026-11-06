@@ -8,10 +8,13 @@ import 'package:weld_consumable_calculator/l10n/app_locale.dart';
 import 'package:weld_consumable_calculator/l10n/app_locale_scope.dart';
 import 'package:weld_consumable_calculator/l10n/premium_account_copy.dart';
 import 'package:weld_consumable_calculator/l10n/strings.dart';
+import 'package:weld_consumable_calculator/services/auth_service.dart';
 import 'package:weld_consumable_calculator/services/entitlement_service.dart';
 import 'package:weld_consumable_calculator/services/purchases_config.dart';
 import 'package:weld_consumable_calculator/ui/account_screen.dart';
 import 'package:weld_consumable_calculator/ui/user_guide_screen.dart';
+
+import '../support/fake_auth_service.dart';
 
 class _FakeEntitlementService extends EntitlementService {
   _FakeEntitlementService(this.status);
@@ -23,7 +26,8 @@ class _FakeEntitlementService extends EntitlementService {
   Future<PremiumStatus> premiumStatus() async => status;
 
   @override
-  Future<void> syncAccount(String? email) async => syncCalls.add(email);
+  Future<void> syncAccount(String? appUserId) async =>
+      syncCalls.add(appUserId);
 }
 
 CustomerInfo _customerInfo({
@@ -154,38 +158,29 @@ void main() {
   });
 
   group('RevenueCat account link', () {
-    test('user id is a stable non-PII hash of the lowercased email', () {
-      final id = EntitlementService.appUserIdFor(' User@Example.com ');
-      expect(id, EntitlementService.appUserIdFor('user@example.com'));
-      expect(id, matches(RegExp(r'^[0-9a-f]{64}$')));
-      expect(id, isNot(contains('example')));
-      expect(id, isNot(EntitlementService.appUserIdFor('other@example.com')));
-    });
-
-    testWidgets('sign in logs in, sign out logs out', (tester) async {
-      final service = _FakeEntitlementService(const PremiumStatus());
-      await _pump(tester, service);
-
-      await tester.enterText(find.byType(TextField), 'User@Example.com');
-      await tester.tap(find.text(strings.accountSignInButton));
-      await tester.pumpAndSettle();
-      expect(service.syncCalls, ['user@example.com']);
-
-      await tester.tap(find.text(strings.accountSignOutButton));
-      await tester.pumpAndSettle();
-      expect(service.syncCalls, ['user@example.com', null]);
-    });
-
     testWidgets('signed-in user does not see the link hint', (tester) async {
-      SharedPreferences.setMockInitialValues({
-        'user_account_email_v1': 'user@example.com',
-      });
+      SharedPreferences.setMockInitialValues({});
+      AuthServices.instance = FakeAuthService(user: fakeUser());
+      addTearDown(() => AuthServices.instance = const UnavailableAuthService());
       final service = _FakeEntitlementService(
         const PremiumStatus(state: PremiumState.active),
       );
       await _pump(tester, service);
 
       expect(find.text(copy.linkHint), findsNothing);
+    });
+
+    testWidgets('sign out logs RevenueCat out', (tester) async {
+      SharedPreferences.setMockInitialValues({});
+      final auth = FakeAuthService(user: fakeUser());
+      AuthServices.instance = auth;
+      addTearDown(() => AuthServices.instance = const UnavailableAuthService());
+      final service = _FakeEntitlementService(const PremiumStatus());
+      await _pump(tester, service);
+
+      await tester.tap(find.text(strings.accountSignOutButton));
+      await tester.pumpAndSettle();
+      expect(service.syncCalls, [null]);
     });
   });
 

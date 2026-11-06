@@ -68,11 +68,11 @@ const _en = PremiumAccountCopy(
   endsOn: 'Ends on {date} (will not renew)',
   expiredOn: 'Expired on {date}',
   appleIdNote:
-      'Premium is tied to your Apple ID, not to this app account. It works on every device signed in with the same Apple ID: install the app there and tap Restore Purchases.',
+      'Premium follows your verified Varyos account and your Apple ID. On a new device, sign in to the same account or tap Restore Purchases.',
   linkHint:
-      'Optional: sign in with your email to keep track of your Premium with your account.',
-  linkPromptText: 'Link to account — track your Premium with your email',
-  linkPromptAction: 'Link',
+      'Create a free account (or sign in) so your Premium follows you to new devices.',
+  linkPromptText: 'Create an account — keep your Premium',
+  linkPromptAction: 'Create',
   guideRow: 'User guide',
   howToUse: 'How to use?',
 );
@@ -90,11 +90,11 @@ const _tr = PremiumAccountCopy(
   endsOn: '{date} tarihinde sona erer (yenilenmeyecek)',
   expiredOn: '{date} tarihinde sona erdi',
   appleIdNote:
-      "Premium, bu uygulamadaki hesaba değil Apple Kimliğinize bağlıdır. Aynı Apple Kimliğiyle giriş yapılmış tüm cihazlarda çalışır: uygulamayı orada yükleyip Satın Alımları Geri Yükle'ye dokunun.",
+      "Premium, doğrulanmış Varyos hesabınızı ve Apple Kimliğinizi takip eder. Yeni cihazda aynı hesapla giriş yapın veya Satın Alımları Geri Yükle'ye dokunun.",
   linkHint:
-      "İsteğe bağlı: Premium'unuzu hesabınızla takip etmek için e-postanızla giriş yapın.",
-  linkPromptText: "Hesabına bağla — Premium'unu e-postanla takip et",
-  linkPromptAction: 'Bağla',
+      "Premium'unuz yeni cihazlarda da sizinle olsun diye ücretsiz hesap oluşturun veya giriş yapın.",
+  linkPromptText: "Hesap oluştur — Premium'unu koru",
+  linkPromptAction: 'Oluştur',
   guideRow: 'Kullanım Kılavuzu',
   howToUse: 'Nasıl kullanılır?',
 );
@@ -112,11 +112,11 @@ const _ru = PremiumAccountCopy(
   endsOn: 'Действует до {date} (не продлится)',
   expiredOn: 'Истёк {date}',
   appleIdNote:
-      'Premium привязан к вашему Apple ID, а не к аккаунту в приложении. Он работает на всех устройствах с тем же Apple ID: установите приложение и нажмите «Восстановить покупки».',
+      'Premium следует за вашим подтверждённым аккаунтом Varyos и вашим Apple ID. На новом устройстве войдите в тот же аккаунт или нажмите «Восстановить покупки».',
   linkHint:
-      'По желанию: войдите по e-mail, чтобы отслеживать Premium вместе с аккаунтом.',
-  linkPromptText: 'Привязать к аккаунту — отслеживайте Premium по e-mail',
-  linkPromptAction: 'Привязать',
+      'Создайте бесплатный аккаунт (или войдите), чтобы Premium был с вами на новых устройствах.',
+  linkPromptText: 'Создайте аккаунт — сохраните Premium',
+  linkPromptAction: 'Создать',
   guideRow: 'Руководство',
   howToUse: 'Как пользоваться?',
 );
@@ -134,11 +134,11 @@ const _de = PremiumAccountCopy(
   endsOn: 'Endet am {date} (keine Verlängerung)',
   expiredOn: 'Abgelaufen am {date}',
   appleIdNote:
-      'Premium ist an Ihre Apple-ID gebunden, nicht an das App-Konto. Es gilt auf allen Geräten mit derselben Apple-ID: App installieren und „Käufe wiederherstellen“ tippen.',
+      'Premium folgt Ihrem bestätigten Varyos-Konto und Ihrer Apple-ID. Auf einem neuen Gerät melden Sie sich mit demselben Konto an oder tippen auf „Käufe wiederherstellen“.',
   linkHint:
-      'Optional: Melden Sie sich mit Ihrer E-Mail an, um Premium mit Ihrem Konto zu verfolgen.',
-  linkPromptText: 'Mit Konto verknüpfen — Premium per E-Mail verfolgen',
-  linkPromptAction: 'Verknüpfen',
+      'Erstellen Sie ein kostenloses Konto (oder melden Sie sich an), damit Premium auf neue Geräte mitkommt.',
+  linkPromptText: 'Konto erstellen — Premium behalten',
+  linkPromptAction: 'Erstellen',
   guideRow: 'Benutzerhandbuch',
   howToUse: 'Wie benutze ich das?',
 );
@@ -156,11 +156,11 @@ const _hi = PremiumAccountCopy(
   endsOn: '{date} को समाप्त होगा (नवीनीकरण नहीं होगा)',
   expiredOn: '{date} को समाप्त हुआ',
   appleIdNote:
-      'Premium आपकी Apple ID से जुड़ा है, ऐप खाते से नहीं। यह उसी Apple ID वाले हर डिवाइस पर चलता है: ऐप इंस्टॉल करें और "खरीदारी पुनर्स्थापित करें" दबाएँ।',
+      'Premium आपके सत्यापित Varyos खाते और Apple ID के साथ चलता है। नए डिवाइस पर उसी खाते से साइन इन करें या "खरीदारी पुनर्स्थापित करें" दबाएँ।',
   linkHint:
-      'वैकल्पिक: अपने Premium को खाते के साथ ट्रैक करने के लिए ईमेल से साइन इन करें।',
-  linkPromptText: 'खाते से जोड़ें — ईमेल से अपना Premium ट्रैक करें',
-  linkPromptAction: 'जोड़ें',
+      'अपना Premium नए डिवाइस पर साथ रखने के लिए मुफ़्त खाता बनाएँ या साइन इन करें।',
+  linkPromptText: 'खाता बनाएँ — Premium सुरक्षित रखें',
+  linkPromptAction: 'बनाएँ',
   guideRow: 'उपयोग गाइड',
   howToUse: 'कैसे उपयोग करें?',
 );

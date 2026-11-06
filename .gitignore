@@ -57,3 +57,6 @@ work/flutter/
 work/flutter_macos_*.zip
 work/tmp/
 flutter_01.log
+
+# Firebase client config (placed manually, see docs/AUTH_SETUP.md)
+ios/Runner/GoogleService-Info.plist

@@ -3,26 +3,27 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../l10n/app_locale_scope.dart';
+import '../l10n/auth_copy.dart';
 import '../l10n/premium_account_copy.dart';
 import '../l10n/strings.dart';
 import '../services/account_deletion_service.dart';
+import '../services/account_session.dart';
 import '../services/ai_consent_store.dart';
+import '../services/auth_service.dart';
 import '../services/entitlement_service.dart';
 import '../services/legal_links.dart';
-import '../services/preset_sync_service.dart';
-import '../services/user_account_store.dart';
 import '../services/user_preset_store.dart';
-import '../services/user_preset_sync.dart';
+import 'auth/auth_flows.dart';
+import 'auth/auth_screens.dart';
+import 'auth/auth_widgets.dart';
 import 'calculator_page/calculator_page_widgets.dart';
 import 'premium_paywall.dart';
 import 'user_guide_screen.dart';
 import 'widgets/welding_loader.dart';
 
-/// Account management screen: shows the current account (email, optional
-/// name), Sign Out, and Delete Account when signed in; a plain
-/// email-sign-in form when in the Guest state. There is no password
-/// anywhere in this app's model -- an email is simply what identifies an
-/// account (see [UserAccountStore]).
+/// Account management screen: shows the Firebase account (name, email,
+/// verification state), Sign Out and Delete Account when signed in; Apple /
+/// sign-up / sign-in entry points in the Guest state.
 class AccountScreen extends StatefulWidget {
   const AccountScreen({
     super.key,
@@ -40,20 +41,13 @@ class AccountScreen extends StatefulWidget {
 }
 
 class _AccountScreenState extends State<AccountScreen> {
-  static const _accountStore = UserAccountStore();
   static const _presetStore = UserPresetStore();
-  static const _presetSyncService = PresetSyncService();
-  static final _emailPattern = RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$');
 
-  final _emailController = TextEditingController();
   late final EntitlementService _entitlement =
       widget.entitlementService ?? EntitlementService();
   PremiumStatus _premiumStatus = const PremiumStatus();
 
-  String? _email;
-  String? _firstName;
-  String? _lastName;
-  String? _emailError;
+  AuthUser? _user;
   bool _loading = true;
   bool _busy = false;
   bool _restoringPurchases = false;
@@ -65,23 +59,12 @@ class _AccountScreenState extends State<AccountScreen> {
     _load();
   }
 
-  @override
-  void dispose() {
-    _emailController.dispose();
-    super.dispose();
-  }
-
   Future<void> _load() async {
-    final email = await _accountStore.getEmail();
-    final firstName = await _accountStore.getFirstName();
-    final lastName = await _accountStore.getLastName();
     final aiConsentGiven = await widget.consentStore.isAcknowledged();
     if (!mounted) return;
     setState(() {
       _aiConsentGiven = aiConsentGiven;
-      _email = email;
-      _firstName = firstName;
-      _lastName = lastName;
+      _user = AuthServices.instance.currentUser;
       _loading = false;
     });
     // Not awaited: the SDK call must never keep the screen on its loader.
@@ -95,13 +78,6 @@ class _AccountScreenState extends State<AccountScreen> {
       debugPrint('Failed to read premium status: $error');
       return const PremiumStatus();
     }
-  }
-
-  /// Fire-and-forget from the UI: RevenueCat calls must never hold up
-  /// sign-in/out, and the premium card refreshes once the id switch lands.
-  Future<void> _syncAccountAndRefresh(String? email) async {
-    await _entitlement.syncAccount(email);
-    await _refreshPremiumStatus();
   }
 
   Future<void> _refreshPremiumStatus() async {
@@ -122,67 +98,71 @@ class _AccountScreenState extends State<AccountScreen> {
     // (UserPresetStore) are deliberately left untouched, and
     // SignupGateStore is deliberately not touched either so the app never
     // re-shows the initial splash/email-gate choice again.
-    await _accountStore.clear();
+    await AuthServices.instance.signOut();
+    await AccountSession.apply(null, entitlement: _entitlement);
     if (!mounted) return;
-    setState(() {
-      _email = null;
-      _firstName = null;
-      _lastName = null;
-    });
+    setState(() => _user = null);
     _showMessage(strings.accountSignOutSuccess);
-    unawaited(_syncAccountAndRefresh(null));
+    unawaited(_refreshPremiumStatus());
   }
 
-  Future<void> _signIn() async {
-    final strings = AppLocaleScope.stringsOf(context);
-    final email = _emailController.text.trim().toLowerCase();
-    setState(() {
-      _emailError = _emailPattern.hasMatch(email)
-          ? null
-          : strings.emailGateInvalidEmail;
-    });
-    if (_emailError != null) return;
+  Future<void> _openAuth(Widget screen) async {
+    final outcome = await Navigator.of(
+      context,
+    ).push<AuthOutcome>(MaterialPageRoute(builder: (_) => screen));
+    await _afterAuth(outcome ?? AuthOutcome.none);
+  }
 
+  Future<void> _afterAuth(AuthOutcome outcome) async {
+    if (!mounted || outcome == AuthOutcome.none) return;
+    setState(() => _user = AuthServices.instance.currentUser);
+    unawaited(_refreshPremiumStatus());
+  }
+
+  Future<void> _appleSignIn() async {
     setState(() => _busy = true);
-    await _accountStore.setEmail(email);
-    // A device that already has local-only presets must have them uploaded
-    // to the cloud under this email BEFORE the cloud-authoritative refresh
-    // below, or an empty/partial cloud list would silently wipe them (see
-    // the same guest->account sequence in calculator_page.dart). This is a
-    // no-op (and uploads nothing) if the local cache belongs to a
-    // different, previously signed-in account -- see the doc comment on
-    // migrateLocalPresetsToAccount.
-    final migrated = await migrateLocalPresetsToAccount(
-      email: email,
-      presetSyncService: _presetSyncService,
-      userPresetStore: _presetStore,
-    );
-    // A failed upload must not be followed by the cloud-authoritative
-    // refresh below, or the not-yet-uploaded local presets would be wiped
-    // by a cloud list that doesn't reflect them yet.
-    if (migrated) {
-      // Reuse the same refresh mechanism the calculator/saved-calculations
-      // screens use after an account's email becomes available, so this
-      // screen's sign-in has the same effect as signing in anywhere else.
-      await loadSyncedUserPresets(
-        email: email,
-        presetSyncService: _presetSyncService,
-        userPresetStore: _presetStore,
-      );
-    }
+    final outcome = await runAppleSignIn(context, entitlement: _entitlement);
     if (!mounted) return;
-    setState(() {
-      _email = email;
-      _busy = false;
-    });
-    unawaited(_syncAccountAndRefresh(email));
-    _showMessage(strings.accountSignInSuccess.replaceFirst('{email}', email));
+    setState(() => _busy = false);
+    await _afterAuth(outcome);
+  }
+
+  /// Deletes the Firebase user, re-authenticating once when Firebase asks
+  /// for a recent login. Returns false when the user backed out or it
+  /// failed (a message is shown), in which case nothing was deleted.
+  Future<bool> _deleteFirebaseUser() async {
+    final auth = AuthServices.instance;
+    final copy = authCopyFor(AppLocaleScope.of(context).language);
+    try {
+      try {
+        await auth.deleteUser();
+      } on AuthException catch (error) {
+        if (error.code != AuthErrorCode.requiresRecentLogin) rethrow;
+        String? password;
+        if (!(_user?.isApple ?? false)) {
+          if (!mounted) return false;
+          password = await showDialog<String>(
+            context: context,
+            builder: (_) => const _ReauthPasswordDialog(),
+          );
+          if (password == null) return false;
+        }
+        await auth.reauthenticate(password: password);
+        await auth.deleteUser();
+      }
+      return true;
+    } on AuthException catch (error) {
+      if (error.code != AuthErrorCode.cancelled && mounted) {
+        _showMessage(authErrorText(copy, error));
+      }
+      return false;
+    }
   }
 
   Future<void> _deleteAccount() async {
     final strings = AppLocaleScope.stringsOf(context);
-    final email = _email;
-    if (email == null) return;
+    final user = _user;
+    if (user == null) return;
 
     final confirmed = await showDialog<bool>(
       context: context,
@@ -201,34 +181,41 @@ class _AccountScreenState extends State<AccountScreen> {
         ],
       ),
     );
-    if (confirmed != true) return;
+    if (confirmed != true || !mounted) return;
 
     setState(() => _busy = true);
 
-    // The screen stays signed-in (with the "Deleting..." message, and back
-    // navigation blocked via PopScope) until the server answers. Local data
-    // is then cleared regardless of the outcome; the email is kept in a
-    // local variable so Retry can still address it.
+    if (!await _deleteFirebaseUser()) {
+      if (mounted) setState(() => _busy = false);
+      return;
+    }
+
+    // Cloud rows are keyed by the email, so only a VERIFIED user may ask for
+    // them to be wiped (an unverified sign-up proves nothing about the
+    // address). The screen stays busy (back navigation blocked via PopScope)
+    // until the server answers; local data is cleared regardless of the
+    // outcome and the email is kept in a local variable so Retry can still
+    // address it.
+    final cloudEmail = user.isVerified ? user.email : null;
     var deleted = false;
     var localCleared = false;
     while (true) {
       try {
-        await widget.accountDeletionService.deleteAccount(email);
+        if (cloudEmail != null) {
+          await widget.accountDeletionService.deleteAccount(cloudEmail);
+        }
         deleted = true;
       } catch (_) {
         deleted = false;
       }
       if (!localCleared) {
-        await _accountStore.clear();
+        await AccountSession.apply(null, entitlement: _entitlement);
         await _presetStore.save(const []);
-        unawaited(_entitlement.syncAccount(null));
         localCleared = true;
       }
       if (!mounted) return;
       setState(() {
-        _email = null;
-        _firstName = null;
-        _lastName = null;
+        _user = null;
         _busy = false;
       });
       if (deleted) break;
@@ -336,7 +323,7 @@ class _AccountScreenState extends State<AccountScreen> {
                           children: [
                             _buildIdentityHeader(strings),
                             const SizedBox(height: 20),
-                            if (_email != null)
+                            if (_user != null)
                               _buildSignedInState(strings)
                             else
                               _buildGuestState(strings),
@@ -460,7 +447,7 @@ class _AccountScreenState extends State<AccountScreen> {
             ],
             const SizedBox(height: 12),
             Text(copy.appleIdNote, style: muted),
-            if (_email == null && status.isActive) ...[
+            if (_user == null && status.isActive) ...[
               const SizedBox(height: 8),
               Text(copy.linkHint, style: muted),
             ],
@@ -510,13 +497,11 @@ class _AccountScreenState extends State<AccountScreen> {
   }
 
   Widget _buildIdentityHeader(L10nStrings strings) {
-    final name = [
-      _firstName,
-      _lastName,
-    ].whereType<String>().where((part) => part.isNotEmpty).join(' ');
-    final identityLabel = _email == null
+    final user = _user;
+    final name = (user?.displayName ?? '').trim();
+    final identityLabel = user == null
         ? strings.dashboardAccountCardGuestValue
-        : (name.isNotEmpty ? name : _email!);
+        : (name.isNotEmpty ? name : (user.email ?? ''));
     return Row(
       children: [
         Container(
@@ -530,12 +515,18 @@ class _AccountScreenState extends State<AccountScreen> {
           child: const Center(child: VaryosMark(size: 26)),
         ),
         const SizedBox(width: 14),
-        Text(identityLabel, style: Theme.of(context).textTheme.titleMedium),
+        Expanded(
+          child: Text(
+            identityLabel,
+            style: Theme.of(context).textTheme.titleMedium,
+          ),
+        ),
       ],
     );
   }
 
   Widget _buildSignedInState(L10nStrings strings) {
+    final copy = authCopyFor(AppLocaleScope.of(context).language);
     // The identity header above already renders the display name (falling
     // back to the email when there isn't one) -- this body's job is to show
     // the account's actual identifier, the email, which is a DIFFERENT
@@ -545,12 +536,54 @@ class _AccountScreenState extends State<AccountScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          _email!,
+          _user!.email ?? '',
           style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 18),
         ),
+        const SizedBox(height: 8),
+        if (_user!.isVerified)
+          Row(
+            children: [
+              const Icon(
+                Icons.verified_outlined,
+                size: 18,
+                color: Color(0xFF1E8E5A),
+              ),
+              const SizedBox(width: 6),
+              Text(
+                copy.accountVerified,
+                style: const TextStyle(
+                  color: Color(0xFF1E8E5A),
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          )
+        else ...[
+          Text(
+            copy.accountUnverifiedNotice,
+            style: Theme.of(
+              context,
+            ).textTheme.bodySmall?.copyWith(color: const Color(0xFFB45309)),
+          ),
+          const SizedBox(height: 10),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton(
+              onPressed: _busy
+                  ? null
+                  : () => _openAuth(
+                      VerifyEmailScreen(
+                        email: _user!.email ?? '',
+                        entitlementService: _entitlement,
+                      ),
+                    ),
+              child: Text(copy.accountVerifyNow),
+            ),
+          ),
+        ],
         const SizedBox(height: 10),
         Text(
-          strings.accountNoPasswordNotice,
+          copy.accountSignedInNote,
           style: Theme.of(
             context,
           ).textTheme.bodySmall?.copyWith(color: const Color(0xFF607482)),
@@ -599,6 +632,7 @@ class _AccountScreenState extends State<AccountScreen> {
   }
 
   Widget _buildGuestState(L10nStrings strings) {
+    final copy = authCopyFor(AppLocaleScope.of(context).language);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -608,37 +642,34 @@ class _AccountScreenState extends State<AccountScreen> {
         ),
         const SizedBox(height: 8),
         Text(
-          strings.accountGuestStateBody,
+          copy.accountGuestBody,
           style: Theme.of(
             context,
           ).textTheme.bodyMedium?.copyWith(color: const Color(0xFF607482)),
         ),
         const SizedBox(height: 20),
-        TextField(
-          controller: _emailController,
-          enabled: !_busy,
-          keyboardType: TextInputType.emailAddress,
-          onSubmitted: (_) => _signIn(),
-          decoration: InputDecoration(
-            labelText: strings.accountSignInEmailLabel,
-            hintText: strings.emailGateHint,
-            errorText: _emailError,
-            filled: true,
-            fillColor: const Color(0xFFF1F5F7),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(16),
-              borderSide: BorderSide.none,
-            ),
-          ),
-        ),
-        const SizedBox(height: 16),
+        AppleAuthButton(onPressed: _busy ? null : _appleSignIn, dark: false),
+        const SizedBox(height: 12),
         SizedBox(
           width: double.infinity,
           child: FilledButton(
-            onPressed: _busy ? null : _signIn,
-            child: _busy
-                ? const WeldingLoader(size: 18)
-                : Text(strings.accountSignInButton),
+            onPressed: _busy
+                ? null
+                : () => _openAuth(
+                    RegistrationScreen(entitlementService: _entitlement),
+                  ),
+            child: Text(copy.registerButton),
+          ),
+        ),
+        const SizedBox(height: 10),
+        SizedBox(
+          width: double.infinity,
+          child: OutlinedButton(
+            onPressed: _busy
+                ? null
+                : () =>
+                      _openAuth(SignInScreen(entitlementService: _entitlement)),
+            child: Text(copy.signInButton),
           ),
         ),
       ],
@@ -656,6 +687,59 @@ class _AccountScreenState extends State<AccountScreen> {
         TextButton(
           onPressed: () => _openLegalLink(LegalLinks.termsOfUseUrl),
           child: Text(strings.legalTermsOfUseLinkLabel),
+        ),
+      ],
+    );
+  }
+}
+
+/// Owns its controller as State so the framework disposes it with the
+/// dialog route (see calculator_page.dart's `_PresetNameDialog`).
+class _ReauthPasswordDialog extends StatefulWidget {
+  const _ReauthPasswordDialog();
+
+  @override
+  State<_ReauthPasswordDialog> createState() => _ReauthPasswordDialogState();
+}
+
+class _ReauthPasswordDialogState extends State<_ReauthPasswordDialog> {
+  final _controller = TextEditingController();
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final strings = AppLocaleScope.stringsOf(context);
+    final copy = authCopyFor(AppLocaleScope.of(context).language);
+    return AlertDialog(
+      title: Text(copy.deleteReauthTitle),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(copy.deleteReauthBody),
+          const SizedBox(height: 12),
+          TextField(
+            controller: _controller,
+            obscureText: true,
+            autofocus: true,
+            decoration: InputDecoration(labelText: copy.passwordLabel),
+            onSubmitted: (value) => Navigator.of(context).pop(value),
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: Text(strings.commonCancel),
+        ),
+        FilledButton(
+          onPressed: () => Navigator.of(context).pop(_controller.text),
+          child: Text(strings.commonDelete),
         ),
       ],
     );
