@@ -474,6 +474,7 @@ class _AccountScreenState extends State<AccountScreen> {
                     context,
                     entitlementService: _entitlement,
                     onEntitlementChanged: (_) => _refreshPremiumStatus(),
+                    offerAccountLink: false,
                   ),
                   label: Text(strings.premiumSettingsRow),
                 ),

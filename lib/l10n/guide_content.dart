@@ -131,7 +131,7 @@ const _en = GuideCopy(
           '• Q = k × U × I × 60 / (travel speed × 1000)\n'
           '• U in volts, I in amperes, travel speed in mm/min.\n'
           '• Arc thermal efficiency k (EN 1011-1): SMAW 0.8, GMAW/MAG 0.8, SAW 1.0.\n\n'
-          'Pitfalls: travel speed is mm per minute, not mm per second. For multi-pass welds use the speed of the pass you are assessing.',
+          'Pitfalls: travel speed is mm per minute, not mm per second. For multi-pass welds use the speed of the pass you are assessing. GTAW/TIG (k = 0.6, EN 1011-1) is not a process option here: choose "Enter directly" and compute Q with k = 0.6.',
     ),
     'library': GuideEntry(
       'Material library',
@@ -144,7 +144,7 @@ const _en = GuideCopy(
       'Presets and saved calculations',
       'The filler calculator offers starter templates (for example carbon steel pipe single V, GTAW root + SMAW fill) and lets you save your own inputs as a preset.\n\n'
           '• Saved Calculations lists your presets: reopen, rename or delete them.\n'
-          '• Guests keep presets on the device. With an account they also sync by email, so they appear on your other devices.\n'
+          '• Saved calculations belong to an account: as a guest the list stays empty and saving asks for your email. Once you sign in, presets sync by email and appear on every device where you sign in with it.\n'
           '• Saved Reports lists the PDF reports you exported.',
     ),
     'pdf': GuideEntry(
@@ -170,7 +170,7 @@ const _en = GuideCopy(
     ),
     'account': GuideEntry(
       'Account and data deletion',
-      'There are no passwords: your email identifies your account. Signing out removes the account from this device but keeps your local saved calculations.\n\n'
+      'There are no passwords: your email identifies your account. Signing out removes the account from this device; your saved calculations are hidden until you sign in again with the same email.\n\n'
           'Delete account (Account screen) permanently removes your email and saved calculations from this device and from our servers. It cannot be undone and does not cancel an Apple subscription.\n\n'
           'When you sign in, an anonymous identifier derived from your email (a one-way hash, not the email) is used so your Premium purchase can follow your account.',
     ),
@@ -252,7 +252,7 @@ const _tr = GuideCopy(
           'Girdiler\n'
           '• Ön ısıtma veya pasolar arası sıcaklık T0 (°C): 500 °C\'nin altında (en az −50 °C) olmalı.\n'
           '• Net ısı girdisi Q (kJ/mm).\n'
-          '• Birleşim tipi: levha üstüne pasa (şekil faktörü 1,0) veya pasolar arası alın kaynağı (0,9). Köşe birleşimler desteklenmez.\n'
+          '• Birleşim tipi: levha üstüne paso (şekil faktörü 1,0) veya pasolar arası alın kaynağı (0,9). Köşe birleşimler desteklenmez.\n'
           '• Levha kalınlığı d (mm).\n\n'
           'Nasıl hesaplanır\n'
           '• 3B (kalın levha): t8/5 = (6700 − 5·T0) · Q · [1/(500 − T0) − 1/(800 − T0)] · F3\n'
@@ -266,7 +266,7 @@ const _tr = GuideCopy(
           '• Q = k × U × I × 60 / (ilerleme hızı × 1000)\n'
           '• U volt, I amper, ilerleme hızı mm/dak.\n'
           '• Ark ısıl verimi k (EN 1011-1): SMAW 0,8, GMAW/MAG 0,8, SAW 1,0.\n\n'
-          'Dikkat: ilerleme hızı mm/saniye değil mm/dakikadır. Çok pasolu kaynakta değerlendirdiğiniz pasonun hızını kullanın.',
+          'Dikkat: ilerleme hızı mm/saniye değil mm/dakikadır. Çok pasolu kaynakta değerlendirdiğiniz pasonun hızını kullanın. GTAW/TIG (k = 0,6, EN 1011-1) işlem seçeneklerinde yoktur: "Doğrudan gir" seçip Q\'yu k = 0,6 ile kendiniz hesaplayın.',
     ),
     'library': GuideEntry(
       'Malzeme kütüphanesi',
@@ -279,7 +279,7 @@ const _tr = GuideCopy(
       'Hazır ayarlar ve kayıtlı hesaplamalar',
       'İlave metal hesaplayıcısı başlangıç şablonları sunar (örneğin karbon çeliği boru tek V, GTAW kök + SMAW dolgu) ve girdilerinizi hazır ayar olarak kaydetmenizi sağlar.\n\n'
           '• Kayıtlı Hesaplamalar hazır ayarlarınızı listeler: açın, yeniden adlandırın veya silin.\n'
-          '• Misafirde hazır ayarlar cihazda kalır. Hesapla e-posta üzerinden eşitlenir ve diğer cihazlarınızda da görünür.\n'
+          '• Kayıtlı hesaplamalar bir hesaba aittir: misafirken liste boştur ve kaydetmek e-posta ister. Giriş yaptığınızda hazır ayarlar e-posta üzerinden eşitlenir ve aynı e-postayla giriş yaptığınız her cihazda görünür.\n'
           '• Kayıtlı Raporlar dışa aktardığınız PDF raporları listeler.',
     ),
     'pdf': GuideEntry(
@@ -305,7 +305,7 @@ const _tr = GuideCopy(
     ),
     'account': GuideEntry(
       'Hesap ve veri silme',
-      'Şifre yoktur: hesabınızı e-postanız tanımlar. Çıkış yapmak hesabı bu cihazdan kaldırır, yerel kayıtlı hesaplamalarınızı korur.\n\n'
+      'Şifre yoktur: hesabınızı e-postanız tanımlar. Çıkış yapmak hesabı bu cihazdan kaldırır; kayıtlı hesaplamalarınız aynı e-postayla tekrar giriş yapana kadar görünmez.\n\n'
           'Hesabı sil (Hesap ekranı) e-postanızı ve kayıtlı hesaplamalarınızı bu cihazdan ve sunucularımızdan kalıcı olarak siler. Geri alınamaz ve Apple aboneliğini iptal etmez.\n\n'
           'Giriş yaptığınızda, Premium satın alımınızın hesabınızı takip edebilmesi için e-postanızdan türetilmiş anonim bir tanımlayıcı (tek yönlü özet; e-postanın kendisi değil) kullanılır.',
     ),
@@ -338,7 +338,7 @@ const _ru = GuideCopy(
       'Расход присадочного металла',
       'Оценивает массу присадки (кг) и время горения дуги (ч) для сварного шва по геометрии соединения.\n\n'
           'Входные данные\n'
-          '• Тип соединения и разделки: стык труб, стык листов или угловое; V, half V, double V, compound V или квадрат.\n'
+          '• Тип соединения и разделки: стык труб, стык листов или угловое; V-образная разделка, скос одной кромки, X-образная разделка, комбинированная V-разделка или без скоса кромок.\n'
           '• Количество одинаковых швов.\n'
           '• Длина шва (мм, на деталь) для листов или наружный диаметр трубы (мм): длина = π × OD × количество.\n'
           '• Толщина, зазор, притупление (мм); угол скоса (град) указывается на одну сторону. Для compound V нужны также угол α, угол β и высота излома h.\n'
@@ -401,7 +401,7 @@ const _ru = GuideCopy(
           '• Q = k × U × I × 60 / (скорость сварки × 1000)\n'
           '• U в вольтах, I в амперах, скорость в мм/мин.\n'
           '• Тепловой КПД дуги k (EN 1011-1): SMAW 0,8, GMAW/MAG 0,8, SAW 1,0.\n\n'
-          'Важно: скорость в мм в минуту, а не в секунду. При многопроходной сварке берите скорость оцениваемого прохода.',
+          'Важно: скорость в мм в минуту, а не в секунду. При многопроходной сварке берите скорость оцениваемого прохода. GTAW/TIG (k = 0,6, EN 1011-1) в списке процессов отсутствует: выберите «Ввести напрямую» и посчитайте Q с k = 0,6.',
     ),
     'library': GuideEntry(
       'Библиотека материалов',
@@ -414,7 +414,7 @@ const _ru = GuideCopy(
       'Пресеты и сохранённые расчёты',
       'Калькулятор расхода предлагает стартовые шаблоны (например, труба из углеродистой стали V, GTAW корень + SMAW заполнение) и позволяет сохранять свои данные как пресет.\n\n'
           '• «Сохранённые расчёты» — список пресетов: открыть, переименовать, удалить.\n'
-          '• У гостя пресеты остаются на устройстве. С аккаунтом они синхронизируются по e-mail и видны на других устройствах.\n'
+          '• Сохранённые расчёты принадлежат аккаунту: у гостя список пуст, а при сохранении запрашивается e-mail. После входа пресеты синхронизируются по e-mail и видны на каждом устройстве с этим e-mail.\n'
           '• «Сохранённые отчёты» — список экспортированных PDF.',
     ),
     'pdf': GuideEntry(
@@ -440,7 +440,7 @@ const _ru = GuideCopy(
     ),
     'account': GuideEntry(
       'Аккаунт и удаление данных',
-      'Паролей нет: аккаунт определяется вашим e-mail. Выход убирает аккаунт с этого устройства, но локальные сохранённые расчёты остаются.\n\n'
+      'Паролей нет: аккаунт определяется вашим e-mail. Выход убирает аккаунт с этого устройства; сохранённые расчёты скрыты, пока вы снова не войдёте с тем же e-mail.\n\n'
           '«Удалить аккаунт» (экран «Аккаунт») безвозвратно удаляет e-mail и сохранённые расчёты с устройства и с наших серверов. Это нельзя отменить, и подписка Apple не отменяется.\n\n'
           'При входе используется анонимный идентификатор, полученный из e-mail (односторонний хеш, а не сам e-mail), чтобы покупка Premium следовала за аккаунтом.',
     ),
@@ -536,7 +536,7 @@ const _de = GuideCopy(
           '• Q = k × U × I × 60 / (Schweißgeschwindigkeit × 1000)\n'
           '• U in Volt, I in Ampere, Geschwindigkeit in mm/min.\n'
           '• Thermischer Lichtbogenwirkungsgrad k (EN 1011-1): SMAW 0,8, GMAW/MAG 0,8, SAW 1,0.\n\n'
-          'Fallstricke: Die Geschwindigkeit ist in mm pro Minute, nicht pro Sekunde. Bei Mehrlagenschweißung die Geschwindigkeit der betrachteten Lage verwenden.',
+          'Fallstricke: Die Geschwindigkeit ist in mm pro Minute, nicht pro Sekunde. Bei Mehrlagenschweißung die Geschwindigkeit der betrachteten Lage verwenden. GTAW/WIG (k = 0,6, EN 1011-1) ist keine Verfahrensoption: „Direkt eingeben“ wählen und Q mit k = 0,6 selbst berechnen.',
     ),
     'library': GuideEntry(
       'Werkstoffbibliothek',
@@ -549,7 +549,7 @@ const _de = GuideCopy(
       'Vorgaben und gespeicherte Berechnungen',
       'Der Verbrauchsrechner bietet Startvorlagen (z. B. Kohlenstoffstahl-Rohr Einzel-V, GTAW-Wurzel + SMAW-Füllung) und speichert Ihre Eingaben als Vorgabe.\n\n'
           '• „Gespeicherte Berechnungen“ listet Ihre Vorgaben: öffnen, umbenennen, löschen.\n'
-          '• Als Gast bleiben Vorgaben auf dem Gerät. Mit Konto werden sie per E-Mail synchronisiert und erscheinen auf Ihren anderen Geräten.\n'
+          '• Gespeicherte Berechnungen gehören zu einem Konto: Als Gast bleibt die Liste leer und das Speichern fragt nach Ihrer E-Mail. Nach der Anmeldung werden Vorgaben per E-Mail synchronisiert und erscheinen auf jedem Gerät mit dieser E-Mail.\n'
           '• „Gespeicherte Berichte“ listet die exportierten PDF-Berichte.',
     ),
     'pdf': GuideEntry(
@@ -575,7 +575,7 @@ const _de = GuideCopy(
     ),
     'account': GuideEntry(
       'Konto und Datenlöschung',
-      'Es gibt keine Passwörter: Ihre E-Mail identifiziert Ihr Konto. Abmelden entfernt das Konto von diesem Gerät, lokal gespeicherte Berechnungen bleiben.\n\n'
+      'Es gibt keine Passwörter: Ihre E-Mail identifiziert Ihr Konto. Abmelden entfernt das Konto von diesem Gerät; gespeicherte Berechnungen sind erst nach erneuter Anmeldung mit derselben E-Mail wieder sichtbar.\n\n'
           '„Konto löschen“ (Kontobildschirm) entfernt E-Mail und gespeicherte Berechnungen dauerhaft von diesem Gerät und von unseren Servern. Das ist unumkehrbar und kündigt kein Apple-Abonnement.\n\n'
           'Bei der Anmeldung wird eine aus Ihrer E-Mail abgeleitete anonyme Kennung (Einweg-Hash, nicht die E-Mail) genutzt, damit Ihr Premium-Kauf Ihrem Konto folgen kann.',
     ),
@@ -671,7 +671,7 @@ const _hi = GuideCopy(
           '• Q = k × U × I × 60 / (यात्रा गति × 1000)\n'
           '• U वोल्ट में, I एम्पीयर में, यात्रा गति मिमी/मिनट में।\n'
           '• आर्क थर्मल दक्षता k (EN 1011-1): SMAW 0.8, GMAW/MAG 0.8, SAW 1.0।\n\n'
-          'सावधानी: गति मिमी प्रति मिनट है, प्रति सेकंड नहीं। मल्टी-पास वेल्ड में उस पास की गति लें जिसे आँक रहे हैं।',
+          'सावधानी: गति मिमी प्रति मिनट है, प्रति सेकंड नहीं। मल्टी-पास वेल्ड में उस पास की गति लें जिसे आँक रहे हैं। GTAW/TIG (k = 0.6, EN 1011-1) प्रक्रिया विकल्प में नहीं है: "सीधे दर्ज करें" चुनें और Q को k = 0.6 से स्वयं निकालें।',
     ),
     'library': GuideEntry(
       'मटेरियल लाइब्रेरी',
@@ -684,7 +684,7 @@ const _hi = GuideCopy(
       'प्रीसेट और सहेजी गणनाएँ',
       'फिलर कैलकुलेटर स्टार्टर टेम्पलेट देता है (जैसे कार्बन स्टील पाइप सिंगल V, GTAW रूट + SMAW फ़िल) और आपके इनपुट को प्रीसेट के रूप में सहेजने देता है।\n\n'
           '• "सहेजी गणनाएँ" आपके प्रीसेट दिखाती है: खोलें, नाम बदलें या हटाएँ।\n'
-          '• गेस्ट के प्रीसेट डिवाइस पर रहते हैं। खाते के साथ वे ईमेल से सिंक होकर दूसरे डिवाइस पर भी दिखते हैं।\n'
+          '• सहेजी गणनाएँ खाते की होती हैं: गेस्ट के लिए सूची खाली रहती है और सहेजने पर ईमेल माँगा जाता है। साइन-इन के बाद प्रीसेट ईमेल से सिंक होते हैं और उसी ईमेल वाले हर डिवाइस पर दिखते हैं।\n'
           '• "सहेजी रिपोर्ट" आपके एक्सपोर्ट किए PDF दिखाती है।',
     ),
     'pdf': GuideEntry(
@@ -710,7 +710,7 @@ const _hi = GuideCopy(
     ),
     'account': GuideEntry(
       'खाता और डेटा हटाना',
-      'कोई पासवर्ड नहीं है: आपका ईमेल आपके खाते की पहचान है। साइन-आउट खाते को इस डिवाइस से हटाता है, स्थानीय सहेजी गणनाएँ बनी रहती हैं।\n\n'
+      'कोई पासवर्ड नहीं है: आपका ईमेल आपके खाते की पहचान है। साइन-आउट खाते को इस डिवाइस से हटाता है; सहेजी गणनाएँ उसी ईमेल से दोबारा साइन-इन करने तक छिपी रहती हैं।\n\n'
           'खाता हटाएँ (खाता स्क्रीन) आपका ईमेल और सहेजी गणनाएँ इस डिवाइस और हमारे सर्वर से स्थायी रूप से हटा देता है। इसे पलटा नहीं जा सकता और यह Apple सदस्यता रद्द नहीं करता।\n\n'
           'साइन-इन करने पर आपके ईमेल से बनी एक अनाम पहचान (वन-वे हैश, ईमेल नहीं) उपयोग होती है ताकि आपकी Premium खरीद आपके खाते के साथ चल सके।',
     ),

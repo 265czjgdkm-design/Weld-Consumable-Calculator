@@ -21,6 +21,7 @@ Future<void> showPremiumPaywall(
   required EntitlementService entitlementService,
   required ValueChanged<bool> onEntitlementChanged,
   ValueChanged<String>? onMessage,
+  bool offerAccountLink = true,
 }) {
   final messenger = ScaffoldMessenger.maybeOf(context);
   final navigator = Navigator.of(context);
@@ -37,27 +38,30 @@ Future<void> showPremiumPaywall(
           onMessage ??
           (message) =>
               messenger?.showSnackBar(SnackBar(content: Text(message))),
-      onPurchased: () async {
-        // A guest who just bought is offered (never forced) to tie Premium
-        // to an email; queued behind the "unlocked" snackbar.
-        if (await const UserAccountStore().getEmail() != null) return;
-        messenger?.showSnackBar(
-          SnackBar(
-            content: Text(copy.linkPromptText),
-            duration: const Duration(seconds: 12),
-            showCloseIcon: true,
-            action: SnackBarAction(
-              label: copy.linkPromptAction,
-              onPressed: () => navigator.push(
-                MaterialPageRoute(
-                  builder: (_) =>
-                      AccountScreen(entitlementService: entitlementService),
+      onPurchased: !offerAccountLink
+          ? null
+          : () async {
+              // A guest who just bought is offered (never forced) to tie Premium
+              // to an email; queued behind the "unlocked" snackbar.
+              if (await const UserAccountStore().getEmail() != null) return;
+              messenger?.showSnackBar(
+                SnackBar(
+                  content: Text(copy.linkPromptText),
+                  duration: const Duration(seconds: 12),
+                  showCloseIcon: true,
+                  action: SnackBarAction(
+                    label: copy.linkPromptAction,
+                    onPressed: () => navigator.push(
+                      MaterialPageRoute(
+                        builder: (_) => AccountScreen(
+                          entitlementService: entitlementService,
+                        ),
+                      ),
+                    ),
+                  ),
                 ),
-              ),
-            ),
-          ),
-        );
-      },
+              );
+            },
     ),
   );
 }
