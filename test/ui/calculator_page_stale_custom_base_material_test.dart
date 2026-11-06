@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:weld_consumable_calculator/ui/widgets/searchable_picker.dart';
 import 'package:weld_consumable_calculator/l10n/app_locale.dart';
 import 'package:weld_consumable_calculator/l10n/app_locale_scope.dart';
 import 'package:weld_consumable_calculator/models/base_material_selection.dart';
@@ -122,66 +123,63 @@ void main() {
     },
   );
 
-  testWidgets(
-    'a deleted custom base-material snapshot stays selectable in the '
-    'dropdown after picking "Not specified", for the life of this screen '
-    'instance',
-    (tester) async {
-      SharedPreferences.setMockInitialValues({
-        'custom_base_materials_v1': jsonEncode(const []),
-      });
-      final originalPhysicalSize = tester.view.physicalSize;
-      final originalDevicePixelRatio = tester.view.devicePixelRatio;
-      tester.view.physicalSize = const Size(1400, 3000);
-      tester.view.devicePixelRatio = 1.0;
-      addTearDown(() {
-        tester.view.physicalSize = originalPhysicalSize;
-        tester.view.devicePixelRatio = originalDevicePixelRatio;
-      });
+  testWidgets('a deleted custom base-material snapshot stays selectable in the '
+      'dropdown after picking "Not specified", for the life of this screen '
+      'instance', (tester) async {
+    SharedPreferences.setMockInitialValues({
+      'custom_base_materials_v1': jsonEncode(const []),
+    });
+    final originalPhysicalSize = tester.view.physicalSize;
+    final originalDevicePixelRatio = tester.view.devicePixelRatio;
+    tester.view.physicalSize = const Size(1400, 3000);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(() {
+      tester.view.physicalSize = originalPhysicalSize;
+      tester.view.devicePixelRatio = originalDevicePixelRatio;
+    });
 
-      await tester.pumpWidget(
-        AppLocaleScope(
-          locale: AppLocale(),
-          child: MaterialApp(
-            home: CalculatorPage(
-              presetToLoad: _presetWithCustomBaseMaterial(_savedMaterial),
-            ),
+    await tester.pumpWidget(
+      AppLocaleScope(
+        locale: AppLocale(),
+        child: MaterialApp(
+          home: CalculatorPage(
+            presetToLoad: _presetWithCustomBaseMaterial(_savedMaterial),
           ),
         ),
-      );
-      await tester.pumpAndSettle();
+      ),
+    );
+    await tester.pumpAndSettle();
 
-      expect(find.textContaining('as saved'), findsWidgets);
+    expect(find.textContaining('as saved'), findsWidgets);
 
-      final dropdownFinder = find.byWidgetPredicate(
-        (widget) => widget is DropdownButtonFormField<BaseMaterialSelection?>,
-      );
+    final dropdownFinder = find.byWidgetPredicate(
+      (widget) => widget is PickerField && widget.label == 'Base Material',
+    );
 
-      // Switch to "Not specified" to compare against.
-      await tester.ensureVisible(dropdownFinder);
-      await tester.tap(dropdownFinder);
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('Not specified').last);
-      await tester.pumpAndSettle();
+    // Switch to "Not specified" to compare against.
+    await tester.ensureVisible(dropdownFinder);
+    await tester.tap(dropdownFinder);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Not specified').last);
+    await tester.pumpAndSettle();
 
-      // The "(as saved)" snapshot must still be offered, not silently
-      // dropped once it stopped being the current selection.
-      await tester.ensureVisible(dropdownFinder);
-      await tester.tap(dropdownFinder);
-      await tester.pumpAndSettle();
-      expect(find.textContaining('as saved'), findsWidgets);
+    // The "(as saved)" snapshot must still be offered, not silently
+    // dropped once it stopped being the current selection.
+    await tester.ensureVisible(dropdownFinder);
+    await tester.tap(dropdownFinder);
+    await tester.pumpAndSettle();
+    expect(find.textContaining('as saved'), findsWidgets);
 
-      // Reselecting it must work, restoring the original custom material.
-      await tester.tap(find.textContaining('as saved').last);
-      await tester.pumpAndSettle();
+    // Reselecting it must work, restoring the original custom material.
+    await tester.tap(find.textContaining('as saved').last);
+    await tester.pumpAndSettle();
 
-      expect(tester.takeException(), isNull);
-      expect(
-        find.textContaining('Selected base material: Acme S355 (S355J2)'),
-        findsOneWidget,
-      );
-    },
-  );
+    expect(tester.takeException(), isNull);
+    expect(
+      find.textContaining('Selected base material: Acme S355 (S355J2)'),
+      findsOneWidget,
+    );
+  });
 
   testWidgets(
     'opening a saved calculation with a custom base material renders the '
@@ -257,7 +255,7 @@ void main() {
       await tester.pumpAndSettle();
 
       final dropdownFinder = find.byWidgetPredicate(
-        (widget) => widget is DropdownButtonFormField<BaseMaterialSelection?>,
+        (widget) => widget is PickerField && widget.label == 'Base Material',
       );
       await tester.ensureVisible(dropdownFinder);
       await tester.tap(dropdownFinder);

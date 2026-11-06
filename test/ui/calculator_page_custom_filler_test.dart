@@ -4,8 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:weld_consumable_calculator/ui/widgets/searchable_picker.dart';
 import 'package:weld_consumable_calculator/app.dart';
-import 'package:weld_consumable_calculator/models/consumable_selection.dart';
 import 'package:weld_consumable_calculator/models/custom_material_models.dart';
 import 'package:weld_consumable_calculator/models/weld_models.dart';
 
@@ -78,15 +78,16 @@ void main() {
 
       await tester.tap(
         find.byWidgetPredicate(
-          (widget) => widget is DropdownButtonFormField<ConsumableSelection>,
+          (widget) =>
+              widget is PickerField && widget.label == 'AWS Classification',
         ),
       );
       await tester.pumpAndSettle();
 
       expect(find.text('My Materials'), findsOneWidget);
-      expect(find.text('Acme XR-70 (Carbon Steel)'), findsWidgets);
+      expect(find.text('Acme XR-70'), findsWidgets);
 
-      await tester.tap(find.text('Acme XR-70 (Carbon Steel)').last);
+      await tester.tap(find.text('Acme XR-70').last);
       await tester.pumpAndSettle();
 
       final densityField = tester.widget<TextField>(

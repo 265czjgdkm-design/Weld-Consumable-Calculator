@@ -24,19 +24,22 @@ class HeatInputField extends StatefulWidget {
   final double? initialKJPerMm;
 
   @override
-  State<HeatInputField> createState() => _HeatInputFieldState();
+  State<HeatInputField> createState() => HeatInputFieldState();
 }
 
-class _HeatInputFieldState extends State<HeatInputField> {
+class HeatInputFieldState extends State<HeatInputField> {
   late final TextEditingController _directController = TextEditingController(
     text: widget.initialKJPerMm?.toString() ?? '',
   );
-  late final TextEditingController _voltageController =
-      TextEditingController();
-  late final TextEditingController _currentController =
-      TextEditingController();
+  late final TextEditingController _voltageController = TextEditingController();
+  late final TextEditingController _currentController = TextEditingController();
   late final TextEditingController _travelSpeedController =
       TextEditingController();
+
+  final FocusNode _directFocus = FocusNode();
+  final FocusNode _voltageFocus = FocusNode();
+  final FocusNode _currentFocus = FocusNode();
+  final FocusNode _travelSpeedFocus = FocusNode();
 
   bool _arcParamsMode = false;
   ArcProcess _process = ArcProcess.smaw;
@@ -53,18 +56,22 @@ class _HeatInputFieldState extends State<HeatInputField> {
     // widget must listen to its controllers directly to notify the parent
     // as the user types -- without this, HeatInputField only ever reports
     // a value at mode-switch time, never as text is entered.
-    _directController.addListener(_emitDirect);
-    _voltageController.addListener(_emitFromArcParams);
-    _currentController.addListener(_emitFromArcParams);
-    _travelSpeedController.addListener(_emitFromArcParams);
+    _directController.addListener(_onDirectChanged);
+    _voltageController.addListener(_onArcChanged);
+    _currentController.addListener(_onArcChanged);
+    _travelSpeedController.addListener(_onArcChanged);
   }
 
   @override
   void dispose() {
-    _directController.removeListener(_emitDirect);
-    _voltageController.removeListener(_emitFromArcParams);
-    _currentController.removeListener(_emitFromArcParams);
-    _travelSpeedController.removeListener(_emitFromArcParams);
+    _directController.removeListener(_onDirectChanged);
+    _voltageController.removeListener(_onArcChanged);
+    _currentController.removeListener(_onArcChanged);
+    _travelSpeedController.removeListener(_onArcChanged);
+    _directFocus.dispose();
+    _voltageFocus.dispose();
+    _currentFocus.dispose();
+    _travelSpeedFocus.dispose();
     _directController.dispose();
     _voltageController.dispose();
     _currentController.dispose();
@@ -72,13 +79,37 @@ class _HeatInputFieldState extends State<HeatInputField> {
     super.dispose();
   }
 
+  // Controllers also notify on focus/selection changes; reacting to those
+  // would wipe the "required" error set when Calculate focuses a field.
+  String? _lastDirectText;
+  String? _lastArcSignature;
+
+  void _onDirectChanged() {
+    if (_lastDirectText == _directController.text) return;
+    _emitDirect();
+  }
+
+  void _onArcChanged() {
+    final signature =
+        '${_voltageController.text}|${_currentController.text}|'
+        '${_travelSpeedController.text}';
+    if (_lastArcSignature == signature) return;
+    _emitFromArcParams();
+  }
+
   void _emitDirect() {
+    _lastDirectText = _directController.text;
     final result = parseOptionalNumberField(_directController.text);
-    setState(() => _directError = result.invalid ? _invalidNumberLabel() : null);
+    setState(
+      () => _directError = result.invalid ? _invalidNumberLabel() : null,
+    );
     widget.onChanged(result.invalid ? null : result.value);
   }
 
   void _emitFromArcParams() {
+    _lastArcSignature =
+        '${_voltageController.text}|${_currentController.text}|'
+        '${_travelSpeedController.text}';
     final voltage = parseOptionalNumberField(_voltageController.text);
     final current = parseOptionalNumberField(_currentController.text);
     final travelSpeed = parseOptionalNumberField(_travelSpeedController.text);
@@ -105,15 +136,59 @@ class _HeatInputFieldState extends State<HeatInputField> {
     widget.onChanged(computed);
   }
 
+  FocusNode get firstFocus => _arcParamsMode ? _voltageFocus : _directFocus;
+
+  /// Called by the parent's Calculate: flags every empty/zero input of the
+  /// active mode as required and returns them (focus node + label) in
+  /// on-screen order, or an empty list if the heat input is already usable.
+  List<({FocusNode node, String label})> markRequiredMissing() {
+    final strings = AppLocaleScope.stringsOf(context);
+    final missing = <({FocusNode node, String label})>[];
+    if (!_arcParamsMode) {
+      if (_directController.text.trim().isEmpty) {
+        setState(() => _directError = strings.fieldRequiredShort);
+        missing.add((node: _directFocus, label: strings.heatInputQLabel));
+      }
+      return missing;
+    }
+    String? error(TextEditingController c) =>
+        c.text.trim().isEmpty ? strings.fieldRequiredShort : null;
+    final voltage = error(_voltageController);
+    final current = error(_currentController);
+    final travel = error(_travelSpeedController);
+    setState(() {
+      _voltageError = voltage ?? _voltageError;
+      _currentError = current ?? _currentError;
+      _travelSpeedError = travel ?? _travelSpeedError;
+    });
+    if (voltage != null) {
+      missing.add((node: _voltageFocus, label: strings.heatInputVoltageLabel));
+    }
+    if (current != null) {
+      missing.add((node: _currentFocus, label: strings.heatInputCurrentLabel));
+    }
+    if (travel != null) {
+      missing.add((
+        node: _travelSpeedFocus,
+        label: strings.heatInputTravelSpeedLabel,
+      ));
+    }
+    return missing;
+  }
+
   String _invalidNumberLabel() =>
       AppLocaleScope.stringsOf(context).materialFieldInvalidNumber;
 
   double? get _computedQ {
     final voltage = parseOptionalNumberField(_voltageController.text).value;
     final current = parseOptionalNumberField(_currentController.text).value;
-    final travelSpeed =
-        parseOptionalNumberField(_travelSpeedController.text).value;
-    if (voltage == null || current == null || travelSpeed == null || travelSpeed == 0) {
+    final travelSpeed = parseOptionalNumberField(
+      _travelSpeedController.text,
+    ).value;
+    if (voltage == null ||
+        current == null ||
+        travelSpeed == null ||
+        travelSpeed == 0) {
       return null;
     }
     return computeHeatInputKJPerMm(
@@ -157,6 +232,7 @@ class _HeatInputFieldState extends State<HeatInputField> {
         if (!_arcParamsMode)
           OptionalNumberField(
             controller: _directController,
+            focusNode: _directFocus,
             label: strings.heatInputQLabel,
             errorText: _directError,
           )
@@ -164,7 +240,9 @@ class _HeatInputFieldState extends State<HeatInputField> {
           DropdownButtonFormField<ArcProcess>(
             initialValue: _process,
             isExpanded: true,
-            decoration: InputDecoration(labelText: strings.heatInputProcessLabel),
+            decoration: InputDecoration(
+              labelText: strings.heatInputProcessLabel,
+            ),
             items: [
               DropdownMenuItem(
                 value: ArcProcess.saw,
@@ -192,18 +270,21 @@ class _HeatInputFieldState extends State<HeatInputField> {
             children: [
               OptionalNumberField(
                 controller: _voltageController,
+                focusNode: _voltageFocus,
                 label: strings.heatInputVoltageLabel,
                 errorText: _voltageError,
                 width: 150,
               ),
               OptionalNumberField(
                 controller: _currentController,
+                focusNode: _currentFocus,
                 label: strings.heatInputCurrentLabel,
                 errorText: _currentError,
                 width: 150,
               ),
               OptionalNumberField(
                 controller: _travelSpeedController,
+                focusNode: _travelSpeedFocus,
                 label: strings.heatInputTravelSpeedLabel,
                 errorText: _travelSpeedError,
                 width: 190,
@@ -216,9 +297,9 @@ class _HeatInputFieldState extends State<HeatInputField> {
               '{value}',
               _computedQ?.toStringAsFixed(2) ?? '—',
             ),
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              fontWeight: FontWeight.w700,
-            ),
+            style: Theme.of(
+              context,
+            ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w700),
           ),
           const SizedBox(height: 12),
           PanelNote(
@@ -263,4 +344,3 @@ class _ModeChip extends StatelessWidget {
     );
   }
 }
-

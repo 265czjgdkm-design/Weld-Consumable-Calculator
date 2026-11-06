@@ -31,6 +31,7 @@ class OptionalNumberField extends StatelessWidget {
     this.errorText,
     this.width,
     this.onChanged,
+    this.focusNode,
   });
 
   final TextEditingController controller;
@@ -38,11 +39,13 @@ class OptionalNumberField extends StatelessWidget {
   final String? errorText;
   final double? width;
   final ValueChanged<String>? onChanged;
+  final FocusNode? focusNode;
 
   @override
   Widget build(BuildContext context) {
     final field = TextField(
       controller: controller,
+      focusNode: focusNode,
       keyboardType: const TextInputType.numberWithOptions(decimal: true),
       decoration: InputDecoration(labelText: label, errorText: errorText),
       onChanged: onChanged,

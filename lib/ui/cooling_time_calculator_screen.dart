@@ -4,6 +4,7 @@ import '../core/en1011_formulas.dart';
 import '../l10n/app_locale_scope.dart';
 import '../l10n/strings.dart';
 import 'calculator_page/calculator_page_widgets.dart';
+import 'widgets/field_reveal.dart';
 import 'widgets/formula_breakdown_card.dart';
 import 'widgets/heat_input_field.dart';
 import 'widgets/optional_number_field.dart';
@@ -56,6 +57,9 @@ class _CoolingTimeCalculatorScreenState
     text: widget.initialPreheatTempC?.round().toString() ?? '',
   );
   final TextEditingController _thicknessController = TextEditingController();
+  final FocusNode _t0Focus = FocusNode();
+  final FocusNode _thicknessFocus = FocusNode();
+  final GlobalKey<HeatInputFieldState> _heatInputKey = GlobalKey();
 
   double? _heatInputKJPerMm;
   CoolingJointType _jointType = CoolingJointType.runOnPlate;
@@ -70,6 +74,8 @@ class _CoolingTimeCalculatorScreenState
   void dispose() {
     _t0Controller.dispose();
     _thicknessController.dispose();
+    _t0Focus.dispose();
+    _thicknessFocus.dispose();
     super.dispose();
   }
 
@@ -79,26 +85,52 @@ class _CoolingTimeCalculatorScreenState
     final t0 = parseOptionalNumberField(_t0Controller.text);
     final thickness = parseOptionalNumberField(_thicknessController.text);
 
-    final t0Error = t0.invalid || t0.value == null
-        ? strings.materialFieldInvalidNumber
+    final t0Error = t0.value == null
+        ? (t0.invalid
+              ? strings.materialFieldInvalidNumber
+              : strings.fieldRequiredShort)
         : (!isPreheatOrInterpassTempValid(t0.value!)
               ? strings.coolingT0InvalidError
               : (t0.value! < _minT0C ? strings.coolingT0BelowMinError : null));
-    final thicknessError = thickness.invalid || thickness.value == null
-        ? strings.materialFieldInvalidNumber
+    final thicknessError = thickness.value == null
+        ? (thickness.invalid
+              ? strings.materialFieldInvalidNumber
+              : strings.fieldRequiredShort)
         : (thickness.value! <= 0 ? strings.materialFieldOutOfRange : null);
-    final heatInputError = _heatInputKJPerMm == null
+    final heatInputMissing = _heatInputKJPerMm == null
+        ? (_heatInputKey.currentState?.markRequiredMissing() ??
+              const <({FocusNode node, String label})>[])
+        : const <({FocusNode node, String label})>[];
+    final heatInputError = _heatInputKJPerMm == null && heatInputMissing.isEmpty
         ? strings.materialFieldInvalidNumber
         : null;
 
-    final invalid = t0Error != null || thicknessError != null || heatInputError != null;
+    final invalid =
+        t0Error != null || thicknessError != null || _heatInputKJPerMm == null;
 
     setState(() {
       _t0Error = t0Error;
       _thicknessError = thicknessError;
       _heatInputError = heatInputError;
     });
-    if (invalid) return;
+    if (invalid) {
+      final problems = <({FocusNode node, String label})>[
+        if (t0Error != null) (node: _t0Focus, label: strings.coolingT0Label),
+        ...heatInputMissing,
+        if (heatInputMissing.isEmpty && _heatInputKJPerMm == null)
+          (
+            node: _heatInputKey.currentState!.firstFocus,
+            label: strings.heatInputQLabel,
+          ),
+        if (thicknessError != null)
+          (node: _thicknessFocus, label: strings.coolingThicknessLabel),
+      ];
+      revealAndFocus(problems.first.node);
+      showMissingFieldsSnack(context, strings, [
+        for (final p in problems) p.label,
+      ]);
+      return;
+    }
 
     final dt = computeTransitionThicknessMm(
       t0: t0.value!,
@@ -182,6 +214,7 @@ class _CoolingTimeCalculatorScreenState
                         controller: _t0Controller,
                         label: strings.coolingT0Label,
                         errorText: _t0Error,
+                        focusNode: _t0Focus,
                       ),
                     ),
                     const SizedBox(height: 18),
@@ -193,6 +226,7 @@ class _CoolingTimeCalculatorScreenState
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           HeatInputField(
+                            key: _heatInputKey,
                             onChanged: (value) =>
                                 setState(() => _heatInputKJPerMm = value),
                           ),
@@ -201,7 +235,9 @@ class _CoolingTimeCalculatorScreenState
                             Text(
                               _heatInputError!,
                               style: Theme.of(context).textTheme.bodySmall
-                                  ?.copyWith(color: Theme.of(context).colorScheme.error),
+                                  ?.copyWith(
+                                    color: Theme.of(context).colorScheme.error,
+                                  ),
                             ),
                           ],
                         ],
@@ -252,6 +288,7 @@ class _CoolingTimeCalculatorScreenState
                             controller: _thicknessController,
                             label: strings.coolingThicknessLabel,
                             errorText: _thicknessError,
+                            focusNode: _thicknessFocus,
                           ),
                         ],
                       ),
@@ -322,9 +359,9 @@ class _CoolingResultView extends StatelessWidget {
             children: [
               Text(
                 strings.coolingResultLabel,
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: Colors.white70,
-                ),
+                style: Theme.of(
+                  context,
+                ).textTheme.bodyMedium?.copyWith(color: Colors.white70),
               ),
               const SizedBox(height: 6),
               Text(
@@ -342,9 +379,9 @@ class _CoolingResultView extends StatelessWidget {
           strings.coolingRegimeExplanation
               .replaceFirst('{regime}', regimeLabel)
               .replaceFirst('{dt}', result.dt.toStringAsFixed(1)),
-          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-            color: const Color(0xFF607482),
-          ),
+          style: Theme.of(
+            context,
+          ).textTheme.bodySmall?.copyWith(color: const Color(0xFF607482)),
         ),
         const SizedBox(height: 16),
         for (final warning in warnings) ...[
@@ -358,15 +395,19 @@ class _CoolingResultView extends StatelessWidget {
               : 't8/5 = (6700−5·T0)·Q·[1/(500−T0)−1/(800−T0)]·F3',
           items: [
             (label: 'T0', value: '${result.t0.toStringAsFixed(1)} °C'),
-            (label: 'Q', value: '${result.heatInputKJPerMm.toStringAsFixed(2)} kJ/mm'),
+            (
+              label: 'Q',
+              value: '${result.heatInputKJPerMm.toStringAsFixed(2)} kJ/mm',
+            ),
             (label: 'Regime', value: regimeLabel),
             (label: 'dt', value: '${result.dt.toStringAsFixed(1)} mm'),
             (
               label: result.regime == CoolingRegime.twoDThinPlate ? 'F2' : 'F3',
-              value: (result.regime == CoolingRegime.twoDThinPlate
-                      ? result.f2
-                      : result.f3)
-                  .toStringAsFixed(2),
+              value:
+                  (result.regime == CoolingRegime.twoDThinPlate
+                          ? result.f2
+                          : result.f3)
+                      .toStringAsFixed(2),
             ),
             (label: 't8/5', value: '${result.t85.toStringAsFixed(1)} s'),
           ],

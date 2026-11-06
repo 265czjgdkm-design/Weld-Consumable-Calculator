@@ -5,13 +5,16 @@ import 'package:flutter/material.dart';
 import '../core/en1011_formulas.dart';
 import '../l10n/app_locale_scope.dart';
 import '../l10n/strings.dart';
+import '../data/base_material_catalog.dart';
 import '../models/custom_material_models.dart';
 import '../services/custom_base_material_store.dart';
 import 'calculator_page/calculator_page_widgets.dart';
 import 'cooling_time_calculator_screen.dart';
+import 'widgets/field_reveal.dart';
 import 'widgets/formula_breakdown_card.dart';
 import 'widgets/heat_input_field.dart';
 import 'widgets/optional_number_field.dart';
+import 'widgets/searchable_picker.dart';
 
 /// EN 1011-2 Annex C.3 (Method B) preheat temperature calculator. Lives
 /// standalone -- no PDF export or saved-history in v1 (see the
@@ -115,14 +118,25 @@ class _PreheatCalculatorScreenState extends State<PreheatCalculatorScreen> {
   late final Map<String, TextEditingController> _elementControllers = {
     for (final key in _elementKeys) key: TextEditingController(),
   };
-  final TextEditingController _weldMetalCetController =
-      TextEditingController();
+  final TextEditingController _weldMetalCetController = TextEditingController();
   final TextEditingController _thicknessController = TextEditingController();
   final TextEditingController _hdController = TextEditingController();
   final TextEditingController _yieldController = TextEditingController();
 
   List<CustomBaseMaterial> _libraryMaterials = const [];
-  CustomBaseMaterial? _selectedLibraryMaterial;
+  // Name of the material whose values were last loaded into the composition
+  // fields, and whether the user has typed over them since.
+  String? _pickedMaterialName;
+  bool _compositionEdited = false;
+
+  late final Map<String, FocusNode> _elementFocus = {
+    for (final key in _elementKeys) key: FocusNode(),
+  };
+  final FocusNode _weldMetalCetFocus = FocusNode();
+  final FocusNode _thicknessFocus = FocusNode();
+  final FocusNode _hdFocus = FocusNode();
+  final FocusNode _yieldFocus = FocusNode();
+  final GlobalKey<HeatInputFieldState> _heatInputKey = GlobalKey();
   double? _heatInputKJPerMm;
 
   // Set at load time from the picked material and kept around independently
@@ -137,12 +151,6 @@ class _PreheatCalculatorScreenState extends State<PreheatCalculatorScreen> {
   // Pcm's override is cleared on any composition edit via
   // _invalidateLoadedPcmOverride below, so it never goes stale either.
   double? _loadedPcmPercent;
-
-  // Bumped on every load so the dropdown's key changes and it remounts
-  // showing null again -- DropdownButtonFormField's `initialValue` is only
-  // honored on first build, a setState alone won't reset a visibly-tapped
-  // selection back to the hint (see coder learnings, 2026-08-26).
-  int _libraryDropdownResetToken = 0;
 
   Map<String, String?> _elementErrors = const {};
   String? _weldMetalCetError;
@@ -171,19 +179,58 @@ class _PreheatCalculatorScreenState extends State<PreheatCalculatorScreen> {
     _thicknessController.dispose();
     _hdController.dispose();
     _yieldController.dispose();
+    for (final node in _elementFocus.values) {
+      node.dispose();
+    }
+    _weldMetalCetFocus.dispose();
+    _thicknessFocus.dispose();
+    _hdFocus.dispose();
+    _yieldFocus.dispose();
     super.dispose();
   }
 
-  void _loadFromLibrary(CustomBaseMaterial material) {
+  void _loadMaterial(CustomBaseMaterial material) {
     for (final key in _elementKeys) {
       final value = _elementValueOf(material, key);
       _elementControllers[key]!.text = value?.toString() ?? '';
     }
     setState(() {
-      _selectedLibraryMaterial = null;
-      _libraryDropdownResetToken++;
+      _pickedMaterialName = material.name;
+      _compositionEdited = false;
+      _elementErrors = const {};
       _loadedPcmPercent = material.pcmPercent;
     });
+  }
+
+  Future<void> _pickMaterial() async {
+    final strings = AppLocaleScope.stringsOf(context);
+    final catalogByGroup = <String, List<CatalogBaseMaterial>>{};
+    for (final entry in BaseMaterialCatalog.cetReady) {
+      catalogByGroup.putIfAbsent(entry.group, () => []).add(entry);
+    }
+    final options = <PickerOption<CustomBaseMaterial>>[
+      for (final material in _libraryMaterials)
+        PickerOption(
+          value: material,
+          title: material.name,
+          subtitle: material.designation.isEmpty ? null : material.designation,
+          group: strings.calcMyMaterialsHeader,
+        ),
+      for (final group in BaseMaterialCatalog.groupOrder)
+        for (final entry in catalogByGroup[group] ?? const [])
+          PickerOption(
+            value: entry.toMaterial(),
+            title: entry.name,
+            subtitle: '${entry.standard} - ${entry.description}',
+            group: group,
+          ),
+    ];
+    final picked = await showSearchablePicker<CustomBaseMaterial>(
+      context,
+      title: strings.preheatBaseMaterialPickerLabel,
+      options: options,
+    );
+    if (picked != null) _loadMaterial(picked.value);
   }
 
   /// Any edit to a composition field after a library load invalidates the
@@ -191,8 +238,14 @@ class _PreheatCalculatorScreenState extends State<PreheatCalculatorScreen> {
   /// carbon cast) would keep displaying the stale stored Pcm instead of a
   /// value matching what's actually been entered.
   void _invalidateLoadedPcmOverride(String _) {
-    if (_loadedPcmPercent == null) return;
-    setState(() => _loadedPcmPercent = null);
+    if (_loadedPcmPercent == null &&
+        (_compositionEdited || _pickedMaterialName == null)) {
+      return;
+    }
+    setState(() {
+      _loadedPcmPercent = null;
+      _compositionEdited = true;
+    });
   }
 
   void _calculate() {
@@ -220,11 +273,15 @@ class _PreheatCalculatorScreenState extends State<PreheatCalculatorScreen> {
         : (yieldStrength.value != null && yieldStrength.value! <= 0
               ? strings.materialFieldOutOfRange
               : null);
-    final heatInputError = _heatInputKJPerMm == null
+    final heatInputMissing = _heatInputKJPerMm == null
+        ? (_heatInputKey.currentState?.markRequiredMissing() ?? const [])
+        : const <({FocusNode node, String label})>[];
+    final heatInputError = _heatInputKJPerMm == null && heatInputMissing.isEmpty
         ? strings.materialFieldInvalidNumber
         : null;
 
     final invalid =
+        _heatInputKJPerMm == null ||
         elementErrors.isNotEmpty ||
         weldMetalCetError != null ||
         thicknessError != null ||
@@ -240,7 +297,33 @@ class _PreheatCalculatorScreenState extends State<PreheatCalculatorScreen> {
       _yieldError = yieldError;
       _heatInputError = heatInputError;
     });
-    if (invalid) return;
+    if (invalid) {
+      final problems = <({FocusNode node, String label})>[
+        for (final key in _elementKeys)
+          if (elementErrors.containsKey(key))
+            (node: _elementFocus[key]!, label: _elementLabel(strings, key)),
+        if (weldMetalCetError != null)
+          (node: _weldMetalCetFocus, label: strings.preheatWeldMetalCetLabel),
+        if (thicknessError != null)
+          (node: _thicknessFocus, label: strings.preheatThicknessLabel),
+        if (hdError != null) (node: _hdFocus, label: strings.preheatHdLabel),
+        ...heatInputMissing,
+        if (heatInputMissing.isEmpty && _heatInputKJPerMm == null)
+          (
+            node: _heatInputKey.currentState!.firstFocus,
+            label: strings.heatInputQLabel,
+          ),
+        if (yieldError != null)
+          (node: _yieldFocus, label: strings.preheatYieldStrengthLabel),
+      ];
+      if (problems.isNotEmpty) {
+        revealAndFocus(problems.first.node);
+        showMissingFieldsSnack(context, strings, [
+          for (final p in problems) p.label,
+        ]);
+      }
+      return;
+    }
 
     double v(String key) => elementResults[key]!.value ?? 0.0;
     final parentCet = computeCet(
@@ -300,7 +383,8 @@ class _PreheatCalculatorScreenState extends State<PreheatCalculatorScreen> {
         tp: tp,
         parentCet: parentCet,
         designCet: designCet,
-        specialRuleApplied: weldMetalCet.value != null && designCet != parentCet,
+        specialRuleApplied:
+            weldMetalCet.value != null && designCet != parentCet,
         flags: flags,
         cev: cev,
         pcm: pcm,
@@ -361,31 +445,21 @@ class _PreheatCalculatorScreenState extends State<PreheatCalculatorScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          if (_libraryMaterials.isNotEmpty) ...[
-                            DropdownButtonFormField<CustomBaseMaterial>(
-                              key: ValueKey(_libraryDropdownResetToken),
-                              initialValue: _selectedLibraryMaterial,
-                              isExpanded: true,
-                              decoration: InputDecoration(
-                                labelText: strings.preheatLoadFromLibraryLabel,
-                              ),
-                              items: [
-                                for (final material in _libraryMaterials)
-                                  DropdownMenuItem(
-                                    value: material,
-                                    child: Text(
-                                      material.name,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                  ),
-                              ],
-                              onChanged: (value) {
-                                if (value == null) return;
-                                _loadFromLibrary(value);
-                              },
-                            ),
-                            const SizedBox(height: 14),
-                          ],
+                          PickerField(
+                            label: strings.preheatBaseMaterialPickerLabel,
+                            title: _pickedMaterialName == null
+                                ? strings.calcBaseMaterialNotSpecifiedOption
+                                : (_compositionEdited
+                                      ? strings.preheatCustomFromMaterial
+                                            .replaceFirst(
+                                              '{material}',
+                                              _pickedMaterialName!,
+                                            )
+                                      : _pickedMaterialName!),
+                            helper: strings.preheatStandardMaxNote,
+                            onTap: _pickMaterial,
+                          ),
+                          const SizedBox(height: 14),
                           Wrap(
                             spacing: 12,
                             runSpacing: 12,
@@ -395,6 +469,7 @@ class _PreheatCalculatorScreenState extends State<PreheatCalculatorScreen> {
                                   controller: _elementControllers[key]!,
                                   label: _elementLabel(strings, key),
                                   errorText: _elementErrors[key],
+                                  focusNode: _elementFocus[key],
                                   width: 130,
                                   onChanged: _invalidateLoadedPcmOverride,
                                 ),
@@ -410,6 +485,7 @@ class _PreheatCalculatorScreenState extends State<PreheatCalculatorScreen> {
                             controller: _weldMetalCetController,
                             label: strings.preheatWeldMetalCetLabel,
                             errorText: _weldMetalCetError,
+                            focusNode: _weldMetalCetFocus,
                           ),
                         ],
                       ),
@@ -426,15 +502,18 @@ class _PreheatCalculatorScreenState extends State<PreheatCalculatorScreen> {
                             controller: _thicknessController,
                             label: strings.preheatThicknessLabel,
                             errorText: _thicknessError,
+                            focusNode: _thicknessFocus,
                           ),
                           const SizedBox(height: 14),
                           OptionalNumberField(
                             controller: _hdController,
                             label: strings.preheatHdLabel,
                             errorText: _hdError,
+                            focusNode: _hdFocus,
                           ),
                           const SizedBox(height: 14),
                           HeatInputField(
+                            key: _heatInputKey,
                             onChanged: (value) =>
                                 setState(() => _heatInputKJPerMm = value),
                           ),
@@ -443,7 +522,9 @@ class _PreheatCalculatorScreenState extends State<PreheatCalculatorScreen> {
                             Text(
                               _heatInputError!,
                               style: Theme.of(context).textTheme.bodySmall
-                                  ?.copyWith(color: Theme.of(context).colorScheme.error),
+                                  ?.copyWith(
+                                    color: Theme.of(context).colorScheme.error,
+                                  ),
                             ),
                           ],
                           const SizedBox(height: 14),
@@ -451,6 +532,7 @@ class _PreheatCalculatorScreenState extends State<PreheatCalculatorScreen> {
                             controller: _yieldController,
                             label: strings.preheatYieldStrengthLabel,
                             errorText: _yieldError,
+                            focusNode: _yieldFocus,
                           ),
                         ],
                       ),
@@ -505,9 +587,9 @@ class _PreheatResultView extends StatelessWidget {
             children: [
               Text(
                 strings.preheatResultLabel,
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: Colors.white70,
-                ),
+                style: Theme.of(
+                  context,
+                ).textTheme.bodyMedium?.copyWith(color: Colors.white70),
               ),
               const SizedBox(height: 6),
               Text(
@@ -526,9 +608,9 @@ class _PreheatResultView extends StatelessWidget {
                     '{value}',
                     result.tp.toStringAsFixed(1),
                   ),
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: Colors.white54,
-                  ),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodySmall?.copyWith(color: Colors.white54),
                 ),
               ],
             ],
@@ -541,9 +623,9 @@ class _PreheatResultView extends StatelessWidget {
               '{value}',
               result.designCet.toStringAsFixed(3),
             ),
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: const Color(0xFF607482),
-            ),
+            style: Theme.of(
+              context,
+            ).textTheme.bodySmall?.copyWith(color: const Color(0xFF607482)),
           ),
         ],
         const SizedBox(height: 16),
@@ -558,7 +640,8 @@ class _PreheatResultView extends StatelessWidget {
         const SizedBox(height: 16),
         FormulaBreakdownCard(
           title: 'EN 1011-2 Annex C.3 (Method B)',
-          subtitle: 'Tp = 697·CET + 160·tanh(d/35) + 62·HD^0.35 + (53·CET−32)·Q − 328',
+          subtitle:
+              'Tp = 697·CET + 160·tanh(d/35) + 62·HD^0.35 + (53·CET−32)·Q − 328',
           items: [
             (label: 'CET (parent)', value: result.parentCet.toStringAsFixed(3)),
             if (result.specialRuleApplied)
@@ -567,7 +650,10 @@ class _PreheatResultView extends StatelessWidget {
               label: '697×CET',
               value: (697 * result.designCet).toStringAsFixed(1),
             ),
-            (label: '160×tanh(d/35)', value: result.tanhTerm.toStringAsFixed(1)),
+            (
+              label: '160×tanh(d/35)',
+              value: result.tanhTerm.toStringAsFixed(1),
+            ),
             (label: '62×HD^0.35', value: result.hdTerm.toStringAsFixed(1)),
             (label: '(53×CET−32)×Q', value: result.qTerm.toStringAsFixed(1)),
             (label: 'Constant', value: '−328'),
@@ -595,9 +681,9 @@ class _PreheatResultView extends StatelessWidget {
               const SizedBox(height: 4),
               Text(
                 strings.preheatOtherCarbonEquivalentsCaption,
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: const Color(0xFF607482),
-                ),
+                style: Theme.of(
+                  context,
+                ).textTheme.bodySmall?.copyWith(color: const Color(0xFF607482)),
               ),
               const SizedBox(height: 12),
               Text('CEV (IIW) = ${result.cev.toStringAsFixed(3)}%'),
@@ -634,15 +720,21 @@ class _PreheatResultView extends StatelessWidget {
     L10nStrings strings,
   ) {
     return switch (flag) {
-      PreheatRangeFlag.cetOutOfRange => strings.preheatWarningCetOutOfRange
-          .replaceFirst('{value}', result.designCet.toStringAsFixed(3)),
+      PreheatRangeFlag.cetOutOfRange =>
+        strings.preheatWarningCetOutOfRange.replaceFirst(
+          '{value}',
+          result.designCet.toStringAsFixed(3),
+        ),
       PreheatRangeFlag.thicknessOutOfRange =>
         strings.preheatWarningThicknessOutOfRange.replaceFirst(
           '{value}',
           result.thicknessMm.toStringAsFixed(1),
         ),
-      PreheatRangeFlag.hdOutOfRange => strings.preheatWarningHdOutOfRange
-          .replaceFirst('{value}', result.hd.toStringAsFixed(1)),
+      PreheatRangeFlag.hdOutOfRange =>
+        strings.preheatWarningHdOutOfRange.replaceFirst(
+          '{value}',
+          result.hd.toStringAsFixed(1),
+        ),
       PreheatRangeFlag.heatInputOutOfRange =>
         strings.preheatWarningHeatInputOutOfRange.replaceFirst(
           '{value}',
@@ -657,7 +749,10 @@ class _PreheatResultView extends StatelessWidget {
   }
 }
 
-String? _percentFieldError(L10nStrings strings, OptionalNumberParseResult result) {
+String? _percentFieldError(
+  L10nStrings strings,
+  OptionalNumberParseResult result,
+) {
   if (result.invalid) return strings.materialFieldInvalidNumber;
   final value = result.value;
   if (value != null && (value < 0 || value > 100)) {
@@ -666,10 +761,14 @@ String? _percentFieldError(L10nStrings strings, OptionalNumberParseResult result
   return null;
 }
 
-String? _positiveFieldError(L10nStrings strings, OptionalNumberParseResult result) {
-  if (result.invalid || result.value == null) {
-    return strings.materialFieldInvalidNumber;
+String? _positiveFieldError(
+  L10nStrings strings,
+  OptionalNumberParseResult result,
+) {
+  if (result.value == null && !result.invalid) {
+    return strings.fieldRequiredShort;
   }
+  if (result.invalid) return strings.materialFieldInvalidNumber;
   if (result.value! <= 0) return strings.materialFieldOutOfRange;
   return null;
 }
@@ -682,4 +781,5 @@ double _tanh(double x) {
   return (e2x - 1) / (e2x + 1);
 }
 
-double _powFrac(double base, double exponent) => math.pow(base, exponent).toDouble();
+double _powFrac(double base, double exponent) =>
+    math.pow(base, exponent).toDouble();

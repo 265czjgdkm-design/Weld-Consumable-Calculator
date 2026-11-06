@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:weld_consumable_calculator/ui/widgets/searchable_picker.dart';
 import 'package:weld_consumable_calculator/l10n/app_locale.dart';
 import 'package:weld_consumable_calculator/l10n/app_locale_scope.dart';
 import 'package:weld_consumable_calculator/models/consumable_selection.dart';
@@ -161,18 +162,20 @@ void main() {
       // Switch to a built-in classification to compare against.
       await tester.tap(
         find.byWidgetPredicate(
-          (widget) => widget is DropdownButtonFormField<ConsumableSelection>,
+          (widget) =>
+              widget is PickerField && widget.label == 'AWS Classification',
         ),
       );
       await tester.pumpAndSettle();
-      await tester.tap(find.text('AWS A5.18 ER70S-6 (Carbon Steel)').last);
+      await tester.tap(find.text('ER70S-6').last);
       await tester.pumpAndSettle();
 
       // The "(as saved)" snapshot must still be offered, not silently
       // dropped once it stopped being the current selection.
       await tester.tap(
         find.byWidgetPredicate(
-          (widget) => widget is DropdownButtonFormField<ConsumableSelection>,
+          (widget) =>
+              widget is PickerField && widget.label == 'AWS Classification',
         ),
       );
       await tester.pumpAndSettle();
@@ -274,7 +277,8 @@ void main() {
       await tester.pumpAndSettle();
 
       final dropdownFinder = find.byWidgetPredicate(
-        (widget) => widget is DropdownButtonFormField<ConsumableSelection>,
+        (widget) =>
+            widget is PickerField && widget.label == 'AWS Classification',
       );
       await tester.ensureVisible(dropdownFinder);
       await tester.tap(dropdownFinder);
@@ -283,10 +287,7 @@ void main() {
       // Reset restores the GTAW default (ER70S-2); confirm the menu route
       // actually opened (closed field + open menu entry) rather than this
       // assertion trivially passing because nothing rendered at all.
-      expect(
-        find.textContaining('AWS A5.18 ER70S-2 (Carbon Steel)'),
-        findsNWidgets(2),
-      );
+      expect(find.text('ER70S-2'), findsNWidgets(2));
       expect(find.textContaining('as saved'), findsNothing);
       expect(find.text('My Materials'), findsNothing);
     },
