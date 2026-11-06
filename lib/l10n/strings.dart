@@ -295,6 +295,14 @@ class L10nStrings {
     required this.preheatCustomFromMaterial,
     required this.preheatStandardMaxNote,
     required this.preheatNotLimitedHint,
+    required this.preheatMethodBNotApplicable,
+    required this.baseGroupEn10025,
+    required this.baseGroupPressure,
+    required this.baseGroupAstmCarbon,
+    required this.baseGroupAstmCrMo,
+    required this.baseGroupApi,
+    required this.baseGroupStainless,
+    required this.baseGroupAluminium,
     required this.preheatCetUnderestimatedWarning,
     required this.calcInputPresetLabel,
     required this.calcConsumableDensityTitle,
@@ -938,6 +946,14 @@ class L10nStrings {
   final String preheatCustomFromMaterial;
   final String preheatStandardMaxNote;
   final String preheatNotLimitedHint;
+  final String preheatMethodBNotApplicable;
+  final String baseGroupEn10025;
+  final String baseGroupPressure;
+  final String baseGroupAstmCarbon;
+  final String baseGroupAstmCrMo;
+  final String baseGroupApi;
+  final String baseGroupStainless;
+  final String baseGroupAluminium;
   final String preheatCetUnderestimatedWarning;
   final String calcInputPresetLabel;
   final String calcConsumableDensityTitle;
@@ -1668,6 +1684,14 @@ const Map<AppLanguage, L10nStrings> _strings = {
     preheatCustomFromMaterial: 'Custom (from {material})',
     preheatStandardMaxNote: 'Standard maximum values - enter mill-certificate values if you have them',
     preheatNotLimitedHint: 'Not limited by the standard - enter from mill certificate',
+    preheatMethodBNotApplicable: 'EN 1011-2 Method B is not valid for this composition - use manufacturer / code preheat values (e.g. EN 1011-2 Annex C, ASME B31.3) for Cr-Mo steels.',
+    baseGroupEn10025: 'EN 10025 structural steel',
+    baseGroupPressure: 'EN 10028 / 10216 pressure steel',
+    baseGroupAstmCarbon: 'ASTM carbon steel',
+    baseGroupAstmCrMo: 'ASTM chrome-moly (A335 / A387)',
+    baseGroupApi: 'API 5L line pipe',
+    baseGroupStainless: 'Stainless steel',
+    baseGroupAluminium: 'Aluminium',
     preheatCetUnderestimatedWarning: 'CET may be underestimated until these are entered',
     calcInputPresetLabel: 'Input Preset',
     calcConsumableDensityTitle: 'Consumable & Density',
@@ -2477,6 +2501,14 @@ const Map<AppLanguage, L10nStrings> _strings = {
     preheatCustomFromMaterial: 'Özel ({material} baz alınarak)',
     preheatStandardMaxNote: 'Standart maksimum değerler - sertifika değerleri varsa onları girin',
     preheatNotLimitedHint: 'Standartta sınır yok - sertifikadan girin',
+    preheatMethodBNotApplicable: 'EN 1011-2 B yöntemi bu bileşim için geçerli değil - Cr-Mo çelikleri için üretici/kod (ör. EN 1011-2 Ek C / ASME B31.3) ön ısıtma değerlerini kullanın.',
+    baseGroupEn10025: 'EN 10025 yapı çeliği',
+    baseGroupPressure: 'EN 10028 / 10216 basınçlı kap çeliği',
+    baseGroupAstmCarbon: 'ASTM karbon çeliği',
+    baseGroupAstmCrMo: 'ASTM krom-molibden (A335 / A387)',
+    baseGroupApi: 'API 5L boru hattı borusu',
+    baseGroupStainless: 'Paslanmaz çelik',
+    baseGroupAluminium: 'Alüminyum',
     preheatCetUnderestimatedWarning: 'Bunlar girilene kadar CET olduğundan düşük hesaplanabilir',
     calcInputPresetLabel: 'Örnek seçimi',
     calcConsumableDensityTitle: 'Sarf Malzeme ve Yoğunluk',
@@ -3301,6 +3333,14 @@ const Map<AppLanguage, L10nStrings> _strings = {
     preheatCustomFromMaterial: 'Свой ({material})',
     preheatStandardMaxNote: 'Максимальные значения по стандарту - если есть сертификат, введите его значения',
     preheatNotLimitedHint: 'В стандарте предела нет - введите из сертификата',
+    preheatMethodBNotApplicable: 'Метод B по EN 1011-2 для этого состава недействителен - для Cr-Mo сталей используйте значения предварительного нагрева производителя/норм (напр., EN 1011-2 Прил. C, ASME B31.3).',
+    baseGroupEn10025: 'Конструкционная сталь EN 10025',
+    baseGroupPressure: 'Сталь для сосудов давления EN 10028 / 10216',
+    baseGroupAstmCarbon: 'Углеродистая сталь ASTM',
+    baseGroupAstmCrMo: 'Хромомолибденовая сталь ASTM (A335 / A387)',
+    baseGroupApi: 'Трубы API 5L',
+    baseGroupStainless: 'Нержавеющая сталь',
+    baseGroupAluminium: 'Алюминий',
     preheatCetUnderestimatedWarning: 'Пока значения не введены, CET может быть занижен',
     calcInputPresetLabel: 'Пример',
     calcConsumableDensityTitle: 'Присадочный материал и плотность',
@@ -4130,6 +4170,14 @@ const Map<AppLanguage, L10nStrings> _strings = {
     preheatCustomFromMaterial: 'Benutzerdefiniert (aus {material})',
     preheatStandardMaxNote: 'Maximalwerte der Norm - Werte aus dem Abnahmezeugnis eingeben, falls vorhanden',
     preheatNotLimitedHint: 'In der Norm nicht begrenzt - aus dem Abnahmezeugnis eingeben',
+    preheatMethodBNotApplicable: 'EN 1011-2 Verfahren B gilt für diese Zusammensetzung nicht - für Cr-Mo-Stähle Vorwärmwerte des Herstellers/Regelwerks verwenden (z. B. EN 1011-2 Anhang C, ASME B31.3).',
+    baseGroupEn10025: 'Baustahl EN 10025',
+    baseGroupPressure: 'Druckbehälterstahl EN 10028 / 10216',
+    baseGroupAstmCarbon: 'ASTM-Kohlenstoffstahl',
+    baseGroupAstmCrMo: 'ASTM-Chrom-Molybdän-Stahl (A335 / A387)',
+    baseGroupApi: 'API-5L-Leitungsrohr',
+    baseGroupStainless: 'Nichtrostender Stahl',
+    baseGroupAluminium: 'Aluminium',
     preheatCetUnderestimatedWarning: 'Bis dahin kann der CET zu niedrig ausfallen',
     calcInputPresetLabel: 'Beispiel',
     calcConsumableDensityTitle: 'Zusatzwerkstoff & Dichte',
@@ -4958,6 +5006,14 @@ const Map<AppLanguage, L10nStrings> _strings = {
     preheatCustomFromMaterial: 'कस्टम ({material} से)',
     preheatStandardMaxNote: 'मानक के अधिकतम मान - सर्टिफिकेट के मान हों तो वही दर्ज करें',
     preheatNotLimitedHint: 'मानक में सीमा नहीं - सर्टिफिकेट से दर्ज करें',
+    preheatMethodBNotApplicable: 'EN 1011-2 मेथड B इस कंपोज़िशन के लिए मान्य नहीं है - Cr-Mo स्टील के लिए निर्माता/कोड के प्रीहीट मान (जैसे EN 1011-2 Annex C, ASME B31.3) उपयोग करें।',
+    baseGroupEn10025: 'EN 10025 स्ट्रक्चरल स्टील',
+    baseGroupPressure: 'EN 10028 / 10216 प्रेशर स्टील',
+    baseGroupAstmCarbon: 'ASTM कार्बन स्टील',
+    baseGroupAstmCrMo: 'ASTM क्रोम-मोली (A335 / A387)',
+    baseGroupApi: 'API 5L लाइन पाइप',
+    baseGroupStainless: 'स्टेनलेस स्टील',
+    baseGroupAluminium: 'एल्युमीनियम',
     preheatCetUnderestimatedWarning: 'जब तक ये दर्ज नहीं होते, CET कम आँका जा सकता है',
     calcInputPresetLabel: 'उदाहरण',
     calcConsumableDensityTitle: 'कंज़्यूमेबल और डेंसिटी',

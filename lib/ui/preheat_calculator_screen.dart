@@ -11,6 +11,7 @@ import '../services/custom_base_material_store.dart';
 import 'calculator_page/calculator_page_widgets.dart';
 import 'cooling_time_calculator_screen.dart';
 import 'widgets/field_reveal.dart';
+import 'widgets/catalog_labels.dart';
 import 'widgets/formula_breakdown_card.dart';
 import 'widgets/heat_input_field.dart';
 import 'widgets/optional_number_field.dart';
@@ -81,6 +82,7 @@ class _PreheatResult {
     required this.designCet,
     required this.specialRuleApplied,
     required this.flags,
+    required this.outsideElements,
     required this.cev,
     required this.pcm,
     required this.pcmIsOverride,
@@ -98,6 +100,10 @@ class _PreheatResult {
   final double designCet;
   final bool specialRuleApplied;
   final List<PreheatRangeFlag> flags;
+
+  /// Composition elements outside the EN 1011-2 Method B validity range;
+  /// when non-empty Tp is not a valid result.
+  final List<String> outsideElements;
   final double cev;
   final double pcm;
   final bool pcmIsOverride;
@@ -230,7 +236,7 @@ class _PreheatCalculatorScreenState extends State<PreheatCalculatorScreen> {
             value: entry.toMaterial(),
             title: entry.name,
             subtitle: '${entry.standard} - ${entry.description}',
-            group: group,
+            group: baseMaterialGroupLabel(strings, group),
           ),
     ];
     final picked = await showSearchablePicker<CustomBaseMaterial>(
@@ -394,6 +400,9 @@ class _PreheatCalculatorScreenState extends State<PreheatCalculatorScreen> {
         specialRuleApplied:
             weldMetalCet.value != null && designCet != parentCet,
         flags: flags,
+        outsideElements: compositionOutsideMethodB({
+          for (final key in _elementKeys) key: v(key),
+        }),
         cev: cev,
         pcm: pcm,
         pcmIsOverride: storedPcm != null,
@@ -626,15 +635,33 @@ class _PreheatResultView extends StatelessWidget {
               ),
               const SizedBox(height: 6),
               Text(
-                result.noPreheatRequired
+                result.outsideElements.isNotEmpty
+                    ? '${result.tp.round()} °C'
+                    : result.noPreheatRequired
                     ? strings.preheatNoPreheatRequiredLabel
                     : '${result.tp.round()} °C',
                 style: Theme.of(context).textTheme.displaySmall?.copyWith(
-                  color: Colors.white,
+                  color: result.outsideElements.isNotEmpty
+                      ? Colors.white30
+                      : Colors.white,
                   fontWeight: FontWeight.w800,
+                  decoration: result.outsideElements.isNotEmpty
+                      ? TextDecoration.lineThrough
+                      : null,
                 ),
               ),
-              if (result.noPreheatRequired) ...[
+              if (result.outsideElements.isNotEmpty) ...[
+                const SizedBox(height: 8),
+                Text(
+                  '${strings.preheatMethodBNotApplicable} '
+                  '(${[for (final key in result.outsideElements) _elementLabel(strings, key)].join(', ')})',
+                  key: const ValueKey('method-b-invalid'),
+                  style: const TextStyle(
+                    color: Color(0xFFFF6B6B),
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ] else if (result.noPreheatRequired) ...[
                 const SizedBox(height: 4),
                 Text(
                   strings.preheatComputedValueBelowAmbientNote.replaceFirst(

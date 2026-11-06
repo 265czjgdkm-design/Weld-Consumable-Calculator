@@ -36,21 +36,18 @@ void main() {
       }
     });
 
-    test(
-      'every standard has a display position and every process is covered',
-      () {
-        for (final e in entries) {
-          expect(
-            ConsumableCatalog.groupOrder,
-            contains(e.specification),
-            reason: e.id,
-          );
-        }
-        for (final process in WeldingProcess.values) {
-          expect(ConsumableCatalog.forProcess(process), isNotEmpty);
-        }
-      },
-    );
+    test('every standard has a display position', () {
+      for (final e in entries) {
+        expect(
+          ConsumableCatalog.groupOrder,
+          contains(e.specification),
+          reason: e.id,
+        );
+      }
+      for (final process in WeldingProcess.values) {
+        expect(ConsumableCatalog.forProcess(process), isNotEmpty);
+      }
+    });
 
     test('filler snapshot keeps id, density and spec', () {
       final e = ConsumableCatalog.byId('catalog:aws_a5.1:e7016')!;
@@ -117,5 +114,30 @@ void main() {
       final a106b = entries.firstWhere((e) => e.name == 'A106 Gr B');
       expect((a106b.c, a106b.cr, a106b.mo), (0.30, 0.40, 0.15));
     });
+
+    test(
+      'API 5L entries are PSL2 welded M-condition values (45th ed. Table 5)',
+      () {
+        final x65 = entries.firstWhere((e) => e.name == 'API 5L X65M');
+        expect((x65.standard, x65.c, x65.mn), ('API 5L PSL2', 0.12, 1.60));
+        expect((x65.cr, x65.mo, x65.ni, x65.cu), (0.50, 0.50, 0.50, 0.50));
+        final x52 = entries.firstWhere((e) => e.name == 'API 5L X52M');
+        expect(
+          (x52.c, x52.mn, x52.cr, x52.mo, x52.ni),
+          (0.22, 1.40, 0.30, 0.15, 0.30),
+        );
+        expect(entries.where((e) => e.standard.startsWith('API 5L')).length, 7);
+      },
+    );
+  });
+
+  test('no submerged-arc entries until the model has a SAW process', () {
+    for (final e in ConsumableCatalog.entries) {
+      expect(
+        ['AWS A5.17', 'AWS A5.23', 'ISO 14171-A'],
+        isNot(contains(e.specification)),
+        reason: e.id,
+      );
+    }
   });
 }

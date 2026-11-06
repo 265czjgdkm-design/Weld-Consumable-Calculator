@@ -31,6 +31,7 @@ import 'widgets/weld_drawing_preview.dart';
 import 'calculator_page/calculator_page_models.dart';
 import 'calculator_page/calculator_page_widgets.dart';
 import 'widgets/field_reveal.dart';
+import 'widgets/catalog_labels.dart';
 import 'widgets/searchable_picker.dart';
 import 'calculator_page/wizard/consumable_step.dart';
 import 'calculator_page/wizard/dimensions_step.dart';
@@ -106,6 +107,7 @@ class _CalculatorPageState extends State<CalculatorPage> {
   };
   final Map<FieldKey, String> _diameterPresetModes = {};
   final Map<FieldKey, String> _fieldErrors = {};
+  int _capSectionToken = 0;
 
   JointType _jointType = JointType.plateButt;
   GrooveType _grooveType = GrooveType.singleV;
@@ -449,6 +451,7 @@ class _CalculatorPageState extends State<CalculatorPage> {
             _buildFieldInput(field),
         ],
         initiallyExpandCapSection: _hasCapDimensionValues,
+        capSectionKey: ValueKey('cap-$_capSectionToken'),
         onBack: () {
           setState(() => _wizardStep = WizardStep.process);
           _resetWizardScroll();
@@ -1532,7 +1535,7 @@ class _CalculatorPageState extends State<CalculatorPage> {
                         value: BaseMaterialSelection(entry.toMaterial()),
                         title: entry.name,
                         subtitle: '${entry.standard} · ${entry.description}',
-                        group: entry.group,
+                        group: baseMaterialGroupLabel(strings, entry.group),
                       ),
                     );
               }
@@ -1727,6 +1730,7 @@ class _CalculatorPageState extends State<CalculatorPage> {
                             context,
                           ).copyWith(dividerColor: Colors.transparent),
                           child: ExpansionTile(
+                            key: ValueKey('cap-$_capSectionToken'),
                             initiallyExpanded: _hasCapDimensionValues,
                             tilePadding: EdgeInsets.zero,
                             childrenPadding: const EdgeInsets.only(top: 10),
@@ -3165,6 +3169,7 @@ class _CalculatorPageState extends State<CalculatorPage> {
     InputFieldSpec field, {
     bool autofocus = false,
     bool shareFocusNode = true,
+    VoidCallback? onEdited,
   }) {
     if (field.diameterOptions != null) {
       return _buildDiameterField(field);
@@ -3179,13 +3184,32 @@ class _CalculatorPageState extends State<CalculatorPage> {
       decoration: InputDecoration(
         labelText: field.label,
         helperText: field.helperText,
-        errorText: _fieldErrors[field.key],
+        errorText: _fieldErrors[field.key] ?? _liveBoundError(field),
       ),
-      onChanged: (_) => setState(() {
-        _result = null;
-        _fieldErrors.remove(field.key);
-      }),
+      onChanged: (_) {
+        setState(() {
+          _result = null;
+          _fieldErrors.remove(field.key);
+        });
+        onEdited?.call();
+      },
     );
+  }
+
+  /// Plausibility-ceiling error shown while typing (same message Calculate
+  /// would raise), so the user sees it without having to calculate first.
+  String? _liveBoundError(InputFieldSpec field) {
+    final max = _dimensionMaxBounds[field.key];
+    final value = _parseOptional(field.key);
+    if (max == null || value == null || value <= max) return null;
+    final unit =
+        field.key == FieldKey.bevelAngleDeg ||
+            field.key == FieldKey.secondaryBevelAngleDeg
+        ? '°'
+        : ' mm';
+    return AppLocaleScope.stringsOf(context).calcFieldOutOfRangeError
+        .replaceFirst('{label}', field.label)
+        .replaceFirst('{max}', '${max.toStringAsFixed(0)}$unit');
   }
 
   Widget _buildDiameterField(InputFieldSpec field) {
@@ -3553,12 +3577,14 @@ class _CalculatorPageState extends State<CalculatorPage> {
         _showResultsScreen = true;
       });
     } on _RequiredFieldMissingException catch (error) {
+      final key = _visibleFieldKeyFor(error.fieldKey);
       setState(() {
         _result = null;
-        _wizardStep = _wizardStepForFieldKey(error.fieldKey);
-        _fieldErrors[error.fieldKey] = error.message;
+        _wizardStep = _wizardStepForFieldKey(key);
+        _fieldErrors[key] = error.message;
+        if (_capDimensionFieldKeys.contains(key)) _capSectionToken++;
       });
-      revealAndFocus(_fieldFocusNodes[error.fieldKey]!);
+      revealAndFocus(_fieldFocusNodes[key]!);
       _showMessage(error.message);
     } on InputValidationException catch (error) {
       setState(() => _result = null);
@@ -3657,10 +3683,13 @@ class _CalculatorPageState extends State<CalculatorPage> {
                   ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
                 ),
                 const SizedBox(height: 14),
-                _buildFieldInput(
-                  field,
-                  autofocus: true,
-                  shareFocusNode: false,
+                StatefulBuilder(
+                  builder: (context, setSheetState) => _buildFieldInput(
+                    field,
+                    autofocus: true,
+                    shareFocusNode: false,
+                    onEdited: () => setSheetState(() {}),
+                  ),
                 ),
                 const SizedBox(height: 18),
                 SizedBox(
@@ -3776,6 +3805,22 @@ class _CalculatorPageState extends State<CalculatorPage> {
       _wizardStep = WizardStep.process;
     });
     _resetWizardScroll();
+  }
+
+  /// Unequal-geometry mode validates the governing (larger) of the A/B
+  /// values under the single thickness/OD key, but only the A/B fields are
+  /// on screen -- point the error at the one that actually caused it.
+  FieldKey _visibleFieldKeyFor(FieldKey key) {
+    if (!_isUnequalGeometry) return key;
+    final pair = switch (key) {
+      FieldKey.thicknessMm => (FieldKey.thicknessAMm, FieldKey.thicknessBMm),
+      FieldKey.pipeOdMm => (FieldKey.pipeOdAMm, FieldKey.pipeOdBMm),
+      _ => null,
+    };
+    if (pair == null) return key;
+    final a = _parseOptional(pair.$1) ?? double.negativeInfinity;
+    final b = _parseOptional(pair.$2) ?? double.negativeInfinity;
+    return a >= b ? pair.$1 : pair.$2;
   }
 
   double _parseRequired(FieldKey key, String label, L10nStrings strings) {

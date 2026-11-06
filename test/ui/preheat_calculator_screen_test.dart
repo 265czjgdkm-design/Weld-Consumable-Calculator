@@ -339,4 +339,32 @@ void main() {
       findsOneWidget,
     );
   });
+
+  testWidgets('a Cr-Mo steel outside EN 1011-2 Method B composition limits '
+      'shows a red not-valid message and a struck-through Tp', (tester) async {
+    await _pumpScreen(tester);
+    await pickCatalog(tester, '10CrMo9-10');
+    await _enterMinimalValidJoint(tester);
+    await _tapCalculate(tester);
+    final invalid = find.byKey(const ValueKey('method-b-invalid'));
+    await tester.ensureVisible(invalid);
+    expect(invalid, findsOneWidget);
+    expect(
+      tester.widget<Text>(invalid).data,
+      startsWith(_strings.preheatMethodBNotApplicable),
+    );
+    expect(
+      find.textContaining(_strings.preheatNoPreheatRequiredLabel),
+      findsNothing,
+    );
+  });
+
+  testWidgets('a plain structural steel inside the Method B limits shows no '
+      'not-valid message', (tester) async {
+    await _pumpScreen(tester);
+    await pickCatalog(tester, 'P355GH');
+    await _enterMinimalValidJoint(tester);
+    await _tapCalculate(tester);
+    expect(find.byKey(const ValueKey('method-b-invalid')), findsNothing);
+  });
 }

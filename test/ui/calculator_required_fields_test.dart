@@ -169,4 +169,60 @@ void main() {
     final updated = tester.widget<TextField>(_fieldWithLabel('Thickness (mm)'));
     expect(updated.controller!.text, '15');
   });
+
+  testWidgets(
+    'quick-edit sheet shows the out-of-range error live while typing',
+    (tester) async {
+      _phone(tester);
+      await _toDimensions(tester);
+      tester
+          .widget<WeldDrawingPreview>(find.byType(WeldDrawingPreview))
+          .onFieldTap!(FieldKey.thicknessMm);
+      await tester.pumpAndSettle();
+      final sheetField = find.descendant(
+        of: find.byType(BottomSheet),
+        matching: find.byType(TextField),
+      );
+      await tester.enterText(sheetField, '9999');
+      await tester.pump();
+      expect(
+        find.descendant(
+          of: find.byType(BottomSheet),
+          matching: find.textContaining('at most 500'),
+        ),
+        findsOneWidget,
+      );
+      await tester.enterText(sheetField, '12');
+      await tester.pump();
+      expect(find.textContaining('at most 500'), findsNothing);
+    },
+  );
+
+  testWidgets('unequal geometry: an out-of-range governing thickness points '
+      'at the A/B field that caused it', (tester) async {
+    _phone(tester);
+    await _toDimensions(tester);
+    final unequal = find.text(_strings.jointGeometryUnequal);
+    await tester.ensureVisible(unequal);
+    await tester.tap(unequal);
+    await tester.pumpAndSettle();
+    final b = _fieldWithLabel(_strings.calcFieldThicknessBLabel);
+    await tester.ensureVisible(b);
+    await tester.enterText(b, '9999');
+    await tester.pumpAndSettle();
+
+    for (var i = 0; i < 2; i++) {
+      await tester.ensureVisible(find.text('Continue'));
+      await tester.tap(find.text('Continue'));
+      await tester.pumpAndSettle();
+    }
+    await tester.ensureVisible(find.text('Calculate'));
+    await tester.tap(find.text('Calculate'));
+    await tester.pump();
+    await tester.pumpAndSettle();
+
+    final field = tester.widget<TextField>(b);
+    expect(field.focusNode!.hasFocus, isTrue);
+    expect(field.decoration!.errorText, contains('at most 500'));
+  });
 }

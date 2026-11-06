@@ -67,8 +67,8 @@ const _ni = ConsumableFamily.nickelAlloy;
 const _cu = ConsumableFamily.copperAlloy;
 const _ci = ConsumableFamily.castIron;
 
-const _saw = 'Submerged-arc wire (calculated with GMAW wire-process defaults)';
-
+// TODO: submerged-arc wires/fluxes (AWS A5.17/A5.23, ISO 14171-A) are left out
+// until the model has a SAW process (its efficiency differs from GMAW).
 class ConsumableCatalog {
   const ConsumableCatalog._();
 
@@ -96,8 +96,6 @@ class ConsumableCatalog {
     'AWS A5.20',
     'AWS A5.29',
     'AWS A5.22',
-    'AWS A5.17',
-    'AWS A5.23',
     'AWS A5.14',
     'AWS A5.11',
     'AWS A5.15',
@@ -110,7 +108,6 @@ class ConsumableCatalog {
     'ISO 636-A',
     'ISO 17632-A',
     'ISO 14343-A',
-    'ISO 14171-A',
   ];
 
   static const List<CatalogConsumable> entries = [
@@ -1230,87 +1227,6 @@ class ConsumableCatalog {
       '2594 super-duplex flux-cored wire, Ar/CO2',
     ),
 
-    // --- AWS A5.17 carbon steel submerged-arc wires ---
-    CatalogConsumable(
-      'EL8',
-      'AWS A5.17',
-      _cs,
-      7.85,
-      _gmaw,
-      '$_saw, low-Mn, low-C',
-    ),
-    CatalogConsumable('EL12', 'AWS A5.17', _cs, 7.85, _gmaw, '$_saw, low-Mn'),
-    CatalogConsumable(
-      'EM12',
-      'AWS A5.17',
-      _cs,
-      7.85,
-      _gmaw,
-      '$_saw, medium-Mn',
-    ),
-    CatalogConsumable(
-      'EM12K',
-      'AWS A5.17',
-      _cs,
-      7.85,
-      _gmaw,
-      '$_saw, medium-Mn, Si-killed',
-    ),
-    CatalogConsumable(
-      'EM13K',
-      'AWS A5.17',
-      _cs,
-      7.85,
-      _gmaw,
-      '$_saw, medium-Mn, higher Si',
-    ),
-    CatalogConsumable(
-      'EM15K',
-      'AWS A5.17',
-      _cs,
-      7.85,
-      _gmaw,
-      '$_saw, medium-Mn, higher C',
-    ),
-    CatalogConsumable('EH14', 'AWS A5.17', _cs, 7.85, _gmaw, '$_saw, high-Mn'),
-
-    // --- AWS A5.23 low-alloy submerged-arc wires ---
-    CatalogConsumable('EA1', 'AWS A5.23', _la, 7.85, _gmaw, '$_saw, 0.5% Mo'),
-    CatalogConsumable(
-      'EA2',
-      'AWS A5.23',
-      _la,
-      7.85,
-      _gmaw,
-      '$_saw, 0.5% Mo, higher Mn',
-    ),
-    CatalogConsumable(
-      'EB2',
-      'AWS A5.23',
-      _la,
-      7.85,
-      _gmaw,
-      '$_saw, 1.25Cr-0.5Mo',
-    ),
-    CatalogConsumable(
-      'EB3',
-      'AWS A5.23',
-      _la,
-      7.85,
-      _gmaw,
-      '$_saw, 2.25Cr-1Mo',
-    ),
-    CatalogConsumable(
-      'EB9',
-      'AWS A5.23',
-      _la,
-      7.80,
-      _gmaw,
-      '$_saw, 9Cr-1Mo-V (P91)',
-    ),
-    CatalogConsumable('ENi1', 'AWS A5.23', _la, 7.85, _gmaw, '$_saw, 1% Ni'),
-    CatalogConsumable('ENi2', 'AWS A5.23', _la, 7.85, _gmaw, '$_saw, 2.25% Ni'),
-
     // --- AWS A5.14 nickel and nickel-alloy bare wires and rods ---
     CatalogConsumable(
       'ERNi-1',
@@ -1709,31 +1625,6 @@ class ConsumableCatalog {
       7.80,
       _gtawGmaw,
       '2209-type duplex wire',
-    ),
-    CatalogConsumable(
-      'S2',
-      'ISO 14171-A',
-      _cs,
-      7.85,
-      _gmaw,
-      '$_saw, 1% Mn (~AWS EM12)',
-    ),
-    CatalogConsumable(
-      'S2Si',
-      'ISO 14171-A',
-      _cs,
-      7.85,
-      _gmaw,
-      '$_saw, 1% Mn, Si (~AWS EM12K)',
-    ),
-    CatalogConsumable('S3', 'ISO 14171-A', _cs, 7.85, _gmaw, '$_saw, 1.5% Mn'),
-    CatalogConsumable(
-      'S2Mo',
-      'ISO 14171-A',
-      _la,
-      7.85,
-      _gmaw,
-      '$_saw, 0.5% Mo (~AWS EA2)',
     ),
   ];
 }
