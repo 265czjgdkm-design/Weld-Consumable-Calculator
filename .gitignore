@@ -60,3 +60,4 @@ flutter_01.log
 
 # Firebase client config (placed manually, see docs/AUTH_SETUP.md)
 ios/Runner/GoogleService-Info.plist
+docs/local_test_accounts.md

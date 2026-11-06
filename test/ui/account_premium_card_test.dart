@@ -26,8 +26,7 @@ class _FakeEntitlementService extends EntitlementService {
   Future<PremiumStatus> premiumStatus() async => status;
 
   @override
-  Future<void> syncAccount(String? appUserId) async =>
-      syncCalls.add(appUserId);
+  Future<void> syncAccount(String? appUserId) async => syncCalls.add(appUserId);
 }
 
 CustomerInfo _customerInfo({

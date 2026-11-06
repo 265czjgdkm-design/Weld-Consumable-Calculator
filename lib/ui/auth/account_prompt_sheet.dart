@@ -13,6 +13,7 @@ Future<AuthOutcome> showAccountPrompt(
   required String title,
   required String body,
   EntitlementService? entitlementService,
+  String initialEmail = '',
 }) async {
   final outcome = await showModalBottomSheet<AuthOutcome>(
     context: context,
@@ -23,6 +24,7 @@ Future<AuthOutcome> showAccountPrompt(
       title: title,
       body: body,
       entitlementService: entitlementService,
+      initialEmail: initialEmail,
     ),
   );
   return outcome ?? AuthOutcome.none;
@@ -33,33 +35,19 @@ class _AccountPromptSheet extends StatefulWidget {
     required this.title,
     required this.body,
     this.entitlementService,
+    this.initialEmail = '',
   });
 
   final String title;
   final String body;
   final EntitlementService? entitlementService;
+  final String initialEmail;
 
   @override
   State<_AccountPromptSheet> createState() => _AccountPromptSheetState();
 }
 
 class _AccountPromptSheetState extends State<_AccountPromptSheet> {
-  bool _busy = false;
-
-  Future<void> _apple() async {
-    setState(() => _busy = true);
-    final outcome = await runAppleSignIn(
-      context,
-      entitlement: widget.entitlementService,
-    );
-    if (!mounted) return;
-    if (outcome == AuthOutcome.none) {
-      setState(() => _busy = false);
-      return;
-    }
-    Navigator.of(context).pop(outcome);
-  }
-
   Future<void> _push(Widget screen) async {
     final outcome = await Navigator.of(
       context,
@@ -110,27 +98,23 @@ class _AccountPromptSheetState extends State<_AccountPromptSheet> {
                   ),
                 ),
                 const SizedBox(height: 28),
-                AppleAuthButton(onPressed: _busy ? null : _apple),
-                const SizedBox(height: 12),
-                AuthSecondaryButton(
+                AuthPrimaryButton(
                   label: copy.registerButton,
-                  onPressed: _busy
-                      ? null
-                      : () => _push(
-                          RegistrationScreen(
-                            entitlementService: widget.entitlementService,
-                          ),
-                        ),
+                  onPressed: () => _push(
+                    RegistrationScreen(
+                      entitlementService: widget.entitlementService,
+                      initialEmail: widget.initialEmail,
+                    ),
+                  ),
                 ),
                 const SizedBox(height: 4),
                 TextButton(
-                  onPressed: _busy
-                      ? null
-                      : () => _push(
-                          SignInScreen(
-                            entitlementService: widget.entitlementService,
-                          ),
-                        ),
+                  onPressed: () => _push(
+                    SignInScreen(
+                      entitlementService: widget.entitlementService,
+                      initialEmail: widget.initialEmail,
+                    ),
+                  ),
                   child: Text(
                     copy.signInButton,
                     style: const TextStyle(

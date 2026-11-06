@@ -6,8 +6,14 @@ import 'package:http/testing.dart';
 
 import 'package:weld_consumable_calculator/models/weld_models.dart';
 import 'package:weld_consumable_calculator/services/preset_sync_service.dart';
+import 'package:weld_consumable_calculator/services/auth_service.dart';
+
+import '../support/fake_auth_service.dart';
 
 void main() {
+  setUp(() => AuthServices.instance = FakeAuthService(user: fakeUser()));
+  tearDown(() => AuthServices.instance = const UnavailableAuthService());
+
   const service = PresetSyncService();
 
   test(
@@ -42,24 +48,27 @@ void main() {
     },
   );
 
-  test('list() reports zero skipped rows when every row parses cleanly', () async {
-    final validPreset = UserWeldPreset(
-      id: 'preset-1',
-      name: 'Valid',
-      updatedAtEpochMs: 1,
-      data: InputPreset.csPlateSingleVGmaw.data!,
-    );
-    final responseBody = jsonEncode({
-      'ok': true,
-      'presets': [validPreset.toJson()],
-    });
+  test(
+    'list() reports zero skipped rows when every row parses cleanly',
+    () async {
+      final validPreset = UserWeldPreset(
+        id: 'preset-1',
+        name: 'Valid',
+        updatedAtEpochMs: 1,
+        data: InputPreset.csPlateSingleVGmaw.data!,
+      );
+      final responseBody = jsonEncode({
+        'ok': true,
+        'presets': [validPreset.toJson()],
+      });
 
-    final result = await http.runWithClient(
-      () => service.list('test@example.com'),
-      () => MockClient((request) async => http.Response(responseBody, 200)),
-    );
+      final result = await http.runWithClient(
+        () => service.list('test@example.com'),
+        () => MockClient((request) async => http.Response(responseBody, 200)),
+      );
 
-    expect(result.presets, hasLength(1));
-    expect(result.skippedCount, 0);
-  });
+      expect(result.presets, hasLength(1));
+      expect(result.skippedCount, 0);
+    },
+  );
 }

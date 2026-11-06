@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
@@ -14,6 +13,7 @@ import 'package:weld_consumable_calculator/l10n/app_locale_scope.dart';
 import 'package:weld_consumable_calculator/l10n/app_language.dart';
 import 'package:weld_consumable_calculator/l10n/strings.dart';
 import 'package:weld_consumable_calculator/models/weld_models.dart';
+import 'package:weld_consumable_calculator/services/account_session.dart';
 import 'package:weld_consumable_calculator/services/ai_consent_store.dart';
 import 'package:weld_consumable_calculator/services/auth_service.dart';
 import 'package:weld_consumable_calculator/services/user_account_store.dart';
@@ -50,6 +50,7 @@ void main() {
   late FakeAuthService auth;
 
   setUp(() {
+    AccountSession.resetQueues();
     auth = FakeAuthService();
     AuthServices.instance = auth;
   });
@@ -114,135 +115,114 @@ void main() {
       },
     );
 
-    testWidgets(
-      'Delete Account: Cancel leaves the account, local presets, and cloud '
-      'data untouched',
-      (tester) async {
-        final localPreset = UserWeldPreset(
-          id: 'local-1',
-          name: 'Local Preset',
-          updatedAtEpochMs: 1000,
-          data: InputPreset.csPlateSingleVGmaw.data!,
-        );
-        SharedPreferences.setMockInitialValues({
-          'user_account_email_v1': 'user@example.com',
-          'user_weld_presets_v1': jsonEncode([localPreset.toJson()]),
-        });
-      auth.user = fakeUser();
+    Future<void> startDelete(WidgetTester tester) async {
+      await tester.tap(find.text(strings.accountDeleteAccountButton));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text(strings.commonDelete));
+      await tester.pumpAndSettle();
+      await tester.enterText(find.byType(TextField), 'longenough1');
+      await tester.tap(find.text(strings.commonDelete));
+      await tester.pumpAndSettle();
+    }
 
-        var listCalled = false;
-        await http.runWithClient(
-          () async {
-            await _pumpAccountScreen(tester);
-
-            await tester.tap(find.text(strings.accountDeleteAccountButton));
-            await tester.pumpAndSettle();
-            expect(
-              find.text(strings.accountDeleteConfirmTitle),
-              findsOneWidget,
-            );
-
-            await tester.tap(find.text(strings.commonCancel));
-            await tester.pumpAndSettle();
-          },
-          () => MockClient((request) async {
-            listCalled = true;
-            return http.Response(jsonEncode({'ok': true, 'presets': []}), 200);
-          }),
-        );
-
-        expect(listCalled, isFalse);
-        expect(find.text('user@example.com'), findsNWidgets(2));
-
-        const accountStore = UserAccountStore();
-        expect(await accountStore.getEmail(), 'user@example.com');
-
-        const presetStore = UserPresetStore();
-        final survivingPresets = (await presetStore.load()).presets;
-        expect(survivingPresets, hasLength(1));
-      },
+    UserWeldPreset localPreset() => UserWeldPreset(
+      id: 'local-1',
+      name: 'Local Preset',
+      updatedAtEpochMs: 1000,
+      data: InputPreset.csPlateSingleVGmaw.data!,
     );
 
+    testWidgets('Delete Account: Cancel leaves everything untouched', (
+      tester,
+    ) async {
+      SharedPreferences.setMockInitialValues({
+        'user_account_email_v1': 'user@example.com',
+        'user_weld_presets_v1': jsonEncode([localPreset().toJson()]),
+      });
+      auth.user = fakeUser();
+      var requests = 0;
+      await http.runWithClient(
+        () async {
+          await _pumpAccountScreen(tester);
+          await tester.tap(find.text(strings.accountDeleteAccountButton));
+          await tester.pumpAndSettle();
+          await tester.tap(find.text(strings.commonCancel));
+          await tester.pumpAndSettle();
+        },
+        () => MockClient((request) async {
+          requests++;
+          return http.Response(jsonEncode({'ok': true}), 200);
+        }),
+      );
+      expect(requests, 0);
+      expect(auth.deletes, 0);
+      expect(find.text('user@example.com'), findsNWidgets(2));
+      expect((await const UserPresetStore().load()).presets, hasLength(1));
+    });
+
     testWidgets(
-      'Delete Account: Confirm sends one deleteAccount request for the '
-      'email, clears local account + presets, and shows the success text',
+      'Delete Account: re-authenticates, wipes cloud data with the ID token '
+      '(never a bare email) BEFORE deleting the Firebase user, clears local '
+      'data and shows the success text',
       (tester) async {
-        final localPreset = UserWeldPreset(
-          id: 'local-1',
-          name: 'Local Preset',
-          updatedAtEpochMs: 1000,
-          data: InputPreset.csPlateSingleVGmaw.data!,
-        );
         SharedPreferences.setMockInitialValues({
           'user_account_email_v1': 'user@example.com',
-          'user_weld_presets_v1': jsonEncode([localPreset.toJson()]),
+          'user_weld_presets_v1': jsonEncode([localPreset().toJson()]),
         });
-      auth.user = fakeUser();
-
+        auth.user = fakeUser();
         final bodies = <Map<String, dynamic>>[];
+        var deletesWhenCalled = -1;
         await http.runWithClient(
           () async {
             await _pumpAccountScreen(tester);
-
-            await tester.tap(find.text(strings.accountDeleteAccountButton));
-            await tester.pumpAndSettle();
-            await tester.tap(find.text(strings.commonDelete));
-            await tester.pumpAndSettle();
-
+            await startDelete(tester);
             expect(
               find.text(strings.accountDeleteSuccessTitle),
               findsOneWidget,
             );
-            expect(find.text(strings.accountDeleteSuccessBody), findsOneWidget);
-            expect(find.text(strings.accountDeleteFailedTitle), findsNothing);
-
             await tester.tap(find.text(strings.commonContinue));
             await tester.pumpAndSettle();
           },
           () => MockClient((request) async {
+            deletesWhenCalled = auth.deletes;
             bodies.add(jsonDecode(request.body) as Map<String, dynamic>);
             return http.Response(jsonEncode({'ok': true}), 200);
           }),
         );
-
         expect(bodies, [
-          {'action': 'deleteAccount', 'email': 'user@example.com'},
+          {'action': 'deleteAccount', 'idToken': 'token-uid-1'},
         ]);
+        expect(deletesWhenCalled, 0);
+        expect(auth.reauths, 1);
+        expect(auth.deletes, 1);
         expect(await const UserAccountStore().getEmail(), isNull);
         expect((await const UserPresetStore().load()).presets, isEmpty);
       },
     );
 
     testWidgets(
-      'Delete Account: a failed request shows the error with Retry (never '
-      'the success text), still clears local state, and Retry re-sends '
-      'the request for the same email until it succeeds',
+      'Delete Account: a server failure shows Retry (never success), keeps '
+      'the account, and Retry deletes',
       (tester) async {
         SharedPreferences.setMockInitialValues({
           'user_account_email_v1': 'user@example.com',
         });
-      auth.user = fakeUser();
-
+        auth.user = fakeUser();
         var calls = 0;
-        final emails = <String>[];
         await http.runWithClient(
           () async {
             await _pumpAccountScreen(tester);
-
-            await tester.tap(find.text(strings.accountDeleteAccountButton));
-            await tester.pumpAndSettle();
-            await tester.tap(find.text(strings.commonDelete));
-            await tester.pumpAndSettle();
-
+            await startDelete(tester);
             expect(find.text(strings.accountDeleteFailedTitle), findsOneWidget);
-            expect(find.text(strings.accountDeleteFailedBody), findsOneWidget);
             expect(find.text(strings.accountDeleteSuccessTitle), findsNothing);
-            expect(await const UserAccountStore().getEmail(), isNull);
+            expect(auth.deletes, 0);
+            expect(
+              await const UserAccountStore().getEmail(),
+              'user@example.com',
+            );
 
             await tester.tap(find.text(strings.accountDeleteRetryButton));
             await tester.pumpAndSettle();
-
-            expect(find.text(strings.accountDeleteFailedTitle), findsNothing);
             expect(
               find.text(strings.accountDeleteSuccessTitle),
               findsOneWidget,
@@ -252,117 +232,47 @@ void main() {
           },
           () => MockClient((request) async {
             calls++;
-            emails.add(
-              (jsonDecode(request.body) as Map<String, dynamic>)['email']
-                  as String,
+            return http.Response(
+              jsonEncode(
+                calls == 1 ? {'ok': false, 'error': 'x'} : {'ok': true},
+              ),
+              200,
             );
-            // First attempt: server error. Second attempt: success.
-            return calls == 1
-                ? http.Response('Internal error', 500)
-                : http.Response(jsonEncode({'ok': true}), 200);
           }),
         );
-
         expect(calls, 2);
-        expect(emails, ['user@example.com', 'user@example.com']);
+        expect(auth.deletes, 1);
       },
     );
 
     testWidgets(
-      'Delete Account: an ok:false response (e.g. a backend without the '
-      'deleteAccount action) is treated as a failure, and closing the error '
-      'leaves the user on the screen',
+      'Delete Account: a sign-in-required answer shows the sign-in message '
+      'and closing leaves the user signed in',
       (tester) async {
         SharedPreferences.setMockInitialValues({
           'user_account_email_v1': 'user@example.com',
         });
-      auth.user = fakeUser();
-
+        auth.user = fakeUser();
         await http.runWithClient(
           () async {
             await _pumpAccountScreen(tester);
-
-            await tester.tap(find.text(strings.accountDeleteAccountButton));
-            await tester.pumpAndSettle();
-            await tester.tap(find.text(strings.commonDelete));
-            await tester.pumpAndSettle();
-
-            expect(find.text(strings.accountDeleteFailedTitle), findsOneWidget);
+            await startDelete(tester);
+            expect(
+              find.text('Please sign in to your account.'),
+              findsOneWidget,
+            );
             await tester.tap(find.text(strings.commonClose));
             await tester.pumpAndSettle();
-
-            expect(find.text(strings.accountDeleteSuccessTitle), findsNothing);
-            expect(find.text(strings.accountGuestStateTitle), findsOneWidget);
-          },
-          () => MockClient(
-            (request) async => http.Response(
-              jsonEncode({'ok': false, 'error': 'Unknown action.'}),
-              200,
-            ),
-          ),
-        );
-      },
-    );
-
-    testWidgets(
-      'Delete Account: while the request is in flight the screen stays '
-      'signed-in with the deleting message, back is blocked, and the '
-      'failure dialog still appears afterwards',
-      (tester) async {
-        SharedPreferences.setMockInitialValues({
-          'user_account_email_v1': 'user@example.com',
-        });
-      auth.user = fakeUser();
-
-        final gate = Completer<void>();
-        await http.runWithClient(
-          () async {
-            await tester.pumpWidget(
-              AppLocaleScope(
-                locale: AppLocale(),
-                child: MaterialApp(
-                  home: Builder(
-                    builder: (context) => TextButton(
-                      onPressed: () => Navigator.of(context).push(
-                        MaterialPageRoute<void>(
-                          builder: (_) => const AccountScreen(),
-                        ),
-                      ),
-                      child: const Text('open account'),
-                    ),
-                  ),
-                ),
-              ),
-            );
-            await tester.tap(find.text('open account'));
-            await tester.pumpAndSettle();
-
-            await tester.tap(find.text(strings.accountDeleteAccountButton));
-            await tester.pumpAndSettle();
-            await tester.tap(find.text(strings.commonDelete));
-            await tester.pump();
-            await tester.pump();
-
-            expect(find.text(strings.accountDeletingMessage), findsOneWidget);
-            expect(find.text(strings.accountGuestStateTitle), findsNothing);
-            expect(
-              await const UserAccountStore().getEmail(),
-              'user@example.com',
-            );
-            await tester.binding.handlePopRoute();
-            await tester.pump();
-            expect(find.text(strings.accountScreenTitle), findsOneWidget);
-
-            gate.complete();
-            await tester.pumpAndSettle();
-            expect(find.text(strings.accountDeleteFailedTitle), findsOneWidget);
-            expect(await const UserAccountStore().getEmail(), isNull);
           },
           () => MockClient((request) async {
-            await gate.future;
-            return http.Response('Internal error', 500);
+            return http.Response(
+              jsonEncode({'ok': false, 'error': 'update_required'}),
+              200,
+            );
           }),
         );
+        expect(auth.deletes, 0);
+        expect(find.text(strings.accountSignOutButton), findsOneWidget);
       },
     );
 
@@ -398,7 +308,7 @@ void main() {
           'user_account_email_v1': 'user@example.com',
           'ai_consent_acknowledged_v1': true,
         });
-      auth.user = fakeUser();
+        auth.user = fakeUser();
 
         await _pumpAccountScreen(tester);
         await tester.ensureVisible(
@@ -414,17 +324,34 @@ void main() {
   });
 
   group('Guest state', () {
-    testWidgets('offers Apple, email sign-up and sign-in, no email field', (
+    testWidgets('offers email sign-up and sign-in, no email field', (
       tester,
     ) async {
       SharedPreferences.setMockInitialValues({});
       await _pumpAccountScreen(tester);
 
       expect(find.text(strings.accountGuestStateTitle), findsOneWidget);
-      expect(find.text('Continue with Apple'), findsOneWidget);
       expect(find.text('Sign up with email'), findsOneWidget);
       expect(find.text('Sign in'), findsOneWidget);
       expect(find.byType(TextField), findsNothing);
+    });
+  });
+
+  group('Guest state without an auth backend', () {
+    testWidgets('hides sign-in/register and shows the unavailable note', (
+      tester,
+    ) async {
+      SharedPreferences.setMockInitialValues({});
+      AuthServices.instance = const UnavailableAuthService();
+      await _pumpAccountScreen(tester);
+      expect(find.text('Sign up with email'), findsNothing);
+      expect(find.text('Sign in'), findsNothing);
+      expect(
+        find.text(
+          'Accounts are unavailable right now. You can continue as a guest.',
+        ),
+        findsOneWidget,
+      );
     });
   });
 

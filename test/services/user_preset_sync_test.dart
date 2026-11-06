@@ -9,8 +9,14 @@ import 'package:weld_consumable_calculator/models/weld_models.dart';
 import 'package:weld_consumable_calculator/services/preset_sync_service.dart';
 import 'package:weld_consumable_calculator/services/user_preset_store.dart';
 import 'package:weld_consumable_calculator/services/user_preset_sync.dart';
+import 'package:weld_consumable_calculator/services/auth_service.dart';
+
+import '../support/fake_auth_service.dart';
 
 void main() {
+  setUp(() => AuthServices.instance = FakeAuthService(user: fakeUser()));
+  tearDown(() => AuthServices.instance = const UnavailableAuthService());
+
   const presetSyncService = PresetSyncService();
   const userPresetStore = UserPresetStore();
 
@@ -21,111 +27,104 @@ void main() {
     data: InputPreset.csPlateSingleVGmaw.data!,
   );
 
-  test(
-    'migrateLocalPresetsToAccount uploads a genuinely guest-created local '
-    'cache (no owner tag) into the first account that signs in -- the '
-    'original bug this helper was written to fix',
-    () async {
-      SharedPreferences.setMockInitialValues({
-        'user_weld_presets_v1': jsonEncode([
-          preset('guest-1', 'Guest Preset').toJson(),
-        ]),
-      });
+  test('migrateLocalPresetsToAccount uploads a genuinely guest-created local '
+      'cache (no owner tag) into the first account that signs in -- the '
+      'original bug this helper was written to fix', () async {
+    SharedPreferences.setMockInitialValues({
+      'user_weld_presets_v1': jsonEncode([
+        preset('guest-1', 'Guest Preset').toJson(),
+      ]),
+    });
 
-      final savedUnderEmail = <String, List<String>>{};
-      final migrated = await http.runWithClient(
-        () => migrateLocalPresetsToAccount(
-          email: 'first@example.com',
-          presetSyncService: presetSyncService,
-          userPresetStore: userPresetStore,
-        ),
-        () => MockClient((request) async {
-          final body = jsonDecode(request.body) as Map<String, dynamic>;
-          final email = body['email'] as String;
-          savedUnderEmail
-              .putIfAbsent(email, () => [])
-              .add((body['preset'] as Map<String, dynamic>)['id'] as String);
-          return http.Response(jsonEncode({'ok': true}), 200);
-        }),
-      );
+    final savedUnderEmail = <String, List<String>>{};
+    final migrated = await http.runWithClient(
+      () => migrateLocalPresetsToAccount(
+        email: 'first@example.com',
+        presetSyncService: presetSyncService,
+        userPresetStore: userPresetStore,
+      ),
+      () => MockClient((request) async {
+        final body = jsonDecode(request.body) as Map<String, dynamic>;
+        // Identity is the ID token now, never a bare email.
+        expect(body.containsKey('email'), isFalse);
+        final email = body['idToken'] as String;
+        savedUnderEmail
+            .putIfAbsent(email, () => [])
+            .add((body['preset'] as Map<String, dynamic>)['id'] as String);
+        return http.Response(jsonEncode({'ok': true}), 200);
+      }),
+    );
 
-      expect(migrated, isTrue);
-      expect(savedUnderEmail['first@example.com'], ['guest-1']);
-      expect(await userPresetStore.getOwnerEmail(), 'first@example.com');
-    },
-  );
+    expect(migrated, isTrue);
+    expect(savedUnderEmail['token-uid-1'], ['guest-1']);
+    expect(await userPresetStore.getOwnerEmail(), 'first@example.com');
+  });
 
-  test(
-    'migrateLocalPresetsToAccount does NOT upload a local cache tagged to '
-    'a different, previously signed-in account (reviewer finding #1: '
-    'alice signs in, signs out -- her local presets stay on the device -- '
-    'then bob signs in and must not get alice\'s preset uploaded to his '
-    'cloud account)',
-    () async {
-      SharedPreferences.setMockInitialValues({
-        'user_weld_presets_v1': jsonEncode([
-          preset('alice-1', 'Alice Confidential Joint').toJson(),
-        ]),
-      });
-      // Simulates alice having already signed in on this device (which is
-      // what tags the local cache as hers) before signing out and leaving
-      // her local presets in place, per the Sign Out contract.
-      await userPresetStore.setOwnerEmail('alice@example.com');
+  test('migrateLocalPresetsToAccount does NOT upload a local cache tagged to '
+      'a different, previously signed-in account (reviewer finding #1: '
+      'alice signs in, signs out -- her local presets stay on the device -- '
+      'then bob signs in and must not get alice\'s preset uploaded to his '
+      'cloud account)', () async {
+    SharedPreferences.setMockInitialValues({
+      'user_weld_presets_v1': jsonEncode([
+        preset('alice-1', 'Alice Confidential Joint').toJson(),
+      ]),
+    });
+    // Simulates alice having already signed in on this device (which is
+    // what tags the local cache as hers) before signing out and leaving
+    // her local presets in place, per the Sign Out contract.
+    await userPresetStore.setOwnerEmail('alice@example.com');
 
-      var saveCalled = false;
-      final migrated = await http.runWithClient(
-        () => migrateLocalPresetsToAccount(
-          email: 'bob@example.com',
-          presetSyncService: presetSyncService,
-          userPresetStore: userPresetStore,
-        ),
-        () => MockClient((request) async {
-          saveCalled = true;
-          return http.Response(jsonEncode({'ok': true}), 200);
-        }),
-      );
+    var saveCalled = false;
+    final migrated = await http.runWithClient(
+      () => migrateLocalPresetsToAccount(
+        email: 'bob@example.com',
+        presetSyncService: presetSyncService,
+        userPresetStore: userPresetStore,
+      ),
+      () => MockClient((request) async {
+        saveCalled = true;
+        return http.Response(jsonEncode({'ok': true}), 200);
+      }),
+    );
 
-      expect(migrated, isTrue);
-      expect(
-        saveCalled,
-        isFalse,
-        reason: "alice's preset must never be uploaded to bob's account",
-      );
-      // Ownership stays alice's -- it's the caller's subsequent
-      // cloud-authoritative refresh (loadSyncedUserPresets) that re-tags
-      // the cache once bob's real cloud data replaces it.
-      expect(await userPresetStore.getOwnerEmail(), 'alice@example.com');
-    },
-  );
+    expect(migrated, isTrue);
+    expect(
+      saveCalled,
+      isFalse,
+      reason: "alice's preset must never be uploaded to bob's account",
+    );
+    // Ownership stays alice's -- it's the caller's subsequent
+    // cloud-authoritative refresh (loadSyncedUserPresets) that re-tags
+    // the cache once bob's real cloud data replaces it.
+    expect(await userPresetStore.getOwnerEmail(), 'alice@example.com');
+  });
 
-  test(
-    'migrateLocalPresetsToAccount uploads again for the SAME returning '
-    'account (owner tag matches the email signing in)',
-    () async {
-      SharedPreferences.setMockInitialValues({
-        'user_weld_presets_v1': jsonEncode([
-          preset('alice-1', 'Alice Preset').toJson(),
-        ]),
-      });
-      await userPresetStore.setOwnerEmail('alice@example.com');
+  test('migrateLocalPresetsToAccount uploads again for the SAME returning '
+      'account (owner tag matches the email signing in)', () async {
+    SharedPreferences.setMockInitialValues({
+      'user_weld_presets_v1': jsonEncode([
+        preset('alice-1', 'Alice Preset').toJson(),
+      ]),
+    });
+    await userPresetStore.setOwnerEmail('alice@example.com');
 
-      var saveCalled = false;
-      final migrated = await http.runWithClient(
-        () => migrateLocalPresetsToAccount(
-          email: 'alice@example.com',
-          presetSyncService: presetSyncService,
-          userPresetStore: userPresetStore,
-        ),
-        () => MockClient((request) async {
-          saveCalled = true;
-          return http.Response(jsonEncode({'ok': true}), 200);
-        }),
-      );
+    var saveCalled = false;
+    final migrated = await http.runWithClient(
+      () => migrateLocalPresetsToAccount(
+        email: 'alice@example.com',
+        presetSyncService: presetSyncService,
+        userPresetStore: userPresetStore,
+      ),
+      () => MockClient((request) async {
+        saveCalled = true;
+        return http.Response(jsonEncode({'ok': true}), 200);
+      }),
+    );
 
-      expect(migrated, isTrue);
-      expect(saveCalled, isTrue);
-    },
-  );
+    expect(migrated, isTrue);
+    expect(saveCalled, isTrue);
+  });
 
   test(
     'migrateLocalPresetsToAccount returns false when an upload fails, so '
@@ -146,7 +145,8 @@ void main() {
         ),
         // The write side is down -- e.g. quota exceeded or a revoked
         // write permission -- even though reads would still succeed.
-        () => MockClient((request) async => http.Response('Internal error', 500)),
+        () =>
+            MockClient((request) async => http.Response('Internal error', 500)),
       );
 
       expect(migrated, isFalse);
@@ -190,10 +190,7 @@ void main() {
         () => MockClient((request) async {
           if (request.method == 'GET') {
             listWasCalled = true;
-            return http.Response(
-              jsonEncode({'ok': true, 'presets': []}),
-              200,
-            );
+            return http.Response(jsonEncode({'ok': true, 'presets': []}), 200);
           }
           return http.Response('Internal error', 500);
         }),
@@ -248,61 +245,55 @@ void main() {
     },
   );
 
-  test(
-    "loadSyncedUserPresets' offline fallback still serves the local cache "
-    'when its owner tag matches the account being loaded for, or is unset '
-    '(genuinely unowned/guest cache)',
-    () async {
-      SharedPreferences.setMockInitialValues({
-        'user_weld_presets_v1': jsonEncode([
-          preset('alice-1', 'Alice Preset').toJson(),
-        ]),
-      });
-      await userPresetStore.setOwnerEmail('alice@example.com');
+  test("loadSyncedUserPresets' offline fallback still serves the local cache "
+      'when its owner tag matches the account being loaded for, or is unset '
+      '(genuinely unowned/guest cache)', () async {
+    SharedPreferences.setMockInitialValues({
+      'user_weld_presets_v1': jsonEncode([
+        preset('alice-1', 'Alice Preset').toJson(),
+      ]),
+    });
+    await userPresetStore.setOwnerEmail('alice@example.com');
 
-      final matchingOwnerResult = await http.runWithClient(
-        () => loadSyncedUserPresets(
-          email: 'alice@example.com',
-          presetSyncService: presetSyncService,
-          userPresetStore: userPresetStore,
-        ),
-        () => MockClient((request) async => http.Response('Backend down', 500)),
-      );
-      expect(matchingOwnerResult.presets.map((p) => p.id), ['alice-1']);
+    final matchingOwnerResult = await http.runWithClient(
+      () => loadSyncedUserPresets(
+        email: 'alice@example.com',
+        presetSyncService: presetSyncService,
+        userPresetStore: userPresetStore,
+      ),
+      () => MockClient((request) async => http.Response('Backend down', 500)),
+    );
+    expect(matchingOwnerResult.presets.map((p) => p.id), ['alice-1']);
 
-      await userPresetStore.setOwnerEmail(null);
-      final unownedResult = await http.runWithClient(
-        () => loadSyncedUserPresets(
-          email: 'anyone@example.com',
-          presetSyncService: presetSyncService,
-          userPresetStore: userPresetStore,
-        ),
-        () => MockClient((request) async => http.Response('Backend down', 500)),
-      );
-      expect(unownedResult.presets.map((p) => p.id), ['alice-1']);
-    },
-  );
+    await userPresetStore.setOwnerEmail(null);
+    final unownedResult = await http.runWithClient(
+      () => loadSyncedUserPresets(
+        email: 'anyone@example.com',
+        presetSyncService: presetSyncService,
+        userPresetStore: userPresetStore,
+      ),
+      () => MockClient((request) async => http.Response('Backend down', 500)),
+    );
+    expect(unownedResult.presets.map((p) => p.id), ['alice-1']);
+  });
 
-  test(
-    'loadSyncedUserPresets re-tags ownership to the account whose cloud '
-    'data was just loaded, so a returning same-user sign-in still '
-    'migrates/matches correctly next time',
-    () async {
-      SharedPreferences.setMockInitialValues({});
+  test('loadSyncedUserPresets re-tags ownership to the account whose cloud '
+      'data was just loaded, so a returning same-user sign-in still '
+      'migrates/matches correctly next time', () async {
+    SharedPreferences.setMockInitialValues({});
 
-      await http.runWithClient(
-        () => loadSyncedUserPresets(
-          email: 'alice@example.com',
-          presetSyncService: presetSyncService,
-          userPresetStore: userPresetStore,
-        ),
-        () => MockClient(
-          (request) async =>
-              http.Response(jsonEncode({'ok': true, 'presets': []}), 200),
-        ),
-      );
+    await http.runWithClient(
+      () => loadSyncedUserPresets(
+        email: 'alice@example.com',
+        presetSyncService: presetSyncService,
+        userPresetStore: userPresetStore,
+      ),
+      () => MockClient(
+        (request) async =>
+            http.Response(jsonEncode({'ok': true, 'presets': []}), 200),
+      ),
+    );
 
-      expect(await userPresetStore.getOwnerEmail(), 'alice@example.com');
-    },
-  );
+    expect(await userPresetStore.getOwnerEmail(), 'alice@example.com');
+  });
 }

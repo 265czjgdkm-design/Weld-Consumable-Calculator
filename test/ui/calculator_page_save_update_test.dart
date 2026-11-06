@@ -10,6 +10,9 @@ import 'package:weld_consumable_calculator/l10n/app_locale_scope.dart';
 import 'package:weld_consumable_calculator/models/weld_models.dart';
 import 'package:weld_consumable_calculator/services/user_preset_store.dart';
 import 'package:weld_consumable_calculator/ui/calculator_page.dart';
+import 'package:weld_consumable_calculator/services/auth_service.dart';
+
+import '../support/fake_auth_service.dart';
 
 /// [PresetSyncService] talks to a live Apps Script endpoint with no
 /// injectable client, so this test stubs the network out via [HttpOverrides]
@@ -37,6 +40,9 @@ Future<void> _pumpCalculatorWithPreset(
 }
 
 void main() {
+  setUp(() => AuthServices.instance = FakeAuthService(user: fakeUser()));
+  tearDown(() => AuthServices.instance = const UnavailableAuthService());
+
   testWidgets(
     'hitting Save on a loaded calculation updates it in place instead of '
     'creating a duplicate',

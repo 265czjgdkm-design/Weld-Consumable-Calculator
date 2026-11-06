@@ -8,7 +8,6 @@ class AuthUser {
     required this.email,
     required this.displayName,
     required this.emailVerified,
-    required this.isApple,
   });
 
   final String uid;
@@ -16,11 +15,8 @@ class AuthUser {
   final String? displayName;
   final bool emailVerified;
 
-  /// Signed in through the `apple.com` provider (Apple already verified it).
-  final bool isApple;
-
   /// Only verified users may reach cloud presets or a RevenueCat identity.
-  bool get isVerified => emailVerified || isApple;
+  bool get isVerified => emailVerified;
 
   /// RevenueCat app user id, or null while this user must stay anonymous.
   String? get revenueCatUserId => isVerified ? uid : null;
@@ -45,7 +41,6 @@ enum AuthErrorCode {
   network,
   tooManyRequests,
   requiresRecentLogin,
-  cancelled,
   unavailable,
   unknown,
 }
@@ -61,11 +56,13 @@ class AuthException implements Exception {
       'AuthException($code${message == null ? '' : ': $message'})';
 }
 
-class AppleSignInResult {
-  const AppleSignInResult({required this.user, required this.isNewUser});
+/// The server refused a cloud call because there is no verified sign-in
+/// (or an old client without a token): the user must sign in.
+class SignInRequiredException implements Exception {
+  const SignInRequiredException();
 
-  final AuthUser user;
-  final bool isNewUser;
+  @override
+  String toString() => 'SignInRequiredException';
 }
 
 abstract class AuthService {
@@ -89,7 +86,9 @@ abstract class AuthService {
     required String password,
   });
 
-  Future<AppleSignInResult> signInWithApple();
+  /// Firebase ID token of the signed-in user (null when signed out). The
+  /// preset backend verifies it server-side; it never trusts a bare email.
+  Future<String?> getIdToken({bool forceRefresh = false});
 
   Future<void> sendVerificationEmail();
 
@@ -106,9 +105,8 @@ abstract class AuthService {
   /// [reauthenticate] and retry.
   Future<void> deleteUser();
 
-  /// Re-proves identity: with the Apple flow for Apple users, with
-  /// [password] for email users.
-  Future<void> reauthenticate({String? password});
+  /// Re-proves identity with the account password.
+  Future<void> reauthenticate({required String password});
 }
 
 /// Process-wide access point; `main` swaps in the Firebase implementation,
@@ -148,7 +146,7 @@ class UnavailableAuthService implements AuthService {
   }) async => _fail();
 
   @override
-  Future<AppleSignInResult> signInWithApple() async => _fail();
+  Future<String?> getIdToken({bool forceRefresh = false}) async => null;
 
   @override
   Future<void> sendVerificationEmail() async => _fail();
@@ -166,5 +164,27 @@ class UnavailableAuthService implements AuthService {
   Future<void> deleteUser() async {}
 
   @override
-  Future<void> reauthenticate({String? password}) async => _fail();
+  Future<void> reauthenticate({required String password}) async => _fail();
+}
+
+/// ID token for a cloud call, or [SignInRequiredException] when signed out.
+Future<String> requireIdToken({bool forceRefresh = false}) async {
+  final token = await AuthServices.instance.getIdToken(
+    forceRefresh: forceRefresh,
+  );
+  if (token == null || token.isEmpty) throw const SignInRequiredException();
+  return token;
+}
+
+/// Server-side auth rejections from the Apps Script backend.
+void throwIfSignInRequired(Map<dynamic, dynamic> body) {
+  const codes = {
+    'update_required',
+    'auth_required',
+    'invalid_token',
+    'email_not_verified',
+  };
+  if (body['ok'] != true && codes.contains(body['error'])) {
+    throw const SignInRequiredException();
+  }
 }

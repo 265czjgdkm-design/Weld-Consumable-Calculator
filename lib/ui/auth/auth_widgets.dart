@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 
 import '../../l10n/app_locale_scope.dart';
 import '../../l10n/auth_copy.dart';
@@ -258,24 +257,21 @@ class _PasswordFieldState extends State<PasswordField> {
   }
 }
 
-class AppleAuthButton extends StatelessWidget {
-  const AppleAuthButton({super.key, required this.onPressed, this.dark = true});
+class AuthUnavailableNote extends StatelessWidget {
+  const AuthUnavailableNote({super.key, this.dark = true});
 
-  final VoidCallback? onPressed;
-
-  /// True on dark backgrounds (renders the white Apple button).
   final bool dark;
 
   @override
   Widget build(BuildContext context) {
-    return SignInWithAppleButton(
-      onPressed: onPressed ?? () {},
-      text: authCopyOf(context).appleButton,
-      style: dark
-          ? SignInWithAppleButtonStyle.white
-          : SignInWithAppleButtonStyle.black,
-      height: 52,
-      borderRadius: const BorderRadius.all(Radius.circular(14)),
+    return Text(
+      authCopyOf(context).unavailableNote,
+      textAlign: TextAlign.center,
+      style: TextStyle(
+        color: dark ? const Color(0xFFAEB8BB) : const Color(0xFF607482),
+        fontSize: 13,
+        height: 1.4,
+      ),
     );
   }
 }

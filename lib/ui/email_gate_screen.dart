@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../l10n/app_locale_scope.dart';
 import '../services/signup_gate_store.dart';
+import '../services/auth_service.dart';
 import 'auth/auth_flows.dart';
 import 'auth/auth_screens.dart';
 import 'auth/auth_widgets.dart';
@@ -19,8 +20,6 @@ class EmailGateScreen extends StatefulWidget {
 
 class _EmailGateScreenState extends State<EmailGateScreen> {
   static const _gateStore = SignupGateStore();
-
-  bool _busy = false;
 
   void _goToDashboard() {
     Navigator.of(context).pushReplacement(
@@ -42,14 +41,6 @@ class _EmailGateScreenState extends State<EmailGateScreen> {
     _goToDashboard();
   }
 
-  Future<void> _apple() async {
-    setState(() => _busy = true);
-    final outcome = await runAppleSignIn(context);
-    if (!mounted) return;
-    setState(() => _busy = false);
-    await _finish(outcome);
-  }
-
   Future<void> _open(Widget screen) async {
     final outcome = await Navigator.of(
       context,
@@ -68,6 +59,7 @@ class _EmailGateScreenState extends State<EmailGateScreen> {
   Widget build(BuildContext context) {
     final strings = AppLocaleScope.stringsOf(context);
     final copy = authCopyOf(context);
+    final available = AuthServices.instance.available;
     return Scaffold(
       backgroundColor: const Color(0xFF0B0F10),
       body: Container(
@@ -111,24 +103,21 @@ class _EmailGateScreenState extends State<EmailGateScreen> {
                       ),
                     ),
                     const SizedBox(height: 28),
-                    AppleAuthButton(onPressed: _busy ? null : _apple),
-                    const SizedBox(height: 12),
-                    AuthSecondaryButton(
-                      label: copy.registerButton,
-                      onPressed: _busy
-                          ? null
-                          : () => _open(const RegistrationScreen()),
-                    ),
-                    const SizedBox(height: 12),
-                    AuthSecondaryButton(
-                      label: copy.signInButton,
-                      onPressed: _busy
-                          ? null
-                          : () => _open(const SignInScreen()),
-                    ),
+                    if (available) ...[
+                      AuthPrimaryButton(
+                        label: copy.registerButton,
+                        onPressed: () => _open(const RegistrationScreen()),
+                      ),
+                      const SizedBox(height: 12),
+                      AuthSecondaryButton(
+                        label: copy.signInButton,
+                        onPressed: () => _open(const SignInScreen()),
+                      ),
+                    ] else
+                      const AuthUnavailableNote(),
                     const SizedBox(height: 10),
                     TextButton(
-                      onPressed: _busy ? null : _continueAsGuest,
+                      onPressed: _continueAsGuest,
                       child: Text(
                         copy.guestButton,
                         style: const TextStyle(

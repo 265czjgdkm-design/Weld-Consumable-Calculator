@@ -119,48 +119,10 @@ class _AccountScreenState extends State<AccountScreen> {
     unawaited(_refreshPremiumStatus());
   }
 
-  Future<void> _appleSignIn() async {
-    setState(() => _busy = true);
-    final outcome = await runAppleSignIn(context, entitlement: _entitlement);
-    if (!mounted) return;
-    setState(() => _busy = false);
-    await _afterAuth(outcome);
-  }
-
-  /// Deletes the Firebase user, re-authenticating once when Firebase asks
-  /// for a recent login. Returns false when the user backed out or it
-  /// failed (a message is shown), in which case nothing was deleted.
-  Future<bool> _deleteFirebaseUser() async {
-    final auth = AuthServices.instance;
-    final copy = authCopyFor(AppLocaleScope.of(context).language);
-    try {
-      try {
-        await auth.deleteUser();
-      } on AuthException catch (error) {
-        if (error.code != AuthErrorCode.requiresRecentLogin) rethrow;
-        String? password;
-        if (!(_user?.isApple ?? false)) {
-          if (!mounted) return false;
-          password = await showDialog<String>(
-            context: context,
-            builder: (_) => const _ReauthPasswordDialog(),
-          );
-          if (password == null) return false;
-        }
-        await auth.reauthenticate(password: password);
-        await auth.deleteUser();
-      }
-      return true;
-    } on AuthException catch (error) {
-      if (error.code != AuthErrorCode.cancelled && mounted) {
-        _showMessage(authErrorText(copy, error));
-      }
-      return false;
-    }
-  }
-
   Future<void> _deleteAccount() async {
     final strings = AppLocaleScope.stringsOf(context);
+    final copy = authCopyFor(AppLocaleScope.of(context).language);
+    final auth = AuthServices.instance;
     final user = _user;
     if (user == null) return;
 
@@ -183,48 +145,53 @@ class _AccountScreenState extends State<AccountScreen> {
     );
     if (confirmed != true || !mounted) return;
 
-    setState(() => _busy = true);
+    // Re-authenticate up front: deleting the Firebase user needs a recent
+    // login, and the cloud rows must go BEFORE the user (the server checks
+    // a fresh ID token of a still-existing account).
+    final password = await showDialog<String>(
+      context: context,
+      builder: (_) => const _ReauthPasswordDialog(),
+    );
+    if (password == null || !mounted) return;
 
-    if (!await _deleteFirebaseUser()) {
-      if (mounted) setState(() => _busy = false);
+    setState(() => _busy = true);
+    try {
+      await auth.reauthenticate(password: password);
+    } on AuthException catch (error) {
+      if (!mounted) return;
+      setState(() => _busy = false);
+      _showMessage(authErrorText(copy, error));
       return;
     }
 
-    // Cloud rows are keyed by the email, so only a VERIFIED user may ask for
-    // them to be wiped (an unverified sign-up proves nothing about the
-    // address). The screen stays busy (back navigation blocked via PopScope)
-    // until the server answers; local data is cleared regardless of the
-    // outcome and the email is kept in a local variable so Retry can still
-    // address it.
-    final cloudEmail = user.isVerified ? user.email : null;
-    var deleted = false;
-    var localCleared = false;
+    // The screen stays busy (back navigation blocked via PopScope) until
+    // everything is deleted; a failure offers Retry and otherwise leaves the
+    // account signed in -- success is never reported for a partial delete.
     while (true) {
+      String? failure;
       try {
-        if (cloudEmail != null) {
-          await widget.accountDeletionService.deleteAccount(cloudEmail);
+        // Cloud rows are keyed by the verified email; an unverified sign-up
+        // has none, and the server would refuse the call anyway.
+        if (user.isVerified) {
+          await widget.accountDeletionService.deleteAccount();
         }
-        deleted = true;
+        await auth.deleteUser();
+      } on SignInRequiredException {
+        failure = copy.signInRequired;
+      } on AuthException catch (error) {
+        failure = authErrorText(copy, error);
       } catch (_) {
-        deleted = false;
+        failure = strings.accountDeleteFailedBody;
       }
-      if (!localCleared) {
-        await AccountSession.apply(null, entitlement: _entitlement);
-        await _presetStore.save(const []);
-        localCleared = true;
-      }
+      if (failure == null) break;
       if (!mounted) return;
-      setState(() {
-        _user = null;
-        _busy = false;
-      });
-      if (deleted) break;
+      setState(() => _busy = false);
       final retry = await showDialog<bool>(
         context: context,
         barrierDismissible: false,
         builder: (context) => AlertDialog(
           title: Text(strings.accountDeleteFailedTitle),
-          content: Text(strings.accountDeleteFailedBody),
+          content: Text(failure!),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(false),
@@ -242,7 +209,13 @@ class _AccountScreenState extends State<AccountScreen> {
       setState(() => _busy = true);
     }
 
+    await AccountSession.apply(null, entitlement: _entitlement);
+    await _presetStore.save(const []);
     if (!mounted) return;
+    setState(() {
+      _user = null;
+      _busy = false;
+    });
     await showDialog<void>(
       context: context,
       builder: (context) => AlertDialog(
@@ -648,30 +621,33 @@ class _AccountScreenState extends State<AccountScreen> {
           ).textTheme.bodyMedium?.copyWith(color: const Color(0xFF607482)),
         ),
         const SizedBox(height: 20),
-        AppleAuthButton(onPressed: _busy ? null : _appleSignIn, dark: false),
-        const SizedBox(height: 12),
-        SizedBox(
-          width: double.infinity,
-          child: FilledButton(
-            onPressed: _busy
-                ? null
-                : () => _openAuth(
-                    RegistrationScreen(entitlementService: _entitlement),
-                  ),
-            child: Text(copy.registerButton),
+        if (!AuthServices.instance.available)
+          const AuthUnavailableNote(dark: false)
+        else ...[
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton(
+              onPressed: _busy
+                  ? null
+                  : () => _openAuth(
+                      RegistrationScreen(entitlementService: _entitlement),
+                    ),
+              child: Text(copy.registerButton),
+            ),
           ),
-        ),
-        const SizedBox(height: 10),
-        SizedBox(
-          width: double.infinity,
-          child: OutlinedButton(
-            onPressed: _busy
-                ? null
-                : () =>
-                      _openAuth(SignInScreen(entitlementService: _entitlement)),
-            child: Text(copy.signInButton),
+          const SizedBox(height: 10),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton(
+              onPressed: _busy
+                  ? null
+                  : () => _openAuth(
+                      SignInScreen(entitlementService: _entitlement),
+                    ),
+              child: Text(copy.signInButton),
+            ),
           ),
-        ),
+        ],
       ],
     );
   }

@@ -1,13 +1,9 @@
 import 'dart:async';
-import 'dart:convert';
 import 'dart:io';
-import 'dart:math';
 
-import 'package:crypto/crypto.dart';
 import 'package:firebase_auth/firebase_auth.dart' as fb;
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
-import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 
 import 'auth_service.dart';
 
@@ -50,7 +46,6 @@ class FirebaseAuthService implements AuthService {
       email: user.email?.toLowerCase(),
       displayName: user.displayName,
       emailVerified: user.emailVerified,
-      isApple: user.providerData.any((p) => p.providerId == 'apple.com'),
     );
   }
 
@@ -65,13 +60,6 @@ class FirebaseAuthService implements AuthService {
       return await body();
     } on fb.FirebaseAuthException catch (e) {
       throw AuthException(_codeFor(e.code), e.message);
-    } on SignInWithAppleAuthorizationException catch (e) {
-      throw AuthException(
-        e.code == AuthorizationErrorCode.canceled
-            ? AuthErrorCode.cancelled
-            : AuthErrorCode.unknown,
-        e.message,
-      );
     }
   }
 
@@ -85,8 +73,8 @@ class FirebaseAuthService implements AuthService {
     'user-not-found' => AuthErrorCode.userNotFound,
     'network-request-failed' => AuthErrorCode.network,
     'too-many-requests' => AuthErrorCode.tooManyRequests,
+    'user-disabled' => AuthErrorCode.wrongCredentials,
     'requires-recent-login' => AuthErrorCode.requiresRecentLogin,
-    'canceled' || 'popup-closed-by-user' => AuthErrorCode.cancelled,
     _ => AuthErrorCode.unknown,
   };
 
@@ -121,57 +109,9 @@ class FirebaseAuthService implements AuthService {
     return _map(_auth.currentUser)!;
   });
 
-  static String _nonce([int length = 32]) {
-    const chars =
-        '0123456789ABCDEFGHIJKLMNOPQRSTUVXYZabcdefghijklmnopqrstuvwxyz-._';
-    final random = Random.secure();
-    return List.generate(
-      length,
-      (_) => chars[random.nextInt(chars.length)],
-    ).join();
-  }
-
-  static String _sha256(String input) =>
-      sha256.convert(utf8.encode(input)).toString();
-
-  Future<fb.OAuthCredential> _appleCredential() async {
-    final rawNonce = _nonce();
-    final apple = await SignInWithApple.getAppleIDCredential(
-      scopes: [
-        AppleIDAuthorizationScopes.email,
-        AppleIDAuthorizationScopes.fullName,
-      ],
-      nonce: _sha256(rawNonce),
-    );
-    final credential = fb.OAuthProvider('apple.com').credential(
-      idToken: apple.identityToken,
-      rawNonce: rawNonce,
-      accessToken: apple.authorizationCode,
-    );
-    _lastAppleName = [
-      apple.givenName,
-      apple.familyName,
-    ].whereType<String>().where((s) => s.isNotEmpty).join(' ');
-    return credential;
-  }
-
-  String _lastAppleName = '';
-
   @override
-  Future<AppleSignInResult> signInWithApple() => _guard(() async {
-    final credential = await _appleCredential();
-    final result = await _auth.signInWithCredential(credential);
-    final user = result.user!;
-    // Apple sends the name only on the very first authorization.
-    if ((user.displayName ?? '').isEmpty && _lastAppleName.isNotEmpty) {
-      await user.updateDisplayName(_lastAppleName);
-      await user.reload();
-    }
-    return AppleSignInResult(
-      user: _map(_auth.currentUser)!,
-      isNewUser: result.additionalUserInfo?.isNewUser ?? false,
-    );
-  });
+  Future<String?> getIdToken({bool forceRefresh = false}) =>
+      _guard(() async => _auth.currentUser?.getIdToken(forceRefresh));
 
   @override
   Future<void> sendVerificationEmail() =>
@@ -194,18 +134,14 @@ class FirebaseAuthService implements AuthService {
   Future<void> deleteUser() => _guard(() async => _auth.currentUser?.delete());
 
   @override
-  Future<void> reauthenticate({String? password}) => _guard(() async {
+  Future<void> reauthenticate({required String password}) => _guard(() async {
     final user = _auth.currentUser;
     if (user == null) return;
-    if (user.providerData.any((p) => p.providerId == 'apple.com')) {
-      await user.reauthenticateWithCredential(await _appleCredential());
-    } else {
-      await user.reauthenticateWithCredential(
-        fb.EmailAuthProvider.credential(
-          email: user.email ?? '',
-          password: password ?? '',
-        ),
-      );
-    }
+    await user.reauthenticateWithCredential(
+      fb.EmailAuthProvider.credential(
+        email: user.email ?? '',
+        password: password,
+      ),
+    );
   });
 }

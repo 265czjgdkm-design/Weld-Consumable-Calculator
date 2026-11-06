@@ -9,6 +9,9 @@ import 'package:weld_consumable_calculator/l10n/app_locale.dart';
 import 'package:weld_consumable_calculator/l10n/app_locale_scope.dart';
 import 'package:weld_consumable_calculator/models/weld_models.dart';
 import 'package:weld_consumable_calculator/ui/calculator_page.dart';
+import 'package:weld_consumable_calculator/services/auth_service.dart';
+
+import '../support/fake_auth_service.dart';
 
 /// See _FailingHttpClient in calculator_page_save_update_test.dart --
 /// PresetSyncService has no injectable client, so network is stubbed out
@@ -21,6 +24,9 @@ class _FailingHttpClient implements HttpClient {
 }
 
 void main() {
+  setUp(() => AuthServices.instance = FakeAuthService(user: fakeUser()));
+  tearDown(() => AuthServices.instance = const UnavailableAuthService());
+
   testWidgets(
     "the Save button's label agrees with the branch _saveCurrentAsUserPreset "
     "actually takes, even on the very first frame -- before the async "

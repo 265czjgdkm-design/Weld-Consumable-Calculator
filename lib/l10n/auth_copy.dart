@@ -4,10 +4,13 @@ import 'app_language.dart';
 /// apart from [L10nStrings] (same reason as [PremiumAccountCopy]).
 class AuthCopy {
   const AuthCopy({
-    required this.appleButton,
     required this.registerButton,
     required this.signInButton,
     required this.guestButton,
+    required this.signInRequired,
+    required this.legacyTitle,
+    required this.legacyBody,
+    required this.unavailableNote,
     required this.orWord,
     required this.passwordLabel,
     required this.passwordConfirmLabel,
@@ -52,10 +55,13 @@ class AuthCopy {
     required this.deleteReauthBody,
   });
 
-  final String appleButton;
   final String registerButton;
   final String signInButton;
   final String guestButton;
+  final String signInRequired;
+  final String legacyTitle;
+  final String legacyBody;
+  final String unavailableNote;
   final String orWord;
   final String passwordLabel;
   final String passwordConfirmLabel;
@@ -109,10 +115,15 @@ AuthCopy authCopyFor(AppLanguage language) => switch (language) {
 };
 
 const _tr = AuthCopy(
-  appleButton: 'Apple ile devam et',
   registerButton: 'E-posta ile kayıt ol',
   signInButton: 'Giriş yap',
   guestButton: 'Misafir olarak devam et',
+  signInRequired: 'Lütfen hesabına giriş yap.',
+  legacyTitle: 'Hesap sistemimiz yenilendi',
+  legacyBody:
+      'Kayıtlarını görmek için aynı e-postayla kayıt ol veya giriş yap. Eski kayıtların geri gelecek.',
+  unavailableNote:
+      'Hesap şu an kullanılamıyor. Misafir olarak devam edebilirsin.',
   orWord: 'veya',
   passwordLabel: 'Şifre',
   passwordConfirmLabel: 'Şifre (tekrar)',
@@ -166,10 +177,15 @@ const _tr = AuthCopy(
 );
 
 const _en = AuthCopy(
-  appleButton: 'Continue with Apple',
   registerButton: 'Sign up with email',
   signInButton: 'Sign in',
   guestButton: 'Continue as guest',
+  signInRequired: 'Please sign in to your account.',
+  legacyTitle: 'Our account system was renewed',
+  legacyBody:
+      'To see your saved calculations, sign up or sign in with the same email. Your old presets will come back.',
+  unavailableNote:
+      'Accounts are unavailable right now. You can continue as a guest.',
   orWord: 'or',
   passwordLabel: 'Password',
   passwordConfirmLabel: 'Confirm password',
@@ -224,10 +240,14 @@ const _en = AuthCopy(
 );
 
 const _ru = AuthCopy(
-  appleButton: 'Продолжить с Apple',
   registerButton: 'Зарегистрироваться по e-mail',
   signInButton: 'Войти',
   guestButton: 'Продолжить как гость',
+  signInRequired: 'Пожалуйста, войдите в аккаунт.',
+  legacyTitle: 'Система аккаунтов обновлена',
+  legacyBody:
+      'Чтобы увидеть сохранённые расчёты, зарегистрируйтесь или войдите с тем же e-mail. Старые пресеты вернутся.',
+  unavailableNote: 'Аккаунты сейчас недоступны. Можно продолжить как гость.',
   orWord: 'или',
   passwordLabel: 'Пароль',
   passwordConfirmLabel: 'Повторите пароль',
@@ -281,10 +301,15 @@ const _ru = AuthCopy(
 );
 
 const _de = AuthCopy(
-  appleButton: 'Weiter mit Apple',
   registerButton: 'Mit E-Mail registrieren',
   signInButton: 'Anmelden',
   guestButton: 'Als Gast fortfahren',
+  signInRequired: 'Bitte melden Sie sich bei Ihrem Konto an.',
+  legacyTitle: 'Unser Kontosystem wurde erneuert',
+  legacyBody:
+      'Um Ihre gespeicherten Berechnungen zu sehen, registrieren Sie sich oder melden Sie sich mit derselben E-Mail an. Ihre alten Vorlagen kommen zurück.',
+  unavailableNote:
+      'Konten sind derzeit nicht verfügbar. Sie können als Gast fortfahren.',
   orWord: 'oder',
   passwordLabel: 'Passwort',
   passwordConfirmLabel: 'Passwort bestätigen',
@@ -343,10 +368,15 @@ const _de = AuthCopy(
 );
 
 const _hi = AuthCopy(
-  appleButton: 'Apple के साथ जारी रखें',
   registerButton: 'ईमेल से साइन अप करें',
   signInButton: 'साइन इन',
   guestButton: 'अतिथि के रूप में जारी रखें',
+  signInRequired: 'कृपया अपने खाते में साइन इन करें।',
+  legacyTitle: 'हमारा खाता सिस्टम नया हो गया है',
+  legacyBody:
+      'अपनी सेव की गई गणनाएँ देखने के लिए उसी ईमेल से साइन अप या साइन इन करें। आपके पुराने प्रीसेट वापस आ जाएँगे।',
+  unavailableNote:
+      'खाते अभी उपलब्ध नहीं हैं। आप अतिथि के रूप में जारी रख सकते हैं।',
   orWord: 'या',
   passwordLabel: 'पासवर्ड',
   passwordConfirmLabel: 'पासवर्ड दोबारा लिखें',

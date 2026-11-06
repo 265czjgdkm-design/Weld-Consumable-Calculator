@@ -1,4 +1,8 @@
 /**
+ * NOTE (1.0.1): deploy Kod_auth.gs too. The client now sends `idToken` and
+ * Kod_auth.gs overwrites `data.email` with the verified email before this
+ * action runs; the bare-email curl test in step 7 only works until then.
+ *
  * Varyos Weld -- `deleteAccount` action for the existing Apps Script Web App.
  * Varyos Weld -- mevcut Apps Script Web App icin `deleteAccount` islemi.
  *

@@ -63,11 +63,20 @@ void main() {
         await tester.tap(find.text('Save as Preset'));
         await tester.pumpAndSettle();
 
-        // A guest is asked to create an account first; Sign in with Apple
-        // yields a verified account without any typing.
-        await tester.tap(find.text('Continue with Apple'));
+        // A guest is asked to sign in / register first.
+        await tester.tap(find.text('Sign in'));
         await tester.pumpAndSettle();
-        expect(auth.appleSignIns, 1);
+        await tester.enterText(
+          find.widgetWithText(TextField, 'Email'),
+          'new@example.com',
+        );
+        await tester.enterText(
+          find.widgetWithText(TextField, 'Password'),
+          'longenough1',
+        );
+        await tester.tap(find.widgetWithText(FilledButton, 'Sign in'));
+        await tester.pumpAndSettle();
+        expect(auth.signIns, ['new@example.com']);
 
         final dialogTextFields = find.descendant(
           of: find.byType(AlertDialog),

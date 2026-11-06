@@ -11,9 +11,14 @@ import 'auth_widgets.dart';
 /// right point in the route's teardown (see calculator_page.dart's
 /// `_PresetNameDialog` for the Flutter-web crash this avoids).
 class RegistrationScreen extends StatefulWidget {
-  const RegistrationScreen({super.key, this.entitlementService});
+  const RegistrationScreen({
+    super.key,
+    this.entitlementService,
+    this.initialEmail = '',
+  });
 
   final EntitlementService? entitlementService;
+  final String initialEmail;
 
   @override
   State<RegistrationScreen> createState() => _RegistrationScreenState();
@@ -22,7 +27,7 @@ class RegistrationScreen extends StatefulWidget {
 class _RegistrationScreenState extends State<RegistrationScreen> {
   final _firstName = TextEditingController();
   final _lastName = TextEditingController();
-  final _email = TextEditingController();
+  late final _email = TextEditingController(text: widget.initialEmail);
   final _password = TextEditingController();
   final _confirm = TextEditingController();
 
@@ -101,17 +106,14 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
     if (_submitting || !_validate()) return;
     final copy = authCopyOf(context);
     final email = _email.text.trim();
-    final firstName = _firstName.text.trim();
     setState(() => _submitting = true);
     try {
       final user = await AuthServices.instance.signUpWithEmail(
-        firstName: firstName,
+        firstName: _firstName.text.trim(),
         lastName: _lastName.text.trim(),
         email: email,
         password: _password.text,
       );
-      if (!mounted) return;
-      await sendWelcomeMail(context, email: email, firstName: firstName);
       if (!mounted) return;
       final outcome = await Navigator.of(context).push<AuthOutcome>(
         MaterialPageRoute(
@@ -249,16 +251,21 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
 }
 
 class SignInScreen extends StatefulWidget {
-  const SignInScreen({super.key, this.entitlementService});
+  const SignInScreen({
+    super.key,
+    this.entitlementService,
+    this.initialEmail = '',
+  });
 
   final EntitlementService? entitlementService;
+  final String initialEmail;
 
   @override
   State<SignInScreen> createState() => _SignInScreenState();
 }
 
 class _SignInScreenState extends State<SignInScreen> {
-  final _email = TextEditingController();
+  late final _email = TextEditingController(text: widget.initialEmail);
   final _password = TextEditingController();
   String? _emailError;
   String? _passwordError;

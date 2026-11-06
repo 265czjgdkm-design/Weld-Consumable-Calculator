@@ -12,6 +12,12 @@ class AppLocale extends ChangeNotifier {
 
   static const _prefsKey = 'app_language_code';
 
+  /// The persisted language code, readable without an [AppLocale] instance.
+  static Future<String> storedCode() async {
+    final prefs = await SharedPreferences.getInstance();
+    return AppLanguageX.fromCode(prefs.getString(_prefsKey)).code;
+  }
+
   AppLanguage _language;
   AppLanguage get language => _language;
 

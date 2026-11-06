@@ -8,6 +8,9 @@ import 'package:weld_consumable_calculator/models/weld_models.dart';
 import 'package:weld_consumable_calculator/services/account_deletion_service.dart';
 import 'package:weld_consumable_calculator/services/apps_script_http.dart';
 import 'package:weld_consumable_calculator/services/preset_sync_service.dart';
+import 'package:weld_consumable_calculator/services/auth_service.dart';
+
+import '../support/fake_auth_service.dart';
 
 const _redirectTarget = 'https://script.googleusercontent.com/macros/echo?x=1';
 
@@ -29,6 +32,9 @@ MockClient _redirectingClient(
 });
 
 void main() {
+  setUp(() => AuthServices.instance = FakeAuthService(user: fakeUser()));
+  tearDown(() => AuthServices.instance = const UnavailableAuthService());
+
   test('appsScriptPost follows a 302 by GET-ing the Location', () async {
     final log = <String>[];
     final response = await appsScriptPost(
@@ -68,7 +74,7 @@ void main() {
     final log = <String>[];
     await AccountDeletionService(
       client: _redirectingClient(log),
-    ).deleteAccount('a@b.co');
+    ).deleteAccount();
     expect(log.last, 'GET $_redirectTarget');
   });
 
@@ -79,7 +85,7 @@ void main() {
       expect(
         AccountDeletionService(
           client: _redirectingClient(log, json: '{"ok":false,"error":"x"}'),
-        ).deleteAccount('a@b.co'),
+        ).deleteAccount(),
         throwsException,
       );
     },

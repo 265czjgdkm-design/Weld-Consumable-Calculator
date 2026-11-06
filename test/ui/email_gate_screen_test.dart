@@ -9,7 +9,10 @@ import 'package:weld_consumable_calculator/l10n/app_locale_scope.dart';
 import 'package:weld_consumable_calculator/l10n/app_language.dart';
 import 'package:weld_consumable_calculator/l10n/auth_copy.dart';
 import 'package:weld_consumable_calculator/l10n/strings.dart';
+import 'package:weld_consumable_calculator/services/auth_service.dart';
 import 'package:weld_consumable_calculator/ui/email_gate_screen.dart';
+
+import '../support/fake_auth_service.dart';
 
 /// Mocks url_launcher at the platform-interface level -- see
 /// test/services/legal_links_test.dart for the first use of this pattern.
@@ -27,6 +30,9 @@ class _MockUrlLauncherPlatform extends UrlLauncherPlatform {
 }
 
 void main() {
+  setUp(() => AuthServices.instance = FakeAuthService());
+  tearDown(() => AuthServices.instance = const UnavailableAuthService());
+
   final strings = stringsFor(AppLanguage.en);
 
   testWidgets(

@@ -3,11 +3,13 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../l10n/app_locale_scope.dart';
+import '../l10n/auth_copy.dart';
 import '../l10n/strings.dart';
 import '../services/account_session.dart';
 import '../services/entitlement_service.dart';
 import '../services/user_account_store.dart';
 import 'account_screen.dart';
+import 'auth/account_prompt_sheet.dart';
 import 'ai_assistant_screen.dart';
 import 'base_material_screen.dart';
 import 'calculator_page.dart';
@@ -64,6 +66,25 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
     setState(() => _accountEmail = stored);
     _loadPremium();
     await AccountSession.restore(entitlement: _entitlementService);
+    if (!mounted) return;
+    await _loadAccountEmail();
+    await _loadPremium();
+    await _offerLegacyMigration();
+  }
+
+  /// A v1.0 user whose email-only identity no longer works gets a one-time,
+  /// dismissible invitation to register with the same email.
+  Future<void> _offerLegacyMigration() async {
+    final legacy = await _accountStore.takeLegacyEmailPrompt();
+    if (legacy == null || !mounted) return;
+    final copy = authCopyFor(AppLocaleScope.of(context).language);
+    await showAccountPrompt(
+      context,
+      title: copy.legacyTitle,
+      body: copy.legacyBody,
+      entitlementService: _entitlementService,
+      initialEmail: legacy,
+    );
     if (!mounted) return;
     await _loadAccountEmail();
     await _loadPremium();

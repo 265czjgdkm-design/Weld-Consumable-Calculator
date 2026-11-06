@@ -15,6 +15,7 @@ import '../models/consumable_selection.dart';
 import '../models/custom_material_models.dart';
 import '../models/saved_report.dart';
 import '../models/weld_models.dart';
+import '../services/auth_service.dart';
 import '../services/custom_base_material_store.dart';
 import '../services/custom_filler_material_store.dart';
 import '../services/entitlement_service.dart';
@@ -2844,7 +2845,12 @@ class _CalculatorPageState extends State<CalculatorPage> {
     var email = _accountEmail;
     String name;
 
-    if (email == null) {
+    if (email == null && !AuthServices.instance.available) {
+      // No account backend: the preset stays on this device.
+      final promptedName = await _promptPresetName();
+      if (promptedName == null || promptedName.trim().isEmpty) return;
+      name = promptedName.trim();
+    } else if (email == null) {
       // A preset needs a verified account (cloud sync is keyed by it).
       final copy = authCopyFor(AppLocaleScope.of(context).language);
       final outcome = await showAccountPrompt(
@@ -2905,11 +2911,13 @@ class _CalculatorPageState extends State<CalculatorPage> {
       // the cloud's copy, so a preset saved here without syncing must be
       // flagged to the user -- otherwise it can vanish silently the next
       // time presets are reloaded from the cloud.
-      var syncSucceeded = true;
-      try {
-        await _presetSyncService.save(email, preset);
-      } catch (_) {
-        syncSucceeded = false;
+      var syncSucceeded = email != null;
+      if (email != null) {
+        try {
+          await _presetSyncService.save(email, preset);
+        } catch (_) {
+          syncSucceeded = false;
+        }
       }
       await _userPresetStore.save(presets);
       if (!mounted) return;

@@ -1,16 +1,19 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'package:http/testing.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 
 import 'package:weld_consumable_calculator/l10n/app_language.dart';
 import 'package:weld_consumable_calculator/l10n/app_locale.dart';
 import 'package:weld_consumable_calculator/l10n/app_locale_scope.dart';
 import 'package:weld_consumable_calculator/l10n/auth_copy.dart';
 import 'package:weld_consumable_calculator/l10n/strings.dart';
+import 'package:weld_consumable_calculator/services/account_session.dart';
 import 'package:weld_consumable_calculator/services/auth_service.dart';
 import 'package:weld_consumable_calculator/services/entitlement_service.dart';
-import 'package:weld_consumable_calculator/services/signup_gate_store.dart';
 import 'package:weld_consumable_calculator/services/user_account_store.dart';
 import 'package:weld_consumable_calculator/ui/auth/auth_flows.dart';
 import 'package:weld_consumable_calculator/ui/auth/auth_screens.dart';
@@ -25,6 +28,13 @@ class _RecordingEntitlement extends EntitlementService {
   @override
   Future<void> syncAccount(String? appUserId) async => calls.add(appUserId);
 }
+
+Future<void> _withBackend(Future<void> Function() body) => http.runWithClient(
+  body,
+  () => MockClient(
+    (_) async => http.Response(jsonEncode({'ok': true, 'presets': []}), 200),
+  ),
+);
 
 final _copy = authCopyFor(AppLanguage.en);
 final _strings = stringsFor(AppLanguage.en);
@@ -69,6 +79,7 @@ Future<void> _fill(WidgetTester tester, String label, String text) async {
 
 void main() {
   setUp(() {
+    AccountSession.resetQueues();
     SharedPreferences.setMockInitialValues({});
     _auth = FakeAuthService();
     AuthServices.instance = _auth;
@@ -203,11 +214,14 @@ void main() {
       await register(tester);
       _auth.verifiedAfterReload = true;
 
-      await tester.tap(find.text(_copy.verifyDone));
-      await tester.pumpAndSettle();
+      await _withBackend(() async {
+        await tester.tap(find.text(_copy.verifyDone));
+        await tester.pumpAndSettle();
+      });
 
       expect(_lastOutcome, AuthOutcome.verified);
       expect(await const UserAccountStore().getEmail(), 'ayse@example.com');
+      await AccountSession.settled();
       expect(rc.calls, ['uid-new']);
     });
 
@@ -266,11 +280,14 @@ void main() {
       await _open(tester, SignInScreen(entitlementService: rc));
       await _fill(tester, _strings.authFormEmailLabel, 'user@example.com');
       await _fill(tester, _copy.passwordLabel, 'longenough1');
-      await tester.tap(find.widgetWithText(FilledButton, _copy.signInButton));
-      await tester.pumpAndSettle();
+      await _withBackend(() async {
+        await tester.tap(find.widgetWithText(FilledButton, _copy.signInButton));
+        await tester.pumpAndSettle();
+      });
 
       expect(_lastOutcome, AuthOutcome.verified);
       expect(await const UserAccountStore().getEmail(), 'user@example.com');
+      await AccountSession.settled();
       expect(rc.calls, ['uid-1']);
     });
 
@@ -334,38 +351,69 @@ void main() {
       await tester.pumpAndSettle();
     }
 
-    testWidgets('offers Apple first, then email sign-up, sign-in and guest', (
+    testWidgets('offers email sign-up, sign-in and guest (no Apple)', (
       tester,
     ) async {
       await pumpGate(tester);
-      expect(find.byType(SignInWithAppleButton), findsOneWidget);
-      expect(find.text(_copy.appleButton), findsOneWidget);
       expect(find.text(_copy.registerButton), findsOneWidget);
       expect(find.text(_copy.signInButton), findsOneWidget);
       expect(find.text(_copy.guestButton), findsOneWidget);
-
-      final appleY = tester.getTopLeft(find.byType(SignInWithAppleButton)).dy;
-      final registerY = tester.getTopLeft(find.text(_copy.registerButton)).dy;
-      expect(appleY, lessThan(registerY));
+      expect(find.textContaining('Apple'), findsNothing);
     });
 
-    testWidgets('Apple sign-in resolves the gate', (tester) async {
+    testWidgets('without an auth backend only guest + a note remain', (
+      tester,
+    ) async {
+      AuthServices.instance = const UnavailableAuthService();
       await pumpGate(tester);
-      await tester.tap(find.text(_copy.appleButton));
-      await tester.pump();
-      await tester.pump(const Duration(milliseconds: 600));
-
-      expect(_auth.appleSignIns, 1);
-      expect(await const SignupGateStore().isResolved(), isTrue);
+      expect(find.text(_copy.registerButton), findsNothing);
+      expect(find.text(_copy.signInButton), findsNothing);
+      expect(find.text(_copy.unavailableNote), findsOneWidget);
+      expect(find.text(_copy.guestButton), findsOneWidget);
     });
+  });
 
-    testWidgets('a cancelled Apple sheet keeps the gate open', (tester) async {
-      await pumpGate(tester);
-      _auth.failNext = const AuthException(AuthErrorCode.cancelled);
-      await tester.tap(find.text(_copy.appleButton));
-      await tester.pumpAndSettle();
-      expect(await const SignupGateStore().isResolved(), isFalse);
-      expect(find.text(_copy.appleButton), findsOneWidget);
+  group('welcome mail', () {
+    test('is not sent at registration, only after verification', () async {
+      final sent = <String>[];
+      Future<bool> send(
+        String email, {
+        String? firstName,
+        String? locale,
+      }) async {
+        sent.add('$email|$firstName|$locale');
+        return true;
+      }
+
+      final user = fakeUser(
+        uid: 'u-w',
+        email: 'w@b.co',
+        displayName: 'Ayse Yilmaz',
+        emailVerified: false,
+      );
+      Future<void> apply(AuthUser u) => http.runWithClient(
+        () => AccountSession.apply(
+          u,
+          entitlement: _RecordingEntitlement(),
+          auth: _auth,
+          sendWelcome: send,
+        ),
+        () => MockClient(
+          (_) async =>
+              http.Response(jsonEncode({'ok': true, 'presets': []}), 200),
+        ),
+      );
+      await apply(user);
+      expect(sent, isEmpty);
+
+      final verified = fakeUser(
+        uid: 'u-w',
+        email: 'w@b.co',
+        displayName: 'Ayse Yilmaz',
+      );
+      await apply(verified);
+      await apply(verified);
+      expect(sent, ['w@b.co|Ayse|en']);
     });
   });
 
@@ -397,7 +445,6 @@ void main() {
     testWidgets('a guest sees the dismissible account sheet', (tester) async {
       await pumpOffer(tester);
       expect(find.text(_copy.sheetTitle), findsOneWidget);
-      expect(find.text(_copy.appleButton), findsOneWidget);
       expect(find.text(_copy.registerButton), findsOneWidget);
 
       await tester.tap(find.text(_copy.sheetNotNow));

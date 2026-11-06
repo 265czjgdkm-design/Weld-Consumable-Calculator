@@ -11,8 +11,14 @@ import 'package:weld_consumable_calculator/l10n/app_locale_scope.dart';
 import 'package:weld_consumable_calculator/models/weld_models.dart';
 import 'package:weld_consumable_calculator/services/user_preset_store.dart';
 import 'package:weld_consumable_calculator/ui/calculator_page.dart';
+import 'package:weld_consumable_calculator/services/auth_service.dart';
+
+import '../support/fake_auth_service.dart';
 
 void main() {
+  setUp(() => AuthServices.instance = FakeAuthService(user: fakeUser()));
+  tearDown(() => AuthServices.instance = const UnavailableAuthService());
+
   testWidgets('a cloud row this build cannot parse merges with the local cache '
       "instead of replacing it, so a preset the cloud dropped doesn't "
       'destroy a good local copy (see finding #1)', (tester) async {

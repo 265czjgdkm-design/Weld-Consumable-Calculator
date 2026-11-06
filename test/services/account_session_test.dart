@@ -32,29 +32,34 @@ Future<void> _apply(
   AuthUser? user,
   _RecordingEntitlement rc, {
   http.Client Function()? client,
-}) => http.runWithClient(
-  () => AccountSession.apply(user, entitlement: rc, auth: FakeAuthService()),
-  client ??
-      () => MockClient(
-        (_) async =>
-            http.Response(jsonEncode({'ok': true, 'presets': []}), 200),
-      ),
-);
+}) async {
+  await http.runWithClient(
+    () => AccountSession.apply(
+      user,
+      entitlement: rc,
+      auth: FakeAuthService(),
+      sendWelcome: (email, {firstName, locale}) async => true,
+    ),
+    client ??
+        () => MockClient(
+          (_) async =>
+              http.Response(jsonEncode({'ok': true, 'presets': []}), 200),
+        ),
+  );
+  await AccountSession.settled();
+}
 
 void main() {
-  setUp(() => SharedPreferences.setMockInitialValues({}));
+  setUp(() {
+    AccountSession.resetQueues();
+    SharedPreferences.setMockInitialValues({});
+    AuthServices.instance = FakeAuthService(user: fakeUser());
+  });
+  tearDown(() => AuthServices.instance = const UnavailableAuthService());
 
   group('AuthUser.revenueCatUserId', () {
-    test('verified email user and Apple user get their uid', () {
+    test('verified email user gets their uid', () {
       expect(fakeUser(uid: 'a').revenueCatUserId, 'a');
-      expect(
-        fakeUser(
-          uid: 'b',
-          emailVerified: false,
-          isApple: true,
-        ).revenueCatUserId,
-        'b',
-      );
     });
 
     test('unverified email user gets none', () {
@@ -83,15 +88,6 @@ void main() {
         expect(await const UserAccountStore().getEmail(), isNull);
       },
     );
-
-    test('Apple user counts as verified', () async {
-      final rc = _RecordingEntitlement();
-      await _apply(
-        fakeUser(uid: 'ap', emailVerified: false, isApple: true),
-        rc,
-      );
-      expect(rc.calls, ['ap']);
-    });
 
     test('signed out: logOut and legacy email cleared', () async {
       await const UserAccountStore().setEmail('legacy@b.co');
@@ -190,4 +186,51 @@ void main() {
       expect(requests, 0);
     });
   });
+
+  group('serialized sync', () {
+    test('a quick sign-out after sign-in always ends logged out', () async {
+      final rc = _SlowEntitlement();
+      final first = AccountSession.apply(
+        fakeUser(uid: 'u1'),
+        entitlement: rc,
+        auth: FakeAuthService(),
+        sendWelcome: (email, {firstName, locale}) async => true,
+      );
+      final second = AccountSession.apply(
+        null,
+        entitlement: rc,
+        auth: FakeAuthService(),
+      );
+      await Future.wait([first, second]);
+      await Future<void>.delayed(const Duration(milliseconds: 100));
+      expect(rc.calls, ['u1', null]);
+    });
+  });
+
+  group('v1.0 legacy identity', () {
+    test('restore remembers the email once for the migration sheet', () async {
+      await const UserAccountStore().setEmail('legacy@b.co');
+      await AccountSession.restore(
+        entitlement: _RecordingEntitlement(),
+        auth: FakeAuthService(),
+      );
+      const store = UserAccountStore();
+      expect(await store.getEmail(), isNull);
+      expect(await store.takeLegacyEmailPrompt(), 'legacy@b.co');
+      expect(await store.takeLegacyEmailPrompt(), isNull);
+    });
+  });
+}
+
+class _SlowEntitlement extends EntitlementService {
+  final calls = <String?>[];
+
+  @override
+  Future<void> syncAccount(String? appUserId) async {
+    // The first (logIn) call is slower than the later logOut.
+    await Future<void>.delayed(
+      Duration(milliseconds: appUserId == null ? 1 : 40),
+    );
+    calls.add(appUserId);
+  }
 }

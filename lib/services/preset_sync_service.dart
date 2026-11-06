@@ -5,11 +5,17 @@ import 'package:http/http.dart' as http;
 
 import '../models/weld_models.dart';
 import 'apps_script_http.dart';
+import 'auth_service.dart';
 import 'signup_config.dart';
 
 /// Talks to the Apps Script Web App backing account-based preset sync
 /// (see Kod.gs `doGet`/`doPost` in the same project as the welcome-email
 /// trigger). Presets are keyed by the account's email in a Google Sheet.
+///
+/// Identity comes from the Firebase ID token sent with every call; the Apps
+/// Script verifies it with Google and keys rows by the verified email. The
+/// `email` parameters below are NOT sent -- a bare email is never trusted
+/// (see docs/apps_script/Kod_auth.gs).
 ///
 /// Requests intentionally avoid a `Content-Type: application/json` header:
 /// setting one would turn the POST into a CORS-preflighted request, which
@@ -26,11 +32,13 @@ class PresetSyncService {
   Future<({List<UserWeldPreset> presets, int skippedCount})> list(
     String email,
   ) async {
+    final idToken = await requireIdToken();
     final uri = Uri.parse(
       SignupConfig.presetApiUrl,
-    ).replace(queryParameters: {'action': 'listPresets', 'email': email});
+    ).replace(queryParameters: {'action': 'listPresets', 'idToken': idToken});
     final response = await http.get(uri).timeout(const Duration(seconds: 10));
     final body = _decode(response.body);
+    throwIfSignInRequired(body);
     if (body['ok'] != true) {
       throw Exception(body['error']?.toString() ?? 'Preset list failed.');
     }
@@ -52,32 +60,36 @@ class PresetSyncService {
   }
 
   Future<void> save(String email, UserWeldPreset preset) async {
+    final idToken = await requireIdToken();
     final response = await appsScriptPost(
       Uri.parse(SignupConfig.presetApiUrl),
       body: jsonEncode({
         'action': 'save',
-        'email': email,
+        'idToken': idToken,
         'preset': preset.toJson(),
       }),
       timeout: const Duration(seconds: 10),
     );
     final body = _decode(response.body);
+    throwIfSignInRequired(body);
     if (body['ok'] != true) {
       throw Exception(body['error']?.toString() ?? 'Preset save failed.');
     }
   }
 
   Future<void> delete(String email, String presetId) async {
+    final idToken = await requireIdToken();
     final response = await appsScriptPost(
       Uri.parse(SignupConfig.presetApiUrl),
       body: jsonEncode({
         'action': 'delete',
-        'email': email,
+        'idToken': idToken,
         'presetId': presetId,
       }),
       timeout: const Duration(seconds: 10),
     );
     final body = _decode(response.body);
+    throwIfSignInRequired(body);
     if (body['ok'] != true) {
       throw Exception(body['error']?.toString() ?? 'Preset delete failed.');
     }

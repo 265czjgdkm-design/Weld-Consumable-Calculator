@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 import 'apps_script_http.dart';
+import 'auth_service.dart';
 import 'signup_config.dart';
 
 /// Asks the Apps Script backend (same Web App as [PresetSyncService]) to
@@ -18,13 +19,17 @@ class AccountDeletionService {
   /// Injectable for tests; defaults to the top-level `http` functions.
   final http.Client? client;
 
-  Future<void> deleteAccount(String email) async {
+  /// The server derives the email from the (fresh) ID token, so only the
+  /// signed-in, verified owner can delete -- never a bare email.
+  Future<void> deleteAccount() async {
+    final idToken = await requireIdToken(forceRefresh: true);
     final response = await appsScriptPost(
       Uri.parse(SignupConfig.presetApiUrl),
-      body: jsonEncode({'action': 'deleteAccount', 'email': email}),
+      body: jsonEncode({'action': 'deleteAccount', 'idToken': idToken}),
       client: client,
     );
     final decoded = jsonDecode(response.body);
+    if (decoded is Map) throwIfSignInRequired(decoded);
     if (decoded is! Map || decoded['ok'] != true) {
       throw Exception(
         decoded is Map

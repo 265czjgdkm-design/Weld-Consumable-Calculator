@@ -11,6 +11,8 @@ class UserAccountStore {
   static const _emailKey = 'user_account_email_v1';
   static const _firstNameKey = 'user_account_first_name_v1';
   static const _lastNameKey = 'user_account_last_name_v1';
+  static const _legacyEmailKey = 'legacy_account_email_pending_v1';
+  static const _welcomedKey = 'welcome_mail_sent_uids_v1';
 
   Future<String?> getEmail() async {
     final prefs = await SharedPreferences.getInstance();
@@ -39,6 +41,35 @@ class UserAccountStore {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_firstNameKey, firstName.trim());
     await prefs.setString(_lastNameKey, lastName.trim());
+  }
+
+  /// A v1.0 email-only identity found at the first launch of the Firebase
+  /// build: remembered once so a friendly "register with the same email"
+  /// sheet can be shown, then forgotten.
+  Future<String?> takeLegacyEmailPrompt() async {
+    final prefs = await SharedPreferences.getInstance();
+    final email = prefs.getString(_legacyEmailKey);
+    if (email == null) return null;
+    await prefs.remove(_legacyEmailKey);
+    return email;
+  }
+
+  Future<void> setLegacyEmailPrompt(String email) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_legacyEmailKey, email);
+  }
+
+  Future<bool> wasWelcomed(String uid) async {
+    final prefs = await SharedPreferences.getInstance();
+    return (prefs.getStringList(_welcomedKey) ?? const []).contains(uid);
+  }
+
+  Future<void> markWelcomed(String uid) async {
+    final prefs = await SharedPreferences.getInstance();
+    final uids = prefs.getStringList(_welcomedKey) ?? <String>[];
+    if (!uids.contains(uid)) {
+      await prefs.setStringList(_welcomedKey, [...uids, uid]);
+    }
   }
 
   Future<void> clear() async {

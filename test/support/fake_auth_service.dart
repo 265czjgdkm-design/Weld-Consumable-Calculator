@@ -7,13 +7,11 @@ AuthUser fakeUser({
   String? email = 'user@example.com',
   String? displayName,
   bool emailVerified = true,
-  bool isApple = false,
 }) => AuthUser(
   uid: uid,
   email: email,
   displayName: displayName,
   emailVerified: emailVerified,
-  isApple: isApple,
 );
 
 class FakeAuthService implements AuthService {
@@ -33,12 +31,9 @@ class FakeAuthService implements AuthService {
   final signIns = <String>[];
   final resetRequests = <String>[];
   var verificationMailsSent = 0;
-  var appleSignIns = 0;
   var signOuts = 0;
   var deletes = 0;
   var reauths = 0;
-  AuthUser? appleUser;
-  bool appleIsNew = false;
 
   @override
   bool get available => true;
@@ -86,14 +81,9 @@ class FakeAuthService implements AuthService {
   }
 
   @override
-  Future<AppleSignInResult> signInWithApple() async {
-    _maybeFail();
-    appleSignIns++;
-    final apple =
-        appleUser ??
-        fakeUser(uid: 'uid-apple', email: 'apple@example.com', isApple: true);
-    user = apple;
-    return AppleSignInResult(user: apple, isNewUser: appleIsNew);
+  Future<String?> getIdToken({bool forceRefresh = false}) async {
+    final current = user;
+    return current == null ? null : 'token-${current.uid}';
   }
 
   @override
@@ -139,7 +129,7 @@ class FakeAuthService implements AuthService {
   }
 
   @override
-  Future<void> reauthenticate({String? password}) async {
+  Future<void> reauthenticate({required String password}) async {
     reauths++;
   }
 }
