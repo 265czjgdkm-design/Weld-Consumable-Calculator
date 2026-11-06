@@ -1,7 +1,6 @@
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
-import 'package:http/http.dart' as http;
 
 import '../models/weld_models.dart';
 import 'apps_script_http.dart';
@@ -33,10 +32,11 @@ class PresetSyncService {
     String email,
   ) async {
     final idToken = await requireIdToken();
-    final uri = Uri.parse(
-      SignupConfig.presetApiUrl,
-    ).replace(queryParameters: {'action': 'listPresets', 'idToken': idToken});
-    final response = await http.get(uri).timeout(const Duration(seconds: 10));
+    final response = await appsScriptPost(
+      Uri.parse(SignupConfig.presetApiUrl),
+      body: jsonEncode({'action': 'listPresets', 'idToken': idToken}),
+      timeout: const Duration(seconds: 10),
+    );
     final body = _decode(response.body);
     throwIfSignInRequired(body);
     if (body['ok'] != true) {

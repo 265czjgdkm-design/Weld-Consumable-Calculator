@@ -176,6 +176,15 @@ Future<String> requireIdToken({bool forceRefresh = false}) async {
   return token;
 }
 
+/// The server could not check the token right now (Google 429/5xx): a
+/// "try again later" case, not a sign-in problem.
+class CloudUnavailableException implements Exception {
+  const CloudUnavailableException();
+
+  @override
+  String toString() => 'CloudUnavailableException';
+}
+
 /// Server-side auth rejections from the Apps Script backend.
 void throwIfSignInRequired(Map<dynamic, dynamic> body) {
   const codes = {
@@ -184,7 +193,9 @@ void throwIfSignInRequired(Map<dynamic, dynamic> body) {
     'invalid_token',
     'email_not_verified',
   };
-  if (body['ok'] != true && codes.contains(body['error'])) {
-    throw const SignInRequiredException();
+  if (body['ok'] == true) return;
+  if (body['error'] == 'auth_unavailable') {
+    throw const CloudUnavailableException();
   }
+  if (codes.contains(body['error'])) throw const SignInRequiredException();
 }

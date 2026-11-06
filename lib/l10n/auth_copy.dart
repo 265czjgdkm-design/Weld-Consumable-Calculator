@@ -8,6 +8,7 @@ class AuthCopy {
     required this.signInButton,
     required this.guestButton,
     required this.signInRequired,
+    required this.tryLater,
     required this.legacyTitle,
     required this.legacyBody,
     required this.unavailableNote,
@@ -59,6 +60,7 @@ class AuthCopy {
   final String signInButton;
   final String guestButton;
   final String signInRequired;
+  final String tryLater;
   final String legacyTitle;
   final String legacyBody;
   final String unavailableNote;
@@ -119,6 +121,7 @@ const _tr = AuthCopy(
   signInButton: 'Giriş yap',
   guestButton: 'Misafir olarak devam et',
   signInRequired: 'Lütfen hesabına giriş yap.',
+  tryLater: 'Sunucuya şu an ulaşılamıyor. Biraz sonra tekrar dene.',
   legacyTitle: 'Hesap sistemimiz yenilendi',
   legacyBody:
       'Kayıtlarını görmek için aynı e-postayla kayıt ol veya giriş yap. Eski kayıtların geri gelecek.',
@@ -181,6 +184,7 @@ const _en = AuthCopy(
   signInButton: 'Sign in',
   guestButton: 'Continue as guest',
   signInRequired: 'Please sign in to your account.',
+  tryLater: 'The server is not reachable right now. Please try again later.',
   legacyTitle: 'Our account system was renewed',
   legacyBody:
       'To see your saved calculations, sign up or sign in with the same email. Your old presets will come back.',
@@ -244,6 +248,7 @@ const _ru = AuthCopy(
   signInButton: 'Войти',
   guestButton: 'Продолжить как гость',
   signInRequired: 'Пожалуйста, войдите в аккаунт.',
+  tryLater: 'Сервер сейчас недоступен. Повторите попытку позже.',
   legacyTitle: 'Система аккаунтов обновлена',
   legacyBody:
       'Чтобы увидеть сохранённые расчёты, зарегистрируйтесь или войдите с тем же e-mail. Старые пресеты вернутся.',
@@ -305,6 +310,8 @@ const _de = AuthCopy(
   signInButton: 'Anmelden',
   guestButton: 'Als Gast fortfahren',
   signInRequired: 'Bitte melden Sie sich bei Ihrem Konto an.',
+  tryLater:
+      'Der Server ist gerade nicht erreichbar. Bitte später erneut versuchen.',
   legacyTitle: 'Unser Kontosystem wurde erneuert',
   legacyBody:
       'Um Ihre gespeicherten Berechnungen zu sehen, registrieren Sie sich oder melden Sie sich mit derselben E-Mail an. Ihre alten Vorlagen kommen zurück.',
@@ -372,6 +379,7 @@ const _hi = AuthCopy(
   signInButton: 'साइन इन',
   guestButton: 'अतिथि के रूप में जारी रखें',
   signInRequired: 'कृपया अपने खाते में साइन इन करें।',
+  tryLater: 'सर्वर अभी उपलब्ध नहीं है। कृपया बाद में फिर कोशिश करें।',
   legacyTitle: 'हमारा खाता सिस्टम नया हो गया है',
   legacyBody:
       'अपनी सेव की गई गणनाएँ देखने के लिए उसी ईमेल से साइन अप या साइन इन करें। आपके पुराने प्रीसेट वापस आ जाएँगे।',

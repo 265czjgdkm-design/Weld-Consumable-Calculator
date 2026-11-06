@@ -8,7 +8,7 @@ import 'signup_config.dart';
 
 /// Asks the Apps Script backend (same Web App as [PresetSyncService]) to
 /// remove an email's signup row(s) and preset rows. See
-/// docs/apps_script/delete_account.gs for the server side.
+/// docs/apps_script/Kod_auth.gs for the server side.
 ///
 /// Throws on any failure -- network, non-JSON response, or `ok != true`
 /// (including an older script that doesn't know the `deleteAccount` action
@@ -29,6 +29,8 @@ class AccountDeletionService {
       client: client,
     );
     final decoded = jsonDecode(response.body);
+    // An unverified account has no cloud data: nothing to delete.
+    if (decoded is Map && decoded['error'] == 'email_not_verified') return;
     if (decoded is Map) throwIfSignInRequired(decoded);
     if (decoded is! Map || decoded['ok'] != true) {
       throw Exception(

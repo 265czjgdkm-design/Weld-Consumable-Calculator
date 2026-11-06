@@ -26,6 +26,7 @@ class FakeAuthService implements AuthService {
   /// What [reload] reports after the user taps the mail link.
   bool verifiedAfterReload = false;
   bool deleteNeedsReauth = false;
+  bool _staleServed = false;
 
   final signUps = <({String firstName, String lastName, String email})>[];
   final signIns = <String>[];
@@ -120,7 +121,8 @@ class FakeAuthService implements AuthService {
 
   @override
   Future<void> deleteUser() async {
-    if (deleteNeedsReauth && reauths == 0) {
+    if (deleteNeedsReauth && reauths < 2 && !_staleServed) {
+      _staleServed = true;
       throw const AuthException(AuthErrorCode.requiresRecentLogin);
     }
     _maybeFail();

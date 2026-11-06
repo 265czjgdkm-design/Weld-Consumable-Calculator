@@ -223,6 +223,10 @@ void main() {
 
             await tester.tap(find.text(strings.accountDeleteRetryButton));
             await tester.pumpAndSettle();
+            // Retry re-asks for the password (the login may have gone stale).
+            await tester.enterText(find.byType(TextField), 'longenough1');
+            await tester.tap(find.text(strings.commonDelete));
+            await tester.pumpAndSettle();
             expect(
               find.text(strings.accountDeleteSuccessTitle),
               findsOneWidget,
@@ -273,6 +277,93 @@ void main() {
         );
         expect(auth.deletes, 0);
         expect(find.text(strings.accountSignOutButton), findsOneWidget);
+      },
+    );
+
+    testWidgets(
+      'Delete Account: an unverified account (server says email_not_verified) '
+      'has nothing to delete in the cloud and is still removed',
+      (tester) async {
+        SharedPreferences.setMockInitialValues({});
+        auth.user = fakeUser(emailVerified: false);
+        await http.runWithClient(
+          () async {
+            await _pumpAccountScreen(tester);
+            await startDelete(tester);
+            expect(
+              find.text(strings.accountDeleteSuccessTitle),
+              findsOneWidget,
+            );
+            await tester.tap(find.text(strings.commonContinue));
+            await tester.pumpAndSettle();
+          },
+          () => MockClient((request) async {
+            return http.Response(
+              jsonEncode({'ok': false, 'error': 'email_not_verified'}),
+              200,
+            );
+          }),
+        );
+        expect(auth.deletes, 1);
+      },
+    );
+
+    testWidgets('Delete Account: an auth_unavailable answer says try later, not '
+        'sign in', (tester) async {
+      SharedPreferences.setMockInitialValues({});
+      auth.user = fakeUser();
+      await http.runWithClient(
+        () async {
+          await _pumpAccountScreen(tester);
+          await startDelete(tester);
+          expect(
+            find.text(
+              'The server is not reachable right now. Please try again later.',
+            ),
+            findsOneWidget,
+          );
+          expect(find.text('Please sign in to your account.'), findsNothing);
+          await tester.tap(find.text(strings.commonClose));
+          await tester.pumpAndSettle();
+        },
+        () => MockClient((request) async {
+          return http.Response(
+            jsonEncode({'ok': false, 'error': 'auth_unavailable'}),
+            200,
+          );
+        }),
+      );
+      expect(auth.deletes, 0);
+    });
+
+    testWidgets(
+      'Delete Account: a stale login at delete time re-prompts the password',
+      (tester) async {
+        SharedPreferences.setMockInitialValues({});
+        auth.user = fakeUser();
+        auth.deleteNeedsReauth = true;
+        await http.runWithClient(
+          () async {
+            await _pumpAccountScreen(tester);
+            await startDelete(tester);
+            // deleteUser demanded a recent login once: a second password prompt.
+            expect(find.text('Confirm it is you'), findsOneWidget);
+            await tester.enterText(find.byType(TextField), 'longenough1');
+            await tester.tap(find.text(strings.commonDelete));
+            await tester.pumpAndSettle();
+            expect(
+              find.text(strings.accountDeleteSuccessTitle),
+              findsOneWidget,
+            );
+            await tester.tap(find.text(strings.commonContinue));
+            await tester.pumpAndSettle();
+          },
+          () => MockClient((request) async {
+            return http.Response(jsonEncode({'ok': true}), 200);
+          }),
+        );
+        expect(auth.deletes, 1);
+        expect(auth.reauths, 2);
       },
     );
 

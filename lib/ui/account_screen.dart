@@ -148,44 +148,60 @@ class _AccountScreenState extends State<AccountScreen> {
     // Re-authenticate up front: deleting the Firebase user needs a recent
     // login, and the cloud rows must go BEFORE the user (the server checks
     // a fresh ID token of a still-existing account).
-    final password = await showDialog<String>(
-      context: context,
-      builder: (_) => const _ReauthPasswordDialog(),
-    );
-    if (password == null || !mounted) return;
-
-    setState(() => _busy = true);
-    try {
-      await auth.reauthenticate(password: password);
-    } on AuthException catch (error) {
-      if (!mounted) return;
-      setState(() => _busy = false);
-      _showMessage(authErrorText(copy, error));
-      return;
+    Future<bool> reauth() async {
+      final password = await showDialog<String>(
+        context: context,
+        builder: (_) => const _ReauthPasswordDialog(),
+      );
+      if (password == null || !mounted) return false;
+      setState(() => _busy = true);
+      try {
+        await auth.reauthenticate(password: password);
+        return true;
+      } on AuthException catch (error) {
+        if (!mounted) return false;
+        setState(() => _busy = false);
+        _showMessage(authErrorText(copy, error));
+        return false;
+      }
     }
+
+    if (!await reauth()) return;
 
     // The screen stays busy (back navigation blocked via PopScope) until
     // everything is deleted; a failure offers Retry and otherwise leaves the
     // account signed in -- success is never reported for a partial delete.
     while (true) {
       String? failure;
+      var needsReauth = false;
       try {
-        // Cloud rows are keyed by the verified email; an unverified sign-up
-        // has none, and the server would refuse the call anyway.
-        if (user.isVerified) {
-          await widget.accountDeletionService.deleteAccount();
-        }
+        // Pick up a verification done since the screen opened, then always
+        // ask the server with a fresh token: it answers email_not_verified
+        // (= nothing to delete) for an unverified account.
+        await auth.reload();
+        await widget.accountDeletionService.deleteAccount();
         await auth.deleteUser();
       } on SignInRequiredException {
         failure = copy.signInRequired;
+      } on CloudUnavailableException {
+        failure = copy.tryLater;
       } on AuthException catch (error) {
-        failure = authErrorText(copy, error);
+        if (error.code == AuthErrorCode.requiresRecentLogin) {
+          needsReauth = true;
+        } else {
+          failure = authErrorText(copy, error);
+        }
       } catch (_) {
         failure = strings.accountDeleteFailedBody;
       }
-      if (failure == null) break;
+      if (failure == null && !needsReauth) break;
       if (!mounted) return;
       setState(() => _busy = false);
+      if (needsReauth) {
+        // The login went stale again (e.g. a long Retry wait): ask again.
+        if (!await reauth()) return;
+        continue;
+      }
       final retry = await showDialog<bool>(
         context: context,
         barrierDismissible: false,
@@ -206,7 +222,8 @@ class _AccountScreenState extends State<AccountScreen> {
       );
       if (!mounted) return;
       if (retry != true) return;
-      setState(() => _busy = true);
+      // A retry may follow a stale login: re-prompt before trying again.
+      if (!await reauth()) return;
     }
 
     await AccountSession.apply(null, entitlement: _entitlement);

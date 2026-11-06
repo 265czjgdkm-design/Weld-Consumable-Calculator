@@ -15,5 +15,5 @@ unavailable (guest only, presets stay on the device).
 2. Authentication > Templates: set the verification / password-reset mail
    language and sender name.
 3. Deploy the server-side token check: see the header of
-   `docs/apps_script/Kod_auth.gs`. Until it is deployed, cloud sync from the
+   `docs/apps_script/Kod_auth.gs` (a complete replacement for the whole Kod.gs; it also contains the old delete_account code, which is removed from the repo). Until it is deployed, cloud sync from the
    1.0.1 client fails (presets stay local) and old 1.0 clients keep working.

@@ -188,7 +188,7 @@ void main() {
           }
         },
         () => MockClient((request) async {
-          if (request.method == 'GET') {
+          if (jsonDecode(request.body)['action'] == 'listPresets') {
             listWasCalled = true;
             return http.Response(jsonEncode({'ok': true, 'presets': []}), 200);
           }

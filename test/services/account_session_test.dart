@@ -143,15 +143,11 @@ void main() {
           final body = request.body.isEmpty
               ? <String, dynamic>{}
               : jsonDecode(request.body) as Map<String, dynamic>;
-          actions.add(
-            request.method == 'GET'
-                ? 'list'
-                : body['action']?.toString() ?? '?',
-          );
+          actions.add(body['action']?.toString() ?? '?');
           return http.Response(jsonEncode({'ok': true, 'presets': []}), 200);
         }),
       );
-      expect(actions, ['save', 'list']);
+      expect(actions, ['save', 'listPresets']);
     });
 
     test(
@@ -163,7 +159,9 @@ void main() {
           fakeUser(email: 'old@user.com'),
           _RecordingEntitlement(),
           client: () => MockClient((request) async {
-            if (request.method == 'GET') listed = true;
+            if (jsonDecode(request.body)['action'] == 'listPresets') {
+              listed = true;
+            }
             return http.Response(jsonEncode({'ok': false, 'error': 'x'}), 200);
           }),
         );
