@@ -13,11 +13,10 @@ not sent yet (`SignupConfig.firstNameEntryField` / `localeEntryField` are
 2. Paste the ids into `lib/services/signup_config.dart`
    (`firstNameEntryField`, `localeEntryField`). Nothing else in the app
    changes; both submitters already send them when set.
-3. In the form-bound Apps Script (`onFormSubmit` trigger), read the answers by
-   question title, pick `welcome_<locale>.html` (fallback `en`), replace
-   `{{firstName}}` with the HTML-escaped first name (fallback: "there"),
-   take the subject from the first-line HTML comment and send with
-   `MailApp.sendEmail({to, subject, htmlBody, name: 'Varyos Weld',
-   replyTo: 'team@varyosweld.com'})`. Store the five HTML files as HTML
-   files in the Apps Script project (`HtmlService.createHtmlOutputFromFile`)
-   or as string constants.
+3. Nothing else: `docs/apps_script/Kod_auth.gs` already reads the "First
+   name" / "Locale" answers by title, embeds these five templates
+   (`WELCOME_TEMPLATES_`, generated verbatim from this folder -- regenerate
+   it if a template changes), picks `welcome_<locale>` (fallback `en`),
+   fills `{{firstName}}` (HTML-escaped; dropped when empty), takes the
+   subject from the first-line comment and sends through Resend like the
+   live script. While both answers are empty the original live mail is sent.

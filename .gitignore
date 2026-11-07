@@ -61,3 +61,6 @@ flutter_01.log
 # Firebase client config (placed manually, see docs/AUTH_SETUP.md)
 ios/Runner/GoogleService-Info.plist
 docs/local_test_accounts.md
+
+# Verbatim live Apps Script backups (local only, see docs/apps_script/DEPLOY_STEPS_1.0.1.md)
+docs/apps_script/live_backup_*/

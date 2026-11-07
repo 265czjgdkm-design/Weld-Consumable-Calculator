@@ -14,6 +14,10 @@ unavailable (guest only, presets stay on the device).
    (git-ignored; an Xcode build phase copies it into the app).
 2. Authentication > Templates: set the verification / password-reset mail
    language and sender name.
-3. Deploy the server-side token check: see the header of
-   `docs/apps_script/Kod_auth.gs` (a complete replacement for the whole Kod.gs; it also contains the old delete_account code, which is removed from the repo). Until it is deployed, cloud sync from the
-   1.0.1 client fails (presets stay local) and old 1.0 clients keep working.
+3. Deploy the server-side token check: follow
+   `docs/apps_script/DEPLOY_STEPS_1.0.1.md` (paste `docs/apps_script/Kod_auth.gs`
+   over the live `Kod.gs`, add the `FIREBASE_WEB_API_KEY` script property,
+   new version on the SAME deployment). Until it is deployed, cloud sync from
+   the 1.0.1 client fails (presets stay local) and old 1.0 clients keep
+   working; after it, 1.0 clients get `update_required` (handled as a normal
+   sync failure, no crash).

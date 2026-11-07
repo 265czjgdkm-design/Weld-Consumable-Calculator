@@ -71,4 +71,42 @@ void main() {
       expect(result.skippedCount, 0);
     },
   );
+  test('list/save/delete POST the Kod_auth.gs contract: action + idToken in a '
+      'JSON body, never a bare email or a URL query', () async {
+    final preset = UserWeldPreset(
+      id: 'preset-1',
+      name: 'Valid',
+      updatedAtEpochMs: 1,
+      data: InputPreset.csPlateSingleVGmaw.data!,
+    );
+    final requests = <http.Request>[];
+    final client = MockClient((request) async {
+      requests.add(request);
+      return http.Response(jsonEncode({'ok': true, 'presets': []}), 200);
+    });
+
+    await http.runWithClient(() async {
+      await service.list('test@example.com');
+      await service.save('test@example.com', preset);
+      await service.delete('test@example.com', 'preset-1');
+    }, () => client);
+
+    expect(requests, hasLength(3));
+    final bodies = [
+      for (final request in requests)
+        jsonDecode(request.body) as Map<String, dynamic>,
+    ];
+    for (final request in requests) {
+      expect(request.method, 'POST');
+      expect(request.url.query, isEmpty);
+    }
+    expect(bodies.map((b) => b['action']), ['listPresets', 'save', 'delete']);
+    for (final body in bodies) {
+      expect(body['idToken'], isA<String>());
+      expect((body['idToken'] as String).isNotEmpty, isTrue);
+      expect(body.containsKey('email'), isFalse);
+    }
+    expect((bodies[1]['preset'] as Map)['id'], 'preset-1');
+    expect(bodies[2]['presetId'], 'preset-1');
+  });
 }

@@ -1,73 +1,79 @@
 /**
- * Varyos Weld -- COMPLETE replacement for the whole Kod.gs of the Apps Script
- * project behind SignupConfig.presetApiUrl (and bound to the signup Form).
- * Paste this ONE file over everything in Kod.gs (delete the separate
- * delete_account file if you added it earlier: its code is included below).
+ * Varyos Weld -- COMPLETE replacement for Kod.gs (the only file) of the
+ * Apps Script project "Adsız proje" (script.google.com, owner account),
+ * whose web-app deployment is SignupConfig.presetApiUrl and whose
+ * installable trigger "From form - On form submit" calls onFormSubmit.
+ * Verbatim copy of the LIVE code (deployment version 4, 21 Oct 2026):
+ * docs/apps_script/live_backup_2026-11-07/Kod.gs (local only, git-ignored).
+ * Deploy steps: docs/apps_script/DEPLOY_STEPS_1.0.1.md.
  *
- * WHY: the /exec URL is public. Until 1.0 the client sent a bare email, so
- * anyone could read or delete anyone's presets. From 1.0.1 the client sends
- * a Firebase ID token (`idToken`) in the POST body; this file verifies it
- * with Google and derives the email from the VERIFIED token. A bare `email`
- * is ignored/rejected.
+ * WHY: the /exec URL is public. Up to 1.0 the client sent a bare email, so
+ * anyone could read, overwrite or delete anyone's presets and wipe anyone's
+ * account. From 1.0.1 the client sends a Firebase ID token (`idToken`) in
+ * the POST body; this file verifies it with Google (identitytoolkit
+ * accounts:lookup, script property FIREBASE_WEB_API_KEY) and uses only the
+ * VERIFIED email. A bare `email` is never trusted.
  *
- * ======================== DEPLOY STEPS (manager) ========================
- * 1. Firebase console > Project settings > General > "Web API Key" (public
- *    client identifier, not a secret).
- * 2. Apps Script > Project settings > Script properties: keep the existing
- *    RESEND_API_KEY and PRESETS_SHEET_ID, ADD FIREBASE_WEB_API_KEY = <key>.
- *    Never paste keys into code or commit them.
- * 3. Make a backup copy of the current Kod.gs (Ctrl+A, copy to a note).
- * 4. Replace the whole Kod.gs with this file. The editor will ask for the
- *    new "external request" permission (already granted for Resend) -- run
- *    testAuthenticateRequest_ once and approve.
- * 5. Deploy > Manage deployments > pencil on the EXISTING deployment >
- *    Version: New version > Deploy (do NOT create a new deployment).
- * 6. Verify with curl:
- *      curl -sL -X POST '<presetApiUrl>' -d '{"action":"listPresets","email":"a@b.co"}'
- *        -> {"ok":false,"error":"update_required"}      (old 1.0 clients)
- *      curl -sL -X POST '<presetApiUrl>' -d '{"action":"listPresets","idToken":"bad"}'
- *        -> {"ok":false,"error":"invalid_token"}
- *    Then in the 1.0.1 app (signed in + verified): save, list and delete a
- *    preset; an unverified account must get {"error":"email_not_verified"}.
+ * OLD 1.0 CLIENTS (App Store) send no token and get
+ * {"ok":false,"error":"update_required"} for everything (GET list, POST
+ * save/delete/deleteAccount). The 1.0 app treats that as an ordinary
+ * failure: presets fall back to the device copy, saves are kept locally
+ * ("saved offline"), rename/delete show their error snackbar, account
+ * deletion shows "Deletion not confirmed" (with Retry/Close) after clearing
+ * local data. No crash. The welcome mail is unaffected (Form trigger).
  *
  * FUNCTION MAP (T = needs a verified Firebase ID token)
- *   doGet                  no auth; always {error:'update_required'} (old
- *                          1.0 clients listed presets via GET + bare email)
- *   doPost                 T for every action below (checked BEFORE the lock)
- *     action listPresets   T  reads this email's rows
- *     action save          T  upserts (email, preset.id)
- *     action delete        T  removes (email, presetId)
- *     action deleteAccount T  wipes signup rows + presets + Form responses
- *   authenticateRequest_   token check (JWT shape, size cap, cache, lookup)
- *   onFormSubmit           no auth; Form trigger (welcome mail)
- *   sendWelcomeEmail / buildWelcomeEmailHtml   no auth; Resend mail
- *   _getPresetsSheet, _jsonResponse, deletion helpers   internal
+ *   doGet                  no auth; always {error:'update_required'}
+ *   doPost                 T for every action (auth runs BEFORE the lock)
+ *     action listPresets   T  reads this email's rows      {ok,presets}
+ *     action save          T  upserts (email, preset.id)   {ok}
+ *     action delete        T  removes (email, presetId)    {ok}
+ *     action deleteAccount T  signup rows + presets + Form responses
+ *   errors: update_required (no token), invalid_token, email_not_verified,
+ *           auth_unavailable (Google 429/5xx/network), server_misconfigured
+ *           (FIREBASE_WEB_API_KEY missing / 403), bad_request, unknown action
+ *   onFormSubmit           no auth; Form trigger -> sendWelcomeEmail
+ *   buildWelcomeEmailHtml  ORIGINAL live mail (verbatim)
+ *   buildWelcomeEmail_     localized templates (+ English fallback)
+ *   testAuthenticateRequest / testWelcomeEmail / testDeleteAccount
+ *                          editor-only checks (no mail is sent)
  *
- * RECOVERY NOTES (what was reconstructed): the repo never contained Kod.gs.
- * onFormSubmit, sendWelcomeEmail, _getPresetsSheet, _jsonResponse and the
- * deleteAccount block are the original code. doGet/doPostInner_ (list, save,
- * delete) were only partly recoverable and are REWRITTEN here from the
- * client contract (columns Email, PresetId, Name, DataJson,
- * UpdatedAtEpochMs). buildWelcomeEmailHtml's original body (old lines 41-86)
- * was NOT recoverable: a new English HTML is inlined below -- if you prefer
- * the old text, paste your backed-up function body over it.
- * NOTE: `listPresets` is now a POST so no token ever appears in a URL.
- * =======================================================================
+ * DIFFERENCES vs live v4: GET listPresets and every bare-email POST now
+ * return update_required; listPresets moved to POST; identity = verified
+ * token email; lock wait failure returns JSON instead of throwing; one
+ * unreadable DataJson row no longer fails the whole list; welcome mail can
+ * be localized. Sheets, columns, IDs, Resend sender and deletion logic are
+ * unchanged.
  */
 
 // ---------------------------------------------------------------- welcome
+//
+// Form submit trigger (installable, runs the HEAD code, not a deployment
+// version). LIVE behaviour kept: the email comes from the 'E-posta' question
+// (fallback: the first answer), the mail goes out through Resend from
+// team@varyosweld.com with RESEND_API_KEY.
+//
+// NEW (optional): if the Form gets "First name" and "Locale" short-answer
+// questions, the mail is personalised and localized from WELCOME_TEMPLATES_
+// (en/tr/de/ru/hi, unknown locale -> en). While the Form has only the email
+// question, the ORIGINAL live English mail (buildWelcomeEmailHtml, verbatim
+// from live version 4) is sent unchanged.
 
 function onFormSubmit(e) {
   var email = '';
   var firstName = '';
+  var locale = '';
   if (e && e.response) {
     var itemResponses = e.response.getItemResponses();
     for (var i = 0; i < itemResponses.length; i++) {
-      var title = itemResponses[i].getItem().getTitle();
-      if (title === 'E-posta' && !email) {
-        email = itemResponses[i].getResponse();
-      } else if (title === 'First name') {
-        firstName = itemResponses[i].getResponse();
+      var title = String(itemResponses[i].getItem().getTitle()).trim();
+      var answer = itemResponses[i].getResponse();
+      if (title === 'E-posta') {
+        if (!email) email = answer;
+      } else if (/^first ?name$/i.test(title)) {
+        firstName = answer;
+      } else if (/^locale$/i.test(title)) {
+        locale = answer;
       }
     }
     if (!email && itemResponses.length > 0) {
@@ -76,17 +82,17 @@ function onFormSubmit(e) {
   }
   email = (email || '').toString().trim();
   if (!email) return;
-  sendWelcomeEmail(email, (firstName || '').toString().trim());
+  sendWelcomeEmail(email, (firstName || '').toString().trim(), (locale || '').toString().trim());
 }
 
-function sendWelcomeEmail(email, firstName) {
+function sendWelcomeEmail(email, firstName, locale) {
   var apiKey = PropertiesService.getScriptProperties().getProperty('RESEND_API_KEY');
-  var html = buildWelcomeEmailHtml(firstName);
+  var mail = buildWelcomeEmail_(firstName, locale);
   var payload = {
     from: 'Varyos Weld <team@varyosweld.com>',
     to: [email],
-    subject: 'Welcome to Varyos Weld!',
-    html: html
+    subject: mail.subject,
+    html: mail.html
   };
   var options = {
     method: 'post',
@@ -105,22 +111,86 @@ function escapeHtml_(value) {
   });
 }
 
-// Replace with your previous body if you want the old text back.
-function buildWelcomeEmailHtml(firstName) {
-  var name = firstName ? escapeHtml_(firstName) : 'there';
-  return '<div style="font-family:-apple-system,Helvetica,Arial,sans-serif;max-width:560px;margin:0 auto;color:#17303c;line-height:1.5">' +
-    '<h2 style="color:#ff6a35">Welcome to Varyos Weld, ' + name + '!</h2>' +
-    '<p>Everything for weld calculations in one place:</p>' +
-    '<ul>' +
-    '<li><b>Filler consumption</b> by joint type, groove and process.</li>' +
-    '<li><b>Preheat (EN 1011-2)</b> from material, thickness and hydrogen level.</li>' +
-    '<li><b>t8/5 cooling time</b> from 800 to 500 &deg;C.</li>' +
-    '<li><b>Heat input</b> (kJ/mm) from current, voltage and travel speed.</li>' +
-    '</ul>' +
-    '<p>Open the <b>user guide</b> from the Account screen. <b>Premium</b> adds PDF reports and the AI assistant and follows your verified account.</p>' +
-    '<p>Questions? Write to <a href="mailto:team@varyosweld.com">team@varyosweld.com</a>.</p>' +
-    '<p>Happy welding,<br>The Varyos Weld team</p></div>';
+/** 'tr', 'tr-TR', 'TR_tr' -> 'tr'; anything unknown -> 'en'. */
+function welcomeLocale_(locale) {
+  var code = String(locale || '').trim().toLowerCase().split(/[-_]/)[0];
+  return Object.prototype.hasOwnProperty.call(WELCOME_TEMPLATES_, code) ? code : 'en';
 }
+
+/**
+ * @return {{subject:string, html:string}}
+ */
+function buildWelcomeEmail_(firstName, locale) {
+  // Form still has only the email question: the original live mail.
+  if (!firstName && !locale) {
+    return { subject: 'Welcome to Varyos Weld!', html: buildWelcomeEmailHtml() };
+  }
+  var template = WELCOME_TEMPLATES_[welcomeLocale_(locale)];
+  var subjectMatch = template.match(/^<!--\s*Subject:\s*([\s\S]*?)\s*-->/);
+  var subject = subjectMatch ? subjectMatch[1] : 'Welcome to Varyos Weld!';
+  // Drop the leading instruction comments; the mail starts at <!DOCTYPE>.
+  var html = template.replace(/^(\s*<!--[\s\S]*?-->\s*)+/, '');
+  var name = String(firstName || '').replace(/[\r\n\t]+/g, ' ').trim().slice(0, 60);
+  if (name) {
+    subject = subject.replace(/\{\{firstName\}\}/g, name);
+    html = html.replace(/\{\{firstName\}\}/g, escapeHtml_(name));
+  } else {
+    // "Hi {{firstName}}," -> "Hi,"; "Здравствуйте, {{firstName}}!" -> "Здравствуйте!"
+    subject = subject.replace(/[ ,]*\{\{firstName\}\}/g, '');
+    html = html.replace(/[ ,]*\{\{firstName\}\}/g, '');
+  }
+  return { subject: subject, html: html };
+}
+
+/** ORIGINAL live welcome mail (live version 4, verbatim). */
+function buildWelcomeEmailHtml() {
+  return ''
+    + '<html>'
+    + '<body style="margin:0;padding:0;background-color:#111111;font-family:Helvetica,Arial,sans-serif;">'
+    + '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#111111;padding:40px 0;">'
+    + '<tr><td align="center">'
+    + '<table role="presentation" width="480" cellpadding="0" cellspacing="0" style="background-color:#1a1a1a;border-radius:8px;overflow:hidden;">'
+    + '<tr><td style="padding:40px 32px 24px 32px;text-align:center;">'
+    + '<div style="font-size:22px;font-weight:bold;letter-spacing:4px;color:#ffffff;">VARYOS</div>'
+    + '<div style="font-size:14px;font-weight:bold;letter-spacing:6px;color:#ff6a1a;margin-top:2px;">WELD</div>'
+    + '</td></tr>'
+    + '<tr><td style="padding:0 32px;">'
+    + '<hr style="border:none;border-top:1px solid #333333;margin:0 0 24px 0;">'
+    + '</td></tr>'
+    + '<tr><td style="padding:0 32px 8px 32px;">'
+    + '<p style="color:#ffffff;font-size:18px;font-weight:bold;margin:0 0 16px 0;">Welcome! 👋</p>'
+    + '<p style="color:#cccccc;font-size:15px;line-height:1.6;margin:0 0 16px 0;">'
+    + 'Thank you for joining Varyos Weld. You can now calculate your welding consumables '
+    + 'quickly and accurately, all in one place.'
+    + '</p>'
+    + '<p style="color:#cccccc;font-size:15px;line-height:1.6;margin:0 0 24px 0;">'
+    + 'If you have any questions or feedback, just reply to this email — we would love to hear from you.'
+    + '</p>'
+    + '<p style="color:#ffffff;font-size:15px;line-height:1.6;margin:0 0 4px 0;">Cheers,</p>'
+    + '<p style="color:#ff6a1a;font-size:15px;font-weight:bold;margin:0;">The Varyos Weld Team</p>'
+    + '</td></tr>'
+    + '<tr><td style="padding:32px 32px 32px 32px;">'
+    + '<hr style="border:none;border-top:1px solid #333333;margin:0 0 16px 0;">'
+    + '<p style="color:#666666;font-size:12px;line-height:1.5;margin:0;text-align:center;">'
+    + 'You received this email because you signed up via varyosweld.com.'
+    + '</p>'
+    + '</td></tr>'
+    + '</table>'
+    + '</td></tr>'
+    + '</table>'
+    + '</body>'
+    + '</html>';
+}
+
+// Generated verbatim from docs/apps_script/welcome_email_templates/*.html
+// (keep in sync if a template changes). First line = subject comment.
+var WELCOME_TEMPLATES_ = {
+  en: "<!-- Subject: Welcome to Varyos Weld, {{firstName}} -->\n<!-- Placeholder: {{firstName}} is replaced by the Apps Script (HTML-escaped). -->\n<!DOCTYPE html>\n<html lang=\"en\">\n<body style=\"margin:0;padding:0;background:#f3f6f8;font-family:-apple-system,Helvetica,Arial,sans-serif;color:#17303c\">\n  <div style=\"max-width:560px;margin:0 auto;padding:24px\">\n    <div style=\"background:#12191b;border-radius:16px 16px 0 0;padding:24px;color:#fff\">\n      <div style=\"font-size:13px;letter-spacing:2px;color:#ff6a35;font-weight:700\">VARYOS WELD</div>\n      <div style=\"font-size:24px;font-weight:800;margin-top:6px\">Welcome aboard!</div>\n    </div>\n    <div style=\"background:#fff;border-radius:0 0 16px 16px;padding:24px;line-height:1.5;font-size:15px\">\n      <p>Hi {{firstName}},</p>\n      <p>Thanks for creating your Varyos Weld account. Everything you need for weld calculations, in one place:</p>\n      <ul style=\"padding-left:20px\">\n        <li style=\"margin-bottom:8px\"><b>Filler consumption:</b> electrode/wire quantity and cost estimate by joint type, groove and process.</li>\n        <li style=\"margin-bottom:8px\"><b>Preheat (EN 1011-2):</b> preheat temperature from material, thickness and hydrogen level.</li>\n        <li style=\"margin-bottom:8px\"><b>t8/5 cooling time:</b> time to cool from 800 to 500 °C.</li>\n        <li style=\"margin-bottom:8px\"><b>Heat input:</b> heat input (kJ/mm) from current, voltage and travel speed.</li>\n      </ul>\n      <p><b>User guide:</b> open it from the Account screen to see how each calculation works, step by step.</p>\n      <p><b>AI assistant:</b> ask welding questions and get a second look at your numbers (Premium).</p>\n      <p><b>Premium:</b> PDF reports and the AI assistant. Premium follows your verified account, so just sign in on a new phone to get it back.</p>\n      <p>Questions or ideas? Write to <a href=\"mailto:team@varyosweld.com\">team@varyosweld.com</a> - we read everything.</p>\n      <p style=\"margin-top:24px\">Happy welding,<br>The Varyos Weld team</p>\n    </div>\n  </div>\n</body>\n</html>\n",
+  tr: "<!-- Subject: Varyos Weld'e hoş geldin, {{firstName}} -->\n<!-- Placeholder: {{firstName}} is replaced by the Apps Script (HTML-escaped). -->\n<!DOCTYPE html>\n<html lang=\"tr\">\n<body style=\"margin:0;padding:0;background:#f3f6f8;font-family:-apple-system,Helvetica,Arial,sans-serif;color:#17303c\">\n  <div style=\"max-width:560px;margin:0 auto;padding:24px\">\n    <div style=\"background:#12191b;border-radius:16px 16px 0 0;padding:24px;color:#fff\">\n      <div style=\"font-size:13px;letter-spacing:2px;color:#ff6a35;font-weight:700\">VARYOS WELD</div>\n      <div style=\"font-size:24px;font-weight:800;margin-top:6px\">Hoş geldin!</div>\n    </div>\n    <div style=\"background:#fff;border-radius:0 0 16px 16px;padding:24px;line-height:1.5;font-size:15px\">\n      <p>Merhaba {{firstName}},</p>\n      <p>Varyos Weld hesabını oluşturduğun için teşekkürler. Saha ve ofis için kaynak hesaplarını tek yerde topladık:</p>\n      <ul style=\"padding-left:20px\">\n        <li style=\"margin-bottom:8px\"><b>Dolgu malzemesi tüketimi:</b> bağlantı tipi, kaynak ağzı ve prosese göre elektrot/tel miktarı ve maliyet tahmini.</li>\n        <li style=\"margin-bottom:8px\"><b>Ön ısıtma (EN 1011-2):</b> malzeme, kalınlık ve hidrojen seviyesine göre ön ısıtma sıcaklığı.</li>\n        <li style=\"margin-bottom:8px\"><b>t8/5 soğuma süresi:</b> 800-500 °C arası soğuma süresi hesabı.</li>\n        <li style=\"margin-bottom:8px\"><b>Isı girdisi:</b> akım, gerilim ve ilerleme hızından ısı girdisi (kJ/mm).</li>\n      </ul>\n      <p><b>Kullanım Kılavuzu:</b> uygulamada Hesap ekranından kılavuza ulaşabilir, her hesaplamanın nasıl yapıldığını adım adım görebilirsin.</p>\n      <p><b>Yapay zekâ asistanı:</b> kaynak sorularını sor, hesapların için ikinci bir bakış al (Premium).</p>\n      <p><b>Premium:</b> PDF rapor çıktısı ve yapay zekâ asistanı. Premium'un doğrulanmış hesabına bağlıdır; yeni telefonda aynı hesapla giriş yapman yeterli.</p>\n      <p>Sorun ya da önerin mi var? <a href=\"mailto:team@varyosweld.com\">team@varyosweld.com</a> adresine yaz, okuyoruz.</p>\n      <p style=\"margin-top:24px\">İyi kaynaklar,<br>Varyos Weld ekibi</p>\n    </div>\n  </div>\n</body>\n</html>\n",
+  de: "<!-- Subject: Willkommen bei Varyos Weld, {{firstName}} -->\n<!-- Placeholder: {{firstName}} is replaced by the Apps Script (HTML-escaped). -->\n<!DOCTYPE html>\n<html lang=\"de\">\n<body style=\"margin:0;padding:0;background:#f3f6f8;font-family:-apple-system,Helvetica,Arial,sans-serif;color:#17303c\">\n  <div style=\"max-width:560px;margin:0 auto;padding:24px\">\n    <div style=\"background:#12191b;border-radius:16px 16px 0 0;padding:24px;color:#fff\">\n      <div style=\"font-size:13px;letter-spacing:2px;color:#ff6a35;font-weight:700\">VARYOS WELD</div>\n      <div style=\"font-size:24px;font-weight:800;margin-top:6px\">Willkommen an Bord!</div>\n    </div>\n    <div style=\"background:#fff;border-radius:0 0 16px 16px;padding:24px;line-height:1.5;font-size:15px\">\n      <p>Hallo {{firstName}},</p>\n      <p>Danke für Ihr Varyos-Weld-Konto. Alles für Schweißberechnungen an einem Ort:</p>\n      <ul style=\"padding-left:20px\">\n        <li style=\"margin-bottom:8px\"><b>Zusatzwerkstoffverbrauch:</b> Menge an Elektroden/Draht und Kostenschätzung nach Verbindungsart, Nahtform und Verfahren.</li>\n        <li style=\"margin-bottom:8px\"><b>Vorwärmen (EN 1011-2):</b> Vorwärmtemperatur nach Werkstoff, Dicke und Wasserstoffgehalt.</li>\n        <li style=\"margin-bottom:8px\"><b>Abkühlzeit t8/5:</b> Abkühlzeit von 800 auf 500 °C.</li>\n        <li style=\"margin-bottom:8px\"><b>Wärmeeinbringung:</b> Wärmeeinbringung (kJ/mm) aus Strom, Spannung und Schweißgeschwindigkeit.</li>\n      </ul>\n      <p><b>Benutzerhandbuch:</b> Im Konto-Bildschirm öffnen und jede Berechnung Schritt für Schritt nachvollziehen.</p>\n      <p><b>KI-Assistent:</b> Schweißfragen stellen und die eigenen Werte gegenprüfen (Premium).</p>\n      <p><b>Premium:</b> PDF-Berichte und KI-Assistent. Premium folgt Ihrem bestätigten Konto - auf einem neuen Telefon einfach anmelden.</p>\n      <p>Fragen oder Ideen? Schreiben Sie an <a href=\"mailto:team@varyosweld.com\">team@varyosweld.com</a> - wir lesen alles.</p>\n      <p style=\"margin-top:24px\">Gutes Schweißen,<br>Ihr Varyos-Weld-Team</p>\n    </div>\n  </div>\n</body>\n</html>\n",
+  ru: "<!-- Subject: Добро пожаловать в Varyos Weld, {{firstName}} -->\n<!-- Placeholder: {{firstName}} is replaced by the Apps Script (HTML-escaped). -->\n<!DOCTYPE html>\n<html lang=\"ru\">\n<body style=\"margin:0;padding:0;background:#f3f6f8;font-family:-apple-system,Helvetica,Arial,sans-serif;color:#17303c\">\n  <div style=\"max-width:560px;margin:0 auto;padding:24px\">\n    <div style=\"background:#12191b;border-radius:16px 16px 0 0;padding:24px;color:#fff\">\n      <div style=\"font-size:13px;letter-spacing:2px;color:#ff6a35;font-weight:700\">VARYOS WELD</div>\n      <div style=\"font-size:24px;font-weight:800;margin-top:6px\">Добро пожаловать!</div>\n    </div>\n    <div style=\"background:#fff;border-radius:0 0 16px 16px;padding:24px;line-height:1.5;font-size:15px\">\n      <p>Здравствуйте, {{firstName}}!</p>\n      <p>Спасибо за создание аккаунта Varyos Weld. Все сварочные расчёты в одном месте:</p>\n      <ul style=\"padding-left:20px\">\n        <li style=\"margin-bottom:8px\"><b>Расход присадочных материалов:</b> количество электродов/проволоки и оценка стоимости по типу соединения, разделке и процессу.</li>\n        <li style=\"margin-bottom:8px\"><b>Предварительный подогрев (EN 1011-2):</b> температура подогрева по материалу, толщине и уровню водорода.</li>\n        <li style=\"margin-bottom:8px\"><b>Время охлаждения t8/5:</b> время охлаждения от 800 до 500 °C.</li>\n        <li style=\"margin-bottom:8px\"><b>Погонная энергия:</b> погонная энергия (кДж/мм) по току, напряжению и скорости сварки.</li>\n      </ul>\n      <p><b>Руководство:</b> откройте его на экране аккаунта, чтобы пошагово увидеть, как выполняется каждый расчёт.</p>\n      <p><b>ИИ-ассистент:</b> задавайте вопросы по сварке и перепроверяйте расчёты (Premium).</p>\n      <p><b>Premium:</b> PDF-отчёты и ИИ-ассистент. Premium привязан к подтверждённому аккаунту: на новом телефоне достаточно войти.</p>\n      <p>Вопросы или идеи? Пишите на <a href=\"mailto:team@varyosweld.com\">team@varyosweld.com</a> - мы читаем всё.</p>\n      <p style=\"margin-top:24px\">Хорошей сварки,<br>Команда Varyos Weld</p>\n    </div>\n  </div>\n</body>\n</html>\n",
+  hi: "<!-- Subject: Varyos Weld में स्वागत है, {{firstName}} -->\n<!-- Placeholder: {{firstName}} is replaced by the Apps Script (HTML-escaped). -->\n<!DOCTYPE html>\n<html lang=\"hi\">\n<body style=\"margin:0;padding:0;background:#f3f6f8;font-family:-apple-system,Helvetica,Arial,sans-serif;color:#17303c\">\n  <div style=\"max-width:560px;margin:0 auto;padding:24px\">\n    <div style=\"background:#12191b;border-radius:16px 16px 0 0;padding:24px;color:#fff\">\n      <div style=\"font-size:13px;letter-spacing:2px;color:#ff6a35;font-weight:700\">VARYOS WELD</div>\n      <div style=\"font-size:24px;font-weight:800;margin-top:6px\">स्वागत है!</div>\n    </div>\n    <div style=\"background:#fff;border-radius:0 0 16px 16px;padding:24px;line-height:1.5;font-size:15px\">\n      <p>नमस्ते {{firstName}},</p>\n      <p>Varyos Weld खाता बनाने के लिए धन्यवाद। वेल्डिंग गणनाओं के लिए सब कुछ एक जगह:</p>\n      <ul style=\"padding-left:20px\">\n        <li style=\"margin-bottom:8px\"><b>फिलर खपत:</b> जॉइंट प्रकार, ग्रूव और प्रक्रिया के अनुसार इलेक्ट्रोड/तार की मात्रा और लागत का अनुमान।</li>\n        <li style=\"margin-bottom:8px\"><b>प्रीहीट (EN 1011-2):</b> सामग्री, मोटाई और हाइड्रोजन स्तर के अनुसार प्रीहीट तापमान।</li>\n        <li style=\"margin-bottom:8px\"><b>t8/5 कूलिंग समय:</b> 800 से 500 °C तक ठंडा होने का समय।</li>\n        <li style=\"margin-bottom:8px\"><b>हीट इनपुट:</b> करंट, वोल्टेज और गति से हीट इनपुट (kJ/mm)।</li>\n      </ul>\n      <p><b>उपयोग गाइड:</b> खाता स्क्रीन से खोलें और देखें कि हर गणना चरण-दर-चरण कैसे होती है।</p>\n      <p><b>AI सहायक:</b> वेल्डिंग के सवाल पूछें और अपनी गणनाओं की दोबारा जाँच करें (Premium)।</p>\n      <p><b>Premium:</b> PDF रिपोर्ट और AI सहायक। Premium आपके सत्यापित खाते के साथ चलता है - नए फ़ोन पर बस साइन इन करें।</p>\n      <p>सवाल या सुझाव? <a href=\"mailto:team@varyosweld.com\">team@varyosweld.com</a> पर लिखें - हम सब पढ़ते हैं।</p>\n      <p style=\"margin-top:24px\">शुभ वेल्डिंग,<br>Varyos Weld टीम</p>\n    </div>\n  </div>\n</body>\n</html>\n"
+};
 
 // ---------------------------------------------------------------- presets
 
@@ -353,13 +423,27 @@ function authenticateRequest_(params) {
   return result;
 }
 
-function testAuthenticateRequest_() {
+function testAuthenticateRequest() {
   Logger.log(JSON.stringify(authenticateRequest_({ email: 'a@b.co' })));
   Logger.log(JSON.stringify(authenticateRequest_({ idToken: 'bad' })));
   Logger.log(JSON.stringify(authenticateRequest_({ idToken: 'a.b.c' })));
 }
 
+/** Editor check: logs subjects/lengths only, sends nothing. */
+function testWelcomeEmail() {
+  var cases = [['', ''], ['Ayse', 'tr'], ['', 'ru'], ['<b>X</b>', 'xx'], ['Max', 'de-DE']];
+  for (var i = 0; i < cases.length; i++) {
+    var mail = buildWelcomeEmail_(cases[i][0], cases[i][1]);
+    Logger.log(JSON.stringify(cases[i]) + ' -> ' + mail.subject + ' (' + mail.html.length + ' chars)');
+  }
+}
+
 // ---------------------------------------------------------------- account deletion
+
+/** From live: harmless check, no such account exists. */
+function testDeleteAccount() {
+  Logger.log(JSON.stringify(handleDeleteAccount_('nobody-test@example.com')));
+}
 
 var DELETE_ACCOUNT_IDS = {
   SIGNUP_SPREADSHEET_ID: '11htQFYKQQh2DxKsLb6O66-9lNe7JtELYbrqqgElJf60',
