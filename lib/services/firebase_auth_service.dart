@@ -90,8 +90,16 @@ class FirebaseAuthService implements AuthService {
       password: password,
     );
     final user = credential.user!;
-    await user.updateDisplayName('${firstName.trim()} ${lastName.trim()}');
-    await user.sendEmailVerification();
+    // The account already exists at this point. A failure in the follow-up
+    // calls (e.g. too-many-requests on the verification mail) must not surface
+    // as a sign-up error: a retry would then hit email-already-in-use. The
+    // verify screen offers "resend", so swallow and continue.
+    try {
+      await user.updateDisplayName('${firstName.trim()} ${lastName.trim()}');
+    } on fb.FirebaseAuthException catch (_) {}
+    try {
+      await user.sendEmailVerification();
+    } on fb.FirebaseAuthException catch (_) {}
     await user.reload();
     return _map(_auth.currentUser)!;
   });
