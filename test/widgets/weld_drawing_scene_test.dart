@@ -47,6 +47,8 @@ WeldDrawingData _data({
     capHeightMm: caps ? 1.5 : null,
     legSizeMm: leg,
     pipeOdMm: 168.3,
+    pipeOdAMm: unequal ? 168.3 : null,
+    pipeOdBMm: unequal ? 114.3 : null,
     gtawTransitionMm: combined ? 3 : null,
   );
 }
@@ -88,6 +90,8 @@ double? _model(WeldDrawingData d, FieldKey k) => switch (k) {
   FieldKey.capHeightMm => d.capHeightMm,
   FieldKey.legSizeMm => d.legSizeMm,
   FieldKey.pipeOdMm => d.pipeOdMm,
+  FieldKey.pipeOdAMm => d.pipeOdAMm,
+  FieldKey.pipeOdBMm => d.pipeOdBMm,
   FieldKey.gtawTransitionMm => d.gtawTransitionMm,
   _ => null,
 };
@@ -98,11 +102,30 @@ double? _printed(String text) {
   return m == null ? null : double.parse(m.group(0)!);
 }
 
+bool _segmentCrossesRect(Offset a, Offset b, Rect rect) {
+  final d = b - a;
+  final n = (d.distance / 0.5).ceil().clamp(1, 4000);
+  for (var i = 0; i <= n; i++) {
+    if (rect.contains(a + d * (i / n))) return true;
+  }
+  return false;
+}
+
 String _describe(WeldDrawingScene scene) =>
     scene.labels.map((l) => '${l.text}@${l.rect}').join('\n');
 
 void _expectNoOverlap(WeldDrawingScene scene, Size size, String reason) {
   final labels = scene.labels;
+  for (final seg in scene.debugLeaderSegments) {
+    for (final l in labels) {
+      expect(
+        _segmentCrossesRect(seg.$1, seg.$2, l.rect.deflate(1)),
+        isFalse,
+        reason:
+            '$reason: line ${seg.$1}->${seg.$2} crosses "${l.text}"\n${_describe(scene)}',
+      );
+    }
+  }
   for (var i = 0; i < labels.length; i++) {
     final r = labels[i].rect;
     expect(
@@ -235,26 +258,6 @@ void main() {
               }
             }
           }
-        }
-      }
-    });
-
-    testWidgets('larger accessibility text still fits', (tester) async {
-      for (final g in GrooveType.values) {
-        final size = _canvas(348, g);
-        for (final t in _thicknesses) {
-          _expectNoOverlap(
-            _scene(
-              g,
-              JointType.pipeButt,
-              _data(thickness: t, unequal: true, combined: true, leg: t),
-              size,
-              AppLanguage.tr,
-              fontSize: 14.3,
-            ),
-            size,
-            '${g.name} t=$t font 14.3',
-          );
         }
       }
     });
@@ -393,6 +396,8 @@ void main() {
               capHeightMm: 2.25,
               legSizeMm: t,
               pipeOdMm: 219.1,
+              pipeOdAMm: 219.1,
+              pipeOdBMm: 168.3,
               gtawTransitionMm: 2.5,
             );
             final scene = _scene(

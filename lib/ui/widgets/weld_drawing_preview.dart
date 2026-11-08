@@ -32,16 +32,28 @@ double weldDrawingGeometryThicknessMm(double thicknessMm) {
   );
 }
 
+/// Height of the drawing canvas on phones. Grows with the label text size
+/// (same clamp the drawing's text uses) so larger text never squeezes it.
+double weldDrawingPhoneCanvasHeight(GrooveType grooveType, TextScaler scaler) {
+  final scale = (scaler.scale(_baseFontSize) / _baseFontSize).clamp(1.0, 1.3);
+  return (grooveType == GrooveType.fillet ? 285.0 : 400.0) * scale;
+}
+
 /// Minimum touch target edge for every drawn value (logical px).
 const double kWeldDrawingMinHitExtent = 44;
 
 /// A tappable region of the drawing that corresponds to one editable
 /// [FieldKey]. [rect] is the full >=44px hit area, not just the visible pill.
 class DrawingHotspot {
-  const DrawingHotspot(this.fieldKey, this.rect);
+  const DrawingHotspot(this.fieldKey, this.rect, [Rect? visibleRect])
+    : visibleRect = visibleRect ?? rect;
 
   final FieldKey fieldKey;
   final Rect rect;
+
+  /// The drawn pill itself. A tap inside it always wins over a neighbour's
+  /// padded [rect].
+  final Rect visibleRect;
 }
 
 /// One value shown on the drawing. [rect] is the visible pill; [hitRect] is
@@ -209,12 +221,16 @@ class _WeldDrawingPreviewState extends State<WeldDrawingPreview> {
     final tapPosition = details.localPosition;
     DrawingHotspot? nearest;
     var nearestDistanceSq = double.infinity;
-    for (final hotspot in _hotspots) {
-      if (!hotspot.rect.contains(tapPosition)) continue;
-      final distanceSq = (hotspot.rect.center - tapPosition).distanceSquared;
-      if (distanceSq < nearestDistanceSq) {
-        nearest = hotspot;
-        nearestDistanceSq = distanceSq;
+    // Pass 0: taps on a drawn pill. Pass 1: the padded areas around them.
+    for (var pass = 0; pass < 2 && nearest == null; pass++) {
+      for (final hotspot in _hotspots) {
+        final area = pass == 0 ? hotspot.visibleRect : hotspot.rect;
+        if (!area.contains(tapPosition)) continue;
+        final distanceSq = (hotspot.rect.center - tapPosition).distanceSquared;
+        if (distanceSq < nearestDistanceSq) {
+          nearest = hotspot;
+          nearestDistanceSq = distanceSq;
+        }
       }
     }
     if (nearest != null) {
@@ -272,9 +288,22 @@ class WeldDrawingScene {
   // Canvas y from which the weld is tinted as the GTAW root zone.
   double? rootZoneTopY;
   final List<_Seg> _lines = [];
+  final List<_Seg> _leaders = [];
   final List<_Arrow> _arrows = [];
   final List<_Arc> _arcs = [];
   final List<DrawingLabel> labels = [];
+
+  /// Every straight line drawn (dimension, extension and leader lines), for
+  /// tests that check lines never run through label text.
+  @visibleForTesting
+  List<(Offset, Offset)> get debugLineSegments => [
+    for (final l in [..._lines, ..._leaders]) (l.a, l.b),
+  ];
+
+  @visibleForTesting
+  List<(Offset, Offset)> get debugLeaderSegments => [
+    for (final l in _leaders) (l.a, l.b),
+  ];
 
   // Outline segments the labels try not to sit on.
   final List<_Seg> _outline = [];
@@ -364,13 +393,23 @@ class _SceneBuilder {
   /// positions nudged up/down in whole label heights): first one that
   /// overlaps no placed label and touches no outline/dimension line wins; if
   /// none is perfect, the least-bad one is used. Always clamped to the canvas.
-  Rect _place(String text, List<Offset> centers, {bool overLine = false}) {
+  Rect _place(
+    String text,
+    List<Offset> centers, {
+    bool overLine = false,
+    List<Offset> leaderTargets = const [],
+  }) {
+    _chosenTarget = null;
+    _lastLead = 0;
     final sz = _labelSize(text);
     final step = sz.height + 2;
+    // Leader labels may also sit right on their target, which needs no
+    // leader at all.
+    final spots = [...centers, ...leaderTargets];
     final candidates = <Offset>[
-      ...centers,
+      ...spots,
       for (var k = 1; k <= 6; k++)
-        for (final c in centers) ...[
+        for (final c in spots) ...[
           c.translate(0, -k * step),
           c.translate(0, k * step),
         ],
@@ -386,11 +425,14 @@ class _SceneBuilder {
           ? 3 - r.top
           : (r.bottom > size.height - 3 ? (size.height - 3) - r.bottom : 0.0);
       r = r.shift(Offset(dx, dy));
-      final score = _score(r, overLine) + (dx.abs() + dy.abs()) * 0.5;
+      final lead = _leaderPenalty(r, leaderTargets);
+      final score = _score(r, overLine) + lead.$1 + (dx.abs() + dy.abs()) * 0.5;
       if (score < bestScore) {
         best = r;
         bestScore = score;
-        if (score == 0) break;
+        _chosenTarget = lead.$2;
+        _lastLead = lead.$1;
+        if (score < 0.5) break;
       }
     }
     if (bestScore >= 1000) {
@@ -407,6 +449,7 @@ class _SceneBuilder {
           want.dx,
           sz.width / 2 + 3,
           size.width - sz.width / 2 - 3,
+          for (var gx = 0.25; gx < 1; gx += 0.25) size.width * gx,
         ]) {
           grid.add(Offset(x, y));
         }
@@ -419,28 +462,83 @@ class _SceneBuilder {
           height: sz.height,
         );
         if (r.left < 3 || r.right > size.width - 3) continue;
-        final score = _score(r, overLine) + (c - want).distance * 0.01;
+        final lead = _leaderPenalty(r, leaderTargets);
+        final score =
+            _score(r, overLine) + lead.$1 + (c - want).distance * 0.001;
         if (score < bestScore) {
           best = r;
           bestScore = score;
-          if (score < 1000) break;
+          _chosenTarget = lead.$2;
+          _lastLead = lead.$1;
+          if (score < 0.5) break;
         }
       }
     }
     return best!;
   }
 
+  bool _segHitsRect(Offset a, Offset b, Rect rect) {
+    final d = b - a;
+    final n = math.max((d.distance / 2).ceil(), 1);
+    for (var i = 0; i <= n; i++) {
+      if (rect.contains(a + d * (i / n))) return true;
+    }
+    return false;
+  }
+
+  _Seg? _leaderFor(Rect r, Offset to) {
+    final from = Offset(
+      to.dx.clamp(r.left, r.right),
+      to.dy.clamp(r.top, r.bottom),
+    );
+    return (from - to).distance > 3 ? _Seg(from, to) : null;
+  }
+
+  Offset? _chosenTarget;
+  double _lastLead = 0;
+
+  // Best of the possible leader targets for a label at [r]: penalised when
+  // the leader would run through an already placed label.
+  (double, Offset?) _leaderPenalty(Rect r, List<Offset> targets) {
+    var best = 0.0;
+    Offset? bestTarget;
+    var first = true;
+    for (final t in targets) {
+      final leader = _leaderFor(r, t);
+      var pen = 0.0;
+      if (leader != null) {
+        for (final l in scene.labels) {
+          if (_segHitsRect(leader.a, leader.b, l.rect.inflate(2))) pen += 100000;
+        }
+      }
+      if (first || pen < best) {
+        best = pen;
+        bestTarget = t;
+        first = false;
+      }
+    }
+    return (best, bestTarget);
+  }
+
   double _score(Rect r, bool overLine) {
     var score = 0.0;
     for (final l in scene.labels) {
-      if (l.rect.inflate(2).overlaps(r)) score += 1000;
+      if (l.rect.inflate(2).overlaps(r)) score += 1000000;
+    }
+    for (final seg in scene._leaders) {
+      if (_segHitsRect(seg.a, seg.b, r.inflate(2))) score += 100000;
     }
     final probe = r.inflate(1);
-    for (final seg in [...scene._outline, if (!overLine) ...scene._lines]) {
+    for (final seg in scene._outline) {
       final d = seg.b - seg.a;
       final n = math.max((d.distance / 3).ceil(), 1);
       for (var i = 0; i <= n; i++) {
         if (probe.contains(seg.a + d * (i / n))) score += 1;
+      }
+    }
+    if (!overLine) {
+      for (final seg in scene._lines) {
+        if (_segHitsRect(seg.a, seg.b, probe)) score += 1000;
       }
     }
     return score;
@@ -451,21 +549,28 @@ class _SceneBuilder {
     String text,
     double? value,
     List<Offset> centers, {
-    Offset? leaderTo,
+    List<Offset> leaderTargets = const [],
     bool overLine = false,
   }) {
-    final rect = _place(text, centers, overLine: overLine);
+    var rect = _place(
+      text,
+      centers,
+      overLine: overLine,
+      leaderTargets: leaderTargets,
+    );
+    Offset? leaderTo = _chosenTarget;
+    if (leaderTargets.isNotEmpty && _lastLead >= 100000) {
+      // No clean leader route on this crowded canvas: put the label on the
+      // shape next to its target without a leader instead of crossing text.
+      rect = _place(text, leaderTargets, overLine: overLine);
+      leaderTo = null;
+    }
     scene.labels.add(
       DrawingLabel(fieldKey: key, text: text, value: value, rect: rect),
     );
     if (leaderTo != null) {
-      final nearest = Offset(
-        leaderTo.dx.clamp(rect.left, rect.right),
-        leaderTo.dy.clamp(rect.top, rect.bottom),
-      );
-      if ((nearest - leaderTo).distance > 3) {
-        scene._lines.add(_Seg(nearest, leaderTo));
-      }
+      final leader = _leaderFor(rect, leaderTo);
+      if (leader != null) scene._leaders.add(leader);
     }
   }
 
@@ -556,6 +661,8 @@ class _SceneBuilder {
     ].whereType<double>().fold<double>(0, math.max);
     final gov = govMm > 0 ? govMm : 12.0;
     final gv = weldDrawingGeometryThicknessMm(gov);
+    final aShown = unequal ? _positive(data.thicknessAMm) : null;
+    final bShown = unequal ? _positive(data.thicknessBMm) : null;
     final tA = unequal ? math.max(gv * (aReal ?? gov) / gov, gv * 0.3) : gv;
     final tB = unequal ? math.max(gv * (bReal ?? gov) / gov, gv * 0.3) : gv;
 
@@ -646,16 +753,31 @@ class _SceneBuilder {
     final xTop = math.max(faceL.first.dx, faceR.first.dx);
 
     // ---- Pixel frame ----
-    final odReal = jointType == JointType.pipeButt
-        ? _positive(data.pipeOdMm)
-        : null;
-    final leftText = unequal ? 'A ${_fmt(aReal)} mm' : 't ${_fmt(tReal)} mm';
-    final rightText = 'B ${_fmt(bReal)} mm';
+    final isPipe = jointType == JointType.pipeButt;
+    // Unequal pipes edit OD A / OD B separately; equal ones a single OD.
+    final odLabels = <({FieldKey key, String prefix, double? value})>[
+      if (isPipe && unequal) ...[
+        (
+          key: FieldKey.pipeOdAMm,
+          prefix: 'OD A',
+          value: _positive(data.pipeOdAMm),
+        ),
+        (
+          key: FieldKey.pipeOdBMm,
+          prefix: 'OD B',
+          value: _positive(data.pipeOdBMm),
+        ),
+      ] else if (isPipe && _positive(data.pipeOdMm) != null)
+        (key: FieldKey.pipeOdMm, prefix: 'OD', value: _positive(data.pipeOdMm)),
+    ];
+    final leftText = unequal ? 'A ${_fmt(aShown)} mm' : 't ${_fmt(tReal)} mm';
+    final rightText = 'B ${_fmt(bShown)} mm';
     const gL = 8.0;
     const gR = 8.0;
 
     var top = 8.0;
-    if (odReal != null || _combined) top += _labelH + 8;
+    if (odLabels.isNotEmpty || _combined) top += _labelH + 8;
+    if (odLabels.length > 1 && _combined) top += _labelH + 4;
     if (capsOn) top += 12 + 4 + _labelH + 4;
     var bottom = 14 + 4 + _labelH + 8;
     if (isDouble && capsOn) bottom += (12 + 4 + _labelH + 4) + (_labelH + 4);
@@ -896,11 +1018,11 @@ class _SceneBuilder {
     _label(
       unequal ? FieldKey.thicknessAMm : FieldKey.thicknessMm,
       leftText,
-      unequal ? aReal : tReal,
+      unequal ? aShown : tReal,
       [Offset(xDimL + 8 + _labelSize(leftText).width / 2, (yLt + yLb) / 2)],
     );
     if (unequal) {
-      _label(FieldKey.thicknessBMm, rightText, bReal, [
+      _label(FieldKey.thicknessBMm, rightText, bShown, [
         Offset(xDimR - 8 - _labelSize(rightText).width / 2, (yRt + yRb) / 2),
       ]);
     }
@@ -925,9 +1047,6 @@ class _SceneBuilder {
     for (final c in capLabels) {
       _label(c.key, c.text, c.real, c.centers);
     }
-    for (final a in angleLabels) {
-      _label(a.key, a.text, a.real, a.centers, leaderTo: a.leader);
-    }
 
     if (_combined) {
       final tr0 = _positive(data.gtawTransitionMm)!;
@@ -941,20 +1060,37 @@ class _SceneBuilder {
         smaw,
         null,
         [Offset(w - 6 - sw / 2, 8 + _labelH / 2)],
-        leaderTo: p(0, (math.min(lt, rt) + zoneTop) / 2),
+        leaderTargets: [
+          for (final fx in [0.0, -0.4, 0.4])
+            for (final fy in [0.5, 0.3, 0.7])
+              p(fx * faceR.first.dx, (math.min(lt, rt) + zoneTop) * fy),
+        ],
       );
       final root = '${labels.gtawRoot} ${_fmt(tr0)} mm';
       final rw = _labelSize(root).width;
-      _label(FieldKey.gtawTransitionMm, root, tr0, [
-        Offset(w - 6 - rw / 2, dimY + 6 + _labelH / 2),
-      ], leaderTo: p(0, math.max(lb, rb) - trVis / 2));
+      _label(
+        FieldKey.gtawTransitionMm,
+        root,
+        tr0,
+        [Offset(w - 6 - rw / 2, dimY + 6 + _labelH / 2)],
+        leaderTargets: [
+          for (final fx in [0.0, -0.6, 0.6])
+            for (final fy in [0.5, 0.25, 0.75])
+              p(fx * hG, math.max(lb, rb) - trVis * fy),
+        ],
+      );
     }
 
-    if (odReal != null) {
-      final text = 'OD ${_fmt(odReal)} mm';
-      _label(FieldKey.pipeOdMm, text, odReal, [
-        Offset(6 + _labelSize(text).width / 2, 8 + _labelH / 2),
-      ]);
+    for (final a in angleLabels) {
+      _label(a.key, a.text, a.real, a.centers, leaderTargets: [a.leader]);
+    }
+
+    var odX = 6.0;
+    for (final od in odLabels) {
+      final text = '${od.prefix} ${_fmt(od.value)} mm';
+      final lw = _labelSize(text).width;
+      _label(od.key, text, od.value, [Offset(odX + lw / 2, 8 + _labelH / 2)]);
+      odX += lw + 6;
     }
   }
 
@@ -1114,7 +1250,7 @@ class _WeldDrawingPainter extends CustomPainter {
     }
     canvas.drawPath(scene.weld, outline);
 
-    for (final seg in scene._lines) {
+    for (final seg in [...scene._lines, ...scene._leaders]) {
       canvas.drawLine(seg.a, seg.b, dim);
     }
     for (final arc in scene._arcs) {
@@ -1165,7 +1301,7 @@ class _WeldDrawingPainter extends CustomPainter {
 
     onHotspots?.call([
       for (final label in scene.labels)
-        DrawingHotspot(label.fieldKey, label.hitRect),
+        DrawingHotspot(label.fieldKey, label.hitRect, label.rect),
     ]);
   }
 

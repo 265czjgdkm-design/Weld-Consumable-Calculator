@@ -436,10 +436,7 @@ class _CalculatorPageState extends State<CalculatorPage> {
       WizardStep.dimensions => WizardDimensionsStep(
         drawingHeader: Padding(
           padding: const EdgeInsets.fromLTRB(8, 10, 8, 0),
-          child: SizedBox(
-            height: _narrowDrawingHeight(context),
-            child: _buildTechnicalDrawingCard(context, compact: true),
-          ),
+          child: _buildTechnicalDrawingCard(context, compact: true),
         ),
         starterPresetSection: _buildStarterPresetSection(
           context,
@@ -562,12 +559,6 @@ class _CalculatorPageState extends State<CalculatorPage> {
     );
   }
 
-  // Card height for the pinned phone drawing: the drawing places every value
-  // on the shape itself, so it needs a fixed, modest height rather than
-  // tiers that grew with the number of callouts.
-  double _narrowDrawingHeight(BuildContext context) =>
-      _grooveType == GrooveType.fillet ? 380.0 : 480.0;
-
   Widget _buildEstimatorWorkspace(BuildContext context) {
     final strings = AppLocaleScope.stringsOf(context);
     final visibleFields = _visibleFieldSpecs(strings);
@@ -635,13 +626,7 @@ class _CalculatorPageState extends State<CalculatorPage> {
                           children: [
                             _buildJointConfigurationCard(context),
                             const SizedBox(height: 18),
-                            SizedBox(
-                              height: _narrowDrawingHeight(context),
-                              child: _buildTechnicalDrawingCard(
-                                context,
-                                compact: true,
-                              ),
-                            ),
+                            _buildTechnicalDrawingCard(context, compact: true),
                           ],
                         ),
                       ),
@@ -988,23 +973,29 @@ class _CalculatorPageState extends State<CalculatorPage> {
         ),
         padding: EdgeInsets.all(compact ? 4 : 12),
         child: compact
-            ? WeldDrawingPreview(
-                grooveType: _grooveType,
-                jointType: _jointType,
-                drawingMode: _drawingMode,
-                data: _drawingData,
-                onFieldTap: _handleDrawingFieldTap,
-                fillAvailableSpace: true,
-                jointTypeLabel: _jointType.labelFor(strings),
-                grooveTypeLabel: _grooveType.labelFor(strings),
-                filletWeldFaceLabel: strings.drawingLabelFilletWeldFace,
-                tJointLabel: strings.drawingLabelTJoint,
-                smawFillCapLabel: strings.drawingLabelSmawFillCap,
-                gtawRootLabel: strings.drawingLabelGtawRoot,
-                capTopLabel: strings.drawingLabelCapTop,
-                capBottomLabel: strings.drawingLabelCapBottom,
-                capOverlapValueLabel: strings.drawingLabelCapOverlapValue,
-                capHeightValueLabel: strings.drawingLabelCapHeightValue,
+            ? SizedBox(
+                height: weldDrawingPhoneCanvasHeight(
+                  _grooveType,
+                  MediaQuery.textScalerOf(context),
+                ),
+                child: WeldDrawingPreview(
+                  grooveType: _grooveType,
+                  jointType: _jointType,
+                  drawingMode: _drawingMode,
+                  data: _drawingData,
+                  onFieldTap: _handleDrawingFieldTap,
+                  fillAvailableSpace: true,
+                  jointTypeLabel: _jointType.labelFor(strings),
+                  grooveTypeLabel: _grooveType.labelFor(strings),
+                  filletWeldFaceLabel: strings.drawingLabelFilletWeldFace,
+                  tJointLabel: strings.drawingLabelTJoint,
+                  smawFillCapLabel: strings.drawingLabelSmawFillCap,
+                  gtawRootLabel: strings.drawingLabelGtawRoot,
+                  capTopLabel: strings.drawingLabelCapTop,
+                  capBottomLabel: strings.drawingLabelCapBottom,
+                  capOverlapValueLabel: strings.drawingLabelCapOverlapValue,
+                  capHeightValueLabel: strings.drawingLabelCapHeightValue,
+                ),
               )
             : Center(
                 child: FittedBox(
@@ -1118,7 +1109,7 @@ class _CalculatorPageState extends State<CalculatorPage> {
                     ],
                   ),
                 SizedBox(height: compact ? 6 : 16),
-                if (hasBoundedHeight)
+                if (hasBoundedHeight && !compact)
                   Expanded(child: buildDrawingPreviewPanel())
                 else
                   buildDrawingPreviewPanel(),
