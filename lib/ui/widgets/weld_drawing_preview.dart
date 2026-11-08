@@ -8,13 +8,35 @@ import '../calculator_page/calculator_page_models.dart' show FieldKey;
 
 enum DrawingMode { visual, technical }
 
+extension DrawingModeX on DrawingMode {
+  String labelFor(L10nStrings strings) => switch (this) {
+    DrawingMode.visual => strings.drawingModeVisual,
+    DrawingMode.technical => strings.drawingModeTechnical,
+  };
+}
+
+/// Smallest/largest plate thickness the cross-section is DRAWN at. Real
+/// thicknesses outside this range only change the printed numbers, never the
+/// shape: a 3 mm plate is drawn like a 10 mm one so the groove, gap and
+/// dimension lines stay legible, and a 100 mm plate is drawn like a 40 mm one
+/// so it still fits the card.
+const double kWeldDrawingMinGeometryThicknessMm = 10;
+const double kWeldDrawingMaxGeometryThicknessMm = 40;
+
+@visibleForTesting
+double weldDrawingGeometryThicknessMm(double thicknessMm) {
+  if (!thicknessMm.isFinite) return kWeldDrawingMinGeometryThicknessMm;
+  return thicknessMm.clamp(
+    kWeldDrawingMinGeometryThicknessMm,
+    kWeldDrawingMaxGeometryThicknessMm,
+  );
+}
+
+/// Minimum touch target edge for every drawn value (logical px).
+const double kWeldDrawingMinHitExtent = 44;
+
 /// A tappable region of the drawing that corresponds to one editable
-/// [FieldKey], recorded by the painter as the exact clamped rect it drew
-/// that dimension's label pill at, so a tap on the drawing can jump to the
-/// matching input field below. Using the real drawn rect (rather than a
-/// separately-tracked center point) means a tap target can never drift from
-/// the visible pill, even once canvas-edge clamping moves that pill from
-/// its natural, unclamped position.
+/// [FieldKey]. [rect] is the full >=44px hit area, not just the visible pill.
 class DrawingHotspot {
   const DrawingHotspot(this.fieldKey, this.rect);
 
@@ -22,11 +44,28 @@ class DrawingHotspot {
   final Rect rect;
 }
 
-extension DrawingModeX on DrawingMode {
-  String labelFor(L10nStrings strings) => switch (this) {
-    DrawingMode.visual => strings.drawingModeVisual,
-    DrawingMode.technical => strings.drawingModeTechnical,
-  };
+/// One value shown on the drawing. [rect] is the visible pill; [hitRect] is
+/// the (at least 44x44) area that opens the edit box. [value] is the REAL
+/// entered number (null when nothing valid is entered yet, in which case the
+/// label prints a dash).
+class DrawingLabel {
+  const DrawingLabel({
+    required this.fieldKey,
+    required this.text,
+    required this.value,
+    required this.rect,
+  });
+
+  final FieldKey fieldKey;
+  final String text;
+  final double? value;
+  final Rect rect;
+
+  Rect get hitRect => Rect.fromCenter(
+    center: rect.center,
+    width: math.max(rect.width, kWeldDrawingMinHitExtent),
+    height: math.max(rect.height, kWeldDrawingMinHitExtent),
+  );
 }
 
 class WeldDrawingData {
@@ -97,39 +136,28 @@ class WeldDrawingPreview extends StatefulWidget {
   final DrawingMode drawingMode;
   final WeldDrawingData data;
 
-  // Pre-resolved localized labels, passed in by the caller (which has a
-  // BuildContext) since the CustomPainter that actually draws them does not.
+  // The joint/groove/fillet-face/T-joint names are shown by the dropdowns
+  // above the drawing, so the drawing itself no longer repeats them; they stay
+  // in the constructor so callers did not have to change.
   final String jointTypeLabel;
   final String grooveTypeLabel;
   final String filletWeldFaceLabel;
   final String tJointLabel;
   final String smawFillCapLabel;
   final String gtawRootLabel;
-  // Top/bottom-face prefix for Double V's two cap-dimension label pairs
-  // (only groove type with a cap pass on both faces) - distinguishes the
-  // otherwise-identical "X mm cap overlap"/"X mm cap height" pills.
   final String capTopLabel;
   final String capBottomLabel;
-  // Full localized "<value> mm cap overlap"/"<value> mm cap height" suffix
-  // (see L10nStrings.drawingLabelCapOverlapValue/drawingLabelCapHeightValue)
-  // -- concatenated after the numeric value (and, for Double V, the
-  // capTopLabel/capBottomLabel prefix above) so the pill reads as a single
-  // coherent language per locale instead of a localized prefix word glued
-  // onto hardcoded English.
+  // Localized "mm cap overlap" / "mm cap height" suffixes, appended after the
+  // number so each pill reads in a single language.
   final String capOverlapValueLabel;
   final String capHeightValueLabel;
 
-  /// Called with the [FieldKey] of the dimension nearest to a tap on the
-  /// drawing, so the caller can scroll to and focus that input field.
+  /// Called with the [FieldKey] of the tapped value so the caller can open
+  /// the edit box for it.
   final ValueChanged<FieldKey>? onFieldTap;
 
-  /// When true, the painter renders directly at whatever box its parent
-  /// gives it (which must have bounded width AND height) instead of being
-  /// drawn on a fixed 760x400 virtual canvas that then gets shrunk by an
-  /// outer FittedBox. On a small pinned mobile card that outer shrink was
-  /// crushing dimension label font sizes to the point of illegibility;
-  /// rendering at the real box size keeps every font/stroke constant in
-  /// this file at its intended, legible on-screen pixel size.
+  /// Kept for API compatibility: the drawing always renders at the real box
+  /// size it is given.
   final bool fillAvailableSpace;
 
   @override
@@ -141,6 +169,11 @@ class _WeldDrawingPreviewState extends State<WeldDrawingPreview> {
 
   @override
   Widget build(BuildContext context) {
+    // Label text follows the user's text-size setting, but only within a
+    // band that keeps the pills from outgrowing the drawing.
+    final fontSize = MediaQuery.textScalerOf(
+      context,
+    ).scale(_baseFontSize).clamp(_baseFontSize, _baseFontSize * 1.3);
     final gestureDetector = GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTapUp: widget.onFieldTap == null ? null : _handleTapUp,
@@ -150,18 +183,16 @@ class _WeldDrawingPreviewState extends State<WeldDrawingPreview> {
           jointType: widget.jointType,
           drawingMode: widget.drawingMode,
           data: widget.data,
-          jointTypeLabel: widget.jointTypeLabel,
-          grooveTypeLabel: widget.grooveTypeLabel,
-          filletWeldFaceLabel: widget.filletWeldFaceLabel,
-          tJointLabel: widget.tJointLabel,
-          smawFillCapLabel: widget.smawFillCapLabel,
-          gtawRootLabel: widget.gtawRootLabel,
-          capTopLabel: widget.capTopLabel,
-          capBottomLabel: widget.capBottomLabel,
-          capOverlapValueLabel: widget.capOverlapValueLabel,
-          capHeightValueLabel: widget.capHeightValueLabel,
+          labels: _SceneLabels(
+            smawFillCap: widget.smawFillCapLabel,
+            gtawRoot: widget.gtawRootLabel,
+            capTop: widget.capTopLabel,
+            capBottom: widget.capBottomLabel,
+            capOverlapValue: widget.capOverlapValueLabel,
+            capHeightValue: widget.capHeightValueLabel,
+          ),
+          fontSize: fontSize,
           onHotspots: (hotspots) => _hotspots = hotspots,
-          fillAvailableSpace: widget.fillAvailableSpace,
         ),
         child: const SizedBox.expand(),
       ),
@@ -192,39 +223,823 @@ class _WeldDrawingPreviewState extends State<WeldDrawingPreview> {
   }
 }
 
-class _SectionLayout {
-  const _SectionLayout({
-    required this.scale,
-    required this.centerX,
-    required this.topY,
-    double? scaleY,
-  }) : scaleY = scaleY ?? scale;
+const double _baseFontSize = 11;
 
-  final double scale;
-  // Independent vertical scale, only ever >= [scale] - see _createLayout's
-  // comment on why the joint cross-section (inherently wide/short) is
-  // allowed a bounded vertical stretch beyond its true-to-width scale.
-  final double scaleY;
-  final double centerX;
-  final double topY;
-
-  Offset point(double x, double y) =>
-      Offset(centerX + (x * scale), topY + (y * scaleY));
-}
-
-class _MemberExtents {
-  const _MemberExtents({
-    required this.leftTop,
-    required this.leftBottom,
-    required this.rightTop,
-    required this.rightBottom,
+class _SceneLabels {
+  const _SceneLabels({
+    required this.smawFillCap,
+    required this.gtawRoot,
+    required this.capTop,
+    required this.capBottom,
+    required this.capOverlapValue,
+    required this.capHeightValue,
   });
 
-  final double leftTop;
-  final double leftBottom;
-  final double rightTop;
-  final double rightBottom;
+  final String smawFillCap;
+  final String gtawRoot;
+  final String capTop;
+  final String capBottom;
+  final String capOverlapValue;
+  final String capHeightValue;
 }
+
+class _Seg {
+  const _Seg(this.a, this.b);
+  final Offset a;
+  final Offset b;
+}
+
+class _Arrow {
+  const _Arrow(this.tip, this.dir);
+  final Offset tip;
+  // Unit vector the arrow points along (towards the tip).
+  final Offset dir;
+}
+
+class _Arc {
+  const _Arc(this.center, this.radius, this.sweep);
+  final Offset center;
+  final double radius;
+  // Starts straight up and sweeps clockwise by this many radians.
+  final double sweep;
+}
+
+/// Everything the painter draws, already in canvas pixels. Built once per
+/// paint from the entered values; also what the tests inspect.
+class WeldDrawingScene {
+  final List<Path> plates = [];
+  Path weld = Path();
+  // Canvas y from which the weld is tinted as the GTAW root zone.
+  double? rootZoneTopY;
+  final List<_Seg> _lines = [];
+  final List<_Arrow> _arrows = [];
+  final List<_Arc> _arcs = [];
+  final List<DrawingLabel> labels = [];
+
+  // Outline segments the labels try not to sit on.
+  final List<_Seg> _outline = [];
+}
+
+@visibleForTesting
+WeldDrawingScene buildWeldDrawingScene({
+  required GrooveType grooveType,
+  required JointType jointType,
+  required WeldDrawingData data,
+  required Size size,
+  required String smawFillCapLabel,
+  required String gtawRootLabel,
+  required String capTopLabel,
+  required String capBottomLabel,
+  required String capOverlapValueLabel,
+  required String capHeightValueLabel,
+  double fontSize = _baseFontSize,
+}) {
+  return _SceneBuilder(
+    grooveType: grooveType,
+    jointType: jointType,
+    data: data,
+    size: size,
+    fontSize: fontSize,
+    labels: _SceneLabels(
+      smawFillCap: smawFillCapLabel,
+      gtawRoot: gtawRootLabel,
+      capTop: capTopLabel,
+      capBottom: capBottomLabel,
+      capOverlapValue: capOverlapValueLabel,
+      capHeightValue: capHeightValueLabel,
+    ),
+  ).build();
+}
+
+double? _positive(double? v) => (v != null && v.isFinite && v > 0) ? v : null;
+
+String _fmt(double? v) {
+  if (v == null || !v.isFinite) return '—';
+  final r = (v * 100).round() / 100;
+  if (r == r.roundToDouble()) return r.toStringAsFixed(0);
+  return r.toString();
+}
+
+double _rad(double deg) => deg * math.pi / 180;
+
+class _SceneBuilder {
+  _SceneBuilder({
+    required this.grooveType,
+    required this.jointType,
+    required this.data,
+    required this.size,
+    required this.fontSize,
+    required this.labels,
+  });
+
+  final GrooveType grooveType;
+  final JointType jointType;
+  final WeldDrawingData data;
+  final Size size;
+  final double fontSize;
+  final _SceneLabels labels;
+
+  final WeldDrawingScene scene = WeldDrawingScene();
+
+  static const double _padH = 8;
+  static const double _padV = 4;
+  static const double _arrowLen = 6;
+
+  double get _labelH => fontSize + (_padV * 2) + 2;
+
+  Size _labelSize(String text) {
+    final tp = _textPainter(text);
+    return Size(tp.width + (_padH * 2), math.max(tp.height + _padV, _labelH));
+  }
+
+  TextPainter _textPainter(String text) => TextPainter(
+    text: TextSpan(text: text, style: weldDrawingLabelStyle(fontSize)),
+    textDirection: TextDirection.ltr,
+    maxLines: 1,
+  )..layout();
+
+  // ---- Label placement ------------------------------------------------
+
+  /// Places a label at the best of [centers] (tried in order, then the same
+  /// positions nudged up/down in whole label heights): first one that
+  /// overlaps no placed label and touches no outline/dimension line wins; if
+  /// none is perfect, the least-bad one is used. Always clamped to the canvas.
+  Rect _place(String text, List<Offset> centers, {bool overLine = false}) {
+    final sz = _labelSize(text);
+    final step = sz.height + 2;
+    final candidates = <Offset>[
+      ...centers,
+      for (var k = 1; k <= 6; k++)
+        for (final c in centers) ...[
+          c.translate(0, -k * step),
+          c.translate(0, k * step),
+        ],
+    ];
+    Rect? best;
+    var bestScore = double.infinity;
+    for (final c in candidates) {
+      var r = Rect.fromCenter(center: c, width: sz.width, height: sz.height);
+      final dx = r.left < 3
+          ? 3 - r.left
+          : (r.right > size.width - 3 ? (size.width - 3) - r.right : 0.0);
+      final dy = r.top < 3
+          ? 3 - r.top
+          : (r.bottom > size.height - 3 ? (size.height - 3) - r.bottom : 0.0);
+      r = r.shift(Offset(dx, dy));
+      final score = _score(r, overLine) + (dx.abs() + dy.abs()) * 0.5;
+      if (score < bestScore) {
+        best = r;
+        bestScore = score;
+        if (score == 0) break;
+      }
+    }
+    if (bestScore >= 1000) {
+      // Crowded canvas (long strings, narrow phone): fall back to any free
+      // row, closest to the preferred spot first.
+      final want = centers.first;
+      final grid = <Offset>[];
+      for (
+        var y = sz.height / 2 + 3;
+        y <= size.height - sz.height / 2 - 3;
+        y += step
+      ) {
+        for (final x in [
+          want.dx,
+          sz.width / 2 + 3,
+          size.width - sz.width / 2 - 3,
+        ]) {
+          grid.add(Offset(x, y));
+        }
+      }
+      grid.sort((a, b) => (a - want).distance.compareTo((b - want).distance));
+      for (final c in grid) {
+        final r = Rect.fromCenter(
+          center: c,
+          width: sz.width,
+          height: sz.height,
+        );
+        if (r.left < 3 || r.right > size.width - 3) continue;
+        final score = _score(r, overLine) + (c - want).distance * 0.01;
+        if (score < bestScore) {
+          best = r;
+          bestScore = score;
+          if (score < 1000) break;
+        }
+      }
+    }
+    return best!;
+  }
+
+  double _score(Rect r, bool overLine) {
+    var score = 0.0;
+    for (final l in scene.labels) {
+      if (l.rect.inflate(2).overlaps(r)) score += 1000;
+    }
+    final probe = r.inflate(1);
+    for (final seg in [...scene._outline, if (!overLine) ...scene._lines]) {
+      final d = seg.b - seg.a;
+      final n = math.max((d.distance / 3).ceil(), 1);
+      for (var i = 0; i <= n; i++) {
+        if (probe.contains(seg.a + d * (i / n))) score += 1;
+      }
+    }
+    return score;
+  }
+
+  void _label(
+    FieldKey key,
+    String text,
+    double? value,
+    List<Offset> centers, {
+    Offset? leaderTo,
+    bool overLine = false,
+  }) {
+    final rect = _place(text, centers, overLine: overLine);
+    scene.labels.add(
+      DrawingLabel(fieldKey: key, text: text, value: value, rect: rect),
+    );
+    if (leaderTo != null) {
+      final nearest = Offset(
+        leaderTo.dx.clamp(rect.left, rect.right),
+        leaderTo.dy.clamp(rect.top, rect.bottom),
+      );
+      if ((nearest - leaderTo).distance > 3) {
+        scene._lines.add(_Seg(nearest, leaderTo));
+      }
+    }
+  }
+
+  // ---- Dimension primitives -------------------------------------------
+
+  void _seg(Offset a, Offset b) => scene._lines.add(_Seg(a, b));
+
+  /// Dimension line between [a] and [b] with arrowheads whose tips touch the
+  /// extension lines; when too short for arrows inside, they point in from
+  /// outside instead.
+  void _dim(Offset a, Offset b) {
+    final d = b - a;
+    final len = d.distance;
+    if (len < 0.5) return;
+    final u = d / len;
+    if (len >= (_arrowLen * 2) + 4) {
+      _seg(a, b);
+      scene._arrows
+        ..add(_Arrow(a, -u))
+        ..add(_Arrow(b, u));
+    } else {
+      _seg(a - u * (_arrowLen + 6), b + u * (_arrowLen + 6));
+      scene._arrows
+        ..add(_Arrow(a, u))
+        ..add(_Arrow(b, -u));
+    }
+  }
+
+  Path _poly(List<Offset> pts) {
+    final path = Path()..moveTo(pts.first.dx, pts.first.dy);
+    for (final p in pts.skip(1)) {
+      path.lineTo(p.dx, p.dy);
+    }
+    return path..close();
+  }
+
+  void _outlineOf(List<Offset> pts, {bool closed = true}) {
+    for (var i = 0; i < pts.length - 1; i++) {
+      scene._outline.add(_Seg(pts[i], pts[i + 1]));
+    }
+    if (closed) scene._outline.add(_Seg(pts.last, pts.first));
+  }
+
+  List<Offset> _quad(Offset a, Offset c, Offset b, {int n = 8}) => [
+    for (var i = 1; i < n; i++)
+      () {
+        final t = i / n;
+        final m = 1 - t;
+        return a * (m * m) + c * (2 * m * t) + b * (t * t);
+      }(),
+  ];
+
+  /// Clamps a real value for drawing only; labels always print the real one.
+  double _vis(double? real, double fallback, double lo, double hi) {
+    final v = (real != null && real.isFinite && real >= 0) ? real : fallback;
+    return v.clamp(lo, math.max(lo, hi));
+  }
+
+  // ---- Scene ----------------------------------------------------------
+
+  WeldDrawingScene build() {
+    if (size.width <= 0 || size.height <= 0) return scene;
+    if (grooveType == GrooveType.fillet) {
+      _buildFillet();
+    } else {
+      _buildButt();
+    }
+    return scene;
+  }
+
+  bool get _combined =>
+      data.weldingProcess == WeldingProcess.gtawSmaw &&
+      _positive(data.gtawTransitionMm) != null;
+
+  void _buildButt() {
+    final w = size.width;
+    final h = size.height;
+    final isDouble = grooveType == GrooveType.doubleV;
+
+    final unequal = data.geometryMode == JointGeometryMode.unequal;
+    final tReal = _positive(data.thicknessMm);
+    final aReal = unequal ? (_positive(data.thicknessAMm) ?? tReal) : null;
+    final bReal = unequal ? (_positive(data.thicknessBMm) ?? tReal) : null;
+    final govMm = [
+      tReal,
+      aReal,
+      bReal,
+    ].whereType<double>().fold<double>(0, math.max);
+    final gov = govMm > 0 ? govMm : 12.0;
+    final gv = weldDrawingGeometryThicknessMm(gov);
+    final tA = unequal ? math.max(gv * (aReal ?? gov) / gov, gv * 0.3) : gv;
+    final tB = unequal ? math.max(gv * (bReal ?? gov) / gov, gv * 0.3) : gv;
+
+    late final double lt, lb, rt, rb;
+    if (!unequal) {
+      lt = rt = 0;
+      lb = rb = gv;
+    } else {
+      switch (data.alignment) {
+        case JointAlignment.centerline:
+          lt = (gv - tA) / 2;
+          lb = (gv + tA) / 2;
+          rt = (gv - tB) / 2;
+          rb = (gv + tB) / 2;
+        case JointAlignment.odMatch:
+          lt = rt = 0;
+          lb = tA;
+          rb = tB;
+        case JointAlignment.idMatch:
+          lt = gv - tA;
+          rt = gv - tB;
+          lb = rb = gv;
+      }
+    }
+
+    final gap = _vis(data.rootGapMm, 3, gv * 0.1, gv * 0.35);
+    final hG = gap / 2;
+    final alphaDeg = _vis(data.bevelAngleDeg, 30, 10, 65);
+    final betaDeg = _vis(data.secondaryBevelAngleDeg, 10, 5, 45);
+    final tanA = math.tan(_rad(alphaDeg));
+    final tanB = math.tan(_rad(betaDeg));
+    final cSingle = _vis(data.rootFaceMm, 2, gv * 0.08, gv * 0.45);
+    final cDouble = _vis(data.rootFaceMm, 2, gv * 0.05, gv * 0.25);
+    final brkVis = _vis(data.breakHeightMm, 4, gv * 0.12, gv * 0.6);
+
+    final capOv = _positive(data.capOverlapMm);
+    final capH = _positive(data.capHeightMm);
+    final capsOn = capOv != null || capH != null;
+    final riseTop = capH != null
+        ? _vis(capH * 0.5, 0, gv * 0.03, gv * 0.1)
+        : gv * 0.06;
+    final riseBot = isDouble ? riseTop : gv * 0.04;
+
+    // Face of one plate as (distance from centre, y) points, top to bottom.
+    List<Offset> face(bool right, double yT, double yB) {
+      final thick = yB - yT;
+      switch (grooveType) {
+        case GrooveType.square:
+          return [Offset(hG, yT), Offset(hG, yB)];
+        case GrooveType.halfV when !right:
+          return [Offset(hG, yT), Offset(hG, yB)];
+        case GrooveType.halfV:
+        case GrooveType.singleV:
+        case GrooveType.fillet:
+          final c = math.min(cSingle, thick * 0.6);
+          final yr = yB - c;
+          return [
+            Offset(hG + (yr - yT) * tanA, yT),
+            Offset(hG, yr),
+            Offset(hG, yB),
+          ];
+        case GrooveType.doubleV:
+          final mid = (yT + yB) / 2;
+          final c = math.min(cDouble, thick * 0.3);
+          return [
+            Offset(hG + (mid - c - yT) * tanA, yT),
+            Offset(hG, mid - c),
+            Offset(hG, mid + c),
+            Offset(hG + (yB - mid - c) * tanA, yB),
+          ];
+        case GrooveType.compoundV:
+          final c = math.min(cSingle, thick * 0.4);
+          final depth = thick - c;
+          final brk = math.min(brkVis, depth * 0.75);
+          final upper = depth - brk;
+          final xb = hG + brk * tanA;
+          return [
+            Offset(xb + upper * tanB, yT),
+            Offset(xb, yT + upper),
+            Offset(hG, yB - c),
+            Offset(hG, yB),
+          ];
+      }
+    }
+
+    final faceL = face(false, lt, lb);
+    final faceR = face(true, rt, rb);
+    final xTop = math.max(faceL.first.dx, faceR.first.dx);
+
+    // ---- Pixel frame ----
+    final odReal = jointType == JointType.pipeButt
+        ? _positive(data.pipeOdMm)
+        : null;
+    final leftText = unequal ? 'A ${_fmt(aReal)} mm' : 't ${_fmt(tReal)} mm';
+    final rightText = 'B ${_fmt(bReal)} mm';
+    const gL = 8.0;
+    const gR = 8.0;
+
+    var top = 8.0;
+    if (odReal != null || _combined) top += _labelH + 8;
+    if (capsOn) top += 12 + 4 + _labelH + 4;
+    var bottom = 14 + 4 + _labelH + 8;
+    if (isDouble && capsOn) bottom += (12 + 4 + _labelH + 4) + (_labelH + 4);
+
+    final areaW = w - gL - gR;
+    final areaH = h - top - bottom;
+    final hMm = gv + riseTop + riseBot;
+    final minPlate = (w * 0.22).clamp(52.0, 80.0);
+    final s = [
+      areaH / hMm,
+      (areaW - 2 * minPlate) / (2 * xTop),
+      18.0,
+    ].reduce(math.min);
+    final cx = gL + areaW / 2;
+    final y0 = top + (areaH - hMm * s) / 2 + riseTop * s;
+    Offset p(double x, double y) => Offset(cx + x * s, y0 + y * s);
+    final endMm = areaW / 2 / s;
+
+    // ---- Shapes ----
+    final leftPts = [
+      p(-endMm, lt),
+      for (final f in faceL) p(-f.dx, f.dy),
+      p(-endMm, lb),
+    ];
+    final rightPts = [
+      p(endMm, rt),
+      for (final f in faceR) p(f.dx, f.dy),
+      p(endMm, rb),
+    ];
+    scene.plates
+      ..add(_poly(leftPts))
+      ..add(_poly(rightPts));
+    _outlineOf(leftPts);
+    _outlineOf(rightPts);
+
+    final topCtrl = p(0, math.min(lt, rt) - 2 * riseTop);
+    final botCtrl = p(0, math.max(lb, rb) + 2 * riseBot);
+    final tl = p(-faceL.first.dx, faceL.first.dy);
+    final tr = p(faceR.first.dx, faceR.first.dy);
+    final br = p(faceR.last.dx, faceR.last.dy);
+    final bl = p(-faceL.last.dx, faceL.last.dy);
+    final weld = Path()..moveTo(tl.dx, tl.dy);
+    weld.quadraticBezierTo(topCtrl.dx, topCtrl.dy, tr.dx, tr.dy);
+    for (final f in faceR.skip(1)) {
+      final q = p(f.dx, f.dy);
+      weld.lineTo(q.dx, q.dy);
+    }
+    weld.quadraticBezierTo(botCtrl.dx, botCtrl.dy, bl.dx, bl.dy);
+    for (final f in faceL.reversed.skip(1)) {
+      final q = p(-f.dx, f.dy);
+      weld.lineTo(q.dx, q.dy);
+    }
+    weld.close();
+    scene.weld = weld;
+    _outlineOf([
+      tl,
+      ..._quad(tl, topCtrl, tr),
+      tr,
+      for (final f in faceR.skip(1)) p(f.dx, f.dy),
+      ..._quad(br, botCtrl, bl),
+      bl,
+      for (final f in faceL.reversed.skip(1)) p(-f.dx, f.dy),
+    ]);
+
+    final yLt = p(0, lt).dy;
+    final yLb = p(0, lb).dy;
+    final yRt = p(0, rt).dy;
+    final yRb = p(0, rb).dy;
+    final bottomPx = p(0, math.max(lb, rb) + riseBot).dy;
+
+    // ---- Dimensions (geometry first, then labels, so every label can steer
+    // clear of every line) ----
+
+    // Thickness t / A (left) and B (right), measured on the plate ends.
+    final xDimL = gL + 12;
+    _dim(Offset(xDimL, yLt), Offset(xDimL, yLb));
+    final xDimR = w - gR - 12;
+    if (unequal) {
+      _dim(Offset(xDimR, yRt), Offset(xDimR, yRb));
+    }
+
+    // Root gap b, below the joint.
+    final dimY = bottomPx + 12;
+    final xGapL = cx - hG * s;
+    final xGapR = cx + hG * s;
+    _seg(Offset(xGapL, yLb + 2), Offset(xGapL, dimY + 4));
+    _seg(Offset(xGapR, yRb + 2), Offset(xGapR, dimY + 4));
+    _dim(Offset(xGapL, dimY), Offset(xGapR, dimY));
+
+    // Root face c (right plate): from the groove's lower corner to the
+    // plate's back face. Double V measures from the mid-plane to the land
+    // end, because the land is c on each side of it.
+    final hasRootFace = grooveType != GrooveType.square;
+    double? yC1, yC2, xC;
+    if (hasRootFace) {
+      final i = faceR.length - 2;
+      final lowerRoot = isDouble ? faceR[2] : faceR[i];
+      final upper = isDouble ? (rt + rb) / 2 : faceR[i].dy;
+      yC1 = p(0, upper).dy;
+      yC2 = p(0, isDouble ? lowerRoot.dy : faceR.last.dy).dy;
+      xC = cx + hG * s + 12;
+      _seg(Offset(cx + hG * s + 2, yC1), Offset(xC + 4, yC1));
+      _seg(Offset(cx + hG * s + 2, yC2), Offset(xC + 4, yC2));
+      _dim(Offset(xC, yC1), Offset(xC, yC2));
+    }
+
+    // Compound V: height of the steep lower section.
+    double? yH1, yH2, xH;
+    if (grooveType == GrooveType.compoundV) {
+      yH1 = p(0, faceR[1].dy).dy;
+      yH2 = p(0, faceR[2].dy).dy;
+      xH = cx + faceR[1].dx * s + 12;
+      _seg(Offset(cx + faceR[1].dx * s + 2, yH1), Offset(xH + 4, yH1));
+      _seg(Offset(cx + faceR[2].dx * s + 2, yH2), Offset(xH + 4, yH2));
+      _dim(Offset(xH, yH1), Offset(xH, yH2));
+    }
+
+    // Groove angles: arc against a vertical reference at the lower end of
+    // the sloped face, label beside it.
+    final arcIndexA = grooveType == GrooveType.compoundV ? 2 : 1;
+    final angleSpecs =
+        <({int idx, double deg, FieldKey key, String sym, double? real})>[
+          if (grooveType != GrooveType.square)
+            (
+              idx: arcIndexA,
+              deg: alphaDeg,
+              key: FieldKey.bevelAngleDeg,
+              sym: 'α',
+              real: _positive(data.bevelAngleDeg),
+            ),
+          if (grooveType == GrooveType.compoundV)
+            (
+              idx: 1,
+              deg: betaDeg,
+              key: FieldKey.secondaryBevelAngleDeg,
+              sym: 'β',
+              real: _positive(data.secondaryBevelAngleDeg),
+            ),
+        ];
+    final angleLabels =
+        <
+          ({
+            FieldKey key,
+            String text,
+            double? real,
+            List<Offset> centers,
+            Offset leader,
+          })
+        >[];
+    for (final a in angleSpecs) {
+      final q = p(faceR[a.idx].dx, faceR[a.idx].dy);
+      final up = p(faceR[a.idx - 1].dx, faceR[a.idx - 1].dy);
+      final segLen = (up - q).distance;
+      final r = math.max(math.min(24.0, segLen * 0.55), 9.0);
+      final sweep = _rad(a.deg);
+      scene._arcs.add(_Arc(q, r, sweep));
+      _seg(q, q.translate(0, -(r + 6)));
+      final dir = Offset(math.sin(sweep / 2), -math.cos(sweep / 2));
+      final text = '${a.sym} ${_fmt(a.real)}°';
+      final lw = _labelSize(text).width;
+      angleLabels.add((
+        key: a.key,
+        text: text,
+        real: a.real,
+        centers: [
+          for (final d in [r + 10, r + 22, r + 36])
+            for (final dx in [0.0, 10.0, 20.0, 32.0])
+              q + Offset(dir.dx * d + lw / 2 + dx, dir.dy * d),
+          for (final d in [r + 14, r + 30]) q + Offset(-(lw / 2 + 8), -d),
+        ],
+        leader: q + dir * r,
+      ));
+    }
+
+    // Cap overlap / height, top face (and bottom face for Double V).
+    final capSpecs = <({bool top, String prefix})>[
+      (top: true, prefix: isDouble ? '${labels.capTop} ' : ''),
+      if (isDouble) (top: false, prefix: '${labels.capBottom} '),
+    ];
+    final capLabels =
+        <({FieldKey key, String text, double? real, List<Offset> centers})>[];
+    if (capsOn) {
+      for (final spec in capSpecs) {
+        final dirY = spec.top ? -1.0 : 1.0;
+        final rise = spec.top ? riseTop : riseBot;
+        if (capOv != null) {
+          final surf = spec.top ? yRt : yRb;
+          final x0 = cx + faceR.first.dx * s;
+          final capW = (capOv * s).clamp(14.0, 40.0);
+          final lineY = surf + dirY * 14;
+          _seg(Offset(x0, surf + dirY * 2), Offset(x0, lineY + dirY * 4));
+          _seg(
+            Offset(x0 + capW, surf + dirY * 2),
+            Offset(x0 + capW, lineY + dirY * 4),
+          );
+          _dim(Offset(x0, lineY), Offset(x0 + capW, lineY));
+          final text = '${spec.prefix}${_fmt(capOv)} ${labels.capOverlapValue}';
+          final lw = _labelSize(text).width;
+          final cy = lineY + dirY * (6 + _labelH / 2);
+          capLabels.add((
+            key: FieldKey.capOverlapMm,
+            text: text,
+            real: capOv,
+            centers: [
+              Offset(x0 + capW / 2, cy),
+              Offset(x0 + lw / 2 - 4, cy),
+              Offset(w - 4 - lw / 2, cy),
+            ],
+          ));
+        }
+        if (capH != null) {
+          final surf = spec.top ? yLt : yLb;
+          final apex = p(
+            0,
+            spec.top ? math.min(lt, rt) - rise : math.max(lb, rb) + rise,
+          ).dy;
+          final xl = cx - faceL.first.dx * s - 16;
+          _seg(Offset(cx, apex), Offset(xl - 4, apex));
+          _dim(Offset(xl, apex), Offset(xl, surf));
+          final text = '${spec.prefix}${_fmt(capH)} ${labels.capHeightValue}';
+          final lw = _labelSize(text).width;
+          final cy =
+              (spec.top
+                  ? math.min(apex, surf - 14)
+                  : math.max(apex, surf + 14)) +
+              dirY * (6 + _labelH / 2);
+          capLabels.add((
+            key: FieldKey.capHeightMm,
+            text: text,
+            real: capH,
+            centers: [Offset(xl + 10 - lw / 2, cy), Offset(4 + lw / 2, cy)],
+          ));
+        }
+      }
+    }
+
+    // ---- Labels, in priority order ----
+    _label(
+      unequal ? FieldKey.thicknessAMm : FieldKey.thicknessMm,
+      leftText,
+      unequal ? aReal : tReal,
+      [Offset(xDimL + 8 + _labelSize(leftText).width / 2, (yLt + yLb) / 2)],
+    );
+    if (unequal) {
+      _label(FieldKey.thicknessBMm, rightText, bReal, [
+        Offset(xDimR - 8 - _labelSize(rightText).width / 2, (yRt + yRb) / 2),
+      ]);
+    }
+    final gapText = 'b ${_fmt(data.rootGapMm)} mm';
+    _label(FieldKey.rootGapMm, gapText, data.rootGapMm, [
+      Offset(cx, dimY + 6 + _labelH / 2),
+    ]);
+    if (hasRootFace && xC != null) {
+      final text = 'c ${_fmt(data.rootFaceMm)} mm';
+      final lw = _labelSize(text).width;
+      _label(FieldKey.rootFaceMm, text, data.rootFaceMm, [
+        Offset(xC + 8 + lw / 2, (yC1! + yC2!) / 2),
+      ]);
+    }
+    if (xH != null) {
+      final text = 'h ${_fmt(data.breakHeightMm)} mm';
+      final lw = _labelSize(text).width;
+      _label(FieldKey.breakHeightMm, text, data.breakHeightMm, [
+        Offset(xH + 8 + lw / 2, (yH1! + yH2!) / 2),
+      ]);
+    }
+    for (final c in capLabels) {
+      _label(c.key, c.text, c.real, c.centers);
+    }
+    for (final a in angleLabels) {
+      _label(a.key, a.text, a.real, a.centers, leaderTo: a.leader);
+    }
+
+    if (_combined) {
+      final tr0 = _positive(data.gtawTransitionMm)!;
+      final trVis = _vis(tr0, 0, gv * 0.12, gv * 0.7);
+      final zoneTop = math.max(lb, rb) - trVis;
+      scene.rootZoneTopY = p(0, zoneTop).dy;
+      final smaw = labels.smawFillCap;
+      final sw = _labelSize(smaw).width;
+      _label(
+        FieldKey.gtawTransitionMm,
+        smaw,
+        null,
+        [Offset(w - 6 - sw / 2, 8 + _labelH / 2)],
+        leaderTo: p(0, (math.min(lt, rt) + zoneTop) / 2),
+      );
+      final root = '${labels.gtawRoot} ${_fmt(tr0)} mm';
+      final rw = _labelSize(root).width;
+      _label(FieldKey.gtawTransitionMm, root, tr0, [
+        Offset(w - 6 - rw / 2, dimY + 6 + _labelH / 2),
+      ], leaderTo: p(0, math.max(lb, rb) - trVis / 2));
+    }
+
+    if (odReal != null) {
+      final text = 'OD ${_fmt(odReal)} mm';
+      _label(FieldKey.pipeOdMm, text, odReal, [
+        Offset(6 + _labelSize(text).width / 2, 8 + _labelH / 2),
+      ]);
+    }
+  }
+
+  void _buildFillet() {
+    final w = size.width;
+    final h = size.height;
+    final legReal = _positive(data.legSizeMm);
+    final leg = _vis(data.legSizeMm, 6, 3, 14);
+    const web = 5.0; // half web thickness (drawn units)
+    const flange = 10.0;
+    final webH = leg + 14;
+    final hMm = webH + flange;
+
+    final legText = 'z ${_fmt(legReal)} mm';
+    final lw = _labelSize(legText).width;
+    final gL = 14.0;
+    const gR = 8.0;
+    final top = 14.0;
+    final bottom = 14 + 4 + _labelH + 8;
+    final areaW = w - gL - gR;
+    final areaH = h - top - bottom;
+    final minPlate = (w * 0.22).clamp(52.0, 80.0);
+    final s = [
+      areaH / hMm,
+      (areaW - 2 * minPlate) / (2 * (web + leg)),
+      18.0,
+    ].reduce(math.min);
+    final cx = gL + areaW / 2;
+    final y0 = top + (areaH - hMm * s) / 2;
+    Offset p(double x, double y) => Offset(cx + x * s, y0 + y * s);
+    final endMm = areaW / 2 / s;
+
+    final webPts = [p(-web, 0), p(web, 0), p(web, webH), p(-web, webH)];
+    final flangePts = [
+      p(-endMm, webH),
+      p(endMm, webH),
+      p(endMm, webH + flange),
+      p(-endMm, webH + flange),
+    ];
+    scene.plates
+      ..add(_poly(webPts))
+      ..add(_poly(flangePts));
+    _outlineOf(webPts);
+    _outlineOf(flangePts);
+
+    final tip = p(web, webH - leg);
+    final toe = p(web + leg, webH);
+    final root = p(web, webH);
+    final ctrl = p(web + leg * 0.72, webH - leg * 0.18);
+    scene.weld = Path()
+      ..moveTo(tip.dx, tip.dy)
+      ..lineTo(root.dx, root.dy)
+      ..lineTo(toe.dx, toe.dy)
+      ..quadraticBezierTo(ctrl.dx, ctrl.dy, tip.dx, tip.dy)
+      ..close();
+    _outlineOf([tip, root, toe, ..._quad(toe, ctrl, tip), tip]);
+
+    // Horizontal leg, below the flange.
+    final yFlangeBottom = p(0, webH + flange).dy;
+    final dimY = yFlangeBottom + 12;
+    _seg(Offset(root.dx, yFlangeBottom + 2), Offset(root.dx, dimY + 4));
+    _seg(Offset(toe.dx, yFlangeBottom + 2), Offset(toe.dx, dimY + 4));
+    _dim(Offset(root.dx, dimY), Offset(toe.dx, dimY));
+    // Vertical leg, right of the weld.
+    final xDim = toe.dx + 16;
+    _seg(Offset(root.dx + 2, tip.dy), Offset(xDim + 4, tip.dy));
+    _seg(Offset(toe.dx + 2, toe.dy), Offset(xDim + 4, toe.dy));
+    _dim(Offset(xDim, tip.dy), Offset(xDim, toe.dy));
+
+    _label(FieldKey.legSizeMm, legText, legReal, [
+      Offset((root.dx + toe.dx) / 2, dimY + 6 + _labelH / 2),
+    ]);
+    _label(FieldKey.legSizeMm, legText, legReal, [
+      Offset(xDim + 8 + lw / 2, (tip.dy + toe.dy) / 2),
+    ]);
+  }
+}
+
+TextStyle weldDrawingLabelStyle(double fontSize) => TextStyle(
+  fontFamily: 'Roboto',
+  fontSize: fontSize,
+  fontWeight: FontWeight.w600,
+  color: const Color(0xFF22343D),
+  height: 1.1,
+);
 
 class _WeldDrawingPainter extends CustomPainter {
   _WeldDrawingPainter({
@@ -232,3472 +1047,133 @@ class _WeldDrawingPainter extends CustomPainter {
     required this.jointType,
     required this.drawingMode,
     required this.data,
-    required this.jointTypeLabel,
-    required this.grooveTypeLabel,
-    required this.filletWeldFaceLabel,
-    required this.tJointLabel,
-    required this.smawFillCapLabel,
-    required this.gtawRootLabel,
-    required this.capTopLabel,
-    required this.capBottomLabel,
-    required this.capOverlapValueLabel,
-    required this.capHeightValueLabel,
+    required this.labels,
+    required this.fontSize,
     this.onHotspots,
-    this.fillAvailableSpace = false,
   });
 
   final GrooveType grooveType;
   final JointType jointType;
   final DrawingMode drawingMode;
   final WeldDrawingData data;
-  final String jointTypeLabel;
-  final String grooveTypeLabel;
-  final String filletWeldFaceLabel;
-  final String tJointLabel;
-  final String smawFillCapLabel;
-  final String gtawRootLabel;
-  final String capTopLabel;
-  final String capBottomLabel;
-  final String capOverlapValueLabel;
-  final String capHeightValueLabel;
+  final _SceneLabels labels;
+  final double fontSize;
   final ValueChanged<List<DrawingHotspot>>? onHotspots;
-  final bool fillAvailableSpace;
 
-  final List<DrawingHotspot> _hotspots = [];
-
-  // Records the exact clamped rect a label was actually drawn at (see
-  // [_measurementLabelRect] / [_drawTechnicalLabel] / [_drawSoftLabel]'s
-  // `safeRect`) as this field's tap target, so hit-testing is inherently in
-  // sync with what's visible on screen regardless of canvas-edge clamping.
-  void _hotspot(FieldKey? fieldKey, Rect rect) {
-    if (fieldKey == null) return;
-    _hotspots.add(DrawingHotspot(fieldKey, rect));
-  }
-
-  bool get _isPipeButt => jointType == JointType.pipeButt;
-
-  // The top-center groove-type chip and the top-right pipe-OD chip sit close
-  // enough together to overlap when drawn side by side on a narrow canvas.
-  // Rather than guessing a fixed canvas-width breakpoint (fragile: it has to
-  // assume a specific font's glyph metrics, and a prior attempt at this used
-  // widths measured under flutter_test's Ahem font, which is ~1.9x wider
-  // than real device fonts and made the breakpoint fire far too early), lay
-  // both chips out with the same TextPainter-based sizing the painter
-  // actually draws them with and stack only when their real rects would
-  // intersect - see [_chipSize] / [_chipRect].
-  bool _stackTopChips(Size size, String typeLabel) {
-    if (!_isPipeButt || data.pipeOdMm == null || data.pipeOdMm! <= 0) {
-      return false;
-    }
-    final typeRect = _chipRect(
-      size,
-      Offset(size.width * 0.5, 28),
-      _chipSize(size, typeLabel, 11.5, FontWeight.w700),
-    );
-    final pipeLabel = 'OD ${_formatValue(data.pipeOdMm!)} mm';
-    final pipeRect = _chipRect(
-      size,
-      Offset(size.width - 82, 28),
-      _chipSize(size, pipeLabel, 10.5, FontWeight.w600),
-    );
-    // Small halo beyond bare pixel contact so stacked/unstacked chips keep a
-    // hairline gap rather than just touching.
-    const gap = 3.0;
-    return typeRect.inflate(gap).overlaps(pipeRect.inflate(gap));
-  }
-
-  // Mirrors the pill sizing in [_drawTechnicalLabel] / [_drawSoftLabel] (the
-  // two only differ in padding/minWidth, not in how they measure text) so
-  // collision checks use the exact size the chip will actually be drawn at.
-  Size _chipSize(Size size, String text, double fontSize, FontWeight weight) {
-    final painter = TextPainter(
-      text: TextSpan(
-        text: text,
-        style: TextStyle(
-          fontFamily: 'Roboto',
-          fontSize: _annotationFontSize(size, fontSize),
-          fontWeight: weight,
-          letterSpacing: _isTechnical ? 0.04 : 0.06,
-        ),
-      ),
-      textDirection: TextDirection.ltr,
-    )..layout();
-    final horizontalPadding = _isTechnical ? 20.0 : 18.0;
-    final verticalPadding = _isTechnical ? 11.0 : 11.0;
-    final minWidth = _isTechnical ? 66.0 : 62.0;
-    const minHeight = 28.0;
-    return Size(
-      math.max(painter.width + horizontalPadding, minWidth),
-      math.max(painter.height + verticalPadding, minHeight),
-    );
-  }
-
-  // Mirrors the edge-clamping in [_drawTechnicalLabel] / [_drawSoftLabel] so
-  // the collision check sees the chip's actual on-canvas position, including
-  // the clamp that pulls the two chips toward each other on narrow canvases.
-  Rect _chipRect(Size size, Offset center, Size chipSize) {
-    final rect = Rect.fromCenter(
-      center: center,
-      width: chipSize.width,
-      height: chipSize.height,
-    );
-    return Rect.fromLTWH(
-      _safeClamp(rect.left, 10, size.width - rect.width - 10),
-      _safeClamp(rect.top, 10, size.height - rect.height - 10),
-      rect.width,
-      rect.height,
-    );
-  }
-
-  bool get _isCombinedProcess =>
-      data.weldingProcess == WeldingProcess.gtawSmaw &&
-      (data.gtawTransitionMm ?? 0) > 0;
-  bool get _isTechnical => drawingMode == DrawingMode.technical;
-
-  static const _steelColor = Color(0xFFD8E0E6);
-  static const _steelShade = Color(0xFFB8C5CF);
-  static const _weldColor = Color(0xFFEF8354);
-  static const _weldShade = Color(0xFFD96A3A);
-  static const _gtawRootColor = Color(0xFF539A96);
-  static const _gtawRootShade = Color(0xFF3D7D7A);
   static const _outlineColor = Color(0xFF34515E);
-  static const _guideColor = Color(0xFF78909C);
-  static const _labelColor = Color(0xFF22343D);
-  static const _softLabelFill = Color(0xCCFFFFFF);
-  static const _softLabelStroke = Color(0x335A7280);
-  // Primary-label styling (joint-prep numbers a welding engineer looks for
-  // first: thickness, root gap, bevel/groove angle, root face, fillet leg)
-  // reuses the app's own brand dark tone (`#2B3538`, the same neutral used
-  // in the PDF report's dark cover/header), not the brand orange - orange
-  // already means something else in this drawing (the "Başla" button, the
-  // GTAW-root process tint), so reusing it here would create ambiguity.
-  static const _primaryFillColor = Color(0xFF2B3538);
-  static const _primaryTextColor = Color(0xFFFFFFFF);
-  static const _primaryStrokeColor = Color(0x33FFFFFF);
-  static const _primaryFontBump = 1.0;
-  static const _primaryHorizontalPadBump = 2.0;
-  static const _primaryVerticalPadBump = 1.0;
-  static const _primaryMinWidthBump = 0.0;
-  static const _primaryMinHeightBump = 0.0;
-  // [_declutterAfterClamp] uses this as its tolerance both for deciding
-  // whether to engage at all and for accepting a candidate move (see that
-  // method's own doc comment for why those two were unified) - the
-  // original motivation was that [_clearLabelPosition] places a pushed
-  // label at EXACTLY `gap` clearance (`delta = avoid.bottom - rect.top`),
-  // so an already-correctly-placed label sitting at that exact boundary
-  // can have its separation resolve to a few `1e-14`px on the negative
-  // side of zero, purely from floating-point rounding in the chain of
-  // offset arithmetic that got it there. Without this tolerance that FP
-  // noise reads as "still overlapping" and triggers a completely
-  // unnecessary declutter move - measured in a real reproduction (Square
-  // groove/plateButt/visual/odMatch/480px) where every one of 42
-  // "successful" cap-height moves turned out to be exactly this, fixing
-  // zero real overlaps. That reproduction was against the groove-depth/
-  // cap-height call sites, which have since been deleted; at the one call
-  // site using [_declutterAfterClamp] today (Compound V's beta tag -
-  // `_drawDimensionLine` took an identical parameter at two call sites in
-  // 752b744, but nothing has passed it since 9a899e5 deleted those, so
-  // that dead wiring has since been removed too), mutation-testing found
-  // this epsilon changes zero OVERLAP OUTCOMES for any config in the
-  // current matrix - reverting to a boundary-inclusive (`>= 0`) comparison
-  // produces identical overlap outcomes (NOT identical exact pixel
-  // positions: a small number of configs shift by exactly 0.05px in any
-  // given matrix, since the epsilon also inflates the blocker rect used
-  // to compute the candidate
-  // offset - just never enough to flip whether a config overlaps). It
-  // stays as a defensive safeguard against FP noise (not something
-  // actively fixing a live bug today) in case a future call site
-  // reintroduces inputs that land exactly on this boundary - don't read
-  // "it changes nothing today" as license to remove it. `0.05` is
-  // comfortably above any FP rounding noise from this file's offset math
-  // (which lands in the `1e-13`px range) while far below the smallest
-  // real overlap this mechanism needs to catch (single real overlaps in
-  // this file measure in whole or tenths of a pixel).
-  static const _declutterEpsilon = 0.05;
+  static const _dimColor = Color(0xFF546E7A);
+  static const _rootColor = Color(0xFF539A96);
+  static const double _strokeOutline = 1.6;
+  static const double _strokeDim = 0.9;
+
+  bool get _technical => drawingMode == DrawingMode.technical;
 
   @override
   void paint(Canvas canvas, Size size) {
-    if (size.width <= 0 || size.height <= 0) {
-      return;
-    }
+    if (size.width <= 0 || size.height <= 0) return;
+    final scene = _SceneBuilder(
+      grooveType: grooveType,
+      jointType: jointType,
+      data: data,
+      size: size,
+      fontSize: fontSize,
+      labels: labels,
+    ).build();
 
-    final steelPaint = Paint()
-      ..shader = LinearGradient(
-        colors: _isTechnical
-            ? const [Color(0xFFF6F8FA), Color(0xFFD8E1E8)]
-            : const [_steelColor, _steelShade],
-        begin: Alignment.topCenter,
-        end: Alignment.bottomCenter,
-      ).createShader(Offset.zero & size)
-      ..style = PaintingStyle.fill
-      ..isAntiAlias = true;
-    final weldPaint = Paint()
-      ..shader = LinearGradient(
-        colors: _isTechnical
-            ? const [Color(0xFFF3BE8D), Color(0xFFDB8E56)]
-            : const [_weldColor, _weldShade],
-        begin: Alignment.topCenter,
-        end: Alignment.bottomCenter,
-      ).createShader(Offset.zero & size)
-      ..style = PaintingStyle.fill
-      ..isAntiAlias = true;
-    final outlinePaint = Paint()
+    final steel = Paint()
+      ..color = _technical ? const Color(0xFFEEF2F5) : const Color(0xFFD3DCE3);
+    final weld = Paint()
+      ..color = _technical ? const Color(0xFFF3C9A5) : const Color(0xFFEF8354);
+    final outline = Paint()
       ..color = _outlineColor
       ..style = PaintingStyle.stroke
-      ..strokeWidth = _isTechnical ? 2.25 : 2.1
-      ..strokeCap = StrokeCap.round
-      ..strokeJoin = StrokeJoin.round
-      ..isAntiAlias = true;
-    final guidePaint = Paint()
-      ..color = _isTechnical ? const Color(0xFF546E7A) : _guideColor
+      ..strokeWidth = _strokeOutline
+      ..strokeJoin = StrokeJoin.round;
+    final dim = Paint()
+      ..color = _dimColor
       ..style = PaintingStyle.stroke
-      ..strokeWidth = _isTechnical ? 0.88 : 1.1
-      ..strokeCap = StrokeCap.round
-      ..strokeJoin = StrokeJoin.round
-      ..isAntiAlias = true;
-    final centerPaint = Paint()
-      ..color = _isTechnical
-          ? const Color(0xFF9AADB6).withValues(alpha: 0.82)
-          : const Color(0xFF90A4AE)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = _isTechnical ? 0.78 : 1
-      ..strokeCap = StrokeCap.round
-      ..isAntiAlias = true;
+      ..strokeWidth = _strokeDim
+      ..strokeCap = StrokeCap.round;
 
-    _drawBackdrop(canvas, size);
-
-    switch (grooveType) {
-      case GrooveType.singleV:
-        _drawSingleV(
-          canvas,
-          size,
-          steelPaint,
-          weldPaint,
-          outlinePaint,
-          guidePaint,
-        );
-      case GrooveType.halfV:
-        _drawHalfV(
-          canvas,
-          size,
-          steelPaint,
-          weldPaint,
-          outlinePaint,
-          guidePaint,
-        );
-      case GrooveType.doubleV:
-        _drawDoubleV(
-          canvas,
-          size,
-          steelPaint,
-          weldPaint,
-          outlinePaint,
-          guidePaint,
-        );
-      case GrooveType.compoundV:
-        _drawCompoundV(
-          canvas,
-          size,
-          steelPaint,
-          weldPaint,
-          outlinePaint,
-          guidePaint,
-        );
-      case GrooveType.square:
-        _drawSquare(
-          canvas,
-          size,
-          steelPaint,
-          weldPaint,
-          outlinePaint,
-          guidePaint,
-        );
-      case GrooveType.fillet:
-        _drawFillet(
-          canvas,
-          size,
-          steelPaint,
-          weldPaint,
-          outlinePaint,
-          guidePaint,
-        );
+    for (final plate in scene.plates) {
+      canvas.drawPath(plate, steel);
     }
-
-    _drawCenterLine(
-      canvas,
-      centerPaint,
-      Offset(size.width * 0.5, size.height * 0.13),
-      Offset(size.width * 0.5, size.height * 0.88),
-    );
-    // In fillAvailableSpace (compact/mobile) mode this fixed-position title
-    // sits directly under the top-center groove-type chip and prints over
-    // it on real phone widths — the groove type is already shown by that
-    // chip and the joint type is already visible via the Joint Type
-    // dropdown above the card, so the title is redundant there. Only draw
-    // it in the roomier desktop 760px layout, where there's no chip to
-    // collide with at this position.
-    if (!fillAvailableSpace) {
-      _drawLabel(
-        canvas,
-        size,
-        '$jointTypeLabel / $grooveTypeLabel',
-        const Offset(14, 12),
-        fontSize: 14,
-        weight: FontWeight.w700,
-      );
-    }
-
-    onHotspots?.call(_hotspots);
-  }
-
-  void _drawBackdrop(Canvas canvas, Size size) {
-    if (_isTechnical) {
-      final washPaint = Paint()
-        ..shader = const LinearGradient(
-          colors: [Color(0xFFF8FBFD), Color(0xFFF0F5F8)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ).createShader(Offset.zero & size)
-        ..style = PaintingStyle.fill;
-      final framePaint = Paint()
-        ..color = const Color(0x2434515E)
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 0.95
-        ..isAntiAlias = true;
-      final frame = RRect.fromRectAndRadius(
-        Rect.fromLTWH(1, 1, size.width - 2, size.height - 2),
-        const Radius.circular(12),
-      );
-      canvas.drawRRect(frame, washPaint);
-      canvas.drawRRect(frame, framePaint);
-      return;
-    }
-
-    final gridPaint = Paint()
-      ..color = const Color(0x16FFFFFF)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1;
-    final framePaint = Paint()
-      ..color = const Color(0x2212191B)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.2;
-    final frame = RRect.fromRectAndRadius(
-      Rect.fromLTWH(1, 1, size.width - 2, size.height - 2),
-      const Radius.circular(20),
-    );
-
-    for (double x = 24; x < size.width; x += 28) {
-      canvas.drawLine(Offset(x, 0), Offset(x, size.height), gridPaint);
-    }
-    for (double y = 24; y < size.height; y += 24) {
-      canvas.drawLine(Offset(0, y), Offset(size.width, y), gridPaint);
-    }
-
-    canvas.drawRRect(frame, framePaint);
-  }
-
-  void _drawSingleV(
-    Canvas canvas,
-    Size size,
-    Paint steelPaint,
-    Paint weldPaint,
-    Paint outlinePaint,
-    Paint guidePaint,
-  ) {
-    final thickness = _positiveOr(data.thicknessMm, _isPipeButt ? 14 : 12);
-    final rootGap = _positiveOr(data.rootGapMm, 3, min: 0.8);
-    final rootFace = _clampValue(
-      data.rootFaceMm,
-      fallback: 2,
-      min: 0.5,
-      max: thickness - 0.8,
-    );
-    final bevelAngle = _clampValue(
-      data.bevelAngleDeg,
-      fallback: 30,
-      min: 10,
-      max: 60,
-    );
-    final grooveHeight = math.max(thickness - rootFace, 0.8);
-    final angleRad = _degToRad(bevelAngle);
-    final topWidth = rootGap + (2 * grooveHeight * math.tan(angleRad));
-    final halfGap = rootGap / 2;
-    final halfTop = topWidth / 2;
-    final halfBody = math.max(halfTop + (thickness * 1.05), 22.0);
-    final layout = _createLayout(
-      size,
-      maxHalfWidthMm: halfBody + 10,
-      heightMm: thickness + 7,
-      topPaddingMm: 4,
-      topChipLabel: grooveTypeLabel,
-    );
-    final p = layout.point;
-    final member = _memberExtents(thickness);
-    final leftThickness = member.leftBottom - member.leftTop;
-    final rightThickness = member.rightBottom - member.rightTop;
-    final leftRootFace = math.min(rootFace, math.max(leftThickness - 0.8, 0.5));
-    final rightRootFace = math.min(
-      rootFace,
-      math.max(rightThickness - 0.8, 0.5),
-    );
-    final leftGrooveY = member.leftBottom - leftRootFace;
-    final rightGrooveY = member.rightBottom - rightRootFace;
-    final capRise = math.min(thickness * 0.16, 3.2);
-    final rootCrown = math.min(rootFace * 0.35, 1.2);
-
-    final leftPlate = Path()
-      ..moveTo(p(-halfBody, member.leftTop).dx, p(-halfBody, member.leftTop).dy)
-      ..lineTo(p(-halfTop, member.leftTop).dx, p(-halfTop, member.leftTop).dy)
-      ..lineTo(p(-halfGap, leftGrooveY).dx, p(-halfGap, leftGrooveY).dy)
-      ..lineTo(
-        p(-halfGap, member.leftBottom).dx,
-        p(-halfGap, member.leftBottom).dy,
-      )
-      ..lineTo(
-        p(-halfBody, member.leftBottom).dx,
-        p(-halfBody, member.leftBottom).dy,
-      )
-      ..close();
-    final rightPlate = Path()
-      ..moveTo(p(halfBody, member.rightTop).dx, p(halfBody, member.rightTop).dy)
-      ..lineTo(p(halfTop, member.rightTop).dx, p(halfTop, member.rightTop).dy)
-      ..lineTo(p(halfGap, rightGrooveY).dx, p(halfGap, rightGrooveY).dy)
-      ..lineTo(
-        p(halfGap, member.rightBottom).dx,
-        p(halfGap, member.rightBottom).dy,
-      )
-      ..lineTo(
-        p(halfBody, member.rightBottom).dx,
-        p(halfBody, member.rightBottom).dy,
-      )
-      ..close();
-    final weld = Path()
-      ..moveTo(p(-halfTop, member.leftTop).dx, p(-halfTop, member.leftTop).dy)
-      ..quadraticBezierTo(
-        p(0, math.min(member.leftTop, member.rightTop) - capRise).dx,
-        p(0, math.min(member.leftTop, member.rightTop) - capRise).dy,
-        p(halfTop, member.rightTop).dx,
-        p(halfTop, member.rightTop).dy,
-      )
-      ..lineTo(p(halfGap, rightGrooveY).dx, p(halfGap, rightGrooveY).dy)
-      ..lineTo(
-        p(halfGap, member.rightBottom).dx,
-        p(halfGap, member.rightBottom).dy,
-      )
-      ..quadraticBezierTo(
-        p(0, math.max(member.leftBottom, member.rightBottom) + rootCrown).dx,
-        p(0, math.max(member.leftBottom, member.rightBottom) + rootCrown).dy,
-        p(-halfGap, member.leftBottom).dx,
-        p(-halfGap, member.leftBottom).dy,
-      )
-      ..lineTo(p(-halfGap, leftGrooveY).dx, p(-halfGap, leftGrooveY).dy)
-      ..close();
-
-    _drawJoint(
-      canvas,
-      size,
-      leftPlate,
-      rightPlate,
-      weld,
-      steelPaint,
-      weldPaint,
-      outlinePaint,
-    );
-    // See _dimensionLineAvoidRects: the root-face line always sits nearby
-    // (its short extension stubs reach `halfGap + 5`), Unequal geometry
-    // additionally draws a B-thickness line whose own stub reaches much
-    // further out (`halfBody + 6`), and the groove-depth line drawn in
-    // _drawButtCommonMeasurements below always reaches `halfGap + 20` -
-    // overlapping this label's own `halfGap + 16` X position by construction
-    // (see the comment on `rootLabelCenter` below) - all computed here,
-    // before any of them is actually drawn below, so the GTAW-root label
-    // can genuinely avoid them rather than relying on a fixed mm nudge that
-    // only clears one. Also includes the root-gap line's own extension stub
-    // (`thickness`..`thickness + 3.5` at `x = halfGap`, matching the
-    // `rootGapLabelY` passed to _drawButtCommonMeasurements below) - pushing
-    // clear of the groove-depth line alone isn't enough at very thick plate
-    // on a narrow canvas, where the push-down lands the label below the
-    // member and straight into that stub instead.
-    final rootLabelLineAvoidRects = [
-      ..._dimensionLineAvoidRects(
-        layout,
-        nearX: halfGap,
-        farX: halfGap + 5,
-        topY: rightGrooveY,
-        bottomY: member.rightBottom,
-      ),
-      ..._dimensionLineAvoidRects(
-        layout,
-        nearX: halfGap,
-        farX: halfGap + 20,
-        topY: 0,
-        bottomY: rightGrooveY - member.rightTop,
-      ),
-      ..._dimensionLineAvoidRects(
-        layout,
-        nearX: halfGap,
-        farX: halfGap,
-        topY: math.max(member.leftBottom, member.rightBottom),
-        bottomY: thickness + 3.5,
-      ),
-      if (data.geometryMode == JointGeometryMode.unequal)
-        ..._dimensionLineAvoidRects(
-          layout,
-          nearX: halfGap,
-          farX: halfBody + 6,
-          topY: member.rightTop,
-          bottomY: member.rightBottom,
-        ),
-    ];
-    final tint = _drawCombinedProcessTint(
-      canvas,
-      size,
-      weld,
-      layout: layout,
-      totalHeightMm: thickness,
-      rootHeightMm: data.gtawTransitionMm,
-      topLabelCenter: p(halfTop * 0.48, thickness * 0.18),
-      // `halfGap + 16`/`rightGrooveY + 2.6` starts the label clear of the
-      // groove-depth line's own vertical lane (`halfGap + 20`) - the
-      // avoidRects below then push it clear of the root-face and (Unequal)
-      // B-thickness lines' real drawn shapes, whatever they turn out to be.
-      rootLabelCenter: p(halfGap + 16, rightGrooveY + 2.6),
-      rootLabelAvoidRects: rootLabelLineAvoidRects,
-    );
-    final tintRects = [?tint.topLabel, ?tint.rootLabel];
-    // Root face is drawn before common measurements (unlike its natural
-    // top-to-bottom reading order) so its real rect is available for groove
-    // depth's avoid list - mirrors Half V/Compound V's established pattern
-    // for this same class of collision (see the comment on those blocks).
-    final rootFaceRect = _drawDimensionLine(
-      canvas,
-      guidePaint,
-      start: p(halfGap + 5, rightGrooveY),
-      end: p(halfGap + 5, member.rightBottom),
-      label: '${_formatValue(rootFace)} mm root face',
-      labelSize: size,
-      labelOffset: const Offset(42, 0),
-      extensionStart: p(halfGap, rightGrooveY),
-      extensionEnd: p(halfGap, member.rightBottom),
-      fieldKey: FieldKey.rootFaceMm,
-      avoidRects: tintRects,
-      primary: true,
-    );
-    final commonRects = _drawButtCommonMeasurements(
-      canvas,
-      size,
-      guidePaint,
-      layout: layout,
-      thickness: thickness,
-      halfGap: halfGap,
-      grooveY: rightGrooveY - member.rightTop,
-      thicknessLabelX: -halfBody - 6,
-      rightThicknessLabelX: halfBody + 6,
-      rootGapLabelY: math.max(member.leftBottom, member.rightBottom),
-      avoidRects: [...tintRects, rootFaceRect],
-    );
-    // Every label below avoids every label already placed before it - the
-    // angle tag sits on the opposite (left) side from root face/groove
-    // depth, so it rarely collides with them, but root face shares the
-    // same right-hand lane as thickness/root gap/groove depth and can
-    // still collapse into them at narrow canvas widths.
-    final angleRect = _drawAngleTag(
-      canvas,
-      guidePaint,
-      size,
-      start: p(
-        -(halfTop * 0.58),
-        member.leftTop + ((leftGrooveY - member.leftTop) * 0.34),
-      ),
-      labelCenter: p(
-        -(halfTop + 7.5),
-        member.leftTop + ((leftGrooveY - member.leftTop) * 0.20),
-      ),
-      text: '${_formatValue(bevelAngle)}°',
-      fieldKey: FieldKey.bevelAngleDeg,
-      avoidRects: [
-        ...tintRects,
-        commonRects.thickness,
-        ?commonRects.bThickness,
-        commonRects.rootGap,
-        ?commonRects.grooveDepth,
-        rootFaceRect,
-      ],
-      primary: true,
-    );
-    final chipRects = _drawTopChips(canvas, size, grooveTypeLabel);
-    _drawCapDimensions(
-      canvas,
-      size,
-      guidePaint,
-      layout: layout,
-      halfTop: halfTop,
-      topY: math.min(member.leftTop, member.rightTop),
-      thickness: thickness,
-      avoidRects: [
-        ...tintRects,
-        commonRects.thickness,
-        ?commonRects.bThickness,
-        commonRects.rootGap,
-        ?commonRects.grooveDepth,
-        rootFaceRect,
-        angleRect,
-        chipRects.typeChip,
-        ?chipRects.pipeChip,
-      ],
-    );
-  }
-
-  void _drawHalfV(
-    Canvas canvas,
-    Size size,
-    Paint steelPaint,
-    Paint weldPaint,
-    Paint outlinePaint,
-    Paint guidePaint,
-  ) {
-    final thickness = _positiveOr(data.thicknessMm, _isPipeButt ? 14 : 12);
-    final rootGap = _positiveOr(data.rootGapMm, 3, min: 0.8);
-    final rootFace = _clampValue(
-      data.rootFaceMm,
-      fallback: 2,
-      min: 0.5,
-      max: thickness - 0.8,
-    );
-    final bevelAngle = _clampValue(
-      data.bevelAngleDeg,
-      fallback: 30,
-      min: 10,
-      max: 60,
-    );
-    final grooveHeight = math.max(thickness - rootFace, 0.8);
-    final topWidth = rootGap + (grooveHeight * math.tan(_degToRad(bevelAngle)));
-    final halfGap = rootGap / 2;
-    final topRight = -halfGap + topWidth;
-    final leftBody = math.max(halfGap + (thickness * 1.05), 20.0);
-    final rightBody = math.max(topRight + (thickness * 1.05), 24.0);
-    final layout = _createLayout(
-      size,
-      maxHalfWidthMm: math.max(leftBody, rightBody) + 10.0,
-      heightMm: thickness + 7,
-      topPaddingMm: 4,
-      topChipLabel: grooveTypeLabel,
-    );
-    final p = layout.point;
-    // Half V only bevels its right-hand member - the left member is a flat,
-    // square edge - but Unequal geometry can still give the two members
-    // different thicknesses, so (like Single V/Double V/Square) the actual
-    // per-member vertical extents have to come from [_memberExtents], not a
-    // flat 0..thickness range, or the drawing renders both plates at the
-    // same thickness even when the entered A/B thicknesses differ.
-    final member = _memberExtents(thickness);
-    final rightThickness = member.rightBottom - member.rightTop;
-    final rightRootFace = math.min(
-      rootFace,
-      math.max(rightThickness - 0.8, 0.5),
-    );
-    final rightGrooveY = member.rightBottom - rightRootFace;
-    final capRise = math.min(thickness * 0.15, 2.8);
-    final rootCrown = math.min(rootFace * 0.35, 1.0);
-
-    final leftPlate = Path()
-      ..moveTo(p(-leftBody, member.leftTop).dx, p(-leftBody, member.leftTop).dy)
-      ..lineTo(p(-halfGap, member.leftTop).dx, p(-halfGap, member.leftTop).dy)
-      ..lineTo(
-        p(-halfGap, member.leftBottom).dx,
-        p(-halfGap, member.leftBottom).dy,
-      )
-      ..lineTo(
-        p(-leftBody, member.leftBottom).dx,
-        p(-leftBody, member.leftBottom).dy,
-      )
-      ..close();
-    final rightPlate = Path()
-      ..moveTo(
-        p(rightBody, member.rightTop).dx,
-        p(rightBody, member.rightTop).dy,
-      )
-      ..lineTo(p(topRight, member.rightTop).dx, p(topRight, member.rightTop).dy)
-      ..lineTo(p(halfGap, rightGrooveY).dx, p(halfGap, rightGrooveY).dy)
-      ..lineTo(
-        p(halfGap, member.rightBottom).dx,
-        p(halfGap, member.rightBottom).dy,
-      )
-      ..lineTo(
-        p(rightBody, member.rightBottom).dx,
-        p(rightBody, member.rightBottom).dy,
-      )
-      ..close();
-    final weld = Path()
-      ..moveTo(p(-halfGap, member.leftTop).dx, p(-halfGap, member.leftTop).dy)
-      ..quadraticBezierTo(
-        p(
-          (topRight - halfGap) / 2,
-          math.min(member.leftTop, member.rightTop) - capRise,
-        ).dx,
-        p(
-          (topRight - halfGap) / 2,
-          math.min(member.leftTop, member.rightTop) - capRise,
-        ).dy,
-        p(topRight, member.rightTop).dx,
-        p(topRight, member.rightTop).dy,
-      )
-      ..lineTo(p(halfGap, rightGrooveY).dx, p(halfGap, rightGrooveY).dy)
-      ..lineTo(
-        p(halfGap, member.rightBottom).dx,
-        p(halfGap, member.rightBottom).dy,
-      )
-      ..quadraticBezierTo(
-        p(0, math.max(member.leftBottom, member.rightBottom) + rootCrown).dx,
-        p(0, math.max(member.leftBottom, member.rightBottom) + rootCrown).dy,
-        p(-halfGap, member.leftBottom).dx,
-        p(-halfGap, member.leftBottom).dy,
-      )
-      ..lineTo(p(-halfGap, member.leftTop).dx, p(-halfGap, member.leftTop).dy)
-      ..close();
-
-    _drawJoint(
-      canvas,
-      size,
-      leftPlate,
-      rightPlate,
-      weld,
-      steelPaint,
-      weldPaint,
-      outlinePaint,
-    );
-    // See _dimensionLineAvoidRects on Single V's identical block above -
-    // Half V's B-thickness line stub reaches `rightBody + 6`, not
-    // `halfBody + 6` (Half V has separate left/right body widths). Also
-    // includes the groove-depth line's own avoid rect (see Single V's
-    // block) since Half V's groove-depth stub reaches the same `halfGap +
-    // 20` regardless of which side is beveled.
-    final rootLabelLineAvoidRects = [
-      ..._dimensionLineAvoidRects(
-        layout,
-        nearX: halfGap,
-        farX: halfGap + 5,
-        topY: rightGrooveY,
-        bottomY: member.rightBottom,
-      ),
-      ..._dimensionLineAvoidRects(
-        layout,
-        nearX: halfGap,
-        farX: halfGap + 20,
-        topY: 0,
-        bottomY: rightGrooveY - member.rightTop,
-      ),
-      // Pushing clear of the groove-depth line alone isn't enough at very
-      // thick plate on a narrow canvas - the push lands the label below the
-      // member, straight into the root-gap line's own extension stub (drawn
-      // even further below, from `thickness` to `thickness + 3.5` at
-      // `x = halfGap`) - see the identical comment/fix on Single V.
-      ..._dimensionLineAvoidRects(
-        layout,
-        nearX: halfGap,
-        farX: halfGap,
-        topY: thickness,
-        bottomY: thickness + 3.5,
-      ),
-      if (data.geometryMode == JointGeometryMode.unequal)
-        ..._dimensionLineAvoidRects(
-          layout,
-          nearX: halfGap,
-          farX: rightBody + 6,
-          topY: member.rightTop,
-          bottomY: member.rightBottom,
-        ),
-    ];
-    final tint = _drawCombinedProcessTint(
-      canvas,
-      size,
-      weld,
-      layout: layout,
-      totalHeightMm: thickness,
-      rootHeightMm: data.gtawTransitionMm,
-      topLabelCenter: p(topRight * 0.72, thickness * 0.18),
-      rootLabelCenter: p(halfGap + 16, rightGrooveY + 2.6),
-      rootLabelAvoidRects: rootLabelLineAvoidRects,
-    );
-    final tintRects = [?tint.topLabel, ?tint.rootLabel];
-    // Unlike Single V/Double V (whose single angle tag sits on the opposite
-    // side from the groove-depth label), Half V's bevel angle and groove
-    // depth both live on the right-hand side, close enough together that
-    // their mm-space lanes collapse into overlapping pixel-space bubbles on
-    // a real narrow phone canvas (same root cause as the Compound V fix
-    // above - see the comment on that block, and TEAM_LEARNINGS.md). Draw
-    // the angle tag and root-face label first (both at fixed positions),
-    // then let groove depth nudge clear of their real measured rects.
-    final angleRect = _drawAngleTag(
-      canvas,
-      guidePaint,
-      size,
-      start: p(
-        halfGap + ((topRight - halfGap) * 0.44),
-        member.rightTop + ((rightGrooveY - member.rightTop) * 0.34),
-      ),
-      labelCenter: p(
-        topRight + 7.0,
-        member.rightTop + ((rightGrooveY - member.rightTop) * 0.20),
-      ),
-      text: '${_formatValue(bevelAngle)}°',
-      fieldKey: FieldKey.bevelAngleDeg,
-      avoidRects: tintRects,
-      primary: true,
-    );
-    final rootFaceRect = _drawDimensionLine(
-      canvas,
-      guidePaint,
-      start: p(halfGap + 5, rightGrooveY),
-      end: p(halfGap + 5, member.rightBottom),
-      label: '${_formatValue(rootFace)} mm root face',
-      labelSize: size,
-      labelOffset: const Offset(42, 0),
-      extensionStart: p(halfGap, rightGrooveY),
-      extensionEnd: p(halfGap, member.rightBottom),
-      fieldKey: FieldKey.rootFaceMm,
-      avoidRects: [...tintRects, angleRect],
-      primary: true,
-    );
-    final commonRects = _drawButtCommonMeasurements(
-      canvas,
-      size,
-      guidePaint,
-      layout: layout,
-      thickness: thickness,
-      halfGap: halfGap,
-      grooveY: rightGrooveY - member.rightTop,
-      thicknessLabelX: -leftBody - 6,
-      rightThicknessLabelX: rightBody + 6,
-      avoidRects: [...tintRects, angleRect, rootFaceRect],
-    );
-    final chipRects = _drawTopChips(canvas, size, grooveTypeLabel);
-    _drawCapDimensions(
-      canvas,
-      size,
-      guidePaint,
-      layout: layout,
-      halfTop: topRight,
-      topY: math.min(member.leftTop, member.rightTop),
-      thickness: thickness,
-      avoidRects: [
-        ...tintRects,
-        angleRect,
-        rootFaceRect,
-        commonRects.thickness,
-        ?commonRects.bThickness,
-        commonRects.rootGap,
-        ?commonRects.grooveDepth,
-        chipRects.typeChip,
-        ?chipRects.pipeChip,
-      ],
-    );
-  }
-
-  void _drawDoubleV(
-    Canvas canvas,
-    Size size,
-    Paint steelPaint,
-    Paint weldPaint,
-    Paint outlinePaint,
-    Paint guidePaint,
-  ) {
-    final thickness = _positiveOr(data.thicknessMm, _isPipeButt ? 14 : 12);
-    final rootGap = _positiveOr(data.rootGapMm, 3, min: 0.8);
-    final halfThickness = thickness / 2;
-    final rootFace = _clampValue(
-      data.rootFaceMm,
-      fallback: 2,
-      min: 0.4,
-      max: halfThickness - 0.4,
-    );
-    final bevelAngle = _clampValue(
-      data.bevelAngleDeg,
-      fallback: 30,
-      min: 10,
-      max: 60,
-    );
-    final bevelHeightPerSide = math.max(halfThickness - rootFace, 0.4);
-    final topWidth =
-        rootGap + (2 * bevelHeightPerSide * math.tan(_degToRad(bevelAngle)));
-    final halfGap = rootGap / 2;
-    final halfTop = topWidth / 2;
-    final halfBody = math.max(halfTop + (thickness * 1.00), 22.0);
-    // Double V gets a cap-reinforcement dimension pair on BOTH faces (see
-    // _drawCapDimensions below), so with cap values actually set it needs
-    // real extra vertical room above AND below the plate for those two
-    // extra labels, not just the small generic crown buffer every other
-    // groove type's single (top-only) cap already fits inside. Those
-    // labels are fixed-PIXEL-size pills (~28px tall, see
-    // _unclampedMeasurementRect's minHeight) regardless of mm scale, so a
-    // flat mm budget added to `heightMm` reserves a wildly different,
-    // scale-dependent amount of *actual* pixel room depending on plate
-    // thickness - harmless on the fillAvailableSpace/mobile path (verified:
-    // that path is width-bound regardless, per the comment on
-    // `_createLayout`'s `scale`, so the extra mm never touches the scale
-    // that's actually used), but on the fixed 760x400 desktop canvas it's
-    // tight enough on height that the mm budget was flipping the layout
-    // from width-bound to height-bound outright, shrinking the whole
-    // rendered joint 27-31% for cap labels that only need ~60px combined
-    // (see reviewer Finding 2) - and even then landed entirely below the
-    // plate, since `topPaddingMm` is zeroed on that path (see `topPadding`
-    // below). Reserve real pixels directly via `extraTopPx`/`extraBottomPx`
-    // on the desktop path instead, which shrinks `frame` itself by exactly
-    // the pixel amount needed, split top/bottom, regardless of scale.
-    final hasCapDimensions =
-        (data.capOverlapMm ?? 0) > 0 || (data.capHeightMm ?? 0) > 0;
-    const capLabelReservePx = 32.0;
-    final layout = _createLayout(
-      size,
-      maxHalfWidthMm: halfBody + 10,
-      heightMm:
-          thickness + 7 + (hasCapDimensions && fillAvailableSpace ? 22 : 0),
-      topPaddingMm: 4,
-      topChipLabel: grooveTypeLabel,
-      extraTopPx: (hasCapDimensions && !fillAvailableSpace)
-          ? capLabelReservePx
-          : 0.0,
-      extraBottomPx: (hasCapDimensions && !fillAvailableSpace)
-          ? capLabelReservePx
-          : 0.0,
-    );
-    final p = layout.point;
-    final member = _memberExtents(thickness);
-    final leftMid = (member.leftTop + member.leftBottom) / 2;
-    final rightMid = (member.rightTop + member.rightBottom) / 2;
-    final leftUpperRootY = math.max(leftMid - rootFace, member.leftTop + 0.4);
-    final leftLowerRootY = math.min(
-      leftMid + rootFace,
-      member.leftBottom - 0.4,
-    );
-    final rightUpperRootY = math.max(
-      rightMid - rootFace,
-      member.rightTop + 0.4,
-    );
-    final rightLowerRootY = math.min(
-      rightMid + rootFace,
-      member.rightBottom - 0.4,
-    );
-    final capRise = math.min(thickness * 0.12, 2.4);
-
-    final leftPlate = Path()
-      ..moveTo(p(-halfBody, member.leftTop).dx, p(-halfBody, member.leftTop).dy)
-      ..lineTo(p(-halfTop, member.leftTop).dx, p(-halfTop, member.leftTop).dy)
-      ..lineTo(p(-halfGap, leftUpperRootY).dx, p(-halfGap, leftUpperRootY).dy)
-      ..lineTo(p(-halfGap, leftLowerRootY).dx, p(-halfGap, leftLowerRootY).dy)
-      ..lineTo(
-        p(-halfTop, member.leftBottom).dx,
-        p(-halfTop, member.leftBottom).dy,
-      )
-      ..lineTo(
-        p(-halfBody, member.leftBottom).dx,
-        p(-halfBody, member.leftBottom).dy,
-      )
-      ..close();
-    final rightPlate = Path()
-      ..moveTo(p(halfBody, member.rightTop).dx, p(halfBody, member.rightTop).dy)
-      ..lineTo(p(halfTop, member.rightTop).dx, p(halfTop, member.rightTop).dy)
-      ..lineTo(p(halfGap, rightUpperRootY).dx, p(halfGap, rightUpperRootY).dy)
-      ..lineTo(p(halfGap, rightLowerRootY).dx, p(halfGap, rightLowerRootY).dy)
-      ..lineTo(
-        p(halfTop, member.rightBottom).dx,
-        p(halfTop, member.rightBottom).dy,
-      )
-      ..lineTo(
-        p(halfBody, member.rightBottom).dx,
-        p(halfBody, member.rightBottom).dy,
-      )
-      ..close();
-    final weld = Path()
-      ..moveTo(p(-halfTop, member.leftTop).dx, p(-halfTop, member.leftTop).dy)
-      ..quadraticBezierTo(
-        p(0, math.min(member.leftTop, member.rightTop) - capRise).dx,
-        p(0, math.min(member.leftTop, member.rightTop) - capRise).dy,
-        p(halfTop, member.rightTop).dx,
-        p(halfTop, member.rightTop).dy,
-      )
-      ..lineTo(p(halfGap, rightUpperRootY).dx, p(halfGap, rightUpperRootY).dy)
-      ..lineTo(p(halfGap, rightLowerRootY).dx, p(halfGap, rightLowerRootY).dy)
-      ..lineTo(
-        p(halfTop, member.rightBottom).dx,
-        p(halfTop, member.rightBottom).dy,
-      )
-      ..quadraticBezierTo(
-        p(0, math.max(member.leftBottom, member.rightBottom) + capRise).dx,
-        p(0, math.max(member.leftBottom, member.rightBottom) + capRise).dy,
-        p(-halfTop, member.leftBottom).dx,
-        p(-halfTop, member.leftBottom).dy,
-      )
-      ..lineTo(p(-halfGap, leftLowerRootY).dx, p(-halfGap, leftLowerRootY).dy)
-      ..lineTo(p(-halfGap, leftUpperRootY).dx, p(-halfGap, leftUpperRootY).dy)
-      ..close();
-
-    _drawJoint(
-      canvas,
-      size,
-      leftPlate,
-      rightPlate,
-      weld,
-      steelPaint,
-      weldPaint,
-      outlinePaint,
-    );
-    final tint = _drawCombinedProcessTint(
-      canvas,
-      size,
-      weld,
-      layout: layout,
-      totalHeightMm: thickness,
-      rootHeightMm: data.gtawTransitionMm,
-      includeBottomRootTint: false,
-      extraRootZone: Path()
-        ..moveTo(p(-halfGap, leftUpperRootY).dx, p(-halfGap, leftUpperRootY).dy)
-        ..lineTo(p(halfGap, rightUpperRootY).dx, p(halfGap, rightUpperRootY).dy)
-        ..lineTo(p(halfGap, rightLowerRootY).dx, p(halfGap, rightLowerRootY).dy)
-        ..lineTo(p(-halfGap, leftLowerRootY).dx, p(-halfGap, leftLowerRootY).dy)
-        ..close(),
-      topLabelCenter: p(halfTop * 0.45, thickness * 0.16),
-      rootLabelCenter: p(halfGap + 16, thickness - 1.0),
-      // See _dimensionLineAvoidRects on Single V's identical block - Double
-      // V's root-face-type line here is `totalRootFaceRect` (drawn below,
-      // spanning `rightUpperRootY`..`rightLowerRootY` rather than
-      // `rightGrooveY`..`member.rightBottom`, since Double V roots from
-      // both faces), plus, in Unequal geometry, the same B-thickness line
-      // every other groove type draws, plus the groove-depth line (spanning
-      // `0`..`rightUpperRootY - member.rightTop`, matching the `grooveY`
-      // passed to _drawButtCommonMeasurements below), plus that same
-      // function's root-gap line extension stub (`(leftMid + rightMid) /
-      // 2`..`thickness + 3.5` at `x = halfGap`, matching the
-      // `rootGapLabelY` passed there too).
-      rootLabelAvoidRects: [
-        ..._dimensionLineAvoidRects(
-          layout,
-          nearX: halfGap,
-          farX: halfGap + 5,
-          topY: rightUpperRootY,
-          bottomY: rightLowerRootY,
-        ),
-        ..._dimensionLineAvoidRects(
-          layout,
-          nearX: halfGap,
-          farX: halfGap + 20,
-          topY: 0,
-          bottomY: rightUpperRootY - member.rightTop,
-        ),
-        ..._dimensionLineAvoidRects(
-          layout,
-          nearX: halfGap,
-          farX: halfGap,
-          topY: (leftMid + rightMid) / 2,
-          bottomY: thickness + 3.5,
-        ),
-        if (data.geometryMode == JointGeometryMode.unequal)
-          ..._dimensionLineAvoidRects(
-            layout,
-            nearX: halfGap,
-            farX: halfBody + 6,
-            topY: member.rightTop,
-            bottomY: member.rightBottom,
-          ),
-      ],
-    );
-    final tintRects = [?tint.topLabel, ?tint.rootLabel];
-    final commonRects = _drawButtCommonMeasurements(
-      canvas,
-      size,
-      guidePaint,
-      layout: layout,
-      thickness: thickness,
-      halfGap: halfGap,
-      grooveY: rightUpperRootY - member.rightTop,
-      thicknessLabelX: -halfBody - 6,
-      rightThicknessLabelX: halfBody + 6,
-      rootGapLabelY: (leftMid + rightMid) / 2,
-      avoidRects: tintRects,
-    );
-    // Drawn here (rather than after the labels below, as most other groove
-    // types do) so the root-face label immediately below - the one that
-    // actually collided with the pipe-OD chip on the 760x400 desktop
-    // canvas in Unequal geometry (see reviewer Finding 1/Gap B) - can
-    // include the chip rects in its own avoidRects chain. Chip *drawing*
-    // order doesn't matter here since chips and the joint/labels occupy
-    // separate regions of the canvas.
-    final chipRects = _drawTopChips(canvas, size, grooveTypeLabel);
-    final totalRootFaceRect = _drawDimensionLine(
-      canvas,
-      guidePaint,
-      start: p(halfGap + 5, rightUpperRootY),
-      end: p(halfGap + 5, rightLowerRootY),
-      label: '${_formatValue(rootFace * 2)} mm total root face',
-      labelSize: size,
-      labelOffset: const Offset(44, 0),
-      extensionStart: p(halfGap, rightUpperRootY),
-      extensionEnd: p(halfGap, rightLowerRootY),
-      fieldKey: FieldKey.rootFaceMm,
-      avoidRects: [
-        chipRects.typeChip,
-        // Same inflation as the cap-dimension labels' own avoid list below
-        // - the pipe-OD chip sits at a fixed pixel position independent of
-        // mm-scale and needs a few extra px of clearance to fully clear.
-        if (chipRects.pipeChip != null) chipRects.pipeChip!.inflate(4),
-        ...tintRects,
-        commonRects.thickness,
-        ?commonRects.bThickness,
-        commonRects.rootGap,
-        ?commonRects.grooveDepth,
-      ],
-      primary: true,
-    );
-    final angleRect = _drawAngleTag(
-      canvas,
-      guidePaint,
-      size,
-      start: p(
-        -(halfTop * 0.62),
-        member.leftTop + ((leftUpperRootY - member.leftTop) * 0.48),
-      ),
-      labelCenter: p(
-        -(halfTop + 7.0),
-        member.leftTop + ((leftUpperRootY - member.leftTop) * 0.28),
-      ),
-      text: '${_formatValue(bevelAngle)}°',
-      fieldKey: FieldKey.bevelAngleDeg,
-      avoidRects: [
-        ...tintRects,
-        commonRects.thickness,
-        ?commonRects.bThickness,
-        commonRects.rootGap,
-        ?commonRects.grooveDepth,
-        totalRootFaceRect,
-      ],
-      primary: true,
-    );
-    Rect? upperHalfRectOuter;
-    Rect? lowerHalfRect;
-    if (data.geometryMode == JointGeometryMode.equal) {
-      // These two half-thickness brackets sit in their own lane, closer to
-      // the plate than the main thickness line (`thicknessLabelX`, above).
-      // They used to sit only 5mm outside the plate edge - just 5mm from
-      // the main thickness line's own lane - so the arrowheads where the
-      // two half-bracket lines meet (at y=halfThickness, the exact same
-      // height the main "<t> mm t" label is centered on) landed inside that
-      // label's pill, reading as a stray diagonal mark crossing the text
-      // (see TEAM_LEARNINGS.md, 2026-08-25). Pulled in closer to the plate
-      // instead of further out, widening the gap from the main line's lane
-      // without pushing this lane past the canvas edge. Also on the same
-      // (left) side as the bevel angle tag, which lanes compress into on a
-      // narrow enough canvas - must avoid it too, not just the labels drawn
-      // above.
-      final beforeHalves = [
-        ...tintRects,
-        commonRects.thickness,
-        commonRects.rootGap,
-        ?commonRects.grooveDepth,
-        totalRootFaceRect,
-        angleRect,
-      ];
-      // These represent the same underlying value as the main thickness
-      // label elsewhere in this drawing, just displayed as a half-value -
-      // wire both to the same field so they're tappable too.
-      final upperHalfRect = _drawDimensionLine(
-        canvas,
-        guidePaint,
-        start: p(-halfBody + 4, 0),
-        end: p(-halfBody + 4, halfThickness),
-        label: '${_formatValue(halfThickness)} mm',
-        labelSize: size,
-        labelOffset: const Offset(-30, -16),
-        fieldKey: FieldKey.thicknessMm,
-        avoidRects: beforeHalves,
-      );
-      lowerHalfRect = _drawDimensionLine(
-        canvas,
-        guidePaint,
-        start: p(-halfBody + 4, halfThickness),
-        end: p(-halfBody + 4, thickness),
-        label: '${_formatValue(halfThickness)} mm',
-        labelSize: size,
-        labelOffset: const Offset(-30, 16),
-        fieldKey: FieldKey.thicknessMm,
-        avoidRects: [...beforeHalves, upperHalfRect],
-      );
-      upperHalfRectOuter = upperHalfRect;
-    }
-    final beforeCapRects = [
-      ...tintRects,
-      commonRects.thickness,
-      ?commonRects.bThickness,
-      commonRects.rootGap,
-      ?commonRects.grooveDepth,
-      totalRootFaceRect,
-      angleRect,
-      ?upperHalfRectOuter,
-      ?lowerHalfRect,
-      chipRects.typeChip,
-      // Slightly inflated: the pipe-OD chip sits at a fixed pixel position
-      // independent of mm-scale, and a few combinations (unequal geometry
-      // + pipe joint) left the top cap-overlap label a couple of pixels
-      // short of fully clearing it without this.
-      if (chipRects.pipeChip != null) chipRects.pipeChip!.inflate(4),
-    ];
-    // Double V is welded from both sides, so it gets a cap-reinforcement
-    // pass on BOTH faces (the entered overlap/height values apply
-    // identically to each, per the user's explicit decision) - draw the
-    // dimension callouts on the top face as usual, then a mirrored set on
-    // the bottom face, each avoiding everything the other has already
-    // placed.
-    final topCap = _drawCapDimensions(
-      canvas,
-      size,
-      guidePaint,
-      layout: layout,
-      halfTop: halfTop,
-      topY: math.min(member.leftTop, member.rightTop),
-      thickness: thickness,
-      avoidRects: beforeCapRects,
-      facePrefix: capTopLabel,
-    );
-    _drawCapDimensions(
-      canvas,
-      size,
-      guidePaint,
-      layout: layout,
-      halfTop: halfTop,
-      topY: math.max(member.leftBottom, member.rightBottom),
-      thickness: thickness,
-      direction: 1,
-      avoidRects: [...beforeCapRects, ?topCap.overlap, ?topCap.height],
-      facePrefix: capBottomLabel,
-    );
-  }
-
-  void _drawCompoundV(
-    Canvas canvas,
-    Size size,
-    Paint steelPaint,
-    Paint weldPaint,
-    Paint outlinePaint,
-    Paint guidePaint,
-  ) {
-    final thickness = _positiveOr(data.thicknessMm, 14);
-    final rootGap = _positiveOr(data.rootGapMm, 3, min: 0.8);
-    final rootFace = _clampValue(
-      data.rootFaceMm,
-      fallback: 2,
-      min: 0.5,
-      max: thickness - 1.2,
-    );
-    final primaryAngle = _clampValue(
-      data.bevelAngleDeg,
-      fallback: 30,
-      min: 8,
-      max: 60,
-    );
-    final maxBreakHeight = math.max(thickness - rootFace - 0.8, 0.8);
-    final breakHeight = _clampValue(
-      data.breakHeightMm,
-      fallback: math.min(4.0, maxBreakHeight),
-      min: 0.8,
-      max: maxBreakHeight,
-    );
-    final secondaryAngle = _clampValue(
-      data.secondaryBevelAngleDeg,
-      fallback: 10,
-      min: 5,
-      max: 45,
-    );
-    final upperHeight = math.max(thickness - rootFace - breakHeight, 0.5);
-    final widthAtBreak =
-        rootGap + (2 * breakHeight * math.tan(_degToRad(primaryAngle)));
-    final topWidth =
-        widthAtBreak + (2 * upperHeight * math.tan(_degToRad(secondaryAngle)));
-    final halfGap = rootGap / 2;
-    final halfBreak = widthAtBreak / 2;
-    final halfTop = topWidth / 2;
-    final halfBody = math.max(halfTop + (thickness * 0.95), 24.0);
-    final layout = _createLayout(
-      size,
-      maxHalfWidthMm: halfBody + 10,
-      heightMm: thickness + 7,
-      topPaddingMm: 4,
-      topChipLabel: grooveTypeLabel,
-    );
-    final p = layout.point;
-    // Compound V bevels both sides symmetrically, so (like Single V/Double
-    // V/Square) member extents come from [_memberExtents] rather than a
-    // flat 0..thickness range, or Unequal geometry's different A/B
-    // thicknesses render identically. The bevel's horizontal geometry
-    // (widths/angles) stays shared between both sides - only the vertical
-    // references (top/break/groove/bottom) are per-member.
-    final member = _memberExtents(thickness);
-    final leftThickness = member.leftBottom - member.leftTop;
-    final rightThickness = member.rightBottom - member.rightTop;
-    final leftRootFace = math.min(rootFace, math.max(leftThickness - 1.2, 0.5));
-    final rightRootFace = math.min(
-      rootFace,
-      math.max(rightThickness - 1.2, 0.5),
-    );
-    final leftGrooveY = member.leftBottom - leftRootFace;
-    final rightGrooveY = member.rightBottom - rightRootFace;
-    // `upperHeight` is derived from the governing (max A/B) thickness, so
-    // applying it unclamped to a thinner member's own top would land its
-    // break vertex below its own groove vertex, self-intersecting the
-    // polygon - clamp it the same way `leftRootFace`/`rightRootFace` above
-    // are already clamped to each member's own actual extent.
-    final leftBreakY =
-        member.leftTop +
-        math.min(
-          upperHeight,
-          math.max(leftThickness - leftRootFace - 0.8, 0.5),
-        );
-    final rightBreakY =
-        member.rightTop +
-        math.min(
-          upperHeight,
-          math.max(rightThickness - rightRootFace - 0.8, 0.5),
-        );
-    final capRise = math.min(thickness * 0.14, 3.0);
-    final rootCrown = math.min(rootFace * 0.32, 1.1);
-
-    final leftPlate = Path()
-      ..moveTo(p(-halfBody, member.leftTop).dx, p(-halfBody, member.leftTop).dy)
-      ..lineTo(p(-halfTop, member.leftTop).dx, p(-halfTop, member.leftTop).dy)
-      ..lineTo(p(-halfBreak, leftBreakY).dx, p(-halfBreak, leftBreakY).dy)
-      ..lineTo(p(-halfGap, leftGrooveY).dx, p(-halfGap, leftGrooveY).dy)
-      ..lineTo(
-        p(-halfGap, member.leftBottom).dx,
-        p(-halfGap, member.leftBottom).dy,
-      )
-      ..lineTo(
-        p(-halfBody, member.leftBottom).dx,
-        p(-halfBody, member.leftBottom).dy,
-      )
-      ..close();
-    final rightPlate = Path()
-      ..moveTo(p(halfBody, member.rightTop).dx, p(halfBody, member.rightTop).dy)
-      ..lineTo(p(halfTop, member.rightTop).dx, p(halfTop, member.rightTop).dy)
-      ..lineTo(p(halfBreak, rightBreakY).dx, p(halfBreak, rightBreakY).dy)
-      ..lineTo(p(halfGap, rightGrooveY).dx, p(halfGap, rightGrooveY).dy)
-      ..lineTo(
-        p(halfGap, member.rightBottom).dx,
-        p(halfGap, member.rightBottom).dy,
-      )
-      ..lineTo(
-        p(halfBody, member.rightBottom).dx,
-        p(halfBody, member.rightBottom).dy,
-      )
-      ..close();
-    final weld = Path()
-      ..moveTo(p(-halfTop, member.leftTop).dx, p(-halfTop, member.leftTop).dy)
-      ..quadraticBezierTo(
-        p(0, math.min(member.leftTop, member.rightTop) - capRise).dx,
-        p(0, math.min(member.leftTop, member.rightTop) - capRise).dy,
-        p(halfTop, member.rightTop).dx,
-        p(halfTop, member.rightTop).dy,
-      )
-      ..lineTo(p(halfBreak, rightBreakY).dx, p(halfBreak, rightBreakY).dy)
-      ..lineTo(p(halfGap, rightGrooveY).dx, p(halfGap, rightGrooveY).dy)
-      ..lineTo(
-        p(halfGap, member.rightBottom).dx,
-        p(halfGap, member.rightBottom).dy,
-      )
-      ..quadraticBezierTo(
-        p(0, math.max(member.leftBottom, member.rightBottom) + rootCrown).dx,
-        p(0, math.max(member.leftBottom, member.rightBottom) + rootCrown).dy,
-        p(-halfGap, member.leftBottom).dx,
-        p(-halfGap, member.leftBottom).dy,
-      )
-      ..lineTo(p(-halfGap, leftGrooveY).dx, p(-halfGap, leftGrooveY).dy)
-      ..lineTo(p(-halfBreak, leftBreakY).dx, p(-halfBreak, leftBreakY).dy)
-      ..close();
-
-    _drawJoint(
-      canvas,
-      size,
-      leftPlate,
-      rightPlate,
-      weld,
-      steelPaint,
-      weldPaint,
-      outlinePaint,
-    );
-    final tint = _drawCombinedProcessTint(
-      canvas,
-      size,
-      weld,
-      layout: layout,
-      totalHeightMm: thickness,
-      rootHeightMm: data.gtawTransitionMm,
-      topLabelCenter: p(halfTop * 0.48, thickness * 0.16),
-      rootLabelCenter: p(halfGap + 16, rightGrooveY + 2.6),
-      // See _dimensionLineAvoidRects on Single V's identical block above -
-      // includes the groove-depth line's and root-gap line's own avoid
-      // rects too.
-      rootLabelAvoidRects: [
-        ..._dimensionLineAvoidRects(
-          layout,
-          nearX: halfGap,
-          farX: halfGap + 5,
-          topY: rightGrooveY,
-          bottomY: member.rightBottom,
-        ),
-        ..._dimensionLineAvoidRects(
-          layout,
-          nearX: halfGap,
-          farX: halfGap + 20,
-          topY: 0,
-          bottomY: rightGrooveY - member.rightTop,
-        ),
-        ..._dimensionLineAvoidRects(
-          layout,
-          nearX: halfGap,
-          farX: halfGap,
-          topY: thickness,
-          bottomY: thickness + 3.5,
-        ),
-        if (data.geometryMode == JointGeometryMode.unequal)
-          ..._dimensionLineAvoidRects(
-            layout,
-            nearX: halfGap,
-            farX: halfBody + 6,
-            topY: member.rightTop,
-            bottomY: member.rightBottom,
-          ),
-      ],
-    );
-    final tintRects = [?tint.topLabel, ?tint.rootLabel];
-    // Compound V carries six callouts (thickness, root gap, groove depth,
-    // break height, root face, alpha, beta) plus the type/pipe chips - the
-    // busiest drawing in the app. Each label starts in its own mm-space
-    // lane - a distinct horizontal distance from the joint - but an
-    // mm-space lane alone isn't enough: the drawing's mm-to-pixel scale
-    // shrinks on a narrow canvas while each label bubble's own rendered
-    // size stays roughly fixed in pixels, so lanes that are comfortably
-    // separated on the desktop canvas can collapse into overlapping
-    // pixel-space bubbles on a real phone canvas (this is exactly what
-    // happened between alpha and groove depth - see TEAM_LEARNINGS.md).
-    // So alpha and root face are measured and drawn first at their normal
-    // lane positions, then groove depth and beta are each nudged straight
-    // down in real pixel space (see [_clearLabelPosition]), using their
-    // actual rendered bubble sizes, just far enough to clear every
-    // already-placed bubble they'd otherwise overlap - groove depth must
-    // avoid BOTH alpha (above) and root face (below), not just alpha, or a
-    // push that clears alpha can land it straight on top of root face
-    // instead (this happened in an earlier version of this fix - see
-    // TEAM_LEARNINGS.md).
-    final alphaRect = _drawAngleTag(
-      canvas,
-      guidePaint,
-      size,
-      start: p(
-        halfGap + ((halfBreak - halfGap) * 0.52),
-        rightGrooveY - ((rightGrooveY - rightBreakY) * 0.42),
-      ),
-      // `halfBreak + 6`, not a fixed offset from the centerline - the bevel
-      // is `halfBreak` wide at this height, so the label needs to clear
-      // that actual width (which grows with a wider root gap or steeper
-      // bevel angle) rather than a constant that only happened to clear a
-      // narrower bevel. A fixed `halfGap + 6` sat visibly on top of the
-      // weld metal once the compact canvas's scale was increased to make
-      // the drawing itself bigger (see TEAM_LEARNINGS.md).
-      labelCenter: p(halfBreak + 6, rightBreakY * 0.35),
-      text: 'α ${_formatValue(primaryAngle)}°',
-      fieldKey: FieldKey.bevelAngleDeg,
-      avoidRects: tintRects,
-      primary: true,
-    );
-    // Root face: bottom, inner-right lane, close to the joint. Drawn before
-    // groove depth (unlike its natural top-to-bottom reading order) so its
-    // real rect is available for groove depth's avoid list.
-    final rootFaceRect = _drawDimensionLine(
-      canvas,
-      guidePaint,
-      start: p(halfGap + 5, rightGrooveY),
-      end: p(halfGap + 5, member.rightBottom),
-      label: '${_formatValue(rootFace)} mm root face',
-      labelSize: size,
-      labelOffset: const Offset(20, 6),
-      extensionStart: p(halfGap, rightGrooveY),
-      extensionEnd: p(halfGap, member.rightBottom),
-      fieldKey: FieldKey.rootFaceMm,
-      avoidRects: [...tintRects, alphaRect],
-      primary: true,
-    );
-    final commonRects = _drawButtCommonMeasurements(
-      canvas,
-      size,
-      guidePaint,
-      layout: layout,
-      thickness: thickness,
-      halfGap: halfGap,
-      grooveY: rightGrooveY - member.rightTop,
-      thicknessLabelX: -halfBody - 6,
-      rightThicknessLabelX: halfBody + 6,
-      avoidRects: [...tintRects, alphaRect, rootFaceRect],
-    );
-    // Break height "h": inner-left lane, kept close to the joint. Every
-    // label in this drawing avoids every other label already placed before
-    // it - Compound V is busy enough (six callouts sharing a canvas this
-    // narrow) that any label sharing an avoid list with only SOME of its
-    // predecessors reliably lands on whichever one was left out (this
-    // happened three separate times across earlier attempts at this exact
-    // drawing - see TEAM_LEARNINGS.md).
-    final hRect = _drawDimensionLine(
-      canvas,
-      guidePaint,
-      start: p(-halfGap - 12, leftBreakY),
-      end: p(-halfGap - 12, leftGrooveY),
-      label: 'h ${_formatValue(breakHeight)} mm',
-      labelSize: size,
-      labelOffset: const Offset(-14, 16),
-      extensionStart: p(-halfBreak, leftBreakY),
-      extensionEnd: p(-halfGap, leftGrooveY),
-      fieldKey: FieldKey.breakHeightMm,
-      avoidRects: [
-        ...tintRects,
-        alphaRect,
-        rootFaceRect,
-        commonRects.thickness,
-        ?commonRects.bThickness,
-        commonRects.rootGap,
-        ?commonRects.grooveDepth,
-      ],
-    );
-    // Cap overlap/height are optional and, unlike beta, their own natural
-    // position never actually depends on beta - the "2 mm cap height" line
-    // rises from a fixed geometry-driven offset (`halfTop`/`topY`), and
-    // beta's own rect never has any effect on that unclamped candidate in
-    // practice (measured directly: cap height's resolved rect is identical
-    // whether beta's own rect is included in its avoid list or not). So cap
-    // dimensions are drawn here, BEFORE beta, and beta - the one label in
-    // this pair whose position genuinely does depend on the other - is the
-    // one that adapts to cap's already-fixed rect below, not the reverse. A
-    // reviewer found the opposite order (beta drawn first, cap included
-    // beta in ITS OWN avoid list afterward) let beta's post-clamp declutter
-    // move it into exactly where cap height was always going to land,
-    // producing a full pill-on-pill collision worse than the one it was
-    // trying to fix - since cap height can't itself move anywhere (there is
-    // no genuinely clear candidate for it on a canvas this narrow), only
-    // fixing this from beta's side (where a genuinely clear candidate can
-    // actually exist) resolves it.
-    final chipRects = _drawTopChips(canvas, size, grooveTypeLabel);
-    final capRects = _drawCapDimensions(
-      canvas,
-      size,
-      guidePaint,
-      layout: layout,
-      halfTop: halfTop,
-      topY: math.min(member.leftTop, member.rightTop),
-      thickness: thickness,
-      avoidRects: [
-        ...tintRects,
-        alphaRect,
-        rootFaceRect,
-        commonRects.thickness,
-        ?commonRects.bThickness,
-        commonRects.rootGap,
-        ?commonRects.grooveDepth,
-        hRect,
-        chipRects.typeChip,
-        ?chipRects.pipeChip,
-      ],
-    );
-    // Secondary angle (beta): drawn last, so it avoids every already-placed
-    // label it can actually reach - alpha/root-face/thickness/root-gap/
-    // groove-depth/h-line/tints and both cap dimensions, all placed in the
-    // bottom band beta itself lives in. `chipRects.typeChip`/`.pipeChip`
-    // (drawn even earlier, at the top of the canvas) are deliberately NOT
-    // in this list: not an oversight, they sit in a geometrically separate
-    // top band and a full 54,000-config sweep confirmed beta never reaches
-    // far enough to collide with them. Don't add them defensively - that
-    // sweep is the evidence, and pulling the chips into this avoid list
-    // could itself introduce new unintended pushes. If a future label gets
-    // placed between the chips and beta, revisit this list then.
-    _drawAngleTag(
-      canvas,
-      guidePaint,
-      size,
-      start: p(halfBreak + ((halfTop - halfBreak) * 0.48), rightBreakY * 0.48),
-      labelCenter: p(halfBreak + 6, (rightBreakY + rightGrooveY) / 2),
-      text: 'β ${_formatValue(secondaryAngle)}°',
-      fieldKey: FieldKey.secondaryBevelAngleDeg,
-      avoidRects: [
-        ...tintRects,
-        alphaRect,
-        rootFaceRect,
-        commonRects.thickness,
-        ?commonRects.bThickness,
-        commonRects.rootGap,
-        ?commonRects.grooveDepth,
-        hRect,
-        ?capRects.overlap,
-        ?capRects.height,
-      ],
-      // Groove depth is drawn earlier in this same sequence (via
-      // commonRects, above) - close enough on a narrow canvas that both can
-      // clamp to the same bottom-edge band even after the avoidRects push
-      // above (compoundHalfVBetaClampGap in
-      // weld_drawing_label_overlap_test.dart). See [_declutterAfterClamp].
-      // Validated against every already-placed sibling here (the same set
-      // passed to `avoidRects` above, including cap height/overlap now that
-      // they're drawn first - see this block's own comment above), not just
-      // groove depth - a reviewer found that checking groove depth alone let
-      // a candidate move land beta on top of a DIFFERENT already-drawn
-      // sibling instead (a worse collision than the one being fixed).
-      postClampAvoidRects: [
-        ...tintRects,
-        alphaRect,
-        rootFaceRect,
-        commonRects.thickness,
-        ?commonRects.bThickness,
-        commonRects.rootGap,
-        ?commonRects.grooveDepth,
-        hRect,
-        ?capRects.overlap,
-        ?capRects.height,
-      ],
-      primary: true,
-    );
-  }
-
-  void _drawSquare(
-    Canvas canvas,
-    Size size,
-    Paint steelPaint,
-    Paint weldPaint,
-    Paint outlinePaint,
-    Paint guidePaint,
-  ) {
-    final thickness = _positiveOr(data.thicknessMm, _isPipeButt ? 14 : 12);
-    final rootGap = _positiveOr(data.rootGapMm, 3, min: 0.8);
-    final halfGap = rootGap / 2;
-    final halfBody = math.max(halfGap + (thickness * 1.2), 24.0);
-    final layout = _createLayout(
-      size,
-      maxHalfWidthMm: halfBody + 10,
-      heightMm: thickness + 7,
-      topPaddingMm: 4,
-      topChipLabel: grooveTypeLabel,
-    );
-    final p = layout.point;
-    final member = _memberExtents(thickness);
-    final capRise = math.min(thickness * 0.12, 2.4);
-
-    final leftPlate = Path()
-      ..moveTo(p(-halfBody, member.leftTop).dx, p(-halfBody, member.leftTop).dy)
-      ..lineTo(p(-halfGap, member.leftTop).dx, p(-halfGap, member.leftTop).dy)
-      ..lineTo(
-        p(-halfGap, member.leftBottom).dx,
-        p(-halfGap, member.leftBottom).dy,
-      )
-      ..lineTo(
-        p(-halfBody, member.leftBottom).dx,
-        p(-halfBody, member.leftBottom).dy,
-      )
-      ..close();
-    final rightPlate = Path()
-      ..moveTo(p(halfBody, member.rightTop).dx, p(halfBody, member.rightTop).dy)
-      ..lineTo(p(halfGap, member.rightTop).dx, p(halfGap, member.rightTop).dy)
-      ..lineTo(
-        p(halfGap, member.rightBottom).dx,
-        p(halfGap, member.rightBottom).dy,
-      )
-      ..lineTo(
-        p(halfBody, member.rightBottom).dx,
-        p(halfBody, member.rightBottom).dy,
-      )
-      ..close();
-    final weld = Path()
-      ..moveTo(p(-halfGap, member.leftTop).dx, p(-halfGap, member.leftTop).dy)
-      ..quadraticBezierTo(
-        p(0, math.min(member.leftTop, member.rightTop) - capRise).dx,
-        p(0, math.min(member.leftTop, member.rightTop) - capRise).dy,
-        p(halfGap, member.rightTop).dx,
-        p(halfGap, member.rightTop).dy,
-      )
-      ..lineTo(
-        p(halfGap, member.rightBottom).dx,
-        p(halfGap, member.rightBottom).dy,
-      )
-      ..quadraticBezierTo(
-        p(0, math.max(member.leftBottom, member.rightBottom) + capRise).dx,
-        p(0, math.max(member.leftBottom, member.rightBottom) + capRise).dy,
-        p(-halfGap, member.leftBottom).dx,
-        p(-halfGap, member.leftBottom).dy,
-      )
-      ..close();
-
-    _drawJoint(
-      canvas,
-      size,
-      leftPlate,
-      rightPlate,
-      weld,
-      steelPaint,
-      weldPaint,
-      outlinePaint,
-    );
-    final tint = _drawCombinedProcessTint(
-      canvas,
-      size,
-      weld,
-      layout: layout,
-      totalHeightMm: thickness,
-      rootHeightMm: data.gtawTransitionMm,
-      topLabelCenter: p(halfGap + 8, thickness * 0.18),
-      // Square has no bevel/root-face dimension line and no groove-depth
-      // line either (`_drawButtCommonMeasurements` is called with
-      // `grooveY: 0` below, which skips it) - but this label sits close
-      // enough to the bottom (`thickness + 0.6`) that it instead collides
-      // with the ROOT GAP line's right-hand extension stub, which runs from
-      // `rootGapLabelY` down to `thickness + 3.5` at `x = halfGap`. Modeled
-      // the same way as the other groove types' groove-depth avoid rect
-      // (`nearX == farX` collapses `_dimensionLineAvoidRects`'s three
-      // segments down to just that one vertical stub). Unequal geometry
-      // still draws the same B-thickness line every other groove type does,
-      // too - see _dimensionLineAvoidRects on Single V's identical block
-      // above.
-      rootLabelCenter: p(halfGap + 16, thickness + 0.6),
-      rootLabelAvoidRects: [
-        ..._dimensionLineAvoidRects(
-          layout,
-          nearX: halfGap,
-          farX: halfGap,
-          topY: math.max(member.leftBottom, member.rightBottom),
-          bottomY: thickness + 3.5,
-        ),
-        if (data.geometryMode == JointGeometryMode.unequal)
-          ..._dimensionLineAvoidRects(
-            layout,
-            nearX: halfGap,
-            farX: halfBody + 6,
-            topY: member.rightTop,
-            bottomY: member.rightBottom,
-          ),
-      ],
-    );
-    final commonRects = _drawButtCommonMeasurements(
-      canvas,
-      size,
-      guidePaint,
-      layout: layout,
-      thickness: thickness,
-      halfGap: halfGap,
-      grooveY: 0,
-      thicknessLabelX: -halfBody - 6,
-      rightThicknessLabelX: halfBody + 6,
-      rootGapLabelY: math.max(member.leftBottom, member.rightBottom),
-      avoidRects: [?tint.topLabel, ?tint.rootLabel],
-    );
-    final chipRects = _drawTopChips(canvas, size, grooveTypeLabel);
-    _drawCapDimensions(
-      canvas,
-      size,
-      guidePaint,
-      layout: layout,
-      halfTop: halfGap,
-      topY: math.min(member.leftTop, member.rightTop),
-      thickness: thickness,
-      avoidRects: [
-        ?tint.topLabel,
-        ?tint.rootLabel,
-        commonRects.thickness,
-        ?commonRects.bThickness,
-        commonRects.rootGap,
-        ?commonRects.grooveDepth,
-        chipRects.typeChip,
-        ?chipRects.pipeChip,
-      ],
-    );
-  }
-
-  void _drawFillet(
-    Canvas canvas,
-    Size size,
-    Paint steelPaint,
-    Paint weldPaint,
-    Paint outlinePaint,
-    Paint guidePaint,
-  ) {
-    final leg = _positiveOr(data.legSizeMm, 6, min: 2);
-    final plateThickness = math.max(leg * 0.65, 4.5);
-    final flangeHalfWidth = math.max(leg * 2.8, 16.0);
-    final webHalfThickness = plateThickness / 2;
-    final layout = _createLayout(
-      size,
-      maxHalfWidthMm: flangeHalfWidth + 10,
-      heightMm: (leg + plateThickness + 10),
-    );
-    final p = layout.point;
-    final baseTopY = leg + 2.5;
-    final baseBottomY = baseTopY + plateThickness;
-    final webTopY = math.max(baseTopY - (leg + plateThickness * 1.6), 0.0);
-    final toeX = webHalfThickness + leg;
-    final topToeY = baseTopY - leg;
-    final faceControlX = webHalfThickness + (leg * 0.72);
-    final faceControlY = baseTopY - (leg * 0.18);
-
-    final web = Path()
-      ..moveTo(
-        p(-webHalfThickness, webTopY).dx,
-        p(-webHalfThickness, webTopY).dy,
-      )
-      ..lineTo(p(webHalfThickness, webTopY).dx, p(webHalfThickness, webTopY).dy)
-      ..lineTo(
-        p(webHalfThickness, baseTopY).dx,
-        p(webHalfThickness, baseTopY).dy,
-      )
-      ..lineTo(
-        p(-webHalfThickness, baseTopY).dx,
-        p(-webHalfThickness, baseTopY).dy,
-      )
-      ..close();
-    final flange = Path()
-      ..moveTo(
-        p(-flangeHalfWidth, baseTopY).dx,
-        p(-flangeHalfWidth, baseTopY).dy,
-      )
-      ..lineTo(p(flangeHalfWidth, baseTopY).dx, p(flangeHalfWidth, baseTopY).dy)
-      ..lineTo(
-        p(flangeHalfWidth, baseBottomY).dx,
-        p(flangeHalfWidth, baseBottomY).dy,
-      )
-      ..lineTo(
-        p(-flangeHalfWidth, baseBottomY).dx,
-        p(-flangeHalfWidth, baseBottomY).dy,
-      )
-      ..close();
-    final weld = Path()
-      ..moveTo(p(webHalfThickness, topToeY).dx, p(webHalfThickness, topToeY).dy)
-      ..lineTo(
-        p(webHalfThickness, baseTopY).dx,
-        p(webHalfThickness, baseTopY).dy,
-      )
-      ..lineTo(p(toeX, baseTopY).dx, p(toeX, baseTopY).dy)
-      ..quadraticBezierTo(
-        p(faceControlX, faceControlY).dx,
-        p(faceControlX, faceControlY).dy,
-        p(webHalfThickness, topToeY).dx,
-        p(webHalfThickness, topToeY).dy,
-      )
-      ..close();
-
-    _drawJoint(
-      canvas,
-      size,
-      web,
-      flange,
-      weld,
-      steelPaint,
-      weldPaint,
-      outlinePaint,
-    );
-    final leg1Rect = _drawDimensionLine(
-      canvas,
-      guidePaint,
-      start: p(webHalfThickness, baseBottomY + 3),
-      end: p(toeX, baseBottomY + 3),
-      label: '${_formatValue(leg)} mm leg',
-      labelSize: size,
-      extensionStart: p(webHalfThickness, baseTopY),
-      extensionEnd: p(toeX, baseTopY),
-      fieldKey: FieldKey.legSizeMm,
-      primary: true,
-    );
-    final leg2Rect = _drawDimensionLine(
-      canvas,
-      guidePaint,
-      start: p(toeX + 4, topToeY),
-      end: p(toeX + 4, baseTopY),
-      label: '${_formatValue(leg)} mm leg',
-      labelSize: size,
-      // `labelOffset` is a raw screen-pixel nudge (unlike the geometry
-      // itself, it is not scaled by the drawing's mm-to-px scale), so the
-      // old +42px-right push landed this label's center only ~40px from
-      // the "fillet weld face" leader label above it - close enough for
-      // their bubbles to overlap. Push down instead of right so it clears
-      // that leader vertically regardless of canvas size.
-      labelOffset: const Offset(10, 30),
-      extensionStart: p(webHalfThickness, topToeY),
-      extensionEnd: p(webHalfThickness, baseTopY),
-      fieldKey: FieldKey.legSizeMm,
-      avoidRects: [leg1Rect],
-      primary: true,
-    );
-    // Leaders are drawn last, so they nudge clear of the leg labels rather
-    // than the other way around - reordering the leg labels after the
-    // leaders would just move which pair needs the avoid list.
-    // Group 4 (prior session): at the narrowest real device width
-    // (320pt/240px), a locale's longer translated leader text (Russian's
-    // "поверхность углового шва"/"Т-образное соединение" specifically -
-    // measured directly via this suite's own painter, not assumed) collides
-    // with the OTHER leader at its natural top-of-canvas position, pushing
-    // the T-joint leader all the way down past both leg labels until it
-    // lands squarely on top of the leg1 dimension pill. A reviewer bisected
-    // a height-only fix directly (1px steps): at production canvas height
-    // (242px) the overlap is 1.11px and clears at 244px - only +2px more.
-    // Follow-up round (this session): the original framing of that +2px as
-    // "impractical, no real phone reaches it" was wrong - it was computed
-    // using a test-measured chrome (~148px) that turned out to be a
-    // measurement bug (the test's own live-`CalculatorPage` chrome spike was
-    // missing a real-font load, so the RU header wrapped to 2 lines that
-    // don't actually wrap with the real font - see the test file's own
-    // corrected header comment). With the real font loaded, default-scale
-    // (`textScaler` 1.0) chrome is a flat 105px at every width and every
-    // locale, which already puts the fillet card's real canvas height at
-    // 285-335px for every real `safeHeight` - past the 244px clearing point
-    // with room to spare. So at DEFAULT text scale this collision does not
-    // occur in production at all, and `compact` makes zero measured
-    // difference there (confirmed by sweeping the full width/legSize/
-    // mode/locale matrix at the corrected default-scale canvas height with
-    // `compact` enabled, disabled, and at either cutoff - identical, empty
-    // failure sets in every case). The collision IS real for accessibility
-    // users with enlarged text, though: this painter's own labels are drawn
-    // at a fixed size regardless of `textScaler` (see every `TextPainter`
-    // construction in this file - none pass a `textScaler`), but the
-    // surrounding chrome (the card title/mode-toggle row in
-    // calculator_page.dart) DOES scale with it, shrinking the canvas height
-    // actually available - at `textScaler` 1.3 the narrowest real canvas is
-    // ~242px, exactly the 1.11px-overlap case bisected above. `compact`
-    // shrinks both leaders' font/padding below this width so the natural
-    // (unpushed) positions stay clear of each other in every locale at that
-    // scale, closing the collision at its actual source (label width, not
-    // height) rather than shrinking the (unrelated, identical-across-
-    // locales) leg labels. See test/widgets/weld_drawing_label_overlap_test
-    // .dart's accessibility-scale test group for the coverage this
-    // justifies (and its own known-gap note for a separate, smaller-leg-
-    // size collision that a still-larger `textScaler` exposes, which
-    // `compact` does not address - a height-driven leg-pill clash, not the
-    // width-driven leader clash this mechanism targets).
-    // Follow-up round (this session): the 250px cutoff above was itself too
-    // narrow - a reviewer's `legSizeMm` sweep (an axis this file's own test
-    // suite had hardcoded at 6mm everywhere, so this gap hid from every
-    // prior round) found real overlaps (up to 3.1px, Russian only) for
-    // several `legSizeMm` values across canvas widths 251-261px, just above
-    // the old cutoff, where `compact` didn't engage but the leaders'
-    // natural positions still weren't clear yet at every leg size. Swept
-    // widths 245-285px x legSizeMm 3-25mm x both modes x every locale via
-    // this suite's own painter: every failure fell within 251-261px, zero
-    // failures from 262px up. Raised the cutoff to 262px (just past the
-    // confirmed-failing band) rather than the fillet tier's height floor -
-    // same reasoning as above, this is a label-width problem, not a
-    // canvas-height one.
-    final compactLeaders = size.width <= 262.0;
-    final filletFaceRect = _drawLeader(
-      canvas,
-      guidePaint,
-      start: p(webHalfThickness + (leg * 0.48), baseTopY - (leg * 0.34)),
-      mid: p(flangeHalfWidth * 0.78, baseTopY - (leg * 0.72)),
-      end: p(flangeHalfWidth + 3, baseTopY - (leg * 0.72)),
-      text: filletWeldFaceLabel,
-      size: size,
-      avoidRects: [leg1Rect, leg2Rect],
-      compact: compactLeaders,
-    );
-    _drawLeader(
-      canvas,
-      guidePaint,
-      start: p(0, webTopY + ((baseTopY - webTopY) * 0.45)),
-      mid: p(-flangeHalfWidth * 0.82, webTopY + 2),
-      end: p(-flangeHalfWidth - 4, webTopY + 2),
-      text: tJointLabel,
-      size: size,
-      avoidRects: [leg1Rect, leg2Rect, filletFaceRect],
-      compact: compactLeaders,
-    );
-    _drawTypeChip(canvas, size, grooveTypeLabel);
-  }
-
-  void _drawJoint(
-    Canvas canvas,
-    Size size,
-    Path firstPlate,
-    Path secondPlate,
-    Path weld,
-    Paint steelPaint,
-    Paint weldPaint,
-    Paint outlinePaint,
-  ) {
-    canvas.drawPath(firstPlate, steelPaint);
-    canvas.drawPath(secondPlate, steelPaint);
-    canvas.drawPath(weld, weldPaint);
-    _drawWeldHatch(canvas, weld, size);
-    canvas.drawPath(firstPlate, outlinePaint);
-    canvas.drawPath(secondPlate, outlinePaint);
-    canvas.drawPath(weld, outlinePaint);
-  }
-
-  ({Rect? topLabel, Rect? rootLabel}) _drawCombinedProcessTint(
-    Canvas canvas,
-    Size size,
-    Path weld, {
-    required _SectionLayout layout,
-    required double totalHeightMm,
-    required double? rootHeightMm,
-    bool includeBottomRootTint = true,
-    Path? extraRootZone,
-    required Offset topLabelCenter,
-    required Offset rootLabelCenter,
-    // Only applied to the root label below, not the top ("SMAW fill/cap")
-    // label - the top label sits well clear of the lines this exists to
-    // avoid (see _dimensionLineAvoidRects) at its own natural position, and
-    // needlessly subjecting it to the same avoid list too pushes it down
-    // for no reason, cascading into every later label that avoids IT in
-    // turn on an already-tight canvas (a real regression an earlier version
-    // of this fix caused - see TEAM_LEARNINGS.md).
-    List<Rect> rootLabelAvoidRects = const [],
-  }) {
-    if (!_isCombinedProcess || rootHeightMm == null) {
-      return (topLabel: null, rootLabel: null);
-    }
-
-    final boundedRoot = rootHeightMm.clamp(0.0, totalHeightMm).toDouble();
-    if (boundedRoot <= 0 || boundedRoot >= totalHeightMm) {
-      return (topLabel: null, rootLabel: null);
-    }
-
-    final topOfRoot =
-        layout.topY + ((totalHeightMm - boundedRoot) * layout.scale);
-    final rootPaint = Paint()
-      ..shader = LinearGradient(
-        colors: [
-          _gtawRootColor.withValues(alpha: 0.88),
-          _gtawRootShade.withValues(alpha: 0.94),
-        ],
-        begin: Alignment.topCenter,
-        end: Alignment.bottomCenter,
-      ).createShader(Offset.zero & size)
-      ..style = PaintingStyle.fill;
-
-    canvas.save();
-    canvas.clipPath(weld);
-    if (includeBottomRootTint) {
+    canvas.drawPath(scene.weld, weld);
+    final rootY = scene.rootZoneTopY;
+    if (rootY != null) {
+      canvas.save();
+      canvas.clipPath(scene.weld);
       canvas.drawRect(
-        Rect.fromLTWH(0, topOfRoot, size.width, size.height - topOfRoot),
-        rootPaint,
+        Rect.fromLTRB(0, rootY, size.width, size.height),
+        Paint()..color = _rootColor.withValues(alpha: 0.85),
+      );
+      canvas.restore();
+    }
+    for (final plate in scene.plates) {
+      canvas.drawPath(plate, outline);
+    }
+    canvas.drawPath(scene.weld, outline);
+
+    for (final seg in scene._lines) {
+      canvas.drawLine(seg.a, seg.b, dim);
+    }
+    for (final arc in scene._arcs) {
+      canvas.drawArc(
+        Rect.fromCircle(center: arc.center, radius: arc.radius),
+        -math.pi / 2,
+        arc.sweep,
+        false,
+        dim,
       );
     }
-    if (extraRootZone != null) {
-      canvas.drawPath(extraRootZone, rootPaint);
-    }
-    canvas.restore();
-
-    final topLabelRect = _drawAnnotationLabel(
-      canvas,
-      size,
-      smawFillCapLabel,
-      topLabelCenter,
-      fontSize: 10,
-    );
-    // Both labels mark the same user-editable boundary (the fill/cap zone
-    // is simply the complement of the GTAW root zone), so both jump to the
-    // same field.
-    _hotspot(FieldKey.gtawTransitionMm, topLabelRect);
-    final rootLabelRect = _drawAnnotationLabel(
-      canvas,
-      size,
-      gtawRootLabel,
-      rootLabelCenter,
-      fontSize: 10,
-      avoidRects: [...rootLabelAvoidRects, topLabelRect],
-    );
-    _hotspot(FieldKey.gtawTransitionMm, rootLabelRect);
-    return (topLabel: topLabelRect, rootLabel: rootLabelRect);
-  }
-
-  ({Rect thickness, Rect? bThickness, Rect rootGap, Rect? grooveDepth})
-  _drawButtCommonMeasurements(
-    Canvas canvas,
-    Size size,
-    Paint guidePaint, {
-    required _SectionLayout layout,
-    required double thickness,
-    required double halfGap,
-    required double grooveY,
-    required double thicknessLabelX,
-    double? rightThicknessLabelX,
-    double? rootGapLabelY,
-    List<Rect> avoidRects = const [],
-  }) {
-    final p = layout.point;
-    final memberExtents = _memberExtents(thickness);
-    final unequal = data.geometryMode == JointGeometryMode.unequal;
-
-    final thicknessRect = _drawDimensionLine(
-      canvas,
-      guidePaint,
-      start: p(thicknessLabelX, memberExtents.leftTop),
-      end: p(thicknessLabelX, memberExtents.leftBottom),
-      label: unequal
-          ? 'A ${_formatValue(memberExtents.leftBottom - memberExtents.leftTop)} mm'
-          : '${_formatValue(thickness)} mm t',
-      labelSize: size,
-      labelOffset: const Offset(-42, 0),
-      extensionStart: p(-halfGap, memberExtents.leftTop),
-      extensionEnd: p(-halfGap, memberExtents.leftBottom),
-      fieldKey: unequal ? FieldKey.thicknessAMm : FieldKey.thicknessMm,
-      avoidRects: avoidRects,
-      primary: true,
-    );
-    Rect? bThicknessRect;
-    if (unequal && rightThicknessLabelX != null) {
-      bThicknessRect = _drawDimensionLine(
-        canvas,
-        guidePaint,
-        start: p(rightThicknessLabelX, memberExtents.rightTop),
-        end: p(rightThicknessLabelX, memberExtents.rightBottom),
-        label:
-            'B ${_formatValue(memberExtents.rightBottom - memberExtents.rightTop)} mm',
-        labelSize: size,
-        labelOffset: const Offset(42, 0),
-        extensionStart: p(halfGap, memberExtents.rightTop),
-        extensionEnd: p(halfGap, memberExtents.rightBottom),
-        fieldKey: FieldKey.thicknessBMm,
-        avoidRects: [...avoidRects, thicknessRect],
-        primary: true,
-      );
-    }
-    final rootGapRect = _drawDimensionLine(
-      canvas,
-      guidePaint,
-      start: p(-halfGap, thickness + 3.5),
-      end: p(halfGap, thickness + 3.5),
-      label: '${_formatValue(halfGap * 2)} mm root gap',
-      labelSize: size,
-      labelOffset: const Offset(0, 16),
-      extensionStart: p(-halfGap, rootGapLabelY ?? thickness),
-      extensionEnd: p(halfGap, rootGapLabelY ?? thickness),
-      fieldKey: FieldKey.rootGapMm,
-      avoidRects: [...avoidRects, thicknessRect, ?bThicknessRect],
-      primary: true,
-    );
-    if (grooveY > 0) {
-      final grooveDepthRect = _drawDimensionLine(
-        canvas,
-        guidePaint,
-        start: p(halfGap + 20, 0),
-        end: p(halfGap + 20, grooveY),
-        label: '${_formatValue(grooveY)} mm groove depth',
-        labelSize: size,
-        labelOffset: const Offset(46, 0),
-        extensionStart: p(halfGap, 0),
-        extensionEnd: p(halfGap, grooveY),
-        fieldKey: FieldKey.rootFaceMm,
-        // Thickness, B-thickness (unequal geometry) and root gap are drawn
-        // just above, in this same function - avoid all of them too, not
-        // just the caller-supplied rects, or a push clear of those can
-        // still land groove depth on top of one of them. Real avoidance
-        // (rather than the fixed vertical nudge this used to apply for
-        // unequal geometry) keeps this correct regardless of canvas size or
-        // locale string length - see Finding 3/4 in the reviewer audit this
-        // fixed.
-        avoidRects: [
-          ...avoidRects,
-          thicknessRect,
-          ?bThicknessRect,
-          rootGapRect,
-        ],
-      );
-      return (
-        thickness: thicknessRect,
-        bThickness: bThicknessRect,
-        rootGap: rootGapRect,
-        grooveDepth: grooveDepthRect,
-      );
-    }
-    return (
-      thickness: thicknessRect,
-      bThickness: bThicknessRect,
-      rootGap: rootGapRect,
-      grooveDepth: null,
-    );
-  }
-
-  // Cap overlap/height are optional (null/zero means "no reinforcement
-  // counted" in the calculation, the default for every pre-existing saved
-  // calculation) - unlike every other dimension in this file, this one only
-  // draws when the user has actually entered a positive value, rather than
-  // always showing an illustrative fallback. These are the first genuinely
-  // optional dimensions in this drawing (every other field is either always
-  // required for its groove type or already has a meaningful non-zero
-  // fallback), so always-on illustrative lines would add two new labels to
-  // every existing drawing regardless of whether this feature is used at
-  // all, which is both visually misleading (implying reinforcement that
-  // isn't there) and a backward-compatibility break for every existing
-  // combination this file's overlap/hotspot tests already cover.
-  // `halfTop` is the groove opening's half-width at the top surface (the x
-  // where cap overlap starts extending outward); `topY` is that surface's
-  // y-coordinate (where cap height starts rising from).
-  ({Rect? overlap, Rect? height}) _drawCapDimensions(
-    Canvas canvas,
-    Size size,
-    Paint guidePaint, {
-    required _SectionLayout layout,
-    required double halfTop,
-    required double topY,
-    required double thickness,
-    List<Rect> avoidRects = const [],
-    // -1 draws the cap rising upward off `topY` (the normal single-face
-    // groove types, and Double V's top face). +1 draws it rising downward
-    // off `topY` instead (Double V's bottom face, welded from the other
-    // side) - Double V gets a cap pass on BOTH faces per the user's
-    // explicit decision that the cap dimensions apply identically to each.
-    double direction = -1,
-    // Distinguishes Double V's two otherwise-identical cap label pairs
-    // (top vs. bottom face) - empty for every other groove type, which
-    // only ever draws one cap pass.
-    String facePrefix = '',
-  }) {
-    final p = layout.point;
-    final rawOverlap = data.capOverlapMm;
-    final rawHeight = data.capHeightMm;
-
-    Rect? overlapRect;
-    if (rawOverlap != null && rawOverlap > 0) {
-      final capOverlap = rawOverlap.clamp(0, math.max(halfTop, 2) * 1.5);
-      final overlapY = topY + (3 * direction);
-      overlapRect = _drawDimensionLine(
-        canvas,
-        guidePaint,
-        start: p(halfTop, overlapY),
-        end: p(halfTop + capOverlap, overlapY),
-        // Label shows the real entered value, not the drawing's clamped
-        // geometry (the clamp is a visual-sanity bound on the drawn line
-        // only, mirroring the root-face label pattern above) - the
-        // calculation itself always uses the true entered value.
-        label: facePrefix.isEmpty
-            ? '${_formatValue(rawOverlap.toDouble())} $capOverlapValueLabel'
-            : '$facePrefix ${_formatValue(rawOverlap.toDouble())} '
-                  '$capOverlapValueLabel',
-        labelSize: size,
-        labelOffset: Offset(6, 10 * direction),
-        extensionStart: p(halfTop, topY),
-        extensionEnd: p(halfTop + capOverlap, topY),
-        fieldKey: FieldKey.capOverlapMm,
-        avoidRects: avoidRects,
+    final arrowPaint = Paint()..color = _dimColor;
+    for (final arrow in scene._arrows) {
+      final n = Offset(-arrow.dir.dy, arrow.dir.dx);
+      final base = arrow.tip - arrow.dir * _SceneBuilder._arrowLen;
+      canvas.drawPath(
+        Path()
+          ..moveTo(arrow.tip.dx, arrow.tip.dy)
+          ..lineTo(base.dx + n.dx * 2.2, base.dy + n.dy * 2.2)
+          ..lineTo(base.dx - n.dx * 2.2, base.dy - n.dy * 2.2)
+          ..close(),
+        arrowPaint,
       );
     }
 
-    Rect? heightRect;
-    if (rawHeight != null && rawHeight > 0) {
-      final capHeight = rawHeight.clamp(0, math.max(thickness * 0.4, 1));
-      final heightX = -(halfTop + 10);
-      heightRect = _drawDimensionLine(
-        canvas,
-        guidePaint,
-        start: p(heightX, topY),
-        end: p(heightX, topY + (capHeight * direction)),
-        // See the cap-overlap label above: show the real entered value,
-        // only the drawn geometry is clamped for visual sanity.
-        label: facePrefix.isEmpty
-            ? '${_formatValue(rawHeight.toDouble())} $capHeightValueLabel'
-            : '$facePrefix ${_formatValue(rawHeight.toDouble())} '
-                  '$capHeightValueLabel',
-        labelSize: size,
-        labelOffset: Offset(-6, 10 * direction),
-        extensionStart: p(0, topY),
-        extensionEnd: p(0, topY + (capHeight * direction)),
-        fieldKey: FieldKey.capHeightMm,
-        avoidRects: [...avoidRects, ?overlapRect],
-      );
-    }
-
-    return (overlap: overlapRect, height: heightRect);
-  }
-
-  _MemberExtents _memberExtents(double governingThickness) {
-    if (data.geometryMode != JointGeometryMode.unequal) {
-      return _MemberExtents(
-        leftTop: 0,
-        leftBottom: governingThickness,
-        rightTop: 0,
-        rightBottom: governingThickness,
-      );
-    }
-
-    final thicknessA = _positiveOr(
-      data.thicknessAMm ?? data.thicknessMm,
-      governingThickness,
-    );
-    final thicknessB = _positiveOr(
-      data.thicknessBMm ?? data.thicknessMm,
-      governingThickness,
-    );
-
-    return switch (data.alignment) {
-      JointAlignment.centerline => _MemberExtents(
-        leftTop: (governingThickness - thicknessA) / 2,
-        leftBottom: (governingThickness + thicknessA) / 2,
-        rightTop: (governingThickness - thicknessB) / 2,
-        rightBottom: (governingThickness + thicknessB) / 2,
-      ),
-      JointAlignment.odMatch => _MemberExtents(
-        leftTop: 0,
-        leftBottom: thicknessA,
-        rightTop: 0,
-        rightBottom: thicknessB,
-      ),
-      JointAlignment.idMatch => _MemberExtents(
-        leftTop: governingThickness - thicknessA,
-        leftBottom: governingThickness,
-        rightTop: governingThickness - thicknessB,
-        rightBottom: governingThickness,
-      ),
-    };
-  }
-
-  _SectionLayout _createLayout(
-    Size size, {
-    required double maxHalfWidthMm,
-    required double heightMm,
-    double topPaddingMm = 3.5,
-    String topChipLabel = '',
-    // Real screen pixels to reserve above/below the drawn frame, on top of
-    // the usual proportional margins - for callers that need guaranteed
-    // room for a fixed-PIXEL-size label (e.g. Double V's both-faces cap
-    // pills, ~28px tall regardless of mm scale) rather than the geometry's
-    // own mm-scaled crown buffer. Unlike `topPaddingMm` (which is silently
-    // zeroed on the desktop/FittedBox path below - see `topPadding` - and
-    // which reserves room by shrinking centering slack, so it can still
-    // collapse to nothing when the drawing is height-bound), this shrinks
-    // `frame` itself directly rather than just centering slack. BUT when
-    // `extraTopPx == extraBottomPx` (true at every call site today) and the
-    // layout is width-bound - i.e. `scale` below is set by `frame.width`,
-    // not `frame.height`, which is the common case at thin/moderate plate
-    // thickness - shrinking `frame.height` symmetrically only eats into
-    // `slack` (both margins grow by the same amount, so the extra top and
-    // extra bottom cancel in `topY`'s `slack / 2` term) and has ZERO effect
-    // on scale or actual label position; verified bit-identical drawn joint
-    // bounds with `extraTopPx=32` vs `0` at thickness 4/8/12 on the 760x400
-    // desktop canvas. It only does real work once the reservation is large
-    // enough to flip the layout from width- to height-bound (thicker
-    // plates, roughly t>=25mm here), where it costs the intended, expected
-    // 1.7-3.3% size reduction instead of colliding with the cap labels. So:
-    // guarantees pixel headroom exists whenever the drawing is
-    // height-bound, but is a no-op in the (more common) width-bound case -
-    // not "honored in both modes" the way that sounds.
-    double extraTopPx = 0.0,
-    double extraBottomPx = 0.0,
-  }) {
-    // Margins as a fraction of canvas size (matching the original fixed
-    // 50/42/100/92 px margins against the 760x400 reference canvas) so the
-    // layout looks identical whether painted on that virtual canvas or
-    // directly at a real, smaller box (see [WeldDrawingPreview.fillAvailableSpace]).
-    //
-    // In fillAvailableSpace mode the joint geometry's scale is width-bound,
-    // not height-bound, on essentially every real phone width (verified:
-    // frame.width/(maxHalfWidthMm*2) comes out smaller than
-    // frame.height/heightMm for every groove type at 316-390px canvas
-    // width) - so the taller compact card added above (see
-    // _narrowDrawingHeight in calculator_page.dart) bought label breathing
-    // room but did not make the drawing itself any bigger. A slimmer side
-    // margin directly raises that width-bound scale instead, since both
-    // the geometry and every label position share the same mm-to-px scale
-    // (see [_SectionLayout]/`layout.point`) - everything grows together,
-    // labels included, which also widens the natural pixel gaps between
-    // mm-separated labels and makes the collision-avoidance system's job
-    // easier, not harder. Left at the original, more generous fraction for
-    // the desktop/FittedBox path, which already renders at a verified-good
-    // size and has no width pressure to relieve.
-    final marginX = size.width * (fillAvailableSpace ? 0.038 : 0.0658);
-    var marginTop = size.height * 0.105;
-    var marginBottom = size.height * 0.125;
-    if (fillAvailableSpace) {
-      // In this mode `size` is the *real* on-screen box - there's no outer
-      // FittedBox uniformly re-scaling everything back up - and it can be
-      // much shorter than the 760x400 reference canvas, e.g. the pinned
-      // mobile drawing card. The top-center groove-type chip is drawn at a
-      // constant on-screen pixel size for legibility (see the
-      // [WeldDrawingPreview.fillAvailableSpace] doc), so unlike this
-      // proportional margin it does not shrink along with a short canvas.
-      // Floor the margin so there is always real room above the drawing
-      // for that fixed-size chip, even on a very short canvas. When the
-      // pipe-OD chip is stacked below the type chip instead of beside it
-      // (see [_stackTopChips]) that top-center column is two chips tall,
-      // so raise the floor to keep clearing it.
-      marginTop = math.max(
-        marginTop,
-        _stackTopChips(size, topChipLabel) ? 80.0 : 48.0,
-      );
-    }
-    marginTop += extraTopPx;
-    marginBottom += extraBottomPx;
-    final frame = Rect.fromLTWH(
-      marginX,
-      marginTop,
-      size.width - (marginX * 2),
-      size.height - marginTop - marginBottom,
-    );
-    final scale = math.min(
-      frame.width / (maxHalfWidthMm * 2),
-      frame.height / heightMm,
-    );
-    // The joint cross-section is inherently wide/short (a plate seen from
-    // the side), so on a narrow phone canvas `scale` above is width-bound
-    // by a wide margin - the true-to-width scale leaves most of the
-    // compact card's generous vertical room (added for label spacing, see
-    // _narrowDrawingHeight in calculator_page.dart) completely unused by
-    // the drawing itself, reading as "a tiny picture in a big empty box."
-    // Per explicit product decision, allow the vertical scale to stretch
-    // further than the width-bound scale, capped at a bounded multiple of
-    // it, so the drawing visibly fills more of the card's height - bevel
-    // angles read a little steeper than their literal value as a result,
-    // an accepted, deliberately-bounded tradeoff (this is a schematic, not
-    // a to-scale CAD reproduction - the app already takes similar
-    // liberties with fixed-size chips/pills). Only in fillAvailableSpace
-    // mode; the desktop/FittedBox path keeps true proportions since it has
-    // no vertical-space problem to solve.
-    final scaleY = fillAvailableSpace
-        ? math.min(frame.height / heightMm, scale * 1.6)
-        : scale;
-    final actualHeight = heightMm * scaleY;
-    final slack = math.max(frame.height - actualHeight, 0.0);
-    // `heightMm` already budgets `topPaddingMm` of extra room above the
-    // plate's top surface (y=0) for the weld-cap crown to rise into - see
-    // each call site. Reserve that as guaranteed space instead of letting
-    // it collapse into pure centering slack, which is zero whenever the
-    // drawing is height-constrained (the common case on a short canvas).
-    // Without this, y=0 sits flush with the frame's top edge and the
-    // crown, which renders above y=0, pokes straight up into the margin
-    // where the top labels live. Only apply it in [fillAvailableSpace]
-    // mode so the always-760x400 desktop/FittedBox rendering (which never
-    // hit this collision) is unaffected.
-    final topPadding = fillAvailableSpace ? topPaddingMm * scaleY : 0.0;
-    final topY = frame.top + topPadding + (slack / 2);
-    return _SectionLayout(
-      scale: scale,
-      scaleY: scaleY,
-      centerX: size.width / 2,
-      topY: topY,
-    );
-  }
-
-  double _positiveOr(double? value, double fallback, {double min = 0.2}) {
-    if (value == null || !value.isFinite || value <= 0) return fallback;
-    return math.max(value, min);
-  }
-
-  double _clampValue(
-    double? value, {
-    required double fallback,
-    required double min,
-    required double max,
-  }) {
-    final resolved = value == null || !value.isFinite ? fallback : value;
-    if (max <= min) return min;
-    return resolved.clamp(min, max).toDouble();
-  }
-
-  double _degToRad(double degrees) => degrees * math.pi / 180;
-
-  String _formatValue(double value) {
-    if (value.abs() >= 100 || value == value.roundToDouble()) {
-      return value.toStringAsFixed(value == value.roundToDouble() ? 0 : 1);
-    }
-    final text = value.toStringAsFixed(value < 10 ? 2 : 1);
-    return text.replaceFirst(RegExp(r'\.?0+$'), '');
-  }
-
-  // Draws the top-center groove-type chip and, for pipe joints, the
-  // top-right OD chip. When placed side by side the two chips can overlap
-  // (the OD chip's independent canvas-edge clamping pulls it left just as
-  // the type chip's clamping pulls it right), so on canvases where the two
-  // chips' real measured rects would actually collide the OD chip stacks
-  // directly below the type chip instead - see [_stackTopChips].
-  ({Rect typeChip, Rect? pipeChip}) _drawTopChips(
-    Canvas canvas,
-    Size size,
-    String typeLabel,
-  ) {
-    final typeChipRect = _drawTypeChip(canvas, size, typeLabel);
-    final pipeChipRect = _drawPipeChip(
-      canvas,
-      size,
-      center: _stackTopChips(size, typeLabel)
-          ? Offset(size.width * 0.5, 60)
-          : Offset(size.width - 82, 28),
-    );
-    return (typeChip: typeChipRect, pipeChip: pipeChipRect);
-  }
-
-  Rect _drawTypeChip(Canvas canvas, Size size, String label) {
-    return _drawAnnotationLabel(
-      canvas,
-      size,
-      label,
-      Offset(size.width * 0.5, 28),
-      fontSize: 11.5,
-      weight: FontWeight.w700,
-    );
-  }
-
-  Rect? _drawPipeChip(Canvas canvas, Size size, {Offset? center}) {
-    if (!_isPipeButt || data.pipeOdMm == null || data.pipeOdMm! <= 0) {
-      return null;
-    }
-    final rect = _drawAnnotationLabel(
-      canvas,
-      size,
-      'OD ${_formatValue(data.pipeOdMm!)} mm',
-      center ?? Offset(size.width - 82, 28),
-      fontSize: 10.5,
-    );
-    _hotspot(FieldKey.pipeOdMm, rect);
-    return rect;
-  }
-
-  void _drawWeldHatch(Canvas canvas, Path path, Size size) {
-    canvas.save();
-    canvas.clipPath(path);
-    final hatchPaint = Paint()
-      ..color = _isTechnical ? const Color(0x4234515E) : const Color(0x33FFFFFF)
+    final fill = Paint()..color = const Color(0xF2FFFFFF);
+    final stroke = Paint()
+      ..color = _dimColor.withValues(alpha: 0.45)
       ..style = PaintingStyle.stroke
-      ..strokeWidth = _isTechnical ? 0.72 : 1.1
-      ..strokeCap = StrokeCap.round
-      ..isAntiAlias = true;
-    final spacing = _isTechnical ? 11.5 : 14.0;
-    for (double x = -size.height; x < size.width + size.height; x += spacing) {
-      canvas.drawLine(
-        Offset(x, size.height * 0.9),
-        Offset(x + size.height * 0.28, size.height * 0.12),
-        hatchPaint,
+      ..strokeWidth = 0.8;
+    for (final label in scene.labels) {
+      final rrect = RRect.fromRectAndRadius(
+        label.rect,
+        const Radius.circular(5),
       );
-    }
-    canvas.restore();
-  }
-
-  void _drawCenterLine(Canvas canvas, Paint paint, Offset start, Offset end) {
-    const dash = 7.0;
-    const gap = 5.0;
-    final dy = end.dy - start.dy;
-    double current = 0;
-    while (current < dy) {
-      canvas.drawLine(
-        Offset(start.dx, start.dy + current),
-        Offset(start.dx, math.min(start.dy + current + dash, end.dy)),
-        paint,
-      );
-      current += dash + gap;
-    }
-  }
-
-  Rect _drawDimensionLine(
-    Canvas canvas,
-    Paint paint, {
-    required Offset start,
-    required Offset end,
-    required String label,
-    required Size labelSize,
-    Offset labelOffset = Offset.zero,
-    Offset? extensionStart,
-    Offset? extensionEnd,
-    FieldKey? fieldKey,
-    List<Rect> avoidRects = const [],
-    bool primary = false,
-  }) {
-    if (extensionStart != null) {
-      canvas.drawLine(extensionStart, start, paint);
-    }
-    if (extensionEnd != null) {
-      canvas.drawLine(extensionEnd, end, paint);
-    }
-    canvas.drawLine(start, end, paint);
-    _drawArrowHead(canvas, paint, start, end);
-    _drawArrowHead(canvas, paint, end, start);
-    final midpoint = Offset((start.dx + end.dx) / 2, (start.dy + end.dy) / 2);
-    var labelCenter = Offset(
-      midpoint.dx + labelOffset.dx,
-      midpoint.dy + labelOffset.dy,
-    );
-    final fontSize = _measurementFontSize(labelSize);
-    if (avoidRects.isNotEmpty) {
-      labelCenter = _clearLabelPosition(
-        labelSize,
-        label,
-        labelCenter,
-        fontSize,
-        avoidRects,
-        primary: primary,
-      );
-    }
-    _drawAnnotationLabel(
-      canvas,
-      labelSize,
-      label,
-      labelCenter,
-      fontSize: fontSize,
-      technicalDimension: true,
-      primary: primary,
-    );
-    final rect = _measurementLabelRect(
-      labelSize,
-      label,
-      labelCenter,
-      fontSize,
-      primary: primary,
-    );
-    _hotspot(fieldKey, rect);
-    return rect;
-  }
-
-  Rect _drawLeader(
-    Canvas canvas,
-    Paint paint, {
-    required Offset start,
-    required Offset mid,
-    required Offset end,
-    required String text,
-    required Size size,
-    List<Rect> avoidRects = const [],
-    bool compact = false,
-  }) {
-    canvas.drawLine(start, mid, paint);
-    canvas.drawLine(mid, end, paint);
-    _drawArrowHead(canvas, paint, start, mid);
-    final fontSize = _annotationFontSize(size, 11.2);
-    var labelCenter = Offset(end.dx + 4, end.dy - 4);
-    if (avoidRects.isNotEmpty) {
-      labelCenter = _clearLabelPosition(
-        size,
-        text,
-        labelCenter,
-        fontSize,
-        avoidRects,
-        compact: compact,
-      );
-    }
-    _drawAnnotationLabel(
-      canvas,
-      size,
-      text,
-      labelCenter,
-      fontSize: fontSize,
-      compact: compact,
-    );
-    return _measurementLabelRect(
-      size,
-      text,
-      labelCenter,
-      fontSize,
-      compact: compact,
-    );
-  }
-
-  Rect _drawAngleTag(
-    Canvas canvas,
-    Paint paint,
-    Size size, {
-    required Offset start,
-    required Offset labelCenter,
-    required String text,
-    FieldKey? fieldKey,
-    List<Rect> avoidRects = const [],
-    // Sibling rects that are already fully placed and drawn (unlike
-    // [avoidRects], which [_clearLabelPosition] checks against unclamped
-    // positions during resolution) - see [_declutterAfterClamp] for why a
-    // second, separate pass is needed after clamping. `_drawDimensionLine`
-    // used to take an identical parameter (passed at two call sites in
-    // 752b744), but nothing has passed it since 9a899e5 deleted those -
-    // removed as dead wiring, leaving this the only call site.
-    List<Rect> postClampAvoidRects = const [],
-    bool primary = false,
-  }) {
-    final fontSize = _measurementFontSize(size);
-    var resolvedCenter = labelCenter;
-    if (avoidRects.isNotEmpty) {
-      resolvedCenter = _clearLabelPosition(
-        size,
-        text,
-        labelCenter,
-        fontSize,
-        avoidRects,
-        primary: primary,
-      );
-    }
-    if (postClampAvoidRects.isNotEmpty) {
-      resolvedCenter = _declutterAfterClamp(
-        size,
-        text,
-        resolvedCenter,
-        fontSize,
-        postClampAvoidRects,
-        primary: primary,
-      );
-    }
-    canvas.drawCircle(start, 2.6, Paint()..color = paint.color);
-    // The real, clamped pill rect the label is about to be drawn at (see
-    // [_measurementLabelRect]) - computed up front so the `pushedFar` elbow
-    // branch below can route its leader to the label's ACTUAL (clamped) Y,
-    // not `resolvedCenter.dy`'s unclamped one. A previous round already hit
-    // this exact class of bug on the X axis; this closes the Y-axis version
-    // (the elbow's vertical run/endpoint could otherwise land past the
-    // canvas bottom even though the pill itself was clamped to stay inside
-    // it, leaving a leader that visibly ran off the drawing and disconnected
-    // from its own label).
-    final rect = _measurementLabelRect(
-      size,
-      text,
-      resolvedCenter,
-      fontSize,
-      primary: primary,
-    );
-    // A busy drawing (Compound V especially) can push a label far enough
-    // from its natural spot that one straight line from `start` reads as
-    // pointing somewhere else entirely, and can visually cut across other
-    // labels or the geometry itself on its way there. Past a small
-    // vertical threshold, route it as an elbow instead: a short stub in
-    // the label's natural direction (so it still clearly marks the right
-    // spot on the drawing), then a clean vertical-then-horizontal run to
-    // wherever collision-avoidance actually placed it - the same "routed
-    // leader" convention real engineering drawings use, not a single long
-    // diagonal.
-    final pushedFar = (resolvedCenter.dy - labelCenter.dy).abs() > 6;
-    if (!pushedFar) {
-      final dx = resolvedCenter.dx - start.dx;
-      final dy = resolvedCenter.dy - start.dy;
-      final length = math.sqrt((dx * dx) + (dy * dy));
-      final ux = length == 0 ? 0.0 : dx / length;
-      final uy = length == 0 ? 0.0 : dy / length;
-      final lineEnd = Offset(
-        resolvedCenter.dx - (ux * 20),
-        resolvedCenter.dy - (uy * 20),
-      );
-      canvas.drawLine(start, lineEnd, paint);
-    } else {
-      final naturalDx = labelCenter.dx - start.dx;
-      final naturalDy = labelCenter.dy - start.dy;
-      final naturalLength = math.sqrt(
-        (naturalDx * naturalDx) + (naturalDy * naturalDy),
-      );
-      final ux = naturalLength == 0 ? 0.0 : naturalDx / naturalLength;
-      final uy = naturalLength == 0 ? 0.0 : naturalDy / naturalLength;
-      final stub = Offset(start.dx + (ux * 16), start.dy + (uy * 16));
-      // `rect.center.dy` (not `resolvedCenter.dy`) - see the doc comment
-      // above `rect`'s declaration.
-      final elbow = Offset(stub.dx, rect.center.dy);
-      final horizontalDir = resolvedCenter.dx >= elbow.dx ? 1.0 : -1.0;
-      final lineEnd = Offset(
-        resolvedCenter.dx - (horizontalDir * 20),
-        rect.center.dy,
-      );
-      canvas.drawLine(start, stub, paint);
-      canvas.drawLine(stub, elbow, paint);
-      canvas.drawLine(elbow, lineEnd, paint);
-    }
-    _drawAnnotationLabel(
-      canvas,
-      size,
-      text,
-      resolvedCenter,
-      fontSize: fontSize,
-      technicalDimension: true,
-      primary: primary,
-    );
-    _hotspot(fieldKey, rect);
-    return rect;
-  }
-
-  // The true, unclamped pill size/position for a `technicalDimension: true`
-  // label at [center] - what [_measurementLabelRect] clamps to the canvas
-  // edge for actual drawing. [_clearLabelPosition] deliberately measures
-  // against THIS unclamped rect while it iterates, not the clamped one: a
-  // clamped rect's top/left freezes once a push would carry it past the
-  // canvas edge, so checking overlap against the clamped rect made further
-  // pushes silently do nothing once a label neared the bottom of a busy,
-  // multi-label canvas (like Compound V's) even though the label was still
-  // overlapping something - the loop kept "moving" the candidate center
-  // without the measured rect ever actually changing. Iterating on the real
-  // (possibly off-canvas) rect lets the push amount keep growing to wherever
-  // it actually needs to go; only the final draw clamps it to stay visible.
-  Rect _unclampedMeasurementRect(
-    Size size,
-    String text,
-    Offset center,
-    double fontSize, {
-    bool primary = false,
-    bool compact = false,
-  }) {
-    final resolvedFontSize =
-        (primary ? fontSize + _primaryFontBump : fontSize) -
-        (compact ? _compactFontShrink : 0);
-    final painter = TextPainter(
-      text: TextSpan(
-        text: text,
-        style: TextStyle(
-          fontFamily: 'Roboto',
-          fontSize: _annotationFontSize(size, resolvedFontSize),
-          fontWeight: primary
-              ? FontWeight.w700
-              : (_isTechnical ? FontWeight.w500 : FontWeight.w600),
-          letterSpacing: _isTechnical ? 0.04 : 0.06,
+      canvas.drawRRect(rrect, fill);
+      canvas.drawRRect(rrect, stroke);
+      final tp = TextPainter(
+        text: TextSpan(
+          text: label.text,
+          style: weldDrawingLabelStyle(fontSize),
         ),
-      ),
-      textDirection: TextDirection.ltr,
-    )..layout();
-    final verticalPadding =
-        (_isTechnical ? 10.0 : 11.0) +
-        (primary ? _primaryVerticalPadBump : 0) -
-        (compact ? _compactVerticalPadShrink : 0);
-    final minWidth =
-        (_isTechnical ? 56.0 : 62.0) +
-        (primary ? _primaryMinWidthBump : 0) -
-        (compact ? _compactMinWidthShrink : 0);
-    final minHeight =
-        (_isTechnical ? 26.0 : 28.0) + (primary ? _primaryMinHeightBump : 0);
-    return Rect.fromCenter(
-      center: center,
-      width: math.max(
-        painter.width +
-            18.0 +
-            (primary ? _primaryHorizontalPadBump : 0) -
-            (compact ? _compactHorizontalPadShrink : 0),
-        minWidth,
-      ),
-      height: math.max(painter.height + verticalPadding, minHeight),
-    );
-  }
-
-  // Group 4 (prior session): a narrow-width-only compact variant for
-  // secondary (non-primary) labels, used by fillet's leader labels (see
-  // `_drawFillet`) so a locale's longer translated text (e.g. Russian's
-  // "Т-образное соединение"/"поверхность углового шва") doesn't force a
-  // downward collision-avoidance push far enough to land on a sibling
-  // dimension pill at the narrowest real device width (320pt/240px) -
-  // information-preserving (smaller font/padding, not shortened text), same
-  // shape as [_isTechnical]'s existing mode-dependent sizing above, gated
-  // by width instead of mode. These deltas MUST stay mirrored in
-  // [_drawTechnicalLabel]/[_drawSoftLabel] below, same as the existing
-  // `_primary*Bump` constants they sit next to.
-  //
-  // Follow-up round (this session): 1.2 rendered at ~9.6-9.8px at 240px
-  // canvas width - below both Material's (~11-12sp) and iOS's (11pt
-  // caption2) practical legibility floors. A reviewer measured every
-  // shrink value from 0.4 up to 1.2 clears the full label-overlap matrix
-  // with an IDENTICAL margin at the historically-tightest pair (RU
-  // technical mode) - the collision fix itself only ever needed the
-  // padding/min-width shrinks below, not this much font reduction; the
-  // extra shrink beyond ~0.4 bought nothing but headroom against
-  // hypothetical future longer translations. Reduced to 0.6 (~10.2px
-  // final, a real - if modest - legibility gain over 1.2) rather than the
-  // bare 0.4 floor, keeping some of that headroom rather than spending all
-  // of it: confirmed via this suite's own painter that every shrink value
-  // in 0.4-1.2 produces the exact same pairwise margins across the full
-  // fillet matrix (locale x width x mode), so 0.6 costs nothing the
-  // collision fix actually needs.
-  static const double _compactFontShrink = 0.6;
-  static const double _compactHorizontalPadShrink = 6.0;
-  static const double _compactVerticalPadShrink = 1.0;
-  static const double _compactMinWidthShrink = 8.0;
-
-  // Same as [_unclampedMeasurementRect] but with X clamped to the canvas
-  // edge (never Y). [_clearLabelPosition] only ever pushes a label
-  // vertically, so the X the label finally draws at is fixed and known
-  // from the very first check - clamping it up front means the collision
-  // checks a label runs during resolution see the same X its neighbors'
-  // already-finalized rects were measured at (also X-clamped, since they
-  // came from [_measurementLabelRect]). Using the fully unclamped X here
-  // instead let a label whose natural position ran off the canvas edge
-  // get pushed clear of another label at an X position it would never
-  // actually render at, then silently drawn back into it once the real
-  // draw call clamped X afterwards - a real bug this exact mechanism hit
-  // on Double V's "total root face" label (see TEAM_LEARNINGS.md). Y stays
-  // unclamped here on purpose - see [_unclampedMeasurementRect].
-  Rect _resolutionMeasurementRect(
-    Size size,
-    String text,
-    Offset center,
-    double fontSize, {
-    bool primary = false,
-    bool compact = false,
-  }) {
-    final rect = _unclampedMeasurementRect(
-      size,
-      text,
-      center,
-      fontSize,
-      primary: primary,
-      compact: compact,
-    );
-    return Rect.fromLTWH(
-      _safeClamp(rect.left, 10, size.width - rect.width - 10),
-      rect.top,
-      rect.width,
-      rect.height,
-    );
-  }
-
-  // Mirrors the pill sizing/clamping in [_drawTechnicalLabel] / [_drawSoftLabel]
-  // for a `technicalDimension: true` label - what every dimension line and
-  // angle tag draws - the same measure-before-you-collide approach
-  // [_chipSize]/[_chipRect] already use for the top chips, generalized to
-  // any measurement label so [_clearLabelPosition] sees each label's real
-  // on-canvas rect instead of an mm-space guess. This is the fully CLAMPED
-  // rect - what actually gets drawn, and what other labels should treat as
-  // the real thing to avoid - see [_unclampedMeasurementRect] and
-  // [_resolutionMeasurementRect] for why the resolution loop itself uses a
-  // partially-clamped version instead.
-  Rect _measurementLabelRect(
-    Size size,
-    String text,
-    Offset center,
-    double fontSize, {
-    bool primary = false,
-    bool compact = false,
-  }) {
-    final rect = _unclampedMeasurementRect(
-      size,
-      text,
-      center,
-      fontSize,
-      primary: primary,
-      compact: compact,
-    );
-    return Rect.fromLTWH(
-      _safeClamp(rect.left, 10, size.width - rect.width - 10),
-      _safeClamp(rect.top, 10, size.height - rect.height - 10),
-      rect.width,
-      rect.height,
-    );
-  }
-
-  // Pushes [candidateCenter] straight down by exactly the real pixel amount
-  // needed to clear each rect in [avoidRects] - not a fixed mm-space or
-  // pixel nudge - so the fix holds regardless of canvas scale or which font
-  // is actually rendering. This is the general mechanism behind the
-  // alpha/groove-depth/beta fix on the Compound V drawing (see the comment
-  // above that callout block) and is reusable by any future dimension line
-  // or angle tag that needs to stay clear of another label already placed
-  // nearby.
-  //
-  // Deliberately ALWAYS pushes down, never up, and re-scans the full
-  // [avoidRects] list in a loop until a full pass moves nothing (or a
-  // generous iteration cap is hit). An earlier version picked push
-  // direction per-rect (toward whichever side the candidate was already
-  // closer to) in a single pass - when a label is sandwiched between one
-  // avoid rect above and another below, that let a later push undo an
-  // earlier one (push down to clear the rect above, then straight back up
-  // to clear the rect below, netting almost no movement and leaving the
-  // label overlapping the first rect again). Always pushing down is
-  // monotonic - dy only ever increases - so it can't oscillate, and a
-  // bounded re-scan handles the case where clearing one rect's bottom edge
-  // walks the label into a second rect that hadn't been checked yet.
-  Offset _clearLabelPosition(
-    Size size,
-    String text,
-    Offset candidateCenter,
-    double fontSize,
-    List<Rect> avoidRects, {
-    double gap = 4.0,
-    bool primary = false,
-    bool compact = false,
-  }) {
-    var center = candidateCenter;
-    for (var pass = 0; pass < avoidRects.length + 2; pass++) {
-      var moved = false;
-      for (final raw in avoidRects) {
-        final avoid = raw.inflate(gap);
-        final rect = _resolutionMeasurementRect(
-          size,
-          text,
-          center,
-          fontSize,
-          primary: primary,
-          compact: compact,
-        );
-        if (!rect.overlaps(avoid)) continue;
-        final delta = avoid.bottom - rect.top;
-        center = Offset(center.dx, center.dy + delta);
-        moved = true;
-      }
-      if (!moved) break;
-    }
-    return center;
-  }
-
-  // Group 3's bounded fix for a real structural gap in the mechanism above:
-  // [_clearLabelPosition] resolves collisions against UNCLAMPED rects (see
-  // [_resolutionMeasurementRect]'s own doc comment for why), but the rect
-  // actually drawn clamps to the canvas edge via [_measurementLabelRect] -
-  // two sibling labels that both get pushed toward the same edge can
-  // independently clamp onto the identical band, reintroducing a collision
-  // [_clearLabelPosition] believed it had already cleared. This runs AFTER
-  // that resolution, once a label's real final (clamped) position is known,
-  // and only ever engages when that position still truly overlaps an
-  // already-placed sibling's own real (clamped) rect - so it's a no-op for
-  // every label that doesn't hit this specific edge case.
-  //
-  // Deliberately narrow in every direction this file's history has already
-  // burned rounds on: horizontal-only (the collision is a Y-axis clamp
-  // problem; nudging Y here would just walk back into the same edge that
-  // caused it), tries exactly two deterministic candidate positions (clear
-  // of the blocker's right edge, then its left edge - always in that order,
-  // so behavior can't flicker between renders), and only ever moves the
-  // LATER-drawn label (the caller only ever passes an EARLIER, already-drawn
-  // rect as the sibling to avoid, never the reverse). If neither candidate
-  // achieves a genuinely non-overlapping result (checked against every rect
-  // in [siblings], not just the one that triggered this), it gives up and
-  // returns the untouched original position - matching this exact session's
-  // ground rule of not forcing an unclean fix: a case this can't cleanly
-  // resolve is left exactly as collision-avoidance already left it, not
-  // nudged into a different, equally-broken position.
-  //
-  // ONE tolerance, deliberately, used for both "should I engage at all"
-  // (is [labelCenter] already fine?) and "is this CANDIDATE move
-  // acceptable" - [_declutterEpsilon], a hair above zero. An earlier
-  // version used the full aesthetic label `gap` this file maintains
-  // elsewhere for the engage check and only [_declutterEpsilon] for
-  // candidate acceptance; a reviewer found that mismatch let a label
-  // already genuinely clear of its sibling (e.g. by ~2px, comfortably
-  // inside the loose acceptance tolerance) still trigger a pointless move
-  // because that same ~2px fell inside the much stricter `gap`-based
-  // trigger band - producing a move that didn't even improve clearance and
-  // could push the label (and its leader line, which is anchored to the
-  // label's unclamped [resolvedCenter], not its final drawn position)
-  // toward or past the canvas edge. Unifying to the loose end was
-  // mutation-tested against the full matrix: same fixes stay fixed, zero
-  // new regressions, zero pointless moves - the `gap` parameter this used
-  // to need was removed as dead weight once nothing referenced it.
-  // (Unifying to the strict end instead - i.e. requiring the full `gap`
-  // cushion for candidates too - was tried and rejected: it re-rejects an
-  // already-tighter-than-`gap`-but-genuinely-clear candidate against a
-  // sibling newly included after Finding 2's fix widened [siblings] to the
-  // full set, falling back to the untouched position, which regresses
-  // several configs back to a full pill overlap.)
-  Offset _declutterAfterClamp(
-    Size size,
-    String text,
-    Offset labelCenter,
-    double fontSize,
-    List<Rect> siblings, {
-    bool primary = false,
-  }) {
-    if (siblings.isEmpty) return labelCenter;
-    final triggerTolerance = _declutterEpsilon;
-    bool clearOfAll(Rect rect, double tolerance) =>
-        siblings.every((s) => !rect.overlaps(s.inflate(tolerance)));
-
-    final baseRect = _measurementLabelRect(
-      size,
-      text,
-      labelCenter,
-      fontSize,
-      primary: primary,
-    );
-    if (clearOfAll(baseRect, triggerTolerance)) return labelCenter;
-
-    Rect? blocker;
-    for (final sibling in siblings) {
-      final inflated = sibling.inflate(triggerTolerance);
-      if (baseRect.overlaps(inflated)) {
-        blocker = inflated;
-        break;
-      }
-    }
-    if (blocker == null) return labelCenter;
-
-    final rightCenter = Offset(
-      labelCenter.dx + (blocker.right - baseRect.left),
-      labelCenter.dy,
-    );
-    final rightRect = _measurementLabelRect(
-      size,
-      text,
-      rightCenter,
-      fontSize,
-      primary: primary,
-    );
-    if (clearOfAll(rightRect, _declutterEpsilon)) return rightCenter;
-
-    final leftCenter = Offset(
-      labelCenter.dx - (baseRect.right - blocker.left),
-      labelCenter.dy,
-    );
-    final leftRect = _measurementLabelRect(
-      size,
-      text,
-      leftCenter,
-      fontSize,
-      primary: primary,
-    );
-    if (clearOfAll(leftRect, _declutterEpsilon)) return leftCenter;
-
-    return labelCenter;
-  }
-
-  // Turns a dimension line's own drawn shape (its two extension stubs plus
-  // the dimension line itself - the exact three segments _drawDimensionLine
-  // draws) into thin "avoid" rects, so a label positioned BEFORE that line
-  // is actually drawn can still be pushed clear of it via [_clearLabelPosition]
-  // - the same mechanism every other label-vs-label collision in this file
-  // already uses. This exists because `_drawCombinedProcessTint`'s GTAW-root
-  // label is drawn up front (before the root-face/total-root-face line and,
-  // in Unequal geometry, the B-thickness line that both follow it in draw
-  // order), so unlike every other label in this file it can't avoid a real,
-  // already-drawn rect - it has to know a line's geometry in advance. A line
-  // has zero visual area, so `avoidRects`' rect/rect overlap check can never
-  // "see" a line unless it's first turned into a rect of its own here -
-  // inflated by [margin] to guarantee the check catches it even when a
-  // label's edge would otherwise land exactly on the line's coordinate.
-  //
-  // Fixes a real bug: the previous fix for this (see TEAM_LEARNINGS.md,
-  // 2026-09-05) only nudged the label's fixed coordinate far enough right in
-  // mm-space to clear the SHORT root-face extension stub (which only ever
-  // reaches `halfGap + 5`) - but Unequal geometry additionally draws a
-  // B-thickness dimension line whose own bottom extension stub reaches all
-  // the way to `rightThicknessLabelX` (`halfBody + 6` or more), sweeping
-  // straight back across that same nudged position. A fixed-mm nudge can
-  // only ever clear the ONE line it was measured against; genuine geometric
-  // avoidance (checking the label's real rect against each line's real
-  // shape) clears all of them regardless of which lines a given groove
-  // type/geometry mode happens to draw nearby.
-  List<Rect> _dimensionLineAvoidRects(
-    _SectionLayout layout, {
-    required double nearX,
-    required double farX,
-    required double topY,
-    required double bottomY,
-    double margin = 3.0,
-  }) {
-    final p = layout.point;
-    return [
-      Rect.fromPoints(p(nearX, topY), p(farX, topY)).inflate(margin),
-      Rect.fromPoints(p(farX, topY), p(farX, bottomY)).inflate(margin),
-      Rect.fromPoints(p(nearX, bottomY), p(farX, bottomY)).inflate(margin),
-    ];
-  }
-
-  Rect _drawAnnotationLabel(
-    Canvas canvas,
-    Size size,
-    String text,
-    Offset center, {
-    double fontSize = 12,
-    FontWeight weight = FontWeight.w600,
-    bool technicalDimension = false,
-    List<Rect> avoidRects = const [],
-    bool primary = false,
-    bool compact = false,
-  }) {
-    var resolvedCenter = center;
-    if (avoidRects.isNotEmpty) {
-      resolvedCenter = _clearLabelPosition(
-        size,
-        text,
-        center,
-        fontSize,
-        avoidRects,
-        primary: primary,
-        compact: compact,
-      );
-    }
-    if (_isTechnical) {
-      return _drawTechnicalLabel(
-        canvas,
-        size,
-        text,
-        resolvedCenter,
-        fontSize: fontSize,
-        weight: technicalDimension ? FontWeight.w500 : weight,
-        square: technicalDimension,
-        primary: primary,
-        compact: compact,
-      );
+        textDirection: TextDirection.ltr,
+        maxLines: 1,
+      )..layout();
+      tp.paint(canvas, label.rect.center - Offset(tp.width / 2, tp.height / 2));
     }
 
-    return _drawSoftLabel(
-      canvas,
-      size,
-      text,
-      resolvedCenter,
-      fontSize: fontSize,
-      weight: weight,
-      primary: primary,
-      compact: compact,
-    );
+    onHotspots?.call([
+      for (final label in scene.labels)
+        DrawingHotspot(label.fieldKey, label.hitRect),
+    ]);
   }
-
-  // Primary labels (the joint-prep numbers a welding engineer looks for
-  // first - thickness, root gap, bevel/groove angle, root face, fillet leg)
-  // reuse this same pill shape/clamping machinery as every other label, but
-  // swap the white-on-dark-text soft styling for a dark-filled, bold,
-  // slightly larger chip - a visual hierarchy on top of secondary/derived
-  // readings (groove depth, cap dimensions, process-tint annotations) that
-  // applies identically in both DrawingMode.visual and DrawingMode.technical.
-  // The size deltas here (`_primary*Bump` constants) MUST stay mirrored in
-  // [_unclampedMeasurementRect] - that function is what avoidRects/hotspots
-  // are computed from, so a mismatch here would silently desync the
-  // collision-avoidance/tap-target rect from what's actually painted.
-  Rect _drawTechnicalLabel(
-    Canvas canvas,
-    Size size,
-    String text,
-    Offset center, {
-    double fontSize = 12,
-    FontWeight weight = FontWeight.w600,
-    bool square = false,
-    bool primary = false,
-    bool compact = false,
-  }) {
-    final resolvedFontSize =
-        (primary ? fontSize + _primaryFontBump : fontSize) -
-        (compact ? _compactFontShrink : 0);
-    final painter = TextPainter(
-      text: TextSpan(
-        text: text,
-        style: TextStyle(
-          fontFamily: 'Roboto',
-          color: primary ? _primaryTextColor : _labelColor,
-          fontSize: _annotationFontSize(size, resolvedFontSize),
-          fontWeight: primary ? FontWeight.w700 : weight,
-          letterSpacing: 0.04,
-        ),
-      ),
-      textDirection: TextDirection.ltr,
-    )..layout();
-    final horizontalPadding =
-        (square ? 18.0 : 20.0) +
-        (primary ? _primaryHorizontalPadBump : 0) -
-        (compact ? _compactHorizontalPadShrink : 0);
-    final verticalPadding =
-        (square ? 10.0 : 11.0) +
-        (primary ? _primaryVerticalPadBump : 0) -
-        (compact ? _compactVerticalPadShrink : 0);
-    final minWidth =
-        (square ? 56.0 : 66.0) +
-        (primary ? _primaryMinWidthBump : 0) -
-        (compact ? _compactMinWidthShrink : 0);
-    final minHeight =
-        (square ? 26.0 : 28.0) + (primary ? _primaryMinHeightBump : 0);
-    final rect = Rect.fromCenter(
-      center: center,
-      width: math.max(painter.width + horizontalPadding, minWidth),
-      height: math.max(painter.height + verticalPadding, minHeight),
-    );
-    final safeRect = Rect.fromLTWH(
-      _safeClamp(rect.left, 10, size.width - rect.width - 10),
-      _safeClamp(rect.top, 10, size.height - rect.height - 10),
-      rect.width,
-      rect.height,
-    );
-    final fillPaint = Paint()
-      ..color = primary ? _primaryFillColor : const Color(0xF2FFFFFF)
-      ..style = PaintingStyle.fill
-      ..isAntiAlias = true;
-    final strokePaint = Paint()
-      ..color = primary ? _primaryStrokeColor : const Color(0x8878909C)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = square ? 0.72 : 0.82
-      ..isAntiAlias = true;
-    final shadowPaint = Paint()
-      ..color = const Color(0x1434515E)
-      ..style = PaintingStyle.fill
-      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 2.0);
-
-    if (square) {
-      final rrect = RRect.fromRectAndRadius(safeRect, const Radius.circular(4));
-      canvas.drawRRect(rrect.shift(const Offset(0, 1.2)), shadowPaint);
-      canvas.drawRRect(rrect, fillPaint);
-      canvas.drawRRect(rrect, strokePaint);
-    } else {
-      final rrect = RRect.fromRectAndRadius(safeRect, const Radius.circular(8));
-      canvas.drawRRect(rrect.shift(const Offset(0, 1.2)), shadowPaint);
-      canvas.drawRRect(rrect, fillPaint);
-      canvas.drawRRect(rrect, strokePaint);
-    }
-
-    painter.paint(
-      canvas,
-      Offset(
-        safeRect.left + ((safeRect.width - painter.width) / 2),
-        safeRect.top + ((safeRect.height - painter.height) / 2),
-      ),
-    );
-    return safeRect;
-  }
-
-  Rect _drawSoftLabel(
-    Canvas canvas,
-    Size size,
-    String text,
-    Offset center, {
-    double fontSize = 12,
-    FontWeight weight = FontWeight.w600,
-    bool primary = false,
-    bool compact = false,
-  }) {
-    final resolvedFontSize =
-        (primary ? fontSize + _primaryFontBump : fontSize) -
-        (compact ? _compactFontShrink : 0);
-    final painter = TextPainter(
-      text: TextSpan(
-        text: text,
-        style: TextStyle(
-          fontFamily: 'Roboto',
-          color: primary ? _primaryTextColor : _labelColor,
-          fontSize: _annotationFontSize(size, resolvedFontSize),
-          fontWeight: primary ? FontWeight.w700 : weight,
-          letterSpacing: 0.06,
-        ),
-      ),
-      textDirection: TextDirection.ltr,
-    )..layout();
-    final horizontalPadding =
-        18.0 +
-        (primary ? _primaryHorizontalPadBump : 0) -
-        (compact ? _compactHorizontalPadShrink : 0);
-    final verticalPadding =
-        11.0 +
-        (primary ? _primaryVerticalPadBump : 0) -
-        (compact ? _compactVerticalPadShrink : 0);
-    final rect = Rect.fromCenter(
-      center: center,
-      width: math.max(
-        painter.width + horizontalPadding,
-        62.0 +
-            (primary ? _primaryMinWidthBump : 0) -
-            (compact ? _compactMinWidthShrink : 0),
-      ),
-      height: math.max(
-        painter.height + verticalPadding,
-        28.0 + (primary ? _primaryMinHeightBump : 0),
-      ),
-    );
-    final safeRect = Rect.fromLTWH(
-      _safeClamp(rect.left, 10, size.width - rect.width - 10),
-      _safeClamp(rect.top, 10, size.height - rect.height - 10),
-      rect.width,
-      rect.height,
-    );
-    final rrect = RRect.fromRectAndRadius(safeRect, const Radius.circular(999));
-    canvas.drawRRect(
-      rrect,
-      Paint()
-        ..color = primary ? _primaryFillColor : _softLabelFill
-        ..style = PaintingStyle.fill,
-    );
-    canvas.drawRRect(
-      rrect,
-      Paint()
-        ..color = primary ? _primaryStrokeColor : _softLabelStroke
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 1,
-    );
-    painter.paint(
-      canvas,
-      Offset(
-        safeRect.left + ((safeRect.width - painter.width) / 2),
-        safeRect.top + ((safeRect.height - painter.height) / 2),
-      ),
-    );
-    return safeRect;
-  }
-
-  void _drawArrowHead(Canvas canvas, Paint paint, Offset tip, Offset tail) {
-    final angle = math.atan2(tail.dy - tip.dy, tail.dx - tip.dx);
-    const length = 8.0;
-    const spread = 0.45;
-    final p1 = Offset(
-      tip.dx + length * math.cos(angle - spread),
-      tip.dy + length * math.sin(angle - spread),
-    );
-    final p2 = Offset(
-      tip.dx + length * math.cos(angle + spread),
-      tip.dy + length * math.sin(angle + spread),
-    );
-    canvas.drawLine(tip, p1, paint);
-    canvas.drawLine(tip, p2, paint);
-  }
-
-  void _drawLabel(
-    Canvas canvas,
-    Size size,
-    String text,
-    Offset offset, {
-    double fontSize = 12,
-    FontWeight weight = FontWeight.w600,
-  }) {
-    final painter = TextPainter(
-      text: TextSpan(
-        text: text,
-        style: TextStyle(
-          color: _labelColor,
-          fontSize: fontSize,
-          fontWeight: weight,
-        ),
-      ),
-      textDirection: TextDirection.ltr,
-    )..layout(maxWidth: math.max(0, size.width - offset.dx - 8));
-    painter.paint(canvas, offset);
-  }
-
-  double _safeClamp(double value, double min, double max) {
-    if (max <= min) return min;
-    return value.clamp(min, max).toDouble();
-  }
-
-  double _annotationScale(Size size) =>
-      (size.width / 760).clamp(0.98, 1.10).toDouble();
-
-  double _annotationFontSize(Size size, double base) =>
-      base * _annotationScale(size);
-
-  double _measurementFontSize(Size size) =>
-      (_isTechnical ? 11.1 : 11.4) * _annotationScale(size);
 
   @override
   bool shouldRepaint(covariant _WeldDrawingPainter oldDelegate) =>
       oldDelegate.grooveType != grooveType ||
       oldDelegate.jointType != jointType ||
       oldDelegate.drawingMode != drawingMode ||
-      oldDelegate.data != data;
-}
-
-/// Test-only ground truth for [DrawingHotspot]s: builds the same private
-/// painter [WeldDrawingPreview] uses internally and returns exactly the
-/// hotspot list it records for a single paint pass, so tests can assert tap
-/// correctness (which [FieldKey] a tap at a given rect resolves to) against
-/// real production geometry instead of re-deriving label positions by hand.
-/// [canvas] only needs to support whatever draw calls the caller cares
-/// about recording (e.g. a label-pill-recording mock) - the painter doesn't
-/// require real rendering to compute correct hotspot rects.
-@visibleForTesting
-List<DrawingHotspot> debugWeldDrawingHotspots({
-  required GrooveType grooveType,
-  required JointType jointType,
-  required DrawingMode drawingMode,
-  required WeldDrawingData data,
-  required String jointTypeLabel,
-  required String grooveTypeLabel,
-  required String filletWeldFaceLabel,
-  required String tJointLabel,
-  required String smawFillCapLabel,
-  required String gtawRootLabel,
-  required String capTopLabel,
-  required String capBottomLabel,
-  required String capOverlapValueLabel,
-  required String capHeightValueLabel,
-  required Canvas canvas,
-  required Size size,
-  bool fillAvailableSpace = true,
-}) {
-  var hotspots = const <DrawingHotspot>[];
-  _WeldDrawingPainter(
-    grooveType: grooveType,
-    jointType: jointType,
-    drawingMode: drawingMode,
-    data: data,
-    jointTypeLabel: jointTypeLabel,
-    grooveTypeLabel: grooveTypeLabel,
-    filletWeldFaceLabel: filletWeldFaceLabel,
-    tJointLabel: tJointLabel,
-    smawFillCapLabel: smawFillCapLabel,
-    gtawRootLabel: gtawRootLabel,
-    capTopLabel: capTopLabel,
-    capBottomLabel: capBottomLabel,
-    capOverlapValueLabel: capOverlapValueLabel,
-    capHeightValueLabel: capHeightValueLabel,
-    onHotspots: (result) => hotspots = result,
-    fillAvailableSpace: fillAvailableSpace,
-  ).paint(canvas, size);
-  return hotspots;
+      oldDelegate.data != data ||
+      oldDelegate.fontSize != fontSize;
 }

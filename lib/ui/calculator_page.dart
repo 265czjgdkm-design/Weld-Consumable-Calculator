@@ -562,99 +562,11 @@ class _CalculatorPageState extends State<CalculatorPage> {
     );
   }
 
-  double _narrowDrawingHeight(BuildContext context) {
-    final mediaQuery = MediaQuery.of(context);
-    final safeHeight = mediaQuery.size.height - mediaQuery.padding.vertical;
-    // Every groove type's dimension/angle callouts need more vertical room
-    // than the old flat 280-320 default gave them - even with every label
-    // properly avoiding every other one already placed (see
-    // weld_drawing_preview.dart's _clearLabelPosition), that many real
-    // pills at real phone widths (316-390px canvas) genuinely do not fit in
-    // that little height without some of them clamping into each other at
-    // the bottom edge. Verified per-groove-type via a real-font
-    // label-overlap check (test/widgets/weld_drawing_label_overlap_test.dart)
-    // and translated to a card height via that card's own ~100px of
-    // title/toggle/padding chrome above the drawing canvas itself:
-    // - Half V, Compound V, and (equal-geometry) Double V are the busiest
-    //   (6+ callouts) and need the most room.
-    // - Single V and Square need less, but still more than the old default.
-    // - Fillet (a different joint entirely, fewer callouts) needs the
-    //   least extra room of the three tiers, but still more than default.
-    final busy =
-        _grooveType == GrooveType.halfV ||
-        _grooveType == GrooveType.compoundV ||
-        _grooveType == GrooveType.doubleV;
-    // Unequal geometry adds its own "B ... mm" thickness label, and the
-    // GTAW+SMAW combined process adds two more (fill/cap + root-zone
-    // labels) REGARDLESS of geometry mode - either on its own is enough
-    // extra Roboto-metrics pills fighting for room on the narrowest
-    // supported canvas width that neither tier above was sized for
-    // (verified via the exhaustive process/geometry matrix in
-    // test/widgets/weld_drawing_label_overlap_test.dart, added alongside a
-    // reviewer audit of weld_drawing_preview.dart's tap/overlap behavior).
-    final extraBusy =
-        _jointGeometryMode == JointGeometryMode.unequal ||
-        _weldingProcess == WeldingProcess.gtawSmaw;
-    // Group 4 (prior session): each of these 4 tiers already grants its
-    // combos the biggest bucket available (there's no bigger tier left to
-    // move them into) - Half V/Compound V/Double V + Unequal-geometry/
-    // GTAW+SMAW combos still clamped sibling labels onto the identical
-    // canvas-bottom band at the narrowest real device width (320pt/240px
-    // canvas) even at this ceiling. A throwaway spike harness (rendering
-    // the real painter at the current height, then +20/40/60/80px, across
-    // every locale - not just English, since Russian's longer labels turned
-    // out to need more room than English's same combo in busy&&!extraBusy)
-    // measured exactly how much more total canvas height each tier's
-    // known-failing combos need to genuinely clear (not guessed):
-    // busy&&!extraBusy and busy&&extraBusy both needed +60px (Double V's RU
-    // both-faces cap pair, and Half V's odMatch/pipeButt combo, the worst
-    // cases respectively), !busy&&extraBusy needed +40px, !busy&&!extraBusy
-    // needed +20px (Single V's cap-height/thickness clash). Bumped every
-    // bound in each tier by that same delta (preserving each tier's
-    // existing range width) rather than just the upper bound, since most
-    // real 320pt-wide phones' `safeHeight * ratio` lands below the tier's
-    // own floor and clamps there, not at the ceiling - see
-    // test/widgets/weld_drawing_label_overlap_test.dart's matching
-    // `busyHeightFor`/`normalHeightFor`/`heightFor`, bumped by the same
-    // deltas in lockstep. Fillet's tier is untouched - its own real gap
-    // (RU label width, not height) needs a different fix, see
-    // weld_drawing_preview.dart's `_drawFillet`.
-    //
-    // Follow-up round (this session): Group 4's fix was verified only at
-    // `thicknessMm: 12` (the test suite's hardcoded default at the time) -
-    // a reviewer found the SAME canvas-bottom-clamp mechanism recurs at
-    // 320pt/240px for realistic plate/pipe-wall thicknesses away from 12mm,
-    // in both directions: thin plate (~3-11mm, Single V/Double V/Compound
-    // V's angle-tag or cap-height pill shifts down as groove geometry
-    // shrinks) and thick plate (~45-60mm, the opposite shift as groove
-    // geometry grows). A throwaway spike harness (same technique as Group
-    // 4's, but sweeping `thicknessMm` 3-60 densely at 240px width across
-    // every groove/joint/process/geometry-mode/alignment/mode/locale
-    // combination) bisected the true worst-case extra height each tier
-    // needs beyond Group 4's own bump: !busy&&!extraBusy +70px (Single V,
-    // pipeButt, t=3-6mm), !busy&&extraBusy +80px (Single V, gtawSmaw,
-    // t=3-6mm), busy&&!extraBusy +100px (Double V, pipeButt, t=60mm),
-    // busy&&extraBusy +100px (Compound V, pipeButt/idMatch, t=7mm).
-    // Bumped every bound in each tier by that measured worst case plus a
-    // 10px margin (not the bare minimum, to avoid a razor-thin clearance
-    // against future longer translations) - +80/+90/+110/+110px
-    // respectively - confirmed via the same spike harness across the full
-    // realistic thickness range (3-60mm, every 1mm from 3-20 then every
-    // 5mm to 60) with zero remaining overlaps (8003/8003 configs), and via
-    // this suite's own painter/test file (mutation-tested: reverting these
-    // bounds reproduces the collisions, reapplying clears them).
-    if (busy) {
-      return extraBusy
-          ? (safeHeight * 0.66).clamp(750.0, 810.0)
-          : (safeHeight * 0.58).clamp(670.0, 730.0);
-    }
-    if (_grooveType == GrooveType.fillet) {
-      return (safeHeight * 0.44).clamp(390.0, 440.0);
-    }
-    return extraBusy
-        ? (safeHeight * 0.58).clamp(630.0, 690.0)
-        : (safeHeight * 0.52).clamp(540.0, 600.0);
-  }
+  // Card height for the pinned phone drawing: the drawing places every value
+  // on the shape itself, so it needs a fixed, modest height rather than
+  // tiers that grew with the number of callouts.
+  double _narrowDrawingHeight(BuildContext context) =>
+      _grooveType == GrooveType.fillet ? 380.0 : 480.0;
 
   Widget _buildEstimatorWorkspace(BuildContext context) {
     final strings = AppLocaleScope.stringsOf(context);
