@@ -1281,7 +1281,11 @@ class _WeldDrawingPainter extends CustomPainter {
     }
     canvas.drawPath(scene.weld, outline);
 
-    final hl = highlight;
+    // Fields with no label on the drawing (quantity, length...) highlight
+    // nothing, so the drawing is left as is.
+    final hl = scene.labels.any((l) => l.fieldKey == highlight)
+        ? highlight
+        : null;
     // Colour/opacity of one dimension element: accent when selected, slightly
     // faded when something else is selected.
     Color tone(FieldKey? key) {

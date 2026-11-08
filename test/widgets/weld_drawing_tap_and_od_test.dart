@@ -273,6 +273,52 @@ void main() {
       },
     );
 
+    testWidgets('a field with no label on the drawing fades nothing', (
+      tester,
+    ) async {
+      final strings = stringsFor(AppLanguage.en);
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: SizedBox(
+              width: _size.width,
+              height: _size.height,
+              child: WeldDrawingPreview(
+                grooveType: GrooveType.singleV,
+                jointType: JointType.plateButt,
+                drawingMode: DrawingMode.visual,
+                data: _data(),
+                highlightedField: FieldKey.quantity,
+                fillAvailableSpace: true,
+                jointTypeLabel: '',
+                grooveTypeLabel: '',
+                filletWeldFaceLabel: '',
+                tJointLabel: '',
+                smawFillCapLabel: strings.drawingLabelSmawFillCap,
+                gtawRootLabel: strings.drawingLabelGtawRoot,
+                capTopLabel: strings.drawingLabelCapTop,
+                capBottomLabel: strings.drawingLabelCapBottom,
+                capOverlapValueLabel: strings.drawingLabelCapOverlapValue,
+                capHeightValueLabel: strings.drawingLabelCapHeightValue,
+              ),
+            ),
+          ),
+        ),
+      );
+      final painter = tester
+          .widget<CustomPaint>(
+            find.descendant(
+              of: find.byType(WeldDrawingPreview),
+              matching: find.byType(CustomPaint),
+            ),
+          )
+          .painter!;
+      final rec = _RecordingCanvas();
+      painter.paint(rec, _size);
+      expect(rec.pillFills, isNotEmpty);
+      expect(rec.pillFills.toSet(), {0xF2FFFFFF});
+    });
+
     testWidgets('selected dimension is painted in the accent, others are not', (
       tester,
     ) async {
@@ -349,9 +395,13 @@ void main() {
 
 class _RecordingCanvas implements Canvas {
   final List<Rect> accentPills = [];
+  final List<int> pillFills = [];
 
   @override
   void drawRRect(RRect rrect, Paint paint) {
+    if (paint.style == PaintingStyle.fill) {
+      pillFills.add(paint.color.toARGB32());
+    }
     if (paint.style == PaintingStyle.fill &&
         paint.color.toARGB32() == 0xFFD6246E) {
       accentPills.add(rrect.outerRect);

@@ -991,7 +991,7 @@ class _CalculatorPageState extends State<CalculatorPage> {
                   drawingMode: _drawingMode,
                   data: _drawingData,
                   onFieldTap: _handleDrawingFieldTap,
-                  highlightedField: _drawingSelection ?? _drawingFocused,
+                  highlightedField: _drawingHighlight,
                   fillAvailableSpace: true,
                   jointTypeLabel: _jointType.labelFor(strings),
                   grooveTypeLabel: _grooveType.labelFor(strings),
@@ -1016,7 +1016,7 @@ class _CalculatorPageState extends State<CalculatorPage> {
                       drawingMode: _drawingMode,
                       data: _drawingData,
                       onFieldTap: _handleDrawingFieldTap,
-                      highlightedField: _drawingSelection ?? _drawingFocused,
+                      highlightedField: _drawingHighlight,
                       jointTypeLabel: _jointType.labelFor(strings),
                       grooveTypeLabel: _grooveType.labelFor(strings),
                       filletWeldFaceLabel: strings.drawingLabelFilletWeldFace,
@@ -3524,6 +3524,14 @@ class _CalculatorPageState extends State<CalculatorPage> {
   /// Opens a quick-edit sheet for the dimension the user tapped on the
   /// technical drawing, so the value can be entered right there without
   /// hunting for the matching field further down the page.
+  // A focused field that left the tree (e.g. wizard step change) never fires
+  // a focus-lost event, so only trust _drawingFocused while it really has focus.
+  FieldKey? get _drawingHighlight {
+    final focused = _drawingFocused;
+    final focusedOk = focused != null && _fieldFocusNodes[focused]!.hasFocus;
+    return _drawingSelection ?? (focusedOk ? focused : null);
+  }
+
   void _onDimensionFocusChanged(FieldKey key) {
     final focused = _fieldFocusNodes[key]!.hasFocus;
     if (focused && _drawingFocused != key) {

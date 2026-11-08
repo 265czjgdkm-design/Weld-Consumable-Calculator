@@ -13,6 +13,8 @@ import 'package:weld_consumable_calculator/l10n/app_locale.dart';
 import 'package:weld_consumable_calculator/l10n/app_locale_scope.dart';
 import 'package:weld_consumable_calculator/l10n/strings.dart';
 import 'package:weld_consumable_calculator/models/weld_models.dart';
+import 'package:weld_consumable_calculator/ui/calculator_page/calculator_page_models.dart'
+    show FieldKey;
 import 'package:weld_consumable_calculator/ui/calculator_page.dart';
 import 'package:weld_consumable_calculator/ui/widgets/weld_drawing_preview.dart';
 
@@ -170,4 +172,51 @@ void main() {
       });
     }
   }
+
+  testWidgets('highlight does not stay on a field that left the tree', (
+    tester,
+  ) async {
+    SharedPreferences.setMockInitialValues({});
+    tester.view.physicalSize = const Size(390, 844) * 3;
+    tester.view.devicePixelRatio = 3;
+    addTearDown(tester.view.reset);
+    await tester.pumpWidget(
+      AppLocaleScope(
+        locale: AppLocale(),
+        child: MaterialApp(home: CalculatorPage()),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('Get Started'));
+    await tester.tap(find.text('Get Started'));
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('Continue').first);
+    await tester.tap(find.text('Continue').first);
+    await tester.pumpAndSettle();
+
+    FieldKey? highlighted() => tester
+        .widget<WeldDrawingPreview>(find.byType(WeldDrawingPreview))
+        .highlightedField;
+    final fields = find.byType(TextField);
+    var focusedOne = false;
+    for (var i = 0; i < fields.evaluate().length && i < 8; i++) {
+      await tester.ensureVisible(fields.at(i));
+      await tester.pumpAndSettle();
+      await tester.tap(fields.at(i));
+      await tester.pumpAndSettle();
+      if (highlighted() != null) {
+        focusedOne = true;
+        break;
+      }
+    }
+    expect(focusedOne, isTrue);
+
+    await tester.ensureVisible(find.text('Continue').first);
+    await tester.tap(find.text('Continue').first);
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('Back').first);
+    await tester.tap(find.text('Back').first);
+    await tester.pumpAndSettle();
+    expect(highlighted(), isNull);
+  });
 }
