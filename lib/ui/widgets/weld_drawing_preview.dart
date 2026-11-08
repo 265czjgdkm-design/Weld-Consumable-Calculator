@@ -140,6 +140,7 @@ class WeldDrawingPreview extends StatefulWidget {
     required this.capOverlapValueLabel,
     required this.capHeightValueLabel,
     this.onFieldTap,
+    this.highlightedField,
     this.fillAvailableSpace = false,
   });
 
@@ -167,6 +168,10 @@ class WeldDrawingPreview extends StatefulWidget {
   /// Called with the [FieldKey] of the tapped value so the caller can open
   /// the edit box for it.
   final ValueChanged<FieldKey>? onFieldTap;
+
+  /// Dimension to emphasise (selected by tap or focused in the form); all
+  /// others are slightly dimmed. Null leaves the drawing as is.
+  final FieldKey? highlightedField;
 
   /// Kept for API compatibility: the drawing always renders at the real box
   /// size it is given.
@@ -204,6 +209,7 @@ class _WeldDrawingPreviewState extends State<WeldDrawingPreview> {
             capHeightValue: widget.capHeightValueLabel,
           ),
           fontSize: fontSize,
+          highlight: widget.highlightedField,
           onHotspots: (hotspots) => _hotspots = hotspots,
         ),
         child: const SizedBox.expand(),
@@ -239,7 +245,7 @@ class _WeldDrawingPreviewState extends State<WeldDrawingPreview> {
   }
 }
 
-const double _baseFontSize = 11;
+const double _baseFontSize = 9.5;
 
 class _SceneLabels {
   const _SceneLabels({
@@ -260,20 +266,23 @@ class _SceneLabels {
 }
 
 class _Seg {
-  const _Seg(this.a, this.b);
+  const _Seg(this.a, this.b, [this.key]);
+  final FieldKey? key;
   final Offset a;
   final Offset b;
 }
 
 class _Arrow {
-  const _Arrow(this.tip, this.dir);
+  const _Arrow(this.tip, this.dir, [this.key]);
+  final FieldKey? key;
   final Offset tip;
   // Unit vector the arrow points along (towards the tip).
   final Offset dir;
 }
 
 class _Arc {
-  const _Arc(this.center, this.radius, this.sweep);
+  const _Arc(this.center, this.radius, this.sweep, [this.key]);
+  final FieldKey? key;
   final Offset center;
   final double radius;
   // Starts straight up and sweeps clockwise by this many radians.
@@ -299,6 +308,15 @@ class WeldDrawingScene {
   List<(Offset, Offset)> get debugLineSegments => [
     for (final l in [..._lines, ..._leaders]) (l.a, l.b),
   ];
+
+  /// Dimensions that have their own lines/arrows/arcs/leaders (the ones the
+  /// highlight can light up besides the label pill).
+  @visibleForTesting
+  Set<FieldKey> get debugElementKeys => {
+    for (final l in [..._lines, ..._leaders]) ?l.key,
+    for (final a in _arrows) ?a.key,
+    for (final a in _arcs) ?a.key,
+  };
 
   @visibleForTesting
   List<(Offset, Offset)> get debugLeaderSegments => [
@@ -370,9 +388,12 @@ class _SceneBuilder {
 
   final WeldDrawingScene scene = WeldDrawingScene();
 
-  static const double _padH = 8;
-  static const double _padV = 4;
-  static const double _arrowLen = 6;
+  static const double _padH = 7;
+  static const double _padV = 3;
+  static const double _arrowLen = 7;
+
+  // Dimension the geometry being drawn belongs to (for highlighting).
+  FieldKey? _cur;
 
   double get _labelH => fontSize + (_padV * 2) + 2;
 
@@ -486,12 +507,12 @@ class _SceneBuilder {
     return false;
   }
 
-  _Seg? _leaderFor(Rect r, Offset to) {
+  _Seg? _leaderFor(Rect r, Offset to, [FieldKey? key]) {
     final from = Offset(
       to.dx.clamp(r.left, r.right),
       to.dy.clamp(r.top, r.bottom),
     );
-    return (from - to).distance > 3 ? _Seg(from, to) : null;
+    return (from - to).distance > 3 ? _Seg(from, to, key) : null;
   }
 
   Offset? _chosenTarget;
@@ -508,7 +529,9 @@ class _SceneBuilder {
       var pen = 0.0;
       if (leader != null) {
         for (final l in scene.labels) {
-          if (_segHitsRect(leader.a, leader.b, l.rect.inflate(2))) pen += 100000;
+          if (_segHitsRect(leader.a, leader.b, l.rect.inflate(2))) {
+            pen += 100000;
+          }
         }
       }
       if (first || pen < best) {
@@ -538,7 +561,7 @@ class _SceneBuilder {
     }
     if (!overLine) {
       for (final seg in scene._lines) {
-        if (_segHitsRect(seg.a, seg.b, probe)) score += 1000;
+        if (_segHitsRect(seg.a, seg.b, probe)) score += 100000;
       }
     }
     return score;
@@ -569,14 +592,14 @@ class _SceneBuilder {
       DrawingLabel(fieldKey: key, text: text, value: value, rect: rect),
     );
     if (leaderTo != null) {
-      final leader = _leaderFor(rect, leaderTo);
+      final leader = _leaderFor(rect, leaderTo, key);
       if (leader != null) scene._leaders.add(leader);
     }
   }
 
   // ---- Dimension primitives -------------------------------------------
 
-  void _seg(Offset a, Offset b) => scene._lines.add(_Seg(a, b));
+  void _seg(Offset a, Offset b) => scene._lines.add(_Seg(a, b, _cur));
 
   /// Dimension line between [a] and [b] with arrowheads whose tips touch the
   /// extension lines; when too short for arrows inside, they point in from
@@ -589,13 +612,13 @@ class _SceneBuilder {
     if (len >= (_arrowLen * 2) + 4) {
       _seg(a, b);
       scene._arrows
-        ..add(_Arrow(a, -u))
-        ..add(_Arrow(b, u));
+        ..add(_Arrow(a, -u, _cur))
+        ..add(_Arrow(b, u, _cur));
     } else {
       _seg(a - u * (_arrowLen + 6), b + u * (_arrowLen + 6));
       scene._arrows
-        ..add(_Arrow(a, u))
-        ..add(_Arrow(b, -u));
+        ..add(_Arrow(a, u, _cur))
+        ..add(_Arrow(b, -u, _cur));
     }
   }
 
@@ -853,9 +876,11 @@ class _SceneBuilder {
 
     // Thickness t / A (left) and B (right), measured on the plate ends.
     final xDimL = gL + 12;
+    _cur = unequal ? FieldKey.thicknessAMm : FieldKey.thicknessMm;
     _dim(Offset(xDimL, yLt), Offset(xDimL, yLb));
     final xDimR = w - gR - 12;
     if (unequal) {
+      _cur = FieldKey.thicknessBMm;
       _dim(Offset(xDimR, yRt), Offset(xDimR, yRb));
     }
 
@@ -863,6 +888,7 @@ class _SceneBuilder {
     final dimY = bottomPx + 12;
     final xGapL = cx - hG * s;
     final xGapR = cx + hG * s;
+    _cur = FieldKey.rootGapMm;
     _seg(Offset(xGapL, yLb + 2), Offset(xGapL, dimY + 4));
     _seg(Offset(xGapR, yRb + 2), Offset(xGapR, dimY + 4));
     _dim(Offset(xGapL, dimY), Offset(xGapR, dimY));
@@ -879,6 +905,7 @@ class _SceneBuilder {
       yC1 = p(0, upper).dy;
       yC2 = p(0, isDouble ? lowerRoot.dy : faceR.last.dy).dy;
       xC = cx + hG * s + 12;
+      _cur = FieldKey.rootFaceMm;
       _seg(Offset(cx + hG * s + 2, yC1), Offset(xC + 4, yC1));
       _seg(Offset(cx + hG * s + 2, yC2), Offset(xC + 4, yC2));
       _dim(Offset(xC, yC1), Offset(xC, yC2));
@@ -890,6 +917,7 @@ class _SceneBuilder {
       yH1 = p(0, faceR[1].dy).dy;
       yH2 = p(0, faceR[2].dy).dy;
       xH = cx + faceR[1].dx * s + 12;
+      _cur = FieldKey.breakHeightMm;
       _seg(Offset(cx + faceR[1].dx * s + 2, yH1), Offset(xH + 4, yH1));
       _seg(Offset(cx + faceR[2].dx * s + 2, yH2), Offset(xH + 4, yH2));
       _dim(Offset(xH, yH1), Offset(xH, yH2));
@@ -933,7 +961,8 @@ class _SceneBuilder {
       final segLen = (up - q).distance;
       final r = math.max(math.min(24.0, segLen * 0.55), 9.0);
       final sweep = _rad(a.deg);
-      scene._arcs.add(_Arc(q, r, sweep));
+      _cur = a.key;
+      scene._arcs.add(_Arc(q, r, sweep, a.key));
       _seg(q, q.translate(0, -(r + 6)));
       final dir = Offset(math.sin(sweep / 2), -math.cos(sweep / 2));
       final text = '${a.sym} ${_fmt(a.real)}°';
@@ -968,6 +997,7 @@ class _SceneBuilder {
           final x0 = cx + faceR.first.dx * s;
           final capW = (capOv * s).clamp(14.0, 40.0);
           final lineY = surf + dirY * 14;
+          _cur = FieldKey.capOverlapMm;
           _seg(Offset(x0, surf + dirY * 2), Offset(x0, lineY + dirY * 4));
           _seg(
             Offset(x0 + capW, surf + dirY * 2),
@@ -995,6 +1025,7 @@ class _SceneBuilder {
             spec.top ? math.min(lt, rt) - rise : math.max(lb, rb) + rise,
           ).dy;
           final xl = cx - faceL.first.dx * s - 16;
+          _cur = FieldKey.capHeightMm;
           _seg(Offset(cx, apex), Offset(xl - 4, apex));
           _dim(Offset(xl, apex), Offset(xl, surf));
           final text = '${spec.prefix}${_fmt(capH)} ${labels.capHeightValue}';
@@ -1014,6 +1045,7 @@ class _SceneBuilder {
       }
     }
 
+    _cur = null;
     // ---- Labels, in priority order ----
     _label(
       unequal ? FieldKey.thicknessAMm : FieldKey.thicknessMm,
@@ -1151,6 +1183,7 @@ class _SceneBuilder {
     // Horizontal leg, below the flange.
     final yFlangeBottom = p(0, webH + flange).dy;
     final dimY = yFlangeBottom + 12;
+    _cur = FieldKey.legSizeMm;
     _seg(Offset(root.dx, yFlangeBottom + 2), Offset(root.dx, dimY + 4));
     _seg(Offset(toe.dx, yFlangeBottom + 2), Offset(toe.dx, dimY + 4));
     _dim(Offset(root.dx, dimY), Offset(toe.dx, dimY));
@@ -1160,6 +1193,7 @@ class _SceneBuilder {
     _seg(Offset(toe.dx + 2, toe.dy), Offset(xDim + 4, toe.dy));
     _dim(Offset(xDim, tip.dy), Offset(xDim, toe.dy));
 
+    _cur = null;
     _label(FieldKey.legSizeMm, legText, legReal, [
       Offset((root.dx + toe.dx) / 2, dimY + 6 + _labelH / 2),
     ]);
@@ -1172,8 +1206,8 @@ class _SceneBuilder {
 TextStyle weldDrawingLabelStyle(double fontSize) => TextStyle(
   fontFamily: 'Roboto',
   fontSize: fontSize,
-  fontWeight: FontWeight.w600,
-  color: const Color(0xFF22343D),
+  fontWeight: FontWeight.w500,
+  color: const Color(0xFF17262E),
   height: 1.1,
 );
 
@@ -1185,6 +1219,7 @@ class _WeldDrawingPainter extends CustomPainter {
     required this.data,
     required this.labels,
     required this.fontSize,
+    this.highlight,
     this.onHotspots,
   });
 
@@ -1194,13 +1229,15 @@ class _WeldDrawingPainter extends CustomPainter {
   final WeldDrawingData data;
   final _SceneLabels labels;
   final double fontSize;
+  final FieldKey? highlight;
   final ValueChanged<List<DrawingHotspot>>? onHotspots;
 
   static const _outlineColor = Color(0xFF34515E);
-  static const _dimColor = Color(0xFF546E7A);
+  static const _dimColor = Color(0xFF1F5F8B);
+  static const _accentColor = Color(0xFFD6246E);
   static const _rootColor = Color(0xFF539A96);
   static const double _strokeOutline = 1.6;
-  static const double _strokeDim = 0.9;
+  static const double _strokeDim = 1.2;
 
   bool get _technical => drawingMode == DrawingMode.technical;
 
@@ -1225,12 +1262,6 @@ class _WeldDrawingPainter extends CustomPainter {
       ..style = PaintingStyle.stroke
       ..strokeWidth = _strokeOutline
       ..strokeJoin = StrokeJoin.round;
-    final dim = Paint()
-      ..color = _dimColor
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = _strokeDim
-      ..strokeCap = StrokeCap.round;
-
     for (final plate in scene.plates) {
       canvas.drawPath(plate, steel);
     }
@@ -1250,48 +1281,82 @@ class _WeldDrawingPainter extends CustomPainter {
     }
     canvas.drawPath(scene.weld, outline);
 
-    for (final seg in [...scene._lines, ...scene._leaders]) {
-      canvas.drawLine(seg.a, seg.b, dim);
-    }
-    for (final arc in scene._arcs) {
-      canvas.drawArc(
-        Rect.fromCircle(center: arc.center, radius: arc.radius),
-        -math.pi / 2,
-        arc.sweep,
-        false,
-        dim,
-      );
-    }
-    final arrowPaint = Paint()..color = _dimColor;
-    for (final arrow in scene._arrows) {
-      final n = Offset(-arrow.dir.dy, arrow.dir.dx);
-      final base = arrow.tip - arrow.dir * _SceneBuilder._arrowLen;
-      canvas.drawPath(
-        Path()
-          ..moveTo(arrow.tip.dx, arrow.tip.dy)
-          ..lineTo(base.dx + n.dx * 2.2, base.dy + n.dy * 2.2)
-          ..lineTo(base.dx - n.dx * 2.2, base.dy - n.dy * 2.2)
-          ..close(),
-        arrowPaint,
-      );
+    final hl = highlight;
+    // Colour/opacity of one dimension element: accent when selected, slightly
+    // faded when something else is selected.
+    Color tone(FieldKey? key) {
+      if (hl == null) return _dimColor;
+      if (key == hl) return _accentColor;
+      return _dimColor.withValues(alpha: 0.4);
     }
 
-    final fill = Paint()..color = const Color(0xF2FFFFFF);
-    final stroke = Paint()
-      ..color = _dimColor.withValues(alpha: 0.45)
+    Paint stroke(FieldKey? key) => Paint()
+      ..color = tone(key)
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 0.8;
+      ..strokeWidth = key != null && key == hl ? _strokeDim + 0.5 : _strokeDim
+      ..strokeCap = StrokeCap.round;
+
+    // Selected dimension is drawn last so it sits on top.
+    for (final pass in [false, true]) {
+      bool on(FieldKey? k) => (hl != null && k == hl) == pass;
+      for (final seg in [...scene._lines, ...scene._leaders]) {
+        if (on(seg.key)) canvas.drawLine(seg.a, seg.b, stroke(seg.key));
+      }
+      for (final arc in scene._arcs) {
+        if (!on(arc.key)) continue;
+        canvas.drawArc(
+          Rect.fromCircle(center: arc.center, radius: arc.radius),
+          -math.pi / 2,
+          arc.sweep,
+          false,
+          stroke(arc.key),
+        );
+      }
+      for (final arrow in scene._arrows) {
+        if (!on(arrow.key)) continue;
+        final n = Offset(-arrow.dir.dy, arrow.dir.dx);
+        final base = arrow.tip - arrow.dir * _SceneBuilder._arrowLen;
+        canvas.drawPath(
+          Path()
+            ..moveTo(arrow.tip.dx, arrow.tip.dy)
+            ..lineTo(base.dx + n.dx * 2.8, base.dy + n.dy * 2.8)
+            ..lineTo(base.dx - n.dx * 2.8, base.dy - n.dy * 2.8)
+            ..close(),
+          Paint()..color = tone(arrow.key),
+        );
+      }
+    }
+
     for (final label in scene.labels) {
+      final selected = hl != null && label.fieldKey == hl;
+      final faded = hl != null && !selected;
       final rrect = RRect.fromRectAndRadius(
         label.rect,
         const Radius.circular(5),
       );
-      canvas.drawRRect(rrect, fill);
-      canvas.drawRRect(rrect, stroke);
+      canvas.drawRRect(
+        rrect,
+        Paint()
+          ..color = selected
+              ? _accentColor
+              : (faded ? const Color(0xB8FFFFFF) : const Color(0xF2FFFFFF)),
+      );
+      canvas.drawRRect(
+        rrect,
+        Paint()
+          ..color = selected ? _accentColor : _dimColor.withValues(alpha: 0.5)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = selected ? 1.2 : 0.8,
+      );
       final tp = TextPainter(
         text: TextSpan(
           text: label.text,
-          style: weldDrawingLabelStyle(fontSize),
+          style: weldDrawingLabelStyle(fontSize).copyWith(
+            color: selected
+                ? Colors.white
+                : (faded ? const Color(0xB317262E) : null),
+            fontWeight: selected ? FontWeight.w700 : null,
+          ),
         ),
         textDirection: TextDirection.ltr,
         maxLines: 1,
@@ -1311,5 +1376,6 @@ class _WeldDrawingPainter extends CustomPainter {
       oldDelegate.jointType != jointType ||
       oldDelegate.drawingMode != drawingMode ||
       oldDelegate.data != data ||
-      oldDelegate.fontSize != fontSize;
+      oldDelegate.fontSize != fontSize ||
+      oldDelegate.highlight != highlight;
 }

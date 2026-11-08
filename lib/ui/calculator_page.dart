@@ -110,6 +110,10 @@ class _CalculatorPageState extends State<CalculatorPage> {
   final Map<FieldKey, FocusNode> _fieldFocusNodes = {
     for (final key in FieldKey.values) key: FocusNode(),
   };
+  // Dimension shown highlighted on the drawing: the one whose quick-edit sheet
+  // is open, else the one whose form field has focus.
+  FieldKey? _drawingSelection;
+  FieldKey? _drawingFocused;
   final Map<FieldKey, String> _diameterPresetModes = {};
   final Map<FieldKey, String> _fieldErrors = {};
   int _capSectionToken = 0;
@@ -170,6 +174,9 @@ class _CalculatorPageState extends State<CalculatorPage> {
   @override
   void initState() {
     super.initState();
+    for (final entry in _fieldFocusNodes.entries) {
+      entry.value.addListener(() => _onDimensionFocusChanged(entry.key));
+    }
     _resetFields();
     _initUserPresets();
     _initEntitlement();
@@ -984,6 +991,7 @@ class _CalculatorPageState extends State<CalculatorPage> {
                   drawingMode: _drawingMode,
                   data: _drawingData,
                   onFieldTap: _handleDrawingFieldTap,
+                  highlightedField: _drawingSelection ?? _drawingFocused,
                   fillAvailableSpace: true,
                   jointTypeLabel: _jointType.labelFor(strings),
                   grooveTypeLabel: _grooveType.labelFor(strings),
@@ -1008,6 +1016,7 @@ class _CalculatorPageState extends State<CalculatorPage> {
                       drawingMode: _drawingMode,
                       data: _drawingData,
                       onFieldTap: _handleDrawingFieldTap,
+                      highlightedField: _drawingSelection ?? _drawingFocused,
                       jointTypeLabel: _jointType.labelFor(strings),
                       grooveTypeLabel: _grooveType.labelFor(strings),
                       filletWeldFaceLabel: strings.drawingLabelFilletWeldFace,
@@ -3515,6 +3524,15 @@ class _CalculatorPageState extends State<CalculatorPage> {
   /// Opens a quick-edit sheet for the dimension the user tapped on the
   /// technical drawing, so the value can be entered right there without
   /// hunting for the matching field further down the page.
+  void _onDimensionFocusChanged(FieldKey key) {
+    final focused = _fieldFocusNodes[key]!.hasFocus;
+    if (focused && _drawingFocused != key) {
+      setState(() => _drawingFocused = key);
+    } else if (!focused && _drawingFocused == key) {
+      setState(() => _drawingFocused = null);
+    }
+  }
+
   void _handleDrawingFieldTap(FieldKey fieldKey) {
     final strings = AppLocaleScope.stringsOf(context);
     InputFieldSpec? field;
@@ -3542,8 +3560,10 @@ class _CalculatorPageState extends State<CalculatorPage> {
     final offsets = [
       for (final c in controllers) c.hasClients ? c.offset : null,
     ];
+    setState(() => _drawingSelection = field.key);
     await _showQuickEditSheet(field);
     if (!mounted) return;
+    setState(() => _drawingSelection = null);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       for (var i = 0; i < controllers.length; i++) {
         final offset = offsets[i];

@@ -103,7 +103,7 @@ void main() {
         // Drawing area keeps a usable minimum however large the text is.
         expect(canvas.height, greaterThanOrEqualTo(285));
 
-        final fontSize = scaler.scale(11).clamp(11.0, 14.3);
+        final fontSize = scaler.scale(9.5).clamp(9.5, 12.35);
         for (final g in GrooveType.values) {
           final size = Size(
             canvas.width,

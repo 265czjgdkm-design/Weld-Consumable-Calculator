@@ -59,7 +59,7 @@ WeldDrawingScene _scene(
   WeldDrawingData data,
   Size size,
   AppLanguage lang, {
-  double fontSize = 11,
+  double fontSize = 9.5,
 }) {
   final s = stringsFor(lang);
   return buildWeldDrawingScene(

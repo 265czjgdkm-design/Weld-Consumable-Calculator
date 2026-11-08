@@ -170,4 +170,194 @@ void main() {
     expect(od.length, 1);
     expect(od.single.fieldKey, FieldKey.pipeOdMm);
   });
+
+  test('GTAW root label never sits on a dimension line (240 px, unequal)', () {
+    final strings = stringsFor(AppLanguage.tr);
+    for (final g in GrooveType.values) {
+      if (g == GrooveType.fillet) continue;
+      for (final t in [3.0, 12.0, 50.0]) {
+        final scene = buildWeldDrawingScene(
+          grooveType: g,
+          jointType: JointType.plateButt,
+          data: WeldDrawingData(
+            weldingProcess: WeldingProcess.gtawSmaw,
+            geometryMode: JointGeometryMode.unequal,
+            alignment: JointAlignment.centerline,
+            thicknessMm: t,
+            thicknessAMm: t,
+            thicknessBMm: t * 0.7,
+            rootGapMm: 3,
+            rootFaceMm: 2,
+            bevelAngleDeg: 30,
+            secondaryBevelAngleDeg: 12,
+            breakHeightMm: 4,
+            capOverlapMm: 2,
+            capHeightMm: 2,
+            gtawTransitionMm: 3,
+          ),
+          size: const Size(240, 400),
+          smawFillCapLabel: strings.drawingLabelSmawFillCap,
+          gtawRootLabel: strings.drawingLabelGtawRoot,
+          capTopLabel: strings.drawingLabelCapTop,
+          capBottomLabel: strings.drawingLabelCapBottom,
+          capOverlapValueLabel: strings.drawingLabelCapOverlapValue,
+          capHeightValueLabel: strings.drawingLabelCapHeightValue,
+        );
+        final root = scene.labels.lastWhere(
+          (l) => l.text.startsWith(strings.drawingLabelGtawRoot),
+        );
+        for (final seg in scene.debugLineSegments) {
+          final d = seg.$2 - seg.$1;
+          for (var k = 0; k <= 300; k++) {
+            expect(
+              root.rect.deflate(1).contains(seg.$1 + d * (k / 300)),
+              isFalse,
+              reason: '${g.name} t=$t: line ${seg.$1}->${seg.$2} on root label',
+            );
+          }
+        }
+      }
+    }
+  });
+
+  group('highlight', () {
+    final fieldsByGroove = <GrooveType, List<FieldKey>>{
+      GrooveType.singleV: [
+        FieldKey.thicknessMm,
+        FieldKey.rootGapMm,
+        FieldKey.rootFaceMm,
+        FieldKey.bevelAngleDeg,
+        FieldKey.capOverlapMm,
+        FieldKey.capHeightMm,
+        FieldKey.gtawTransitionMm,
+        FieldKey.pipeOdMm,
+      ],
+      GrooveType.compoundV: [
+        FieldKey.secondaryBevelAngleDeg,
+        FieldKey.breakHeightMm,
+      ],
+      GrooveType.fillet: [FieldKey.legSizeMm],
+    };
+
+    test(
+      'every dimension with lines has them tagged; others are pill-only',
+      () {
+        for (final entry in fieldsByGroove.entries) {
+          final strings = stringsFor(AppLanguage.en);
+          final scene = buildWeldDrawingScene(
+            grooveType: entry.key,
+            jointType: entry.key == GrooveType.fillet
+                ? JointType.fillet
+                : JointType.pipeButt,
+            data: _data(od: 168.3),
+            size: _size,
+            smawFillCapLabel: strings.drawingLabelSmawFillCap,
+            gtawRootLabel: strings.drawingLabelGtawRoot,
+            capTopLabel: strings.drawingLabelCapTop,
+            capBottomLabel: strings.drawingLabelCapBottom,
+            capOverlapValueLabel: strings.drawingLabelCapOverlapValue,
+            capHeightValueLabel: strings.drawingLabelCapHeightValue,
+          );
+          final labelKeys = scene.labels.map((l) => l.fieldKey).toSet();
+          for (final k in entry.value) {
+            expect(labelKeys, contains(k), reason: '${entry.key.name} $k');
+            final hasLines = scene.debugElementKeys.contains(k);
+            // OD has no dimension lines; the GTAW zone only a leader.
+            if (k == FieldKey.pipeOdMm) {
+              expect(hasLines, isFalse);
+            } else if (k != FieldKey.gtawTransitionMm) {
+              expect(hasLines, isTrue, reason: '${entry.key.name} $k');
+            }
+          }
+        }
+      },
+    );
+
+    testWidgets('selected dimension is painted in the accent, others are not', (
+      tester,
+    ) async {
+      final data = _data(od: 168.3);
+      for (final key in [
+        FieldKey.thicknessMm,
+        FieldKey.rootGapMm,
+        FieldKey.rootFaceMm,
+        FieldKey.bevelAngleDeg,
+        FieldKey.capOverlapMm,
+        FieldKey.capHeightMm,
+        FieldKey.gtawTransitionMm,
+        FieldKey.pipeOdMm,
+      ]) {
+        final strings = stringsFor(AppLanguage.en);
+        Widget build(FieldKey? hl) => MaterialApp(
+          home: Scaffold(
+            body: SizedBox(
+              width: _size.width,
+              height: _size.height,
+              child: WeldDrawingPreview(
+                grooveType: GrooveType.singleV,
+                jointType: JointType.pipeButt,
+                drawingMode: DrawingMode.visual,
+                data: data,
+                highlightedField: hl,
+                fillAvailableSpace: true,
+                jointTypeLabel: '',
+                grooveTypeLabel: '',
+                filletWeldFaceLabel: '',
+                tJointLabel: '',
+                smawFillCapLabel: strings.drawingLabelSmawFillCap,
+                gtawRootLabel: strings.drawingLabelGtawRoot,
+                capTopLabel: strings.drawingLabelCapTop,
+                capBottomLabel: strings.drawingLabelCapBottom,
+                capOverlapValueLabel: strings.drawingLabelCapOverlapValue,
+                capHeightValueLabel: strings.drawingLabelCapHeightValue,
+              ),
+            ),
+          ),
+        );
+
+        Future<List<Rect>> accentPills(FieldKey? hl) async {
+          await tester.pumpWidget(build(hl));
+          final painter = tester
+              .widget<CustomPaint>(
+                find.descendant(
+                  of: find.byType(WeldDrawingPreview),
+                  matching: find.byType(CustomPaint),
+                ),
+              )
+              .painter!;
+          final rec = _RecordingCanvas();
+          painter.paint(rec, _size);
+          return rec.accentPills;
+        }
+
+        expect(await accentPills(null), isEmpty);
+        final scene = _scene(data);
+        final expected = scene.labels
+            .where((l) => l.fieldKey == key)
+            .map((l) => l.rect)
+            .toList();
+        expect(expected, isNotEmpty);
+        final got = await accentPills(key);
+        expect(got.length, expected.length, reason: '$key');
+        for (final r in expected) {
+          expect(got.any((g) => (g.center - r.center).distance < 0.5), isTrue);
+        }
+      }
+    });
+  });
+}
+
+class _RecordingCanvas implements Canvas {
+  final List<Rect> accentPills = [];
+
+  @override
+  void drawRRect(RRect rrect, Paint paint) {
+    if (paint.style == PaintingStyle.fill &&
+        paint.color.toARGB32() == 0xFFD6246E) {
+      accentPills.add(rrect.outerRect);
+    }
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => null;
 }
