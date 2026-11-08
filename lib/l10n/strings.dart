@@ -1987,7 +1987,7 @@ const Map<AppLanguage, L10nStrings> _strings = {
     accountSignInSuccess: 'Signed in as {email}.',
     accountDeleteConfirmTitle: 'Delete account?',
     accountDeleteConfirmBody:
-        "This will sign you out and permanently delete the email address you registered with and your saved calculations, both from this device and from our servers. Your name, if you entered one, was never sent anywhere and stays on this device only. This cannot be undone.\n\nDeleting your account does not cancel an Apple subscription.",
+        "This will sign you out and permanently delete your account (email address and name), your saved calculations and your sign-up records, both from this device and from our servers. This cannot be undone.\n\nDeleting your account does not cancel an Apple subscription.",
     accountDeletingMessage: 'Deleting your account...',
     accountDeleteSuccessTitle: 'Account Deleted',
     accountDeleteSuccessBody:
@@ -2808,7 +2808,7 @@ const Map<AppLanguage, L10nStrings> _strings = {
     accountSignInSuccess: '{email} olarak giriş yapıldı.',
     accountDeleteConfirmTitle: 'Hesap silinsin mi?',
     accountDeleteConfirmBody:
-        "Bu işlem oturumunuzu kapatır; kayıt olduğunuz e-posta adresinizi ve kayıtlı hesaplamalarınızı hem bu cihazdan hem de sunucularımızdan kalıcı olarak siler. Adınızı girdiyseniz bile hiçbir yere gönderilmedi, yalnızca bu cihazda kalır. Bu işlem geri alınamaz.\n\nHesabınızı silmek bir Apple aboneliğini iptal etmez.",
+        "Bu işlem oturumunuzu kapatır; hesabınızı (e-posta adresi ve ad), kayıtlı hesaplamalarınızı ve kayıt bilgilerinizi hem bu cihazdan hem de sunucularımızdan kalıcı olarak siler. Bu işlem geri alınamaz.\n\nHesabınızı silmek bir Apple aboneliğini iptal etmez.",
     accountDeletingMessage: 'Hesabınız siliniyor...',
     accountDeleteSuccessTitle: 'Hesap Silindi',
     accountDeleteSuccessBody:
@@ -3648,7 +3648,7 @@ const Map<AppLanguage, L10nStrings> _strings = {
     // TODO: unverified translation -- legal/formal phrasing, needs
     // native-speaker review.
     accountDeleteConfirmBody:
-        "Вы выйдете из аккаунта, а адрес электронной почты, с которым вы регистрировались, и ваши сохранённые расчёты будут безвозвратно удалены как с этого устройства, так и с наших серверов. Ваше имя, если вы его вводили, никуда не отправлялось и хранится только на этом устройстве. Это действие нельзя отменить.\n\nУдаление аккаунта не отменяет подписку Apple.",
+        "Вы выйдете из аккаунта, а ваш аккаунт (адрес электронной почты и имя), сохранённые расчёты и регистрационные данные будут безвозвратно удалены как с этого устройства, так и с наших серверов. Это действие нельзя отменить.\n\nУдаление аккаунта не отменяет подписку Apple.",
     accountDeletingMessage: 'Удаление аккаунта...',
     accountDeleteSuccessTitle: 'Аккаунт удалён',
     accountDeleteSuccessBody:
@@ -4489,7 +4489,7 @@ const Map<AppLanguage, L10nStrings> _strings = {
     // TODO: unverified translation -- legal/formal phrasing, needs
     // native-speaker review.
     accountDeleteConfirmBody:
-        "Sie werden abgemeldet, und die E-Mail-Adresse, mit der Sie sich registriert haben, sowie Ihre gespeicherten Berechnungen werden dauerhaft von diesem Gerät und von unseren Servern gelöscht. Ihr Name, falls eingegeben, wurde nie irgendwohin gesendet und bleibt nur auf diesem Gerät. Dies kann nicht rückgängig gemacht werden.\n\nDas Löschen Ihres Kontos kündigt kein Apple-Abo.",
+        "Sie werden abgemeldet, und Ihr Konto (E-Mail-Adresse und Name), Ihre gespeicherten Berechnungen und Ihre Registrierungsdaten werden dauerhaft von diesem Gerät und von unseren Servern gelöscht. Dies kann nicht rückgängig gemacht werden.\n\nDas Löschen Ihres Kontos kündigt kein Apple-Abo.",
     accountDeletingMessage: 'Konto wird gelöscht...',
     accountDeleteSuccessTitle: 'Konto gelöscht',
     accountDeleteSuccessBody:
@@ -5322,7 +5322,7 @@ const Map<AppLanguage, L10nStrings> _strings = {
     // TODO: unverified translation -- legal/formal phrasing, needs
     // native-speaker review.
     accountDeleteConfirmBody:
-        "इससे आप साइन आउट हो जाएँगे और जिस ईमेल से आपने रजिस्टर किया था तथा आपकी सहेजी गई गणनाएँ, इस डिवाइस और हमारे सर्वर दोनों से हमेशा के लिए हटा दी जाएँगी। आपका नाम, यदि आपने दर्ज किया था, कहीं नहीं भेजा गया और केवल इसी डिवाइस पर रहता है। इसे वापस नहीं किया जा सकता।\n\nअकाउंट डिलीट करने से Apple सब्सक्रिप्शन रद्द नहीं होता।",
+        "इससे आप साइन आउट हो जाएँगे और आपका अकाउंट (ईमेल और नाम), आपकी सहेजी गई गणनाएँ और पंजीकरण रिकॉर्ड, इस डिवाइस और हमारे सर्वर दोनों से हमेशा के लिए हटा दिए जाएँगे। इसे वापस नहीं किया जा सकता।\n\nअकाउंट डिलीट करने से Apple सब्सक्रिप्शन रद्द नहीं होता।",
     accountDeletingMessage: 'आपका अकाउंट डिलीट किया जा रहा है...',
     accountDeleteSuccessTitle: 'अकाउंट डिलीट हो गया',
     accountDeleteSuccessBody:

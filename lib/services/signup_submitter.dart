@@ -3,8 +3,8 @@ import 'signup_submitter_stub.dart'
     as submitter;
 
 /// Submits the welcome-mail trigger. Call only after a successful
-/// registration. [firstName] and [locale] are sent only when the form has
-/// the matching fields (see SignupConfig).
+/// verified sign-in. [firstName] and [locale] (app language code) are sent
+/// when given (see SignupConfig).
 Future<bool> submitSignupEmail(
   String email, {
   String? firstName,

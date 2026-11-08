@@ -185,6 +185,59 @@ void main() {
     });
   });
 
+  group('welcome mail', () {
+    test('sends the first name and the current app language once', () async {
+      SharedPreferences.setMockInitialValues({'app_language_code': 'de'});
+      final sent = <(String, String?, String?)>[];
+      Future<bool> send(
+        String email, {
+        String? firstName,
+        String? locale,
+      }) async {
+        sent.add((email, firstName, locale));
+        return true;
+      }
+
+      final user = fakeUser(displayName: 'Ayşe Yılmaz');
+      for (var i = 0; i < 2; i++) {
+        await http.runWithClient(
+          () => AccountSession.apply(
+            user,
+            entitlement: _RecordingEntitlement(),
+            auth: FakeAuthService(),
+            sendWelcome: send,
+          ),
+          () => MockClient(
+            (_) async =>
+                http.Response(jsonEncode({'ok': true, 'presets': []}), 200),
+          ),
+        );
+      }
+      expect(sent, [('user@example.com', 'Ayşe', 'de')]);
+    });
+
+    test('unknown stored language falls back to en, no name -> null', () async {
+      SharedPreferences.setMockInitialValues({'app_language_code': 'xx'});
+      final sent = <(String?, String?)>[];
+      await http.runWithClient(
+        () => AccountSession.apply(
+          fakeUser(),
+          entitlement: _RecordingEntitlement(),
+          auth: FakeAuthService(),
+          sendWelcome: (email, {firstName, locale}) async {
+            sent.add((firstName, locale));
+            return true;
+          },
+        ),
+        () => MockClient(
+          (_) async =>
+              http.Response(jsonEncode({'ok': true, 'presets': []}), 200),
+        ),
+      );
+      expect(sent, [(null, 'en')]);
+    });
+  });
+
   group('serialized sync', () {
     test('a quick sign-out after sign-in always ends logged out', () async {
       final rc = _SlowEntitlement();

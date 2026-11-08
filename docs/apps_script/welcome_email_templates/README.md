@@ -1,19 +1,15 @@
 # Localized welcome mail
 
-The app submits the welcome trigger to the Google Form only after a
-successful registration (and for a brand-new Sign in with Apple account).
+The app submits the welcome trigger to the Google Form once per account, at
+the first verified sign-in, with the email, the first name from the
+registration form and the app language code (en/tr/de/ru/hi).
 
-The form currently has ONLY the email question, so first name and locale are
-not sent yet (`SignupConfig.firstNameEntryField` / `localeEntryField` are
-`null`). To switch on the personalised mail:
+Status (1.0.1): the Form has the optional short-answer questions "First
+name" (`entry.1576418057`) and "Locale" (`entry.1914024187`), wired in
+`lib/services/signup_config.dart` (`firstNameEntryField`,
+`localeEntryField`); both submitters send them.
 
-1. In the Google Form add two short-answer questions: "First name" and
-   "Locale" (not required). Get their ids from the pre-filled link
-   (`entry.NNN`).
-2. Paste the ids into `lib/services/signup_config.dart`
-   (`firstNameEntryField`, `localeEntryField`). Nothing else in the app
-   changes; both submitters already send them when set.
-3. Nothing else: `docs/apps_script/Kod_auth.gs` already reads the "First
+On the script side: `docs/apps_script/Kod_auth.gs` already reads the "First
    name" / "Locale" answers by title, embeds these five templates
    (`WELCOME_TEMPLATES_`, generated verbatim from this folder -- regenerate
    it if a template changes), picks `welcome_<locale>` (fallback `en`),

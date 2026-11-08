@@ -48,8 +48,8 @@ Future<bool> submitSignupEmail(
     ..name = SignupConfig.emailEntryField
     ..value = email;
   form.append(input);
-  void addField(String? name, String? value) {
-    if (name == null || value == null) return;
+  void addField(String name, String? value) {
+    if (value == null) return;
     form.append(
       web.HTMLInputElement()
         ..type = 'hidden'

@@ -15,10 +15,8 @@ Future<bool> submitSignupEmail(
           Uri.parse(SignupConfig.formResponseUrl),
           body: {
             SignupConfig.emailEntryField: email,
-            if (SignupConfig.firstNameEntryField != null && firstName != null)
-              SignupConfig.firstNameEntryField!: firstName,
-            if (SignupConfig.localeEntryField != null && locale != null)
-              SignupConfig.localeEntryField!: locale,
+            SignupConfig.firstNameEntryField: ?firstName,
+            SignupConfig.localeEntryField: ?locale,
           },
         )
         .timeout(const Duration(seconds: 8));
