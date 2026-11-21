@@ -23,9 +23,20 @@ class ProcessIcon extends StatelessWidget {
     final painter = switch (process) {
       WeldingProcess.gtaw => _GtawIconPainter(color: color),
       WeldingProcess.smaw => _SmawIconPainter(color: color),
-      WeldingProcess.gtawSmaw => _GtawSmawIconPainter(color: color),
+      WeldingProcess.gtawSmaw => _GtawSmawIconPainter(
+        color: color,
+        fill: _SmawIconPainter(color: color),
+      ),
       WeldingProcess.gmaw => _GmawIconPainter(color: color),
       WeldingProcess.fcaw => _FcawIconPainter(color: color),
+      WeldingProcess.gtawFcaw => _GtawSmawIconPainter(
+        color: color,
+        fill: _FcawIconPainter(color: color),
+      ),
+      WeldingProcess.gtawGmaw => _GtawSmawIconPainter(
+        color: color,
+        fill: _GmawIconPainter(color: color),
+      ),
     };
     return SizedBox(
       width: size,
@@ -261,9 +272,12 @@ class _FcawIconPainter extends CustomPainter {
 }
 
 class _GtawSmawIconPainter extends CustomPainter {
-  _GtawSmawIconPainter({required this.color});
+  _GtawSmawIconPainter({required this.color, required this.fill});
 
   final Color color;
+
+  /// Fill/cap process glyph drawn over the GTAW mark.
+  final CustomPainter fill;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -279,7 +293,7 @@ class _GtawSmawIconPainter extends CustomPainter {
     canvas.save();
     canvas.translate(size.width * 0.3, size.height * 0.32);
     canvas.scale(0.62);
-    _SmawIconPainter(color: color).paint(canvas, size);
+    fill.paint(canvas, size);
     canvas.restore();
   }
 

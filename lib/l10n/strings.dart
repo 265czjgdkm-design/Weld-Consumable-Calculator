@@ -392,6 +392,8 @@ class L10nStrings {
     required this.calcFieldRootFaceHelper,
     required this.calcFieldBevelAngleLabel,
     required this.calcFieldBevelAngleHelper,
+    required this.calcFieldBackGougeDepthLabel,
+    required this.calcFieldBackGougeDepthHelper,
     required this.calcFieldPrimaryAngleLabel,
     required this.calcFieldPrimaryAngleHelper,
     required this.calcFieldSecondaryAngleLabel,
@@ -451,6 +453,8 @@ class L10nStrings {
     required this.basisRootGap,
     required this.basisRootFace,
     required this.basisRootFacePerSide,
+    required this.basisBackGougeDepth,
+    required this.warningDoubleVPipeNoInternalAccess,
     required this.basisBevelAngle,
     required this.basisPrimaryBevelAngle,
     required this.basisSecondaryBevelAngle,
@@ -1048,6 +1052,8 @@ class L10nStrings {
   final String calcFieldRootFaceHelper;
   final String calcFieldBevelAngleLabel;
   final String calcFieldBevelAngleHelper;
+  final String calcFieldBackGougeDepthLabel;
+  final String calcFieldBackGougeDepthHelper;
   final String calcFieldPrimaryAngleLabel;
   final String calcFieldPrimaryAngleHelper;
   final String calcFieldSecondaryAngleLabel;
@@ -1107,6 +1113,8 @@ class L10nStrings {
   final String basisRootGap;
   final String basisRootFace;
   final String basisRootFacePerSide;
+  final String basisBackGougeDepth;
+  final String warningDoubleVPipeNoInternalAccess;
   final String basisBevelAngle;
   final String basisPrimaryBevelAngle;
   final String basisSecondaryBevelAngle;
@@ -1558,7 +1566,7 @@ const Map<AppLanguage, L10nStrings> _strings = {
     heatInputProcessLabel: 'Welding process',
     heatInputProcessSaw: 'SAW',
     heatInputProcessSmaw: 'SMAW',
-    heatInputProcessGmawMag: 'GMAW / MAG',
+    heatInputProcessGmawMag: 'GMAW / MAG / FCAW',
     heatInputVoltageLabel: 'Voltage (V)',
     heatInputCurrentLabel: 'Current (A)',
     heatInputTravelSpeedLabel: 'Travel speed (mm/min)',
@@ -1674,17 +1682,22 @@ const Map<AppLanguage, L10nStrings> _strings = {
     calcGrooveTypeLabel: 'Groove Type',
     calcWeldingProcessLabel: 'Welding Process',
     calcStartingTemplateTitle: 'Start from an example',
-    calcStartingTemplateSubtitle: 'Fills in a typical joint (e.g. 12 mm carbon steel pipe, single V, GTAW + SMAW) that you can then edit.',
-    calcStartingTemplateInfo: 'Ready-made typical setups (joint type, dimensions, welding process, filler). Pick one to fill all fields with sensible values, then change whatever differs from your job. Choose Custom to enter everything yourself.',
+    calcStartingTemplateSubtitle:
+        'Fills in a typical joint (e.g. 12 mm carbon steel pipe, single V, GTAW + SMAW) that you can then edit.',
+    calcStartingTemplateInfo:
+        'Ready-made typical setups (joint type, dimensions, welding process, filler). Pick one to fill all fields with sensible values, then change whatever differs from your job. Choose Custom to enter everything yourself.',
     pickerSearchHint: 'Search (e.g. E7018, 308L, S355)',
     pickerNoResults: 'No matches',
     calcMissingFieldsSnack: '{count} field(s) missing: {fields}',
     fieldRequiredShort: 'This field is required',
     preheatBaseMaterialPickerLabel: 'Select base material',
     preheatCustomFromMaterial: 'Custom (from {material})',
-    preheatStandardMaxNote: 'Standard maximum values - enter mill-certificate values if you have them',
-    preheatNotLimitedHint: 'Not limited by the standard - enter from mill certificate',
-    preheatMethodBNotApplicable: 'EN 1011-2 Method B is not valid for this composition - use manufacturer / code preheat values (e.g. EN 1011-2 Annex C, ASME B31.3) for Cr-Mo steels.',
+    preheatStandardMaxNote:
+        'Standard maximum values - enter mill-certificate values if you have them',
+    preheatNotLimitedHint:
+        'Not limited by the standard - enter from mill certificate',
+    preheatMethodBNotApplicable:
+        'EN 1011-2 Method B is not valid for this composition - use manufacturer / code preheat values (e.g. EN 1011-2 Annex C, ASME B31.3) for Cr-Mo steels.',
     baseGroupEn10025: 'EN 10025 structural steel',
     baseGroupPressure: 'EN 10028 / 10216 pressure steel',
     baseGroupAstmCarbon: 'ASTM carbon steel',
@@ -1692,7 +1705,8 @@ const Map<AppLanguage, L10nStrings> _strings = {
     baseGroupApi: 'API 5L line pipe',
     baseGroupStainless: 'Stainless steel',
     baseGroupAluminium: 'Aluminium',
-    preheatCetUnderestimatedWarning: 'CET may be underestimated until these are entered',
+    preheatCetUnderestimatedWarning:
+        'CET may be underestimated until these are entered',
     calcInputPresetLabel: 'Input Preset',
     calcConsumableDensityTitle: 'Consumable & Density',
     calcConsumableDensitySubtitle:
@@ -1797,13 +1811,17 @@ const Map<AppLanguage, L10nStrings> _strings = {
     calcFieldRootGapHelper: 'Root opening.',
     calcFieldThicknessLabel: 'Thickness (mm)',
     calcFieldThicknessHelper: 'Base material thickness.',
-    calcFieldRootFacePerSideLabel: 'Root Face per Side (mm)',
+    calcFieldRootFacePerSideLabel: 'Root Face c – total land (mm)',
     calcFieldRootFacePerSideHelper:
-        'Root face on each side of the joint centerline.',
+        'Total land height of the double-V (ISO 9692-1 "c"), centred on mid-thickness.',
     calcFieldRootFaceLabel: 'Root Face (mm)',
     calcFieldRootFaceHelper: 'Root face before the bevel starts.',
     calcFieldBevelAngleLabel: 'Bevel Angle (deg)',
-    calcFieldBevelAngleHelper: 'Included as bevel angle in degrees.',
+    calcFieldBevelAngleHelper:
+        'Bevel angle per side, measured from vertical (half of the included angle: 60° V → 30°).',
+    calcFieldBackGougeDepthLabel: 'Back-Gouge Depth (mm)',
+    calcFieldBackGougeDepthHelper:
+        'Depth gouged from the second side to sound metal before welding it; refilled by the fill/cap process. 0 or empty = no back-gouge. Typical 3–6 mm.',
     calcFieldPrimaryAngleLabel: 'Primary Angle alpha (deg)',
     calcFieldPrimaryAngleHelper: 'Lower bevel angle near the root.',
     calcFieldSecondaryAngleLabel: 'Secondary Angle beta (deg)',
@@ -1876,7 +1894,9 @@ const Map<AppLanguage, L10nStrings> _strings = {
     basisReferenceOd: 'Reference OD',
     basisRootGap: 'Root Gap',
     basisRootFace: 'Root Face',
-    basisRootFacePerSide: 'Root Face per Side',
+    basisRootFacePerSide: 'Root Face (total land)',
+    basisBackGougeDepth: 'Back-Gouge Depth',
+    warningDoubleVPipeNoInternalAccess: 'Double V on this pipe needs the second side welded from inside, but the bore (ID = OD - 2t) is under 600 mm — internal welding is not practical. Consider a Single V / Compound V from outside with a GTAW root.',
     basisBevelAngle: 'Bevel Angle',
     basisPrimaryBevelAngle: 'Primary Bevel Angle',
     basisSecondaryBevelAngle: 'Secondary Bevel Angle',
@@ -2041,7 +2061,7 @@ const Map<AppLanguage, L10nStrings> _strings = {
     pdfFormulaFillerConsumption:
         'Filler Consumption (kg) = Weld Metal / Deposition Efficiency x (1 + Waste / 100)',
     pdfFormulaArcOnTime:
-        'Arc-On Time (h) = Filler Consumption / Deposition Rate',
+        'Arc-On Time (h) = Weld Metal (deposited) / Deposition Rate',
     pdfNote1:
         'Arc-on time covers active welding time only. Fit-up, tacking, interpass cleaning, repositioning, and inspection time are excluded.',
     pdfNote2:
@@ -2110,7 +2130,8 @@ const Map<AppLanguage, L10nStrings> _strings = {
     paywallLoadFailed:
         "Couldn't load plans. Check your connection and try again.",
     paywallRetry: "Retry",
-    paywallPurchasePending: "Purchase pending approval. Premium unlocks once it is approved.",
+    paywallPurchasePending:
+        "Purchase pending approval. Premium unlocks once it is approved.",
     premiumEntryTitle: "Go Premium — PDF reports + AI assistant",
     premiumActiveLabel: "Premium active ✓",
     premiumSettingsRow: "Go Premium",
@@ -2371,7 +2392,7 @@ const Map<AppLanguage, L10nStrings> _strings = {
     heatInputProcessLabel: 'Kaynak yöntemi',
     heatInputProcessSaw: 'SAW',
     heatInputProcessSmaw: 'SMAW',
-    heatInputProcessGmawMag: 'GMAW / MAG',
+    heatInputProcessGmawMag: 'GMAW / MAG / FCAW',
     heatInputVoltageLabel: 'Gerilim (V)',
     heatInputCurrentLabel: 'Akım (A)',
     heatInputTravelSpeedLabel: 'İlerleme hızı (mm/dk)',
@@ -2491,17 +2512,21 @@ const Map<AppLanguage, L10nStrings> _strings = {
     calcGrooveTypeLabel: 'Ağız Tipi',
     calcWeldingProcessLabel: 'Kaynak Yöntemi',
     calcStartingTemplateTitle: 'Hazır örnek ile başla',
-    calcStartingTemplateSubtitle: 'Tipik bir birleşimi doldurur (ör. 12 mm et kalınlıklı karbon çelik boru, tek V, TIG + elektrot); sonra düzenleyebilirsiniz.',
-    calcStartingTemplateInfo: 'Hazır tipik kurulumlardır (birleşim tipi, ölçüler, kaynak yöntemi, sarf malzeme). Birini seçince tüm alanlar makul değerlerle dolar; işinize uymayanları değiştirirsiniz. Her şeyi kendiniz girmek için Özel\'i seçin.',
+    calcStartingTemplateSubtitle:
+        'Tipik bir birleşimi doldurur (ör. 12 mm et kalınlıklı karbon çelik boru, tek V, TIG + elektrot); sonra düzenleyebilirsiniz.',
+    calcStartingTemplateInfo:
+        'Hazır tipik kurulumlardır (birleşim tipi, ölçüler, kaynak yöntemi, sarf malzeme). Birini seçince tüm alanlar makul değerlerle dolar; işinize uymayanları değiştirirsiniz. Her şeyi kendiniz girmek için Özel\'i seçin.',
     pickerSearchHint: 'Ara (ör. E7018, 308L, S355)',
     pickerNoResults: 'Eşleşme yok',
     calcMissingFieldsSnack: '{count} alan eksik: {fields}',
     fieldRequiredShort: 'Bu alan gerekli',
     preheatBaseMaterialPickerLabel: 'Ana malzeme seç',
     preheatCustomFromMaterial: 'Özel ({material} baz alınarak)',
-    preheatStandardMaxNote: 'Standart maksimum değerler - sertifika değerleri varsa onları girin',
+    preheatStandardMaxNote:
+        'Standart maksimum değerler - sertifika değerleri varsa onları girin',
     preheatNotLimitedHint: 'Standartta sınır yok - sertifikadan girin',
-    preheatMethodBNotApplicable: 'EN 1011-2 B yöntemi bu bileşim için geçerli değil - Cr-Mo çelikleri için üretici/kod (ör. EN 1011-2 Ek C / ASME B31.3) ön ısıtma değerlerini kullanın.',
+    preheatMethodBNotApplicable:
+        'EN 1011-2 B yöntemi bu bileşim için geçerli değil - Cr-Mo çelikleri için üretici/kod (ör. EN 1011-2 Ek C / ASME B31.3) ön ısıtma değerlerini kullanın.',
     baseGroupEn10025: 'EN 10025 yapı çeliği',
     baseGroupPressure: 'EN 10028 / 10216 basınçlı kap çeliği',
     baseGroupAstmCarbon: 'ASTM karbon çeliği',
@@ -2509,7 +2534,8 @@ const Map<AppLanguage, L10nStrings> _strings = {
     baseGroupApi: 'API 5L boru hattı borusu',
     baseGroupStainless: 'Paslanmaz çelik',
     baseGroupAluminium: 'Alüminyum',
-    preheatCetUnderestimatedWarning: 'Bunlar girilene kadar CET olduğundan düşük hesaplanabilir',
+    preheatCetUnderestimatedWarning:
+        'Bunlar girilene kadar CET olduğundan düşük hesaplanabilir',
     calcInputPresetLabel: 'Örnek seçimi',
     calcConsumableDensityTitle: 'Sarf Malzeme ve Yoğunluk',
     calcConsumableDensitySubtitle:
@@ -2615,14 +2641,17 @@ const Map<AppLanguage, L10nStrings> _strings = {
     calcFieldRootGapHelper: 'Kök açıklığı.',
     calcFieldThicknessLabel: 'Kalınlık (mm)',
     calcFieldThicknessHelper: 'Ana malzeme kalınlığı.',
-    calcFieldRootFacePerSideLabel: 'Taraf Başına Kök Yüzü (mm)',
+    calcFieldRootFacePerSideLabel: 'Kök Alnı c – toplam (mm)',
     calcFieldRootFacePerSideHelper:
-        'Birleşim merkez hattının her iki tarafındaki kök yüzü.',
+        'Çift V\'nin toplam kök alnı yüksekliği (ISO 9692-1 "c"), et kalınlığının ortasında.',
     calcFieldRootFaceLabel: 'Kök Yüzü (mm)',
     calcFieldRootFaceHelper: 'Pah başlamadan önceki kök yüzü.',
     calcFieldBevelAngleLabel: 'Pah Açısı (°)',
     calcFieldBevelAngleHelper:
-        'Derece cinsinden pah açısı olarak dahil edilir.',
+        'Taraf başına pah açısı, dikeyden ölçülür (toplam ağız açısının yarısı: 60° V → 30°).',
+    calcFieldBackGougeDepthLabel: 'Kök Oyma Derinliği (mm)',
+    calcFieldBackGougeDepthHelper:
+        'İkinci taraf kaynatılmadan önce sağlam metale kadar oyulan (back-gouge) derinlik; dolgu/kapak prosesiyle yeniden doldurulur. 0 veya boş = oyma yok. Tipik 3–6 mm.',
     calcFieldPrimaryAngleLabel: 'Birincil Açı alfa (°)',
     calcFieldPrimaryAngleHelper: 'Köke yakın alt pah açısı.',
     calcFieldSecondaryAngleLabel: 'İkincil Açı beta (°)',
@@ -2697,7 +2726,9 @@ const Map<AppLanguage, L10nStrings> _strings = {
     basisReferenceOd: 'Referans Dış Çap',
     basisRootGap: 'Kök Aralığı',
     basisRootFace: 'Kök Yüzü',
-    basisRootFacePerSide: 'Taraf Başına Kök Yüzü',
+    basisRootFacePerSide: 'Kök Alnı (toplam)',
+    basisBackGougeDepth: 'Kök Oyma Derinliği',
+    warningDoubleVPipeNoInternalAccess: 'Bu boruda çift V, ikinci tarafın içeriden kaynatılmasını gerektirir; ancak iç çap (ID = OD - 2t) 600 mm\'nin altında, içeriden kaynak pratikte yapılamaz. Dışarıdan GTAW köklü tek V / bileşik V düşünün.',
     basisBevelAngle: 'Pah Açısı',
     basisPrimaryBevelAngle: 'Birincil Pah Açısı',
     basisSecondaryBevelAngle: 'İkincil Pah Açısı',
@@ -2861,7 +2892,8 @@ const Map<AppLanguage, L10nStrings> _strings = {
         'Kaynak Metali (kg) = Hacim (cm3) x Yoğunluk (g/cm3) / 1000',
     pdfFormulaFillerConsumption:
         'Dolgu Tüketimi (kg) = Kaynak Metali / Dolgu Verimi x (1 + Fire / 100)',
-    pdfFormulaArcOnTime: 'Ark Süresi (h) = Dolgu Tüketimi / Dolgu Hızı',
+    pdfFormulaArcOnTime:
+        'Ark Süresi (h) = Kaynak Metali (yığılan) / Dolgu Hızı',
     pdfNote1:
         'Ark süresi yalnızca etkin kaynak süresini kapsar. Montaj, puntalama, pasolar arası temizlik, yeniden konumlandırma ve muayene süresi hariçtir.',
     pdfNote2:
@@ -2933,7 +2965,8 @@ const Map<AppLanguage, L10nStrings> _strings = {
     paywallLoadFailed:
         "Planlar yüklenemedi. Bağlantınızı kontrol edip tekrar deneyin.",
     paywallRetry: "Tekrar dene",
-    paywallPurchasePending: "Satın alma onay bekliyor. Onaylandığında Premium etkinleşecek.",
+    paywallPurchasePending:
+        "Satın alma onay bekliyor. Onaylandığında Premium etkinleşecek.",
     premiumEntryTitle: "Premium'a Geç — PDF rapor + AI asistan",
     premiumActiveLabel: "Premium aktif ✓",
     premiumSettingsRow: "Premium'a Geç",
@@ -3198,7 +3231,7 @@ const Map<AppLanguage, L10nStrings> _strings = {
     heatInputProcessLabel: 'Способ сварки',
     heatInputProcessSaw: 'SAW',
     heatInputProcessSmaw: 'SMAW',
-    heatInputProcessGmawMag: 'GMAW / MAG',
+    heatInputProcessGmawMag: 'GMAW / MAG / FCAW',
     heatInputVoltageLabel: 'Напряжение (В)',
     heatInputCurrentLabel: 'Сила тока (А)',
     heatInputTravelSpeedLabel: 'Скорость сварки (мм/мин)',
@@ -3323,17 +3356,21 @@ const Map<AppLanguage, L10nStrings> _strings = {
     calcGrooveTypeLabel: 'Тип разделки',
     calcWeldingProcessLabel: 'Способ сварки',
     calcStartingTemplateTitle: 'Начать с готового примера',
-    calcStartingTemplateSubtitle: 'Заполняет типовое соединение (напр., стальная труба со стенкой 12 мм, V-разделка, TIG + MMA); затем его можно изменить.',
-    calcStartingTemplateInfo: 'Готовые типовые настройки (тип соединения, размеры, способ сварки, присадка). Выберите одну, и поля заполнятся разумными значениями; затем измените то, что отличается в вашей задаче. Чтобы ввести всё самому, выберите «Свой вариант».',
+    calcStartingTemplateSubtitle:
+        'Заполняет типовое соединение (напр., стальная труба со стенкой 12 мм, V-разделка, TIG + MMA); затем его можно изменить.',
+    calcStartingTemplateInfo:
+        'Готовые типовые настройки (тип соединения, размеры, способ сварки, присадка). Выберите одну, и поля заполнятся разумными значениями; затем измените то, что отличается в вашей задаче. Чтобы ввести всё самому, выберите «Свой вариант».',
     pickerSearchHint: 'Поиск (напр., E7018, 308L, S355)',
     pickerNoResults: 'Совпадений нет',
     calcMissingFieldsSnack: '{count} пол. не заполнено: {fields}',
     fieldRequiredShort: 'Обязательное поле',
     preheatBaseMaterialPickerLabel: 'Выбрать основной металл',
     preheatCustomFromMaterial: 'Свой ({material})',
-    preheatStandardMaxNote: 'Максимальные значения по стандарту - если есть сертификат, введите его значения',
+    preheatStandardMaxNote:
+        'Максимальные значения по стандарту - если есть сертификат, введите его значения',
     preheatNotLimitedHint: 'В стандарте предела нет - введите из сертификата',
-    preheatMethodBNotApplicable: 'Метод B по EN 1011-2 для этого состава недействителен - для Cr-Mo сталей используйте значения предварительного нагрева производителя/норм (напр., EN 1011-2 Прил. C, ASME B31.3).',
+    preheatMethodBNotApplicable:
+        'Метод B по EN 1011-2 для этого состава недействителен - для Cr-Mo сталей используйте значения предварительного нагрева производителя/норм (напр., EN 1011-2 Прил. C, ASME B31.3).',
     baseGroupEn10025: 'Конструкционная сталь EN 10025',
     baseGroupPressure: 'Сталь для сосудов давления EN 10028 / 10216',
     baseGroupAstmCarbon: 'Углеродистая сталь ASTM',
@@ -3341,7 +3378,8 @@ const Map<AppLanguage, L10nStrings> _strings = {
     baseGroupApi: 'Трубы API 5L',
     baseGroupStainless: 'Нержавеющая сталь',
     baseGroupAluminium: 'Алюминий',
-    preheatCetUnderestimatedWarning: 'Пока значения не введены, CET может быть занижен',
+    preheatCetUnderestimatedWarning:
+        'Пока значения не введены, CET может быть занижен',
     calcInputPresetLabel: 'Пример',
     calcConsumableDensityTitle: 'Присадочный материал и плотность',
     calcConsumableDensitySubtitle:
@@ -3451,13 +3489,17 @@ const Map<AppLanguage, L10nStrings> _strings = {
     calcFieldRootGapHelper: 'Раскрытие корня.',
     calcFieldThicknessLabel: 'Толщина (мм)',
     calcFieldThicknessHelper: 'Толщина основного материала.',
-    calcFieldRootFacePerSideLabel: 'Притупление на сторону (мм)',
+    calcFieldRootFacePerSideLabel: 'Притупление c – общее (мм)',
     calcFieldRootFacePerSideHelper:
-        'Притупление корня с каждой стороны от осевой линии соединения.',
+        'Общая высота притупления X-образной разделки (ISO 9692-1 «c»), по середине толщины.',
     calcFieldRootFaceLabel: 'Притупление корня (мм)',
     calcFieldRootFaceHelper: 'Притупление корня перед началом скоса.',
     calcFieldBevelAngleLabel: 'Угол скоса (°)',
-    calcFieldBevelAngleHelper: 'Учитывается как угол скоса в градусах.',
+    calcFieldBevelAngleHelper:
+        'Угол скоса одной кромки от вертикали (половина угла разделки: 60° V → 30°).',
+    calcFieldBackGougeDepthLabel: 'Глубина выборки корня (мм)',
+    calcFieldBackGougeDepthHelper:
+        'Глубина выборки корня с обратной стороны до чистого металла перед её сваркой; заполняется процессом заполнения/облицовки. 0 или пусто = без выборки. Обычно 3–6 мм.',
     calcFieldPrimaryAngleLabel: 'Первичный угол альфа (°)',
     calcFieldPrimaryAngleHelper: 'Нижний угол скоса у корня.',
     calcFieldSecondaryAngleLabel: 'Вторичный угол бета (°)',
@@ -3535,7 +3577,9 @@ const Map<AppLanguage, L10nStrings> _strings = {
     basisReferenceOd: 'Опорный наружный диаметр',
     basisRootGap: 'Зазор корня',
     basisRootFace: 'Притупление корня',
-    basisRootFacePerSide: 'Притупление на сторону',
+    basisRootFacePerSide: 'Притупление (общее)',
+    basisBackGougeDepth: 'Глубина выборки корня',
+    warningDoubleVPipeNoInternalAccess: 'Для X-образной разделки на этой трубе вторую сторону нужно варить изнутри, но внутренний диаметр (ID = OD - 2t) меньше 600 мм — сварка изнутри практически невозможна. Рассмотрите V-образную / комбинированную разделку снаружи с корнем GTAW.',
     basisBevelAngle: 'Угол скоса',
     basisPrimaryBevelAngle: 'Первичный угол скоса',
     basisSecondaryBevelAngle: 'Вторичный угол скоса',
@@ -3704,7 +3748,7 @@ const Map<AppLanguage, L10nStrings> _strings = {
     pdfFormulaFillerConsumption:
         'Расход присадки (кг) = Наплавленный металл / КПД наплавки x (1 + Потери / 100)',
     pdfFormulaArcOnTime:
-        'Время горения дуги (ч) = Расход присадки / Скорость наплавки',
+        'Время горения дуги (ч) = Наплавленный металл / Скорость наплавки',
     pdfNote1:
         'Время горения дуги учитывает только активное время сварки. Сборка, прихватка, межслойная зачистка, перепозиционирование и контроль не включены.',
     pdfNote2:
@@ -3772,7 +3816,8 @@ const Map<AppLanguage, L10nStrings> _strings = {
     paywallLoadFailed:
         "Не удалось загрузить тарифы. Проверьте подключение и повторите попытку.",
     paywallRetry: "Повторить",
-    paywallPurchasePending: "Покупка ожидает подтверждения. Premium активируется после одобрения.",
+    paywallPurchasePending:
+        "Покупка ожидает подтверждения. Premium активируется после одобрения.",
     premiumEntryTitle: "Перейти на Premium — PDF-отчёты + ИИ-ассистент",
     premiumActiveLabel: "Premium активен ✓",
     premiumSettingsRow: "Оформить Premium",
@@ -4039,7 +4084,7 @@ const Map<AppLanguage, L10nStrings> _strings = {
     heatInputProcessLabel: 'Schweißverfahren',
     heatInputProcessSaw: 'SAW',
     heatInputProcessSmaw: 'SMAW',
-    heatInputProcessGmawMag: 'GMAW / MAG',
+    heatInputProcessGmawMag: 'GMAW / MAG / FCAW',
     heatInputVoltageLabel: 'Spannung (V)',
     heatInputCurrentLabel: 'Strom (A)',
     heatInputTravelSpeedLabel: 'Schweißgeschwindigkeit (mm/min)',
@@ -4160,17 +4205,22 @@ const Map<AppLanguage, L10nStrings> _strings = {
     calcGrooveTypeLabel: 'Nahtform',
     calcWeldingProcessLabel: 'Schweißverfahren',
     calcStartingTemplateTitle: 'Mit Beispiel starten',
-    calcStartingTemplateSubtitle: 'Füllt eine typische Verbindung aus (z. B. Stahlrohr, 12 mm Wanddicke, V-Naht, WIG + E-Hand), die Sie anschließend anpassen können.',
-    calcStartingTemplateInfo: 'Fertige typische Einstellungen (Verbindungsart, Abmessungen, Schweißverfahren, Zusatzwerkstoff). Wählen Sie eines, damit alle Felder sinnvoll vorbelegt werden, und ändern Sie dann, was bei Ihrem Auftrag abweicht. Wählen Sie Benutzerdefiniert, um alles selbst einzugeben.',
+    calcStartingTemplateSubtitle:
+        'Füllt eine typische Verbindung aus (z. B. Stahlrohr, 12 mm Wanddicke, V-Naht, WIG + E-Hand), die Sie anschließend anpassen können.',
+    calcStartingTemplateInfo:
+        'Fertige typische Einstellungen (Verbindungsart, Abmessungen, Schweißverfahren, Zusatzwerkstoff). Wählen Sie eines, damit alle Felder sinnvoll vorbelegt werden, und ändern Sie dann, was bei Ihrem Auftrag abweicht. Wählen Sie Benutzerdefiniert, um alles selbst einzugeben.',
     pickerSearchHint: 'Suchen (z. B. E7018, 308L, S355)',
     pickerNoResults: 'Keine Treffer',
     calcMissingFieldsSnack: '{count} Feld(er) fehlen: {fields}',
     fieldRequiredShort: 'Pflichtfeld',
     preheatBaseMaterialPickerLabel: 'Grundwerkstoff wählen',
     preheatCustomFromMaterial: 'Benutzerdefiniert (aus {material})',
-    preheatStandardMaxNote: 'Maximalwerte der Norm - Werte aus dem Abnahmezeugnis eingeben, falls vorhanden',
-    preheatNotLimitedHint: 'In der Norm nicht begrenzt - aus dem Abnahmezeugnis eingeben',
-    preheatMethodBNotApplicable: 'EN 1011-2 Verfahren B gilt für diese Zusammensetzung nicht - für Cr-Mo-Stähle Vorwärmwerte des Herstellers/Regelwerks verwenden (z. B. EN 1011-2 Anhang C, ASME B31.3).',
+    preheatStandardMaxNote:
+        'Maximalwerte der Norm - Werte aus dem Abnahmezeugnis eingeben, falls vorhanden',
+    preheatNotLimitedHint:
+        'In der Norm nicht begrenzt - aus dem Abnahmezeugnis eingeben',
+    preheatMethodBNotApplicable:
+        'EN 1011-2 Verfahren B gilt für diese Zusammensetzung nicht - für Cr-Mo-Stähle Vorwärmwerte des Herstellers/Regelwerks verwenden (z. B. EN 1011-2 Anhang C, ASME B31.3).',
     baseGroupEn10025: 'Baustahl EN 10025',
     baseGroupPressure: 'Druckbehälterstahl EN 10028 / 10216',
     baseGroupAstmCarbon: 'ASTM-Kohlenstoffstahl',
@@ -4178,7 +4228,8 @@ const Map<AppLanguage, L10nStrings> _strings = {
     baseGroupApi: 'API-5L-Leitungsrohr',
     baseGroupStainless: 'Nichtrostender Stahl',
     baseGroupAluminium: 'Aluminium',
-    preheatCetUnderestimatedWarning: 'Bis dahin kann der CET zu niedrig ausfallen',
+    preheatCetUnderestimatedWarning:
+        'Bis dahin kann der CET zu niedrig ausfallen',
     calcInputPresetLabel: 'Beispiel',
     calcConsumableDensityTitle: 'Zusatzwerkstoff & Dichte',
     calcConsumableDensitySubtitle:
@@ -4287,13 +4338,17 @@ const Map<AppLanguage, L10nStrings> _strings = {
     calcFieldRootGapHelper: 'Wurzelöffnung.',
     calcFieldThicknessLabel: 'Dicke (mm)',
     calcFieldThicknessHelper: 'Grundwerkstoffdicke.',
-    calcFieldRootFacePerSideLabel: 'Steg je Seite (mm)',
+    calcFieldRootFacePerSideLabel: 'Steg c – gesamt (mm)',
     calcFieldRootFacePerSideHelper:
-        'Steg auf jeder Seite der Verbindungsmittellinie.',
+        'Gesamte Steghöhe der DV-Naht (ISO 9692-1 „c“), mittig in der Wanddicke.',
     calcFieldRootFaceLabel: 'Steg (mm)',
     calcFieldRootFaceHelper: 'Steg, bevor die Fase beginnt.',
     calcFieldBevelAngleLabel: 'Anfaswinkel (°)',
-    calcFieldBevelAngleHelper: 'Wird als Anfaswinkel in Grad einbezogen.',
+    calcFieldBevelAngleHelper:
+        'Anfaswinkel je Flanke, von der Senkrechten gemessen (halber Öffnungswinkel: 60° V → 30°).',
+    calcFieldBackGougeDepthLabel: 'Ausfugtiefe (mm)',
+    calcFieldBackGougeDepthHelper:
+        'Tiefe, bis zu der die Gegenseite vor dem Schweißen auf gesundes Metall ausgefugt wird; wird mit dem Füll-/Decklagenprozess wieder gefüllt. 0 oder leer = kein Ausfugen. Typisch 3–6 mm.',
     calcFieldPrimaryAngleLabel: 'Primärwinkel alpha (°)',
     calcFieldPrimaryAngleHelper: 'Unterer Anfaswinkel nahe der Wurzel.',
     calcFieldSecondaryAngleLabel: 'Sekundärwinkel beta (°)',
@@ -4376,7 +4431,9 @@ const Map<AppLanguage, L10nStrings> _strings = {
     basisReferenceOd: 'Referenzaußendurchmesser',
     basisRootGap: 'Wurzelspalt',
     basisRootFace: 'Steg',
-    basisRootFacePerSide: 'Steg je Seite',
+    basisRootFacePerSide: 'Steg (gesamt)',
+    basisBackGougeDepth: 'Ausfugtiefe',
+    warningDoubleVPipeNoInternalAccess: 'Eine DV-Naht an diesem Rohr erfordert das Schweißen der Gegenseite von innen, aber der Innendurchmesser (ID = OD - 2t) liegt unter 600 mm – Innenschweißen ist praktisch nicht möglich. Erwägen Sie eine V- / Steilflanken-Naht von außen mit WIG-Wurzel.',
     basisBevelAngle: 'Anfaswinkel',
     basisPrimaryBevelAngle: 'Primärer Anfaswinkel',
     basisSecondaryBevelAngle: 'Sekundärer Anfaswinkel',
@@ -4545,7 +4602,7 @@ const Map<AppLanguage, L10nStrings> _strings = {
     pdfFormulaFillerConsumption:
         'Zusatzwerkstoffverbrauch (kg) = Schweißgut / Abschmelzwirkungsgrad x (1 + Verschnitt / 100)',
     pdfFormulaArcOnTime:
-        'Brennzeit (h) = Zusatzwerkstoffverbrauch / Abschmelzleistung',
+        'Brennzeit (h) = Schweißgut (abgeschmolzen) / Abschmelzleistung',
     pdfNote1:
         'Die Brennzeit umfasst nur die aktive Schweißzeit. Zusammenbau, Heften, Zwischenlagenreinigung, Umpositionierung und Prüfzeit sind ausgeschlossen.',
     pdfNote2:
@@ -4616,7 +4673,8 @@ const Map<AppLanguage, L10nStrings> _strings = {
     paywallLoadFailed:
         "Tarife konnten nicht geladen werden. Prüfen Sie Ihre Verbindung und versuchen Sie es erneut.",
     paywallRetry: "Erneut versuchen",
-    paywallPurchasePending: "Kauf wartet auf Genehmigung. Premium wird nach der Freigabe aktiviert.",
+    paywallPurchasePending:
+        "Kauf wartet auf Genehmigung. Premium wird nach der Freigabe aktiviert.",
     premiumEntryTitle: "Premium holen — PDF-Berichte + KI-Assistent",
     premiumActiveLabel: "Premium aktiv ✓",
     premiumSettingsRow: "Premium holen",
@@ -4880,7 +4938,7 @@ const Map<AppLanguage, L10nStrings> _strings = {
     heatInputProcessLabel: 'वेल्डिंग प्रोसेस',
     heatInputProcessSaw: 'SAW',
     heatInputProcessSmaw: 'SMAW',
-    heatInputProcessGmawMag: 'GMAW / MAG',
+    heatInputProcessGmawMag: 'GMAW / MAG / FCAW',
     heatInputVoltageLabel: 'वोल्टेज (V)',
     heatInputCurrentLabel: 'करंट (A)',
     heatInputTravelSpeedLabel: 'ट्रैवल स्पीड (mm/min)',
@@ -4996,17 +5054,21 @@ const Map<AppLanguage, L10nStrings> _strings = {
     calcGrooveTypeLabel: 'ग्रूव टाइप',
     calcWeldingProcessLabel: 'वेल्डिंग प्रोसेस',
     calcStartingTemplateTitle: 'तैयार उदाहरण से शुरू करें',
-    calcStartingTemplateSubtitle: 'एक सामान्य जोड़ भर देता है (जैसे 12 mm दीवार का कार्बन स्टील पाइप, सिंगल V, GTAW + SMAW), जिसे आप बाद में बदल सकते हैं।',
-    calcStartingTemplateInfo: 'तैयार सामान्य सेटअप (जोड़ का प्रकार, डाइमेंशन, वेल्डिंग प्रोसेस, फिलर)। एक चुनें तो सभी फ़ील्ड सही मानों से भर जाते हैं; फिर अपने काम से अलग मान बदलें। सब कुछ खुद भरने के लिए कस्टम चुनें।',
+    calcStartingTemplateSubtitle:
+        'एक सामान्य जोड़ भर देता है (जैसे 12 mm दीवार का कार्बन स्टील पाइप, सिंगल V, GTAW + SMAW), जिसे आप बाद में बदल सकते हैं।',
+    calcStartingTemplateInfo:
+        'तैयार सामान्य सेटअप (जोड़ का प्रकार, डाइमेंशन, वेल्डिंग प्रोसेस, फिलर)। एक चुनें तो सभी फ़ील्ड सही मानों से भर जाते हैं; फिर अपने काम से अलग मान बदलें। सब कुछ खुद भरने के लिए कस्टम चुनें।',
     pickerSearchHint: 'खोजें (जैसे E7018, 308L, S355)',
     pickerNoResults: 'कोई मिलान नहीं',
     calcMissingFieldsSnack: '{count} फ़ील्ड खाली: {fields}',
     fieldRequiredShort: 'यह फ़ील्ड ज़रूरी है',
     preheatBaseMaterialPickerLabel: 'मूल धातु चुनें',
     preheatCustomFromMaterial: 'कस्टम ({material} से)',
-    preheatStandardMaxNote: 'मानक के अधिकतम मान - सर्टिफिकेट के मान हों तो वही दर्ज करें',
+    preheatStandardMaxNote:
+        'मानक के अधिकतम मान - सर्टिफिकेट के मान हों तो वही दर्ज करें',
     preheatNotLimitedHint: 'मानक में सीमा नहीं - सर्टिफिकेट से दर्ज करें',
-    preheatMethodBNotApplicable: 'EN 1011-2 मेथड B इस कंपोज़िशन के लिए मान्य नहीं है - Cr-Mo स्टील के लिए निर्माता/कोड के प्रीहीट मान (जैसे EN 1011-2 Annex C, ASME B31.3) उपयोग करें।',
+    preheatMethodBNotApplicable:
+        'EN 1011-2 मेथड B इस कंपोज़िशन के लिए मान्य नहीं है - Cr-Mo स्टील के लिए निर्माता/कोड के प्रीहीट मान (जैसे EN 1011-2 Annex C, ASME B31.3) उपयोग करें।',
     baseGroupEn10025: 'EN 10025 स्ट्रक्चरल स्टील',
     baseGroupPressure: 'EN 10028 / 10216 प्रेशर स्टील',
     baseGroupAstmCarbon: 'ASTM कार्बन स्टील',
@@ -5014,7 +5076,8 @@ const Map<AppLanguage, L10nStrings> _strings = {
     baseGroupApi: 'API 5L लाइन पाइप',
     baseGroupStainless: 'स्टेनलेस स्टील',
     baseGroupAluminium: 'एल्युमीनियम',
-    preheatCetUnderestimatedWarning: 'जब तक ये दर्ज नहीं होते, CET कम आँका जा सकता है',
+    preheatCetUnderestimatedWarning:
+        'जब तक ये दर्ज नहीं होते, CET कम आँका जा सकता है',
     calcInputPresetLabel: 'उदाहरण',
     calcConsumableDensityTitle: 'कंज़्यूमेबल और डेंसिटी',
     calcConsumableDensitySubtitle:
@@ -5120,12 +5183,17 @@ const Map<AppLanguage, L10nStrings> _strings = {
     calcFieldRootGapHelper: 'रूट ओपनिंग।',
     calcFieldThicknessLabel: 'मोटाई (mm)',
     calcFieldThicknessHelper: 'बेस मटीरियल मोटाई।',
-    calcFieldRootFacePerSideLabel: 'प्रति साइड रूट फेस (mm)',
-    calcFieldRootFacePerSideHelper: 'जॉइंट सेंटरलाइन के हर तरफ रूट फेस।',
+    calcFieldRootFacePerSideLabel: 'रूट फेस c – कुल लैंड (mm)',
+    calcFieldRootFacePerSideHelper:
+        'डबल-V की कुल लैंड ऊंचाई (ISO 9692-1 "c"), मोटाई के बीच में।',
     calcFieldRootFaceLabel: 'रूट फेस (mm)',
     calcFieldRootFaceHelper: 'बेवल शुरू होने से पहले का रूट फेस।',
     calcFieldBevelAngleLabel: 'बेवल एंगल (°)',
-    calcFieldBevelAngleHelper: 'डिग्री में बेवल एंगल के रूप में शामिल।',
+    calcFieldBevelAngleHelper:
+        'प्रति साइड बेवल एंगल, वर्टिकल से मापा गया (इन्क्लूडेड एंगल का आधा: 60° V → 30°)।',
+    calcFieldBackGougeDepthLabel: 'बैक-गॉज गहराई (mm)',
+    calcFieldBackGougeDepthHelper:
+        'दूसरी साइड को वेल्ड करने से पहले साउंड मेटल तक गॉज की गई गहराई; फिल/कैप प्रोसेस से दोबारा भरी जाती है। 0 या खाली = कोई बैक-गॉज नहीं। सामान्य 3–6 mm।',
     calcFieldPrimaryAngleLabel: 'प्राइमरी एंगल alpha (°)',
     calcFieldPrimaryAngleHelper: 'रूट के पास निचला बेवल एंगल।',
     calcFieldSecondaryAngleLabel: 'सेकेंडरी एंगल beta (°)',
@@ -5209,7 +5277,9 @@ const Map<AppLanguage, L10nStrings> _strings = {
     basisReferenceOd: 'रेफरेंस OD',
     basisRootGap: 'रूट गैप',
     basisRootFace: 'रूट फेस',
-    basisRootFacePerSide: 'प्रति साइड रूट फेस',
+    basisRootFacePerSide: 'रूट फेस (कुल लैंड)',
+    basisBackGougeDepth: 'बैक-गॉज गहराई',
+    warningDoubleVPipeNoInternalAccess: 'इस पाइप पर डबल V के लिए दूसरी साइड अंदर से वेल्ड करनी होती है, लेकिन बोर (ID = OD - 2t) 600 mm से कम है — अंदर से वेल्डिंग व्यावहारिक नहीं है। बाहर से GTAW रूट के साथ सिंगल V / कंपाउंड V पर विचार करें।',
     basisBevelAngle: 'बेवल एंगल',
     basisPrimaryBevelAngle: 'प्राइमरी बेवल एंगल',
     basisSecondaryBevelAngle: 'सेकेंडरी बेवल एंगल',
@@ -5382,7 +5452,7 @@ const Map<AppLanguage, L10nStrings> _strings = {
         'वेल्ड मेटल (kg) = वॉल्यूम (cm3) x डेंसिटी (g/cm3) / 1000',
     pdfFormulaFillerConsumption:
         'फिलर कंज़म्पशन (kg) = वेल्ड मेटल / डिपॉज़िशन एफिशिएंसी x (1 + वेस्ट / 100)',
-    pdfFormulaArcOnTime: 'आर्क-ऑन टाइम (h) = फिलर कंज़म्पशन / डिपॉज़िशन रेट',
+    pdfFormulaArcOnTime: 'आर्क-ऑन टाइम (h) = वेल्ड मेटल / डिपॉज़िशन रेट',
     pdfNote1:
         'आर्क-ऑन टाइम केवल एक्टिव वेल्डिंग टाइम को कवर करता है। फिट-अप, टैकिंग, इंटरपास क्लीनिंग, रीपोज़िशनिंग, और इंस्पेक्शन टाइम शामिल नहीं हैं।',
     pdfNote2:
@@ -5451,7 +5521,8 @@ const Map<AppLanguage, L10nStrings> _strings = {
     paywallLoadFailed:
         "प्लान लोड नहीं हो सके। अपना कनेक्शन जाँचें और फिर कोशिश करें।",
     paywallRetry: "पुनः प्रयास करें",
-    paywallPurchasePending: "खरीदारी स्वीकृति की प्रतीक्षा में है। स्वीकृत होने पर Premium सक्रिय होगा।",
+    paywallPurchasePending:
+        "खरीदारी स्वीकृति की प्रतीक्षा में है। स्वीकृत होने पर Premium सक्रिय होगा।",
     premiumEntryTitle: "Premium लें — PDF रिपोर्ट + एआई असिस्टेंट",
     premiumActiveLabel: "Premium सक्रिय ✓",
     premiumSettingsRow: "Premium लें",

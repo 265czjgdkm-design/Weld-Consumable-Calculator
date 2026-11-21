@@ -232,4 +232,18 @@ void main() {
       expect(pcm, closeTo(0.2037, 0.001));
     });
   });
+
+  test('EN 1011-1 Table 1: TIG thermal efficiency k = 0.6', () {
+    expect(arcThermalEfficiencyFor(ArcProcess.gtaw), 0.6);
+    // 0.6 * 12 V * 150 A * 60 / (100 mm/min * 1000) = 0.648 kJ/mm
+    expect(
+      computeHeatInputKJPerMm(
+        efficiency: arcThermalEfficiencyFor(ArcProcess.gtaw),
+        voltageV: 12,
+        currentA: 150,
+        travelSpeedMmPerMin: 100,
+      ),
+      closeTo(0.648, 1e-9),
+    );
+  });
 }

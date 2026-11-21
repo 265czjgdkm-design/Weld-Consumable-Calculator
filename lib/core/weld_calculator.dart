@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import '../models/weld_models.dart';
 import 'weld_formulas.dart';
 import 'welding_defaults.dart';
@@ -9,12 +11,18 @@ class WeldCalculator {
     _validateCommon(input);
     _validateCompatibility(input);
 
-    final lengthMm = _resolveLength(input);
     final grooveAreaMm2 = _resolveArea(input);
     final capAreaMm2 = input.grooveType == GrooveType.fillet
         ? 0.0
         : _resolveCapAreaMm2(input, _resolveGrooveTopWidthMm(input));
-    final areaMm2 = grooveAreaMm2 + capAreaMm2;
+    final backGougeAreaMm2 = _resolveBackGougeAreaMm2(input);
+    final areaMm2 = grooveAreaMm2 + capAreaMm2 + backGougeAreaMm2;
+    final lengthMm = _resolveLength(
+      input,
+      grooveAreaMm2: grooveAreaMm2,
+      capAreaMm2: capAreaMm2,
+      backGougeAreaMm2: backGougeAreaMm2,
+    );
     final volumeCm3 = WeldFormulas.volumeCm3(
       areaMm2: areaMm2,
       lengthMm: lengthMm,
@@ -23,13 +31,8 @@ class WeldCalculator {
       volumeCm3: volumeCm3,
       densityGPerCm3: input.densityGPerCm3,
     );
-    final processSummary = input.weldingProcess == WeldingProcess.gtawSmaw
-        ? _combinedGtawSmawSummary(
-            input,
-            areaMm2,
-            grooveAreaMm2,
-            weldMetalKg,
-          )
+    final processSummary = input.weldingProcess.isCombined
+        ? _combinedGtawSmawSummary(input, areaMm2, grooveAreaMm2, weldMetalKg)
         : _singleProcessSummary(input, weldMetalKg);
 
     return WeldCalculationResult(
@@ -42,7 +45,25 @@ class WeldCalculator {
       depositionEfficiency: processSummary.depositionEfficiency,
       depositionRateKgPerHour: processSummary.depositionRateKgPerHour,
       processBreakdowns: processSummary.processBreakdowns,
+      warnings: _warnings(input),
     );
+  }
+
+  /// Smallest pipe bore a welder can enter to weld the second side of a
+  /// Double V from inside (man-entry / confined-space practice, ~24 in).
+  static const double minInternalWeldingIdMm = 600;
+
+  List<WeldWarning> _warnings(WeldInputData input) {
+    final od = input.pipeOdMm;
+    final t = input.thicknessMm;
+    return [
+      if (input.jointType == JointType.pipeButt &&
+          input.grooveType == GrooveType.doubleV &&
+          od != null &&
+          t != null &&
+          od - 2 * t < minInternalWeldingIdMm)
+        WeldWarning.doubleVPipeNoInternalAccess,
+    ];
   }
 
   void _validateCommon(WeldInputData input) {
@@ -67,9 +88,12 @@ class WeldCalculator {
     }
 
     if (input.depositionRateMode == DepositionRateMode.manual) {
-      if (input.weldingProcess == WeldingProcess.gtawSmaw) {
+      if (input.weldingProcess.isCombined) {
         _requirePositive(input.manualGtawRateKgPerHour, 'Manual GTAW rate');
-        _requirePositive(input.manualSmawRateKgPerHour, 'Manual SMAW rate');
+        _requirePositive(
+          input.manualSmawRateKgPerHour,
+          'Manual ${input.weldingProcess.fillProcess.label} rate',
+        );
       } else {
         _requirePositive(
           input.manualDepositionRateKgPerHour,
@@ -91,7 +115,7 @@ class WeldCalculator {
       wasteFactorPercent: input.wasteFactorPercent,
     );
     final arcTimeHours = WeldFormulas.arcTimeHours(
-      fillerKg: fillerKg,
+      weldMetalKg: weldMetalKg,
       depositionRateKgPerHour: depositionRate,
     );
 
@@ -129,7 +153,8 @@ class WeldCalculator {
     final gtawWeldMetalKg = totalWeldMetalKg * gtawRatio;
     final smawWeldMetalKg = totalWeldMetalKg - gtawWeldMetalKg;
     final gtawEfficiency = WeldingDefaults.efficiencyFor(WeldingProcess.gtaw);
-    final smawEfficiency = WeldingDefaults.efficiencyFor(WeldingProcess.smaw);
+    final fillProcess = input.weldingProcess.fillProcess;
+    final smawEfficiency = WeldingDefaults.efficiencyFor(fillProcess);
     final gtawRate = _resolveCombinedGtawRate(input);
     final smawRate = _resolveCombinedSmawRate(input);
     final gtawFillerKg = WeldFormulas.fillerKg(
@@ -145,11 +170,11 @@ class WeldCalculator {
     final totalFillerKg = gtawFillerKg + smawFillerKg;
     final arcTimeHours =
         WeldFormulas.arcTimeHours(
-          fillerKg: gtawFillerKg,
+          weldMetalKg: gtawWeldMetalKg,
           depositionRateKgPerHour: gtawRate,
         ) +
         WeldFormulas.arcTimeHours(
-          fillerKg: smawFillerKg,
+          weldMetalKg: smawWeldMetalKg,
           depositionRateKgPerHour: smawRate,
         );
     final wasteMultiplier = 1.0 + (input.wasteFactorPercent / 100);
@@ -158,7 +183,7 @@ class WeldCalculator {
         : (totalWeldMetalKg * wasteMultiplier) / totalFillerKg;
     final effectiveRate = arcTimeHours == 0
         ? 0.0
-        : totalFillerKg / arcTimeHours;
+        : totalWeldMetalKg / arcTimeHours;
 
     return _ProcessSummary(
       fillerKg: totalFillerKg,
@@ -171,7 +196,7 @@ class WeldCalculator {
           weldMetalKg: gtawWeldMetalKg,
           fillerKg: gtawFillerKg,
           arcTimeHours: WeldFormulas.arcTimeHours(
-            fillerKg: gtawFillerKg,
+            weldMetalKg: gtawWeldMetalKg,
             depositionRateKgPerHour: gtawRate,
           ),
           depositionEfficiency: gtawEfficiency,
@@ -179,11 +204,11 @@ class WeldCalculator {
           sharePercent: gtawRatio,
         ),
         ProcessBreakdown(
-          process: WeldingProcess.smaw,
+          process: fillProcess,
           weldMetalKg: smawWeldMetalKg,
           fillerKg: smawFillerKg,
           arcTimeHours: WeldFormulas.arcTimeHours(
-            fillerKg: smawFillerKg,
+            weldMetalKg: smawWeldMetalKg,
             depositionRateKgPerHour: smawRate,
           ),
           depositionEfficiency: smawEfficiency,
@@ -194,9 +219,25 @@ class WeldCalculator {
     );
   }
 
-  double _resolveLength(WeldInputData input) => switch (input.jointType) {
+  double _resolveLength(
+    WeldInputData input, {
+    required double grooveAreaMm2,
+    required double capAreaMm2,
+    required double backGougeAreaMm2,
+  }) => switch (input.jointType) {
+    // Girth weld: the deposit's length is the circumference through the
+    // centroid of the weld cross-section (Pappus), not the OD -- a V groove
+    // sits mostly near the OD, so this is a few % below pi * OD.
     JointType.pipeButt => WeldFormulas.circumferenceLengthMm(
-      pipeOdMm: _requirePositive(input.pipeOdMm, 'Pipe OD'),
+      pipeOdMm:
+          _requirePositive(input.pipeOdMm, 'Pipe OD') -
+          2 *
+              _weldCentroidDepthMm(
+                input,
+                grooveAreaMm2: grooveAreaMm2,
+                capAreaMm2: capAreaMm2,
+                backGougeAreaMm2: backGougeAreaMm2,
+              ),
       quantity: input.quantity,
     ),
     JointType.plateButt => WeldFormulas.straightLengthMm(
@@ -208,6 +249,66 @@ class WeldCalculator {
       quantity: input.quantity,
     ),
   };
+
+  /// Depth of the weld cross-section's centroid below the OD surface
+  /// (negative = above it). Groove from its width profile, caps at their
+  /// mid-height, back-gouge at a half-ellipse centroid.
+  double _weldCentroidDepthMm(
+    WeldInputData input, {
+    required double grooveAreaMm2,
+    required double capAreaMm2,
+    required double backGougeAreaMm2,
+  }) {
+    final t = _requirePositive(input.thicknessMm, 'Thickness');
+    final gap = input.rootGapMm ?? 0;
+    final c = input.rootFaceMm ?? 0;
+    final tanA = math.tan((input.bevelAngleDeg ?? 0) * math.pi / 180);
+    final tanB = math.tan((input.secondaryBevelAngleDeg ?? 0) * math.pi / 180);
+    final brk = input.breakHeightMm ?? 0;
+    // Groove width at depth z below the OD.
+    double width(double z) {
+      final u = t - z; // height above the root (ID) side
+      switch (input.grooveType) {
+        case GrooveType.singleV:
+          return u <= c ? gap : gap + 2 * (u - c) * tanA;
+        case GrooveType.halfV:
+          return u <= c ? gap : gap + (u - c) * tanA;
+        case GrooveType.compoundV:
+          if (u <= c) return gap;
+          if (u <= c + brk) return gap + 2 * (u - c) * tanA;
+          return gap + 2 * brk * tanA + 2 * (u - c - brk) * tanB;
+        case GrooveType.doubleV:
+          final d = (z - t / 2).abs();
+          return d <= c / 2 ? gap : gap + 2 * (d - c / 2) * tanA;
+        case GrooveType.square:
+        case GrooveType.fillet:
+          return gap;
+      }
+    }
+
+    const n = 400;
+    var a = 0.0;
+    var m = 0.0;
+    for (var i = 0; i < n; i++) {
+      final z = (i + 0.5) * t / n;
+      final w = width(z);
+      a += w;
+      m += w * z;
+    }
+    final grooveZ = a == 0 ? t / 2 : m / a;
+    final capH = input.capHeightMm ?? 0;
+    final isDouble = input.grooveType == GrooveType.doubleV;
+    // Double V: half the cap area on each face.
+    final capMoment = isDouble
+        ? capAreaMm2 / 2 * (-capH / 2) + capAreaMm2 / 2 * (t + capH / 2)
+        : capAreaMm2 * (-capH / 2);
+    final gouge = input.backGougeDepthMm ?? 0;
+    final gougeZ = t / 2 + c / 2 - 4 * gouge / (3 * math.pi);
+    final total = grooveAreaMm2 + capAreaMm2 + backGougeAreaMm2;
+    if (total <= 0) return t / 2;
+    return (grooveAreaMm2 * grooveZ + capMoment + backGougeAreaMm2 * gougeZ) /
+        total;
+  }
 
   double _resolveArea(WeldInputData input) => switch (input.grooveType) {
     GrooveType.square => WeldFormulas.squareButtAreaMm2(
@@ -331,7 +432,13 @@ class WeldCalculator {
         breakHeightMm: _requirePositive(input.breakHeightMm, 'Break height'),
         fillHeightMm: transition,
       ),
-      GrooveType.doubleV => _resolveDoubleVGtawArea(input, grooveAreaMm2),
+      GrooveType.doubleV => WeldFormulas.doubleVPartialAreaFromRootMm2(
+        thicknessMm: _requirePositive(input.thicknessMm, 'Thickness'),
+        rootFaceMm: _requireZeroOrPositive(input.rootFaceMm, 'Root face'),
+        rootGapMm: _requireZeroOrPositive(input.rootGapMm, 'Root gap'),
+        bevelAngleDeg: _requirePositive(input.bevelAngleDeg, 'Bevel angle'),
+        fillHeightMm: transition,
+      ),
       GrooveType.fillet => WeldFormulas.filletPartialAreaFromRootMm2(
         legSizeMm: _requirePositive(input.legSizeMm, 'Leg size'),
         fillHeightMm: transition,
@@ -339,16 +446,28 @@ class WeldCalculator {
     };
   }
 
-  double _resolveDoubleVGtawArea(WeldInputData input, double grooveAreaMm2) {
+  /// Back-gouge (Double V only): the second side is gouged to sound metal
+  /// before it is welded, so that U-groove is filled again by the
+  /// fill/cap process. Empty or 0 means no back-gouge.
+  double _resolveBackGougeAreaMm2(WeldInputData input) {
+    if (input.grooveType != GrooveType.doubleV) return 0;
+    final depth = input.backGougeDepthMm;
+    if (depth == null || depth == 0) return 0;
+    _requireZeroOrPositive(depth, 'Back-gouge depth');
     final thickness = _requirePositive(input.thicknessMm, 'Thickness');
-    final transition = _requirePositive(
-      input.gtawTransitionMm,
-      'GTAW up to thickness',
+    final rootFace = _requireZeroOrPositive(input.rootFaceMm, 'Root face');
+    // Gouging starts at the second side's root (bottom of the land) and can
+    // at most reach the first side's surface.
+    if (depth >= thickness / 2 + rootFace / 2) {
+      throw const InputValidationException(
+        'Back-gouge depth must be smaller than half the thickness plus half '
+        'the root face.',
+      );
+    }
+    return WeldFormulas.backGougeAreaMm2(
+      depthMm: depth,
+      rootGapMm: _requireZeroOrPositive(input.rootGapMm, 'Root gap'),
     );
-    final ratio = (transition / thickness).clamp(0.0, 1.0);
-    // groove-only area (cap-reinforcement area is excluded here and added
-    // entirely to the SMAW/final-pass side by the caller).
-    return grooveAreaMm2 * ratio;
   }
 
   double _singleVArea(WeldInputData input) {
@@ -382,9 +501,9 @@ class WeldCalculator {
     final rootGap = _requireZeroOrPositive(input.rootGapMm, 'Root gap');
     final bevelAngle = _requirePositive(input.bevelAngleDeg, 'Bevel angle');
 
-    if (rootFace >= thickness / 2) {
+    if (rootFace >= thickness) {
       throw const InputValidationException(
-        'Root face must be smaller than half the thickness for Double V.',
+        'Root face must be smaller than thickness for Double V.',
       );
     }
     if (bevelAngle >= 90) {
@@ -491,6 +610,10 @@ class WeldCalculator {
       WeldingProcess.fcaw => WeldingDefaults.fcawRateForWire(
         input.wireDiameterMm,
       ),
+      WeldingProcess.gtawFcaw ||
+      WeldingProcess.gtawGmaw => WeldingDefaults.depositionRateFor(
+        input.weldingProcess,
+      ),
     };
   }
 
@@ -508,10 +631,14 @@ class WeldCalculator {
     if (input.depositionRateMode == DepositionRateMode.manual) {
       return _requirePositive(
         input.manualSmawRateKgPerHour,
-        'Manual SMAW rate',
+        'Manual ${input.weldingProcess.fillProcess.label} rate',
       );
     }
-    return WeldingDefaults.smawRateForElectrode(input.smawElectrodeDiameterMm);
+    return WeldingDefaults.fillRateFor(
+      input.weldingProcess,
+      smawElectrodeDiameterMm: input.smawElectrodeDiameterMm,
+      wireDiameterMm: input.wireDiameterMm,
+    );
   }
 
   double _requirePositive(double? value, String label) {

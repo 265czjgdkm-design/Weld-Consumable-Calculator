@@ -19,10 +19,14 @@ class WeldFormulas {
     required double wasteFactorPercent,
   }) => weldMetalKg / depositionEfficiency * (1 + wasteFactorPercent / 100);
 
+  /// Deposition rate (AWS A3.0) is the weld metal DEPOSITED per hour, so
+  /// arc-on time divides the deposited weld metal by it -- not the filler
+  /// bought, which also carries stub/spatter losses and the waste
+  /// allowance that never pass through the arc as deposit.
   static double arcTimeHours({
-    required double fillerKg,
+    required double weldMetalKg,
     required double depositionRateKgPerHour,
-  }) => fillerKg / depositionRateKgPerHour;
+  }) => weldMetalKg / depositionRateKgPerHour;
 
   static double squareButtAreaMm2({
     required double thicknessMm,
@@ -134,7 +138,7 @@ class WeldFormulas {
     required double bevelAngleDeg,
   }) => singleVTopWidthMm(
     thicknessMm: thicknessMm / 2,
-    rootFaceMm: rootFaceMm,
+    rootFaceMm: rootFaceMm / 2,
     rootGapMm: rootGapMm,
     bevelAngleDeg: bevelAngleDeg,
   );
@@ -145,14 +149,89 @@ class WeldFormulas {
     required double rootGapMm,
     required double bevelAngleDeg,
   }) {
+    // [rootFaceMm] is the TOTAL land (ISO 9692-1 / AWS "c"/"f"), split
+    // evenly about the mid-thickness: each half is a Single V of t/2 with
+    // c/2 land.
     final sideThickness = thicknessMm / 2;
     return singleVAreaMm2(
           thicknessMm: sideThickness,
-          rootFaceMm: rootFaceMm,
+          rootFaceMm: rootFaceMm / 2,
           rootGapMm: rootGapMm,
           bevelAngleDeg: bevelAngleDeg,
         ) *
         2;
+  }
+
+  /// GTAW share of a Double V, measured from the root: the root pass sits on
+  /// the land (total root face c, centred on mid-thickness) and GTAW then
+  /// climbs into the FIRST side's groove. Geometrically this is a Single V
+  /// of height t/2 + c/2 whose root face is the whole land c; the second
+  /// side (back-gouged) is never GTAW here.
+  static double doubleVPartialAreaFromRootMm2({
+    required double thicknessMm,
+    required double rootFaceMm,
+    required double rootGapMm,
+    required double bevelAngleDeg,
+    required double fillHeightMm,
+  }) => singleVPartialAreaFromRootMm2(
+    thicknessMm: thicknessMm / 2 + rootFaceMm / 2,
+    rootFaceMm: rootFaceMm,
+    rootGapMm: rootGapMm,
+    bevelAngleDeg: bevelAngleDeg,
+    fillHeightMm: fillHeightMm,
+  );
+
+  /// Metal re-deposited after back-gouging the second side of a Double V.
+  /// Air-carbon-arc / grinding gouges leave a U-shaped groove roughly 1.5x
+  /// as wide as it is deep (never narrower than the root gap + 2 mm); it is
+  /// modelled as a half-ellipse: area = pi/4 * width * depth.
+  static double backGougeWidthMm({
+    required double depthMm,
+    required double rootGapMm,
+  }) => math.max(1.5 * depthMm, rootGapMm + 2);
+
+  static double backGougeAreaMm2({
+    required double depthMm,
+    required double rootGapMm,
+  }) {
+    if (depthMm <= 0) return 0;
+    return math.pi /
+        4 *
+        backGougeWidthMm(depthMm: depthMm, rootGapMm: rootGapMm) *
+        depthMm;
+  }
+
+  /// Butt joint between members of unequal thickness: the thicker member is
+  /// tapered down to the thinner one before the groove is prepared (ASME
+  /// B16.25 / B31.3 para. 328.4.3 for piping, AWS D1.1 unequal-thickness
+  /// transition for structures; taper 1:4 here, steeper limits are 30 deg
+  /// and 1:2.5). The groove, and so the weld, is sized on the THINNER wall.
+  /// The taper itself is base-metal machining, not weld metal.
+  static double? governingThicknessMm(double? a, double? b) {
+    if (a == null) return b;
+    if (b == null) return a;
+    return math.min(a, b);
+  }
+
+  /// Taper length (horizontal) for a thickness step of [stepMm] at 1:4.
+  static const double unequalTaperRatio = 4;
+
+  /// OD at the weld: the thinner member's OD (the thicker one is tapered to
+  /// meet it). Equal walls: the larger OD.
+  static double? governingPipeOdMm({
+    required double? thicknessAMm,
+    required double? thicknessBMm,
+    required double? odAMm,
+    required double? odBMm,
+  }) {
+    if (odAMm == null) return odBMm;
+    if (odBMm == null) return odAMm;
+    if (thicknessAMm != null &&
+        thicknessBMm != null &&
+        thicknessAMm != thicknessBMm) {
+      return thicknessAMm < thicknessBMm ? odAMm : odBMm;
+    }
+    return math.max(odAMm, odBMm);
   }
 
   static double compoundVTopWidthMm({

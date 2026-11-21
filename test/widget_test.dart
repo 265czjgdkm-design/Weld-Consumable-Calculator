@@ -271,7 +271,7 @@ void main() {
 
     expect(find.text('Switch Welding Process?'), findsNothing);
     expect(find.text('Pipe OD (mm)'), findsOneWidget);
-    expect(find.text('Root Face per Side (mm)'), findsOneWidget);
+    expect(find.text('Root Face c – total land (mm)'), findsOneWidget);
 
     await _continueWizardStep(tester); // dimensions -> consumable
 
@@ -315,7 +315,7 @@ void main() {
       expect(find.text('Switch Welding Process?'), findsNothing);
       expect(find.text('GTAW + SMAW'), findsWidgets);
       expect(find.text('Pipe OD (mm)'), findsOneWidget);
-      expect(find.text('Root Face per Side (mm)'), findsOneWidget);
+      expect(find.text('Root Face c – total land (mm)'), findsOneWidget);
       expect(find.text('GTAW Depth (mm)'), findsOneWidget);
     },
   );

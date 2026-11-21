@@ -81,7 +81,7 @@ class ConsumableCatalog {
 
   static List<CatalogConsumable> forProcess(WeldingProcess process) => [
     for (final entry in entries)
-      if (entry.processes.contains(process)) entry,
+      if (process.acceptsConsumableFor(entry.processes)) entry,
   ];
 
   /// Display order of standards in the selector.

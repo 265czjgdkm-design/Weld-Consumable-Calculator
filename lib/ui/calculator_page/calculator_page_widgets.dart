@@ -810,6 +810,47 @@ class PanelNote extends StatelessWidget {
   }
 }
 
+/// Persistent, non-blocking engineering warning shown above the results.
+class ResultWarningBox extends StatelessWidget {
+  const ResultWarningBox({super.key, required this.message});
+
+  final String message;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      key: const ValueKey('result-warning-box'),
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFF4E5),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFFF0B24A)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Icon(
+            Icons.warning_amber_rounded,
+            color: Color(0xFFB26A00),
+            size: 22,
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              message,
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                color: const Color(0xFF5C3B00),
+                height: 1.35,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class ResultsSection extends StatelessWidget {
   const ResultsSection({
     super.key,
@@ -965,6 +1006,10 @@ class ResultsSection extends StatelessWidget {
             context,
           ).textTheme.bodySmall?.copyWith(color: const Color(0xFF607482)),
         ),
+        for (final warning in result.warnings) ...[
+          const SizedBox(height: 12),
+          ResultWarningBox(message: warning.messageFor(strings)),
+        ],
         const SizedBox(height: 16),
         ResultsHighlightBanner(
           result: result,

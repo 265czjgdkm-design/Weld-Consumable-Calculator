@@ -51,7 +51,7 @@ void main() {
     expect(result.volumeCm3, closeTo(60, 0.0001));
     expect(result.weldMetalKg, closeTo(0.471, 0.0001));
     expect(result.fillerKg, closeTo(0.5757, 0.0002));
-    expect(result.arcTimeHours, closeTo(0.1645, 0.0002));
+    expect(result.arcTimeHours, closeTo(0.13457, 0.0002));
   });
 
   test('calculates pipe single V using circumference mode', () {
@@ -73,8 +73,10 @@ void main() {
     final result = calculator.calculate(input);
 
     expect(result.areaMm2, closeTo(93.735, 0.01));
-    expect(result.lengthMm, closeTo(528.73, 0.05));
-    expect(result.volumeCm3, closeTo(49.56, 0.05));
+    // Girth weld length runs through the weld centroid (4.357 mm below OD):
+    // pi * (168.3 - 2 * 4.3575) = 501.35 mm, not pi * OD = 528.73 mm.
+    expect(result.lengthMm, closeTo(501.35, 0.05));
+    expect(result.volumeCm3, closeTo(46.99, 0.05));
   });
 
   test('calculates plate half V values', () {
@@ -121,8 +123,9 @@ void main() {
     final result = calculator.calculate(input);
 
     expect(result.areaMm2, closeTo(142.81, 0.05));
-    expect(result.lengthMm, closeTo(528.73, 0.05));
-    expect(result.volumeCm3, closeTo(75.50, 0.1));
+    // Centroid 6.282 mm below OD: pi * (168.3 - 2 * 6.2823) = 489.26 mm.
+    expect(result.lengthMm, closeTo(489.26, 0.05));
+    expect(result.volumeCm3, closeTo(69.87, 0.1));
   });
 
   test('calculates fillet weld values', () {
@@ -168,9 +171,9 @@ void main() {
     expect(result.areaMm2, closeTo(30, 0.0001));
     expect(result.weldMetalKg, closeTo(0.2355, 0.0001));
     expect(result.fillerKg, closeTo(0.3607, 0.001));
-    expect(result.arcTimeHours, closeTo(0.3347, 0.001));
+    expect(result.arcTimeHours, closeTo(0.22569, 0.001));
     expect(result.depositionEfficiency, closeTo(0.7187, 0.001));
-    expect(result.depositionRateKgPerHour, closeTo(1.0778, 0.001));
+    expect(result.depositionRateKgPerHour, closeTo(1.0435, 0.001));
     expect(result.processBreakdowns, hasLength(2));
     expect(result.processBreakdowns.first.process, WeldingProcess.gtaw);
     expect(result.processBreakdowns.last.process, WeldingProcess.smaw);
@@ -186,7 +189,7 @@ void main() {
       lengthPerPieceMm: 1000,
       thicknessMm: 10,
       rootGapMm: 2,
-      rootFaceMm: 5,
+      rootFaceMm: 10,
       bevelAngleDeg: 30,
       densityGPerCm3: WeldingDefaults.densityGPerCm3,
       wasteFactorPercent: WeldingDefaults.wasteFactorPercent,
@@ -198,7 +201,7 @@ void main() {
         isA<InputValidationException>().having(
           (error) => error.message,
           'message',
-          contains('half the thickness'),
+          contains('smaller than thickness for Double V'),
         ),
       ),
     );
@@ -222,7 +225,7 @@ void main() {
     final result = calculator.calculate(input);
 
     expect(result.depositionRateKgPerHour, closeTo(1.5, 0.0001));
-    expect(result.arcTimeHours, closeTo(0.1818, 0.001));
+    expect(result.arcTimeHours, closeTo(0.157, 0.001));
   });
 
   test(
@@ -527,195 +530,184 @@ void main() {
     },
   );
 
-  test(
-    'GTAW+SMAW split (Double V): cap area flows entirely into the SMAW '
-    'share, not proportionally into the GTAW root -- reviewer repro '
-    '(t=20, rootFace=2, gap=3, bevel=30, gtawTransition=6, L=1000mm)',
-    () {
-      const withoutCap = WeldInputData(
-        jointType: JointType.plateButt,
-        grooveType: GrooveType.doubleV,
-        weldingProcess: WeldingProcess.gtawSmaw,
-        depositionRateMode: DepositionRateMode.preset,
-        quantity: 1,
-        lengthPerPieceMm: 1000,
-        thicknessMm: 20,
-        rootFaceMm: 2,
-        rootGapMm: 3,
-        bevelAngleDeg: 30,
-        gtawTransitionMm: 6,
-        gtawWireDiameterMm: 2.4,
-        smawElectrodeDiameterMm: 3.2,
-        densityGPerCm3: WeldingDefaults.densityGPerCm3,
-        wasteFactorPercent: WeldingDefaults.wasteFactorPercent,
-      );
-      const withCap = WeldInputData(
-        jointType: JointType.plateButt,
-        grooveType: GrooveType.doubleV,
-        weldingProcess: WeldingProcess.gtawSmaw,
-        depositionRateMode: DepositionRateMode.preset,
-        quantity: 1,
-        lengthPerPieceMm: 1000,
-        thicknessMm: 20,
-        rootFaceMm: 2,
-        rootGapMm: 3,
-        bevelAngleDeg: 30,
-        capOverlapMm: 2,
-        capHeightMm: 3,
-        gtawTransitionMm: 6,
-        gtawWireDiameterMm: 2.4,
-        smawElectrodeDiameterMm: 3.2,
-        densityGPerCm3: WeldingDefaults.densityGPerCm3,
-        wasteFactorPercent: WeldingDefaults.wasteFactorPercent,
-      );
+  test('GTAW+SMAW split (Double V): cap area flows entirely into the SMAW '
+      'share, not proportionally into the GTAW root -- reviewer repro '
+      '(t=20, rootFace=2, gap=3, bevel=30, gtawTransition=6, L=1000mm)', () {
+    const withoutCap = WeldInputData(
+      jointType: JointType.plateButt,
+      grooveType: GrooveType.doubleV,
+      weldingProcess: WeldingProcess.gtawSmaw,
+      depositionRateMode: DepositionRateMode.preset,
+      quantity: 1,
+      lengthPerPieceMm: 1000,
+      thicknessMm: 20,
+      rootFaceMm: 2,
+      rootGapMm: 3,
+      bevelAngleDeg: 30,
+      gtawTransitionMm: 6,
+      gtawWireDiameterMm: 2.4,
+      smawElectrodeDiameterMm: 3.2,
+      densityGPerCm3: WeldingDefaults.densityGPerCm3,
+      wasteFactorPercent: WeldingDefaults.wasteFactorPercent,
+    );
+    const withCap = WeldInputData(
+      jointType: JointType.plateButt,
+      grooveType: GrooveType.doubleV,
+      weldingProcess: WeldingProcess.gtawSmaw,
+      depositionRateMode: DepositionRateMode.preset,
+      quantity: 1,
+      lengthPerPieceMm: 1000,
+      thicknessMm: 20,
+      rootFaceMm: 2,
+      rootGapMm: 3,
+      bevelAngleDeg: 30,
+      capOverlapMm: 2,
+      capHeightMm: 3,
+      gtawTransitionMm: 6,
+      gtawWireDiameterMm: 2.4,
+      smawElectrodeDiameterMm: 3.2,
+      densityGPerCm3: WeldingDefaults.densityGPerCm3,
+      wasteFactorPercent: WeldingDefaults.wasteFactorPercent,
+    );
 
-      final resultWithoutCap = calculator.calculate(withoutCap);
-      final resultWithCap = calculator.calculate(withCap);
+    final resultWithoutCap = calculator.calculate(withoutCap);
+    final resultWithCap = calculator.calculate(withCap);
 
-      final gtawWithoutCap = resultWithoutCap.processBreakdowns.firstWhere(
-        (item) => item.process == WeldingProcess.gtaw,
-      );
-      final gtawWithCap = resultWithCap.processBreakdowns.firstWhere(
-        (item) => item.process == WeldingProcess.gtaw,
-      );
-      final smawWithoutCap = resultWithoutCap.processBreakdowns.firstWhere(
-        (item) => item.process == WeldingProcess.smaw,
-      );
-      final smawWithCap = resultWithCap.processBreakdowns.firstWhere(
-        (item) => item.process == WeldingProcess.smaw,
-      );
+    final gtawWithoutCap = resultWithoutCap.processBreakdowns.firstWhere(
+      (item) => item.process == WeldingProcess.gtaw,
+    );
+    final gtawWithCap = resultWithCap.processBreakdowns.firstWhere(
+      (item) => item.process == WeldingProcess.gtaw,
+    );
+    final smawWithoutCap = resultWithoutCap.processBreakdowns.firstWhere(
+      (item) => item.process == WeldingProcess.smaw,
+    );
+    final smawWithCap = resultWithCap.processBreakdowns.firstWhere(
+      (item) => item.process == WeldingProcess.smaw,
+    );
 
-      // GTAW root pass must stay exactly 0.31534 kg regardless of the cap
-      // dimensions -- this is the reviewer's exact reported expected value.
-      expect(gtawWithoutCap.weldMetalKg, closeTo(0.31534, 0.0001));
-      expect(gtawWithCap.weldMetalKg, closeTo(0.31534, 0.0001));
-      expect(
-        gtawWithCap.weldMetalKg,
-        closeTo(gtawWithoutCap.weldMetalKg, 1e-9),
-      );
-      expect(gtawWithCap.fillerKg, closeTo(gtawWithoutCap.fillerKg, 1e-9));
+    // GTAW = total land (c = 2 mm, gap 3) + 4 mm into the first side's V,
+    // measured from the root: 6 + 21.238 = 27.238 mm2 -> 0.21382 kg over
+    // 1 m, independent of the cap dimensions.
+    expect(gtawWithoutCap.weldMetalKg, closeTo(0.21382, 0.0001));
+    expect(gtawWithCap.weldMetalKg, closeTo(0.21382, 0.0001));
+    expect(gtawWithCap.weldMetalKg, closeTo(gtawWithoutCap.weldMetalKg, 1e-9));
+    expect(gtawWithCap.fillerKg, closeTo(gtawWithoutCap.fillerKg, 1e-9));
 
-      // Double V gets a cap-reinforcement pass on BOTH faces (welded from
-      // both sides), so its cap area contribution is exactly 2x a
-      // single-face groove type's for the same overlap/height inputs.
-      final topWidth = WeldFormulas.doubleVTopWidthMm(
-        thicknessMm: 20,
-        rootFaceMm: 2,
-        rootGapMm: 3,
-        bevelAngleDeg: 30,
-      );
-      final expectedExtraTotalAreaMm2 =
-          WeldFormulas.capReinforcementAreaMm2(
-            grooveTopWidthMm: topWidth,
-            capOverlapMm: 2,
-            capHeightMm: 3,
-          ) *
-          2;
-      expect(
-        resultWithCap.areaMm2 - resultWithoutCap.areaMm2,
-        closeTo(expectedExtraTotalAreaMm2, 0.0001),
-      );
-      final expectedExtraSmawWeldMetalKg = WeldFormulas.weldMetalKg(
-        volumeCm3: WeldFormulas.volumeCm3(
-          areaMm2: expectedExtraTotalAreaMm2,
-          lengthMm: resultWithCap.lengthMm,
-        ),
-        densityGPerCm3: WeldingDefaults.densityGPerCm3,
-      );
-      expect(
-        smawWithCap.weldMetalKg - smawWithoutCap.weldMetalKg,
-        closeTo(expectedExtraSmawWeldMetalKg, 0.001),
-      );
-      expect(smawWithCap.fillerKg, greaterThan(smawWithoutCap.fillerKg));
-    },
-  );
+    // Double V gets a cap-reinforcement pass on BOTH faces (welded from
+    // both sides), so its cap area contribution is exactly 2x a
+    // single-face groove type's for the same overlap/height inputs.
+    final topWidth = WeldFormulas.doubleVTopWidthMm(
+      thicknessMm: 20,
+      rootFaceMm: 2,
+      rootGapMm: 3,
+      bevelAngleDeg: 30,
+    );
+    final expectedExtraTotalAreaMm2 =
+        WeldFormulas.capReinforcementAreaMm2(
+          grooveTopWidthMm: topWidth,
+          capOverlapMm: 2,
+          capHeightMm: 3,
+        ) *
+        2;
+    expect(
+      resultWithCap.areaMm2 - resultWithoutCap.areaMm2,
+      closeTo(expectedExtraTotalAreaMm2, 0.0001),
+    );
+    final expectedExtraSmawWeldMetalKg = WeldFormulas.weldMetalKg(
+      volumeCm3: WeldFormulas.volumeCm3(
+        areaMm2: expectedExtraTotalAreaMm2,
+        lengthMm: resultWithCap.lengthMm,
+      ),
+      densityGPerCm3: WeldingDefaults.densityGPerCm3,
+    );
+    expect(
+      smawWithCap.weldMetalKg - smawWithoutCap.weldMetalKg,
+      closeTo(expectedExtraSmawWeldMetalKg, 0.001),
+    );
+    expect(smawWithCap.fillerKg, greaterThan(smawWithoutCap.fillerKg));
+  });
 
-  test(
-    "Double V's cap area is exactly 2x a single-face groove type's for the "
-    'same overlap/height inputs (both-faces decision)',
-    () {
-      const doubleVInput = WeldInputData(
-        jointType: JointType.plateButt,
-        grooveType: GrooveType.doubleV,
-        weldingProcess: WeldingProcess.smaw,
-        depositionRateMode: DepositionRateMode.preset,
-        quantity: 1,
-        lengthPerPieceMm: 1000,
-        thicknessMm: 16,
-        rootFaceMm: 2,
-        rootGapMm: 2,
-        bevelAngleDeg: 30,
-        capOverlapMm: 2,
-        capHeightMm: 3,
-        densityGPerCm3: WeldingDefaults.densityGPerCm3,
-        wasteFactorPercent: WeldingDefaults.wasteFactorPercent,
-      );
-      // Single V at half Double V's thickness has the same per-face
-      // groove-top width as Double V (doubleVTopWidthMm halves the
-      // thickness and reuses singleVTopWidthMm internally), so with
-      // identical rootFace/rootGap/bevelAngle their single-face cap area
-      // is identical too.
-      const singleVInput = WeldInputData(
-        jointType: JointType.plateButt,
-        grooveType: GrooveType.singleV,
-        weldingProcess: WeldingProcess.smaw,
-        depositionRateMode: DepositionRateMode.preset,
-        quantity: 1,
-        lengthPerPieceMm: 1000,
-        thicknessMm: 8,
-        rootFaceMm: 2,
-        rootGapMm: 2,
-        bevelAngleDeg: 30,
-        capOverlapMm: 2,
-        capHeightMm: 3,
-        densityGPerCm3: WeldingDefaults.densityGPerCm3,
-        wasteFactorPercent: WeldingDefaults.wasteFactorPercent,
-      );
-      const doubleVNoCap = WeldInputData(
-        jointType: JointType.plateButt,
-        grooveType: GrooveType.doubleV,
-        weldingProcess: WeldingProcess.smaw,
-        depositionRateMode: DepositionRateMode.preset,
-        quantity: 1,
-        lengthPerPieceMm: 1000,
-        thicknessMm: 16,
-        rootFaceMm: 2,
-        rootGapMm: 2,
-        bevelAngleDeg: 30,
-        densityGPerCm3: WeldingDefaults.densityGPerCm3,
-        wasteFactorPercent: WeldingDefaults.wasteFactorPercent,
-      );
-      const singleVNoCap = WeldInputData(
-        jointType: JointType.plateButt,
-        grooveType: GrooveType.singleV,
-        weldingProcess: WeldingProcess.smaw,
-        depositionRateMode: DepositionRateMode.preset,
-        quantity: 1,
-        lengthPerPieceMm: 1000,
-        thicknessMm: 8,
-        rootFaceMm: 2,
-        rootGapMm: 2,
-        bevelAngleDeg: 30,
-        densityGPerCm3: WeldingDefaults.densityGPerCm3,
-        wasteFactorPercent: WeldingDefaults.wasteFactorPercent,
-      );
+  test("Double V's cap area is exactly 2x a single-face groove type's for the "
+      'same overlap/height inputs (both-faces decision)', () {
+    const doubleVInput = WeldInputData(
+      jointType: JointType.plateButt,
+      grooveType: GrooveType.doubleV,
+      weldingProcess: WeldingProcess.smaw,
+      depositionRateMode: DepositionRateMode.preset,
+      quantity: 1,
+      lengthPerPieceMm: 1000,
+      thicknessMm: 16,
+      rootFaceMm: 2,
+      rootGapMm: 2,
+      bevelAngleDeg: 30,
+      capOverlapMm: 2,
+      capHeightMm: 3,
+      densityGPerCm3: WeldingDefaults.densityGPerCm3,
+      wasteFactorPercent: WeldingDefaults.wasteFactorPercent,
+    );
+    // Single V at half Double V's thickness has the same per-face
+    // groove-top width as Double V (doubleVTopWidthMm halves the
+    // thickness and reuses singleVTopWidthMm internally), so with
+    // half the (total-land) root face and identical rootGap/bevelAngle
+    // their single-face cap area is identical too.
+    const singleVInput = WeldInputData(
+      jointType: JointType.plateButt,
+      grooveType: GrooveType.singleV,
+      weldingProcess: WeldingProcess.smaw,
+      depositionRateMode: DepositionRateMode.preset,
+      quantity: 1,
+      lengthPerPieceMm: 1000,
+      thicknessMm: 8,
+      rootFaceMm: 1,
+      rootGapMm: 2,
+      bevelAngleDeg: 30,
+      capOverlapMm: 2,
+      capHeightMm: 3,
+      densityGPerCm3: WeldingDefaults.densityGPerCm3,
+      wasteFactorPercent: WeldingDefaults.wasteFactorPercent,
+    );
+    const doubleVNoCap = WeldInputData(
+      jointType: JointType.plateButt,
+      grooveType: GrooveType.doubleV,
+      weldingProcess: WeldingProcess.smaw,
+      depositionRateMode: DepositionRateMode.preset,
+      quantity: 1,
+      lengthPerPieceMm: 1000,
+      thicknessMm: 16,
+      rootFaceMm: 2,
+      rootGapMm: 2,
+      bevelAngleDeg: 30,
+      densityGPerCm3: WeldingDefaults.densityGPerCm3,
+      wasteFactorPercent: WeldingDefaults.wasteFactorPercent,
+    );
+    const singleVNoCap = WeldInputData(
+      jointType: JointType.plateButt,
+      grooveType: GrooveType.singleV,
+      weldingProcess: WeldingProcess.smaw,
+      depositionRateMode: DepositionRateMode.preset,
+      quantity: 1,
+      lengthPerPieceMm: 1000,
+      thicknessMm: 8,
+      rootFaceMm: 1,
+      rootGapMm: 2,
+      bevelAngleDeg: 30,
+      densityGPerCm3: WeldingDefaults.densityGPerCm3,
+      wasteFactorPercent: WeldingDefaults.wasteFactorPercent,
+    );
 
-      // Double V's total cap-area contribution must be exactly double
-      // the matching single-face groove type's, since it gets a cap pass
-      // on both faces for the same entered overlap/height values.
-      final doubleVCapAreaMm2 =
-          calculator.calculate(doubleVInput).areaMm2 -
-          calculator.calculate(doubleVNoCap).areaMm2;
-      final singleVCapAreaMm2 =
-          calculator.calculate(singleVInput).areaMm2 -
-          calculator.calculate(singleVNoCap).areaMm2;
+    // Double V's total cap-area contribution must be exactly double
+    // the matching single-face groove type's, since it gets a cap pass
+    // on both faces for the same entered overlap/height values.
+    final doubleVCapAreaMm2 =
+        calculator.calculate(doubleVInput).areaMm2 -
+        calculator.calculate(doubleVNoCap).areaMm2;
+    final singleVCapAreaMm2 =
+        calculator.calculate(singleVInput).areaMm2 -
+        calculator.calculate(singleVNoCap).areaMm2;
 
-      expect(
-        doubleVCapAreaMm2,
-        closeTo(singleVCapAreaMm2 * 2, 0.0001),
-      );
-    },
-  );
+    expect(doubleVCapAreaMm2, closeTo(singleVCapAreaMm2 * 2, 0.0001));
+  });
 
   test('uses separate manual rates for GTAW + SMAW split', () {
     const input = WeldInputData(
@@ -736,11 +728,66 @@ void main() {
 
     final result = calculator.calculate(input);
 
-    expect(result.arcTimeHours, closeTo(0.2213, 0.001));
-    expect(result.depositionRateKgPerHour, closeTo(1.6301, 0.001));
+    expect(result.arcTimeHours, closeTo(0.15307, 0.001));
+    expect(result.depositionRateKgPerHour, closeTo(1.5385, 0.001));
     expect(
       result.processBreakdowns.map((item) => item.depositionRateKgPerHour),
       [closeTo(1.0, 0.0001), closeTo(2.0, 0.0001)],
     );
+  });
+
+  group('Double V back-gouge', () {
+    WeldInputData input({double? gouge, WeldingProcess? process}) =>
+        WeldInputData(
+          jointType: JointType.plateButt,
+          grooveType: GrooveType.doubleV,
+          weldingProcess: process ?? WeldingProcess.gtawSmaw,
+          depositionRateMode: DepositionRateMode.preset,
+          quantity: 1,
+          lengthPerPieceMm: 1000,
+          thicknessMm: 20,
+          rootFaceMm: 2,
+          rootGapMm: 3,
+          bevelAngleDeg: 30,
+          gtawTransitionMm: 6,
+          gtawWireDiameterMm: 2.4,
+          smawElectrodeDiameterMm: 3.2,
+          backGougeDepthMm: gouge,
+          densityGPerCm3: WeldingDefaults.densityGPerCm3,
+          wasteFactorPercent: WeldingDefaults.wasteFactorPercent,
+        );
+
+    test('adds a half-ellipse U-groove (pi/4 * 1.5d * d) to the area', () {
+      final base = calculator.calculate(input()).areaMm2;
+      final gouged = calculator.calculate(input(gouge: 4)).areaMm2;
+      // width = max(1.5 * 4, 3 + 2) = 6 -> pi/4 * 6 * 4 = 18.850 mm2
+      expect(gouged - base, closeTo(18.8496, 0.001));
+    });
+
+    test('re-filled metal goes to SMAW, GTAW root stays the same', () {
+      final a = calculator.calculate(input()).processBreakdowns;
+      final b = calculator.calculate(input(gouge: 4)).processBreakdowns;
+      double kg(List<ProcessBreakdown> l, WeldingProcess p) =>
+          l.firstWhere((x) => x.process == p).weldMetalKg;
+      expect(
+        kg(b, WeldingProcess.gtaw),
+        closeTo(kg(a, WeldingProcess.gtaw), 1e-9),
+      );
+      expect(
+        kg(b, WeldingProcess.smaw) - kg(a, WeldingProcess.smaw),
+        closeTo(18.8496 * 7.85 / 1000, 0.0001),
+      );
+    });
+
+    test('0 / empty means no gouge; too deep is rejected', () {
+      expect(
+        calculator.calculate(input(gouge: 0)).areaMm2,
+        closeTo(calculator.calculate(input()).areaMm2, 1e-9),
+      );
+      expect(
+        () => calculator.calculate(input(gouge: 11)),
+        throwsA(isA<InputValidationException>()),
+      );
+    });
   });
 }

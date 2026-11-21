@@ -55,7 +55,11 @@ List<CalculationBasisItem> _pipeButtBasisEntries() => const [
   CalculationBasisItem(BasisKey.pipeOd, 'Pipe OD', '323.9 mm'),
   CalculationBasisItem(BasisKey.thickness, 'Thickness', '16 mm'),
   CalculationBasisItem(BasisKey.rootGap, 'Root Gap', '3 mm'),
-  CalculationBasisItem(BasisKey.rootFacePerSide, 'Root Face per Side', '2 mm'),
+  CalculationBasisItem(
+    BasisKey.rootFacePerSide,
+    'Root Face (total land)',
+    '2 mm',
+  ),
   CalculationBasisItem(BasisKey.bevelAngle, 'Bevel Angle', '30 deg'),
   CalculationBasisItem(
     BasisKey.gtawTransitionDepth,
@@ -197,29 +201,26 @@ void main() {
     },
   );
 
-  test(
-    'PDF export falls back to English for the Hindi locale (the pdf '
-    "package has no Indic complex-script shaping, so Hindi PDF output "
-    'renders with garbled/reordered glyphs) -- the UI locale itself is '
-    'untouched by this fallback',
-    () async {
-      final hi = stringsFor(AppLanguage.hi);
-      expect(
-        pdfExportStringsFor(AppLanguage.hi),
-        same(_en),
-        reason: 'Hindi PDF exports should render with the English strings',
-      );
-      expect(
-        pdfExportStringsFor(AppLanguage.de),
-        same(stringsFor(AppLanguage.de)),
-        reason: 'non-Hindi locales should be unaffected by the fallback',
-      );
+  test('PDF export falls back to English for the Hindi locale (the pdf '
+      "package has no Indic complex-script shaping, so Hindi PDF output "
+      'renders with garbled/reordered glyphs) -- the UI locale itself is '
+      'untouched by this fallback', () async {
+    final hi = stringsFor(AppLanguage.hi);
+    expect(
+      pdfExportStringsFor(AppLanguage.hi),
+      same(_en),
+      reason: 'Hindi PDF exports should render with the English strings',
+    );
+    expect(
+      pdfExportStringsFor(AppLanguage.de),
+      same(stringsFor(AppLanguage.de)),
+      reason: 'non-Hindi locales should be unaffected by the fallback',
+    );
 
-      final hiPdfText = await _extractPdfText(
-        await _buildBytes(pdfExportStringsFor(AppLanguage.hi)),
-      );
-      expect(hiPdfText, contains('Weld Metal (kg)'));
-      expect(hiPdfText, isNot(contains(hi.pdfBreakdownColWeldMetalKg)));
-    },
-  );
+    final hiPdfText = await _extractPdfText(
+      await _buildBytes(pdfExportStringsFor(AppLanguage.hi)),
+    );
+    expect(hiPdfText, contains('Weld Metal (kg)'));
+    expect(hiPdfText, isNot(contains(hi.pdfBreakdownColWeldMetalKg)));
+  });
 }

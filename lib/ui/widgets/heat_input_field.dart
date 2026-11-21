@@ -256,6 +256,11 @@ class HeatInputFieldState extends State<HeatInputField> {
                 value: ArcProcess.gmawMag,
                 child: Text(strings.heatInputProcessGmawMag),
               ),
+              // Process abbreviation, identical in every locale.
+              const DropdownMenuItem(
+                value: ArcProcess.gtaw,
+                child: Text('GTAW / TIG'),
+              ),
             ],
             onChanged: (value) {
               if (value == null) return;

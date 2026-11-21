@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../core/weld_calculator.dart';
+import '../core/weld_formulas.dart';
 import '../data/base_material_catalog.dart';
 import '../data/consumable_catalog.dart';
 import '../core/welding_defaults.dart';
@@ -997,7 +998,9 @@ class _CalculatorPageState extends State<CalculatorPage> {
                   grooveTypeLabel: _grooveType.labelFor(strings),
                   filletWeldFaceLabel: strings.drawingLabelFilletWeldFace,
                   tJointLabel: strings.drawingLabelTJoint,
-                  smawFillCapLabel: strings.drawingLabelSmawFillCap,
+                  smawFillCapLabel: _weldingProcess.fillText(
+                    strings.drawingLabelSmawFillCap,
+                  ),
                   gtawRootLabel: strings.drawingLabelGtawRoot,
                   capTopLabel: strings.drawingLabelCapTop,
                   capBottomLabel: strings.drawingLabelCapBottom,
@@ -1021,7 +1024,9 @@ class _CalculatorPageState extends State<CalculatorPage> {
                       grooveTypeLabel: _grooveType.labelFor(strings),
                       filletWeldFaceLabel: strings.drawingLabelFilletWeldFace,
                       tJointLabel: strings.drawingLabelTJoint,
-                      smawFillCapLabel: strings.drawingLabelSmawFillCap,
+                      smawFillCapLabel: _weldingProcess.fillText(
+                    strings.drawingLabelSmawFillCap,
+                  ),
                       gtawRootLabel: strings.drawingLabelGtawRoot,
                       capTopLabel: strings.drawingLabelCapTop,
                       capBottomLabel: strings.drawingLabelCapBottom,
@@ -1852,9 +1857,7 @@ class _CalculatorPageState extends State<CalculatorPage> {
     if (a == null && b == null) {
       return _parsePreviewValue(FieldKey.thicknessMm);
     }
-    if (a == null) return b;
-    if (b == null) return a;
-    return a >= b ? a : b;
+    return WeldFormulas.governingThicknessMm(a, b);
   }
 
   double? get _pipeOdAPreview => _isUnequalGeometry
@@ -1869,9 +1872,12 @@ class _CalculatorPageState extends State<CalculatorPage> {
     final a = _pipeOdAPreview;
     final b = _pipeOdBPreview;
     if (a == null && b == null) return _parsePreviewValue(FieldKey.pipeOdMm);
-    if (a == null) return b;
-    if (b == null) return a;
-    return a >= b ? a : b;
+    return WeldFormulas.governingPipeOdMm(
+      thicknessAMm: _thicknessAPreview,
+      thicknessBMm: _thicknessBPreview,
+      odAMm: a,
+      odBMm: b,
+    );
   }
 
   // Which of _visibleFieldSpecs' keys belong on the wizard's Dimensions
@@ -1894,6 +1900,7 @@ class _CalculatorPageState extends State<CalculatorPage> {
     FieldKey.breakHeightMm,
     FieldKey.capOverlapMm,
     FieldKey.capHeightMm,
+    FieldKey.backGougeDepthMm,
     FieldKey.legSizeMm,
   };
 
@@ -1931,6 +1938,8 @@ class _CalculatorPageState extends State<CalculatorPage> {
     // Cap reinforcement passes add a few mm at most; 100 mm is generous.
     FieldKey.capOverlapMm: 100,
     FieldKey.capHeightMm: 100,
+    // Back-gouges run 3-6 mm, deep repairs ~15 mm.
+    FieldKey.backGougeDepthMm: 50,
     // Heavy structural/shipbuilding fillets can reach several tens of mm;
     // 200 mm leaves ample headroom above that.
     FieldKey.legSizeMm: 200,
@@ -2000,6 +2009,7 @@ class _CalculatorPageState extends State<CalculatorPage> {
     BasisKey.breakHeight,
     BasisKey.capOverlap,
     BasisKey.capHeight,
+    BasisKey.backGougeDepth,
     BasisKey.filletLegSize,
   };
 
@@ -2166,6 +2176,15 @@ class _CalculatorPageState extends State<CalculatorPage> {
           helperText: strings.calcFieldBevelAngleHelper,
         ),
       );
+      if (_grooveType == GrooveType.doubleV) {
+        specs.add(
+          InputFieldSpec(
+            key: FieldKey.backGougeDepthMm,
+            label: strings.calcFieldBackGougeDepthLabel,
+            helperText: strings.calcFieldBackGougeDepthHelper,
+          ),
+        );
+      }
     }
 
     if (_grooveType == GrooveType.compoundV) {
@@ -2260,37 +2279,18 @@ class _CalculatorPageState extends State<CalculatorPage> {
 
     if (_weldingProcess == WeldingProcess.gmaw ||
         _weldingProcess == WeldingProcess.fcaw) {
-      specs.add(
-        InputFieldSpec.diameter(
-          key: FieldKey.wireDiameterMm,
-          label: _weldingProcess == WeldingProcess.gmaw
-              ? strings.calcFieldGmawWireDiameterLabel
-              : strings.calcFieldFcawWireDiameterLabel,
-          helperText: _weldingProcess == WeldingProcess.gmaw
-              ? strings.calcFieldGmawWireDiameterHelper
-              : strings.calcFieldFcawWireDiameterHelper,
-          diameterOptions: _weldingProcess == WeldingProcess.gmaw
-              ? const [
-                  DiameterPresetOption(label: '0.8 mm', value: 0.8),
-                  DiameterPresetOption(label: '1.0 mm', value: 1.0),
-                  DiameterPresetOption(label: '1.2 mm', value: 1.2),
-                  DiameterPresetOption(label: '1.6 mm', value: 1.6),
-                ]
-              : const [
-                  DiameterPresetOption(label: '1.2 mm', value: 1.2),
-                  DiameterPresetOption(label: '1.6 mm', value: 1.6),
-                  DiameterPresetOption(label: '2.0 mm', value: 2.0),
-                ],
-        ),
-      );
+      specs.add(_wireDiameterSpec(strings, _weldingProcess));
     }
 
-    if (_weldingProcess == WeldingProcess.gtawSmaw) {
+    if (_weldingProcess.isCombined) {
+      final fill = _weldingProcess.fillProcess;
       specs.addAll([
         InputFieldSpec(
           key: FieldKey.gtawTransitionMm,
           label: strings.calcFieldGtawTransitionLabel,
-          helperText: strings.calcFieldGtawTransitionHelper,
+          helperText: _weldingProcess.fillText(
+            strings.calcFieldGtawTransitionHelper,
+          ),
         ),
         InputFieldSpec.diameter(
           key: FieldKey.gtawWireDiameterMm,
@@ -2303,22 +2303,25 @@ class _CalculatorPageState extends State<CalculatorPage> {
             DiameterPresetOption(label: '3.2 mm', value: 3.2),
           ],
         ),
-        InputFieldSpec.diameter(
-          key: FieldKey.smawElectrodeDiameterMm,
-          label: strings.calcFieldSmawElectrodeDiameterLabel,
-          helperText: strings.calcFieldSmawElectrodeDiameterHelper,
-          diameterOptions: const [
-            DiameterPresetOption(label: '2.5 mm', value: 2.5),
-            DiameterPresetOption(label: '3.2 mm', value: 3.2),
-            DiameterPresetOption(label: '4.0 mm', value: 4.0),
-            DiameterPresetOption(label: '5.0 mm', value: 5.0),
-          ],
-        ),
+        if (fill == WeldingProcess.smaw)
+          InputFieldSpec.diameter(
+            key: FieldKey.smawElectrodeDiameterMm,
+            label: strings.calcFieldSmawElectrodeDiameterLabel,
+            helperText: strings.calcFieldSmawElectrodeDiameterHelper,
+            diameterOptions: const [
+              DiameterPresetOption(label: '2.5 mm', value: 2.5),
+              DiameterPresetOption(label: '3.2 mm', value: 3.2),
+              DiameterPresetOption(label: '4.0 mm', value: 4.0),
+              DiameterPresetOption(label: '5.0 mm', value: 5.0),
+            ],
+          )
+        else
+          _wireDiameterSpec(strings, fill),
       ]);
     }
 
     if (_depositionRateMode == DepositionRateMode.manual) {
-      if (_weldingProcess == WeldingProcess.gtawSmaw) {
+      if (_weldingProcess.isCombined) {
         specs.addAll([
           InputFieldSpec(
             key: FieldKey.manualGtawRateKgPerHour,
@@ -2327,8 +2330,12 @@ class _CalculatorPageState extends State<CalculatorPage> {
           ),
           InputFieldSpec(
             key: FieldKey.manualSmawRateKgPerHour,
-            label: strings.calcFieldSmawDepositionRateLabel,
-            helperText: strings.calcFieldSmawDepositionRateHelper,
+            label: _weldingProcess.fillText(
+              strings.calcFieldSmawDepositionRateLabel,
+            ),
+            helperText: _weldingProcess.fillText(
+              strings.calcFieldSmawDepositionRateHelper,
+            ),
           ),
         ]);
       } else {
@@ -2358,6 +2365,32 @@ class _CalculatorPageState extends State<CalculatorPage> {
     return specs;
   }
 
+  /// Wire-diameter field for a GMAW or FCAW (fill) process.
+  InputFieldSpec _wireDiameterSpec(L10nStrings strings, WeldingProcess p) {
+    final gmaw = p == WeldingProcess.gmaw;
+    return InputFieldSpec.diameter(
+      key: FieldKey.wireDiameterMm,
+      label: gmaw
+          ? strings.calcFieldGmawWireDiameterLabel
+          : strings.calcFieldFcawWireDiameterLabel,
+      helperText: gmaw
+          ? strings.calcFieldGmawWireDiameterHelper
+          : strings.calcFieldFcawWireDiameterHelper,
+      diameterOptions: gmaw
+          ? const [
+              DiameterPresetOption(label: '0.8 mm', value: 0.8),
+              DiameterPresetOption(label: '1.0 mm', value: 1.0),
+              DiameterPresetOption(label: '1.2 mm', value: 1.2),
+              DiameterPresetOption(label: '1.6 mm', value: 1.6),
+            ]
+          : const [
+              DiameterPresetOption(label: '1.2 mm', value: 1.2),
+              DiameterPresetOption(label: '1.6 mm', value: 1.6),
+              DiameterPresetOption(label: '2.0 mm', value: 2.0),
+            ],
+    );
+  }
+
   void _onJointTypeChanged(JointType jointType) {
     setState(() {
       _jointType = jointType;
@@ -2369,6 +2402,10 @@ class _CalculatorPageState extends State<CalculatorPage> {
   }
 
   double get _previewDepositionRate {
+    if (_weldingProcess.isCombined) {
+      final exact = _previewResult;
+      if (exact != null) return exact.depositionRateKgPerHour;
+    }
     if (_depositionRateMode == DepositionRateMode.manual) {
       return _manualPreviewDepositionRate;
     }
@@ -2387,11 +2424,13 @@ class _CalculatorPageState extends State<CalculatorPage> {
       WeldingProcess.fcaw => WeldingDefaults.fcawRateForWire(
         _parsePreviewValue(FieldKey.wireDiameterMm),
       ),
+      WeldingProcess.gtawFcaw ||
+      WeldingProcess.gtawGmaw => _combinedPreviewRate,
     };
   }
 
   double get _manualPreviewDepositionRate {
-    if (_weldingProcess != WeldingProcess.gtawSmaw) {
+    if (!_weldingProcess.isCombined) {
       return _parsePreviewValue(FieldKey.manualDepositionRateKgPerHour) ??
           WeldingDefaults.depositionRateFor(_weldingProcess);
     }
@@ -2401,15 +2440,29 @@ class _CalculatorPageState extends State<CalculatorPage> {
         WeldingDefaults.depositionRateFor(WeldingProcess.gtaw);
     final smawRate =
         _parsePreviewValue(FieldKey.manualSmawRateKgPerHour) ??
-        WeldingDefaults.depositionRateFor(WeldingProcess.smaw);
+        WeldingDefaults.depositionRateFor(_weldingProcess.fillProcess);
     final ratio = _combinedProcessPreviewRatio;
     return (gtawRate * ratio) + (smawRate * (1 - ratio));
   }
 
+  /// The real calculation for the current form, or null while it is
+  /// incomplete/invalid (the summary then falls back to estimates).
+  WeldCalculationResult? get _previewResult {
+    try {
+      return _calculator.calculate(
+        _buildInput(AppLocaleScope.stringsOf(context)),
+      );
+    } catch (_) {
+      return null;
+    }
+  }
+
   double get _previewEfficiency {
-    if (_weldingProcess != WeldingProcess.gtawSmaw) {
+    if (!_weldingProcess.isCombined) {
       return WeldingDefaults.efficiencyFor(_weldingProcess);
     }
+    final exact = _previewResult;
+    if (exact != null) return exact.depositionEfficiency;
 
     final gtawMm = _parsePreviewValue(FieldKey.gtawTransitionMm) ?? 3;
     final thickness = _parsePreviewValue(FieldKey.thicknessMm);
@@ -2419,7 +2472,7 @@ class _CalculatorPageState extends State<CalculatorPage> {
         ? 0.5
         : (gtawMm / totalHeight).clamp(0.0, 1.0);
     final gtawEff = WeldingDefaults.efficiencyFor(WeldingProcess.gtaw);
-    final smawEff = WeldingDefaults.efficiencyFor(WeldingProcess.smaw);
+    final smawEff = WeldingDefaults.efficiencyFor(_weldingProcess.fillProcess);
     final denominator = (ratio / gtawEff) + ((1 - ratio) / smawEff);
     return denominator == 0 ? 0 : 1 / denominator;
   }
@@ -2428,8 +2481,12 @@ class _CalculatorPageState extends State<CalculatorPage> {
     final gtawRate = WeldingDefaults.gtawRateForWire(
       _parsePreviewValue(FieldKey.gtawWireDiameterMm),
     );
-    final smawRate = WeldingDefaults.smawRateForElectrode(
-      _parsePreviewValue(FieldKey.smawElectrodeDiameterMm),
+    final smawRate = WeldingDefaults.fillRateFor(
+      _weldingProcess,
+      smawElectrodeDiameterMm: _parsePreviewValue(
+        FieldKey.smawElectrodeDiameterMm,
+      ),
+      wireDiameterMm: _parsePreviewValue(FieldKey.wireDiameterMm),
     );
     final ratio = _combinedProcessPreviewRatio;
     return (gtawRate * ratio) + (smawRate * (1 - ratio));
@@ -2450,7 +2507,8 @@ class _CalculatorPageState extends State<CalculatorPage> {
   ) {
     final sourceText = _depositionRateMode.labelFor(strings);
 
-    if (_weldingProcess == WeldingProcess.gtawSmaw) {
+    if (_weldingProcess.isCombined) {
+      final fill = _weldingProcess.fillProcess;
       final gtawUpTo = _formatNumber(
         _parsePreviewValue(FieldKey.gtawTransitionMm) ?? 3,
         1,
@@ -2459,9 +2517,11 @@ class _CalculatorPageState extends State<CalculatorPage> {
           ? '${_formatNumber(_parsePreviewValue(FieldKey.manualGtawRateKgPerHour) ?? WeldingDefaults.depositionRateFor(WeldingProcess.gtaw), 2)} kg/h'
           : '${_formatNumber(_parsePreviewValue(FieldKey.gtawWireDiameterMm) ?? 2.4, 1)} mm ${strings.calcWireUnitSuffix}';
       final smawSetting = _depositionRateMode == DepositionRateMode.manual
-          ? '${_formatNumber(_parsePreviewValue(FieldKey.manualSmawRateKgPerHour) ?? WeldingDefaults.depositionRateFor(WeldingProcess.smaw), 2)} kg/h'
-          : '${_formatNumber(_parsePreviewValue(FieldKey.smawElectrodeDiameterMm) ?? 3.2, 1)} mm ${strings.calcElectrodeUnitSuffix}';
-      return '${strings.calcRateBasisLabel} $sourceText | ${strings.calcGtawTransitionDepthLabel} $gtawUpTo mm, ${strings.calcThenSmawSuffix} | ${strings.calcDepositionEfficiencyLabel} ${_formatPercent(efficiency)} | ${strings.calcEquivalentDepositionRateLabel} ${_formatNumber(depositionRate, 2)} kg/h | GTAW $gtawSetting | SMAW $smawSetting';
+          ? '${_formatNumber(_parsePreviewValue(FieldKey.manualSmawRateKgPerHour) ?? WeldingDefaults.depositionRateFor(fill), 2)} kg/h'
+          : fill == WeldingProcess.smaw
+          ? '${_formatNumber(_parsePreviewValue(FieldKey.smawElectrodeDiameterMm) ?? 3.2, 1)} mm ${strings.calcElectrodeUnitSuffix}'
+          : '${_formatNumber(_parsePreviewValue(FieldKey.wireDiameterMm) ?? 1.2, 1)} mm ${strings.calcWireUnitSuffix}';
+      return '${strings.calcRateBasisLabel} $sourceText | ${strings.calcGtawTransitionDepthLabel} $gtawUpTo mm, ${_weldingProcess.fillText(strings.calcThenSmawSuffix)} | ${strings.calcDepositionEfficiencyLabel} ${_formatPercent(efficiency)} | ${strings.calcEquivalentDepositionRateLabel} ${_formatNumber(depositionRate, 2)} kg/h | GTAW $gtawSetting | ${fill.label} $smawSetting';
     }
 
     final detailText = _depositionRateMode == DepositionRateMode.manual
@@ -2475,7 +2535,9 @@ class _CalculatorPageState extends State<CalculatorPage> {
               ' | ${strings.calcWireLabel} ${_formatNumber(_parsePreviewValue(FieldKey.wireDiameterMm) ?? 1.2, 1)} mm',
             WeldingProcess.fcaw =>
               ' | ${strings.calcWireLabel} ${_formatNumber(_parsePreviewValue(FieldKey.wireDiameterMm) ?? 1.6, 1)} mm',
-            WeldingProcess.gtawSmaw => '',
+            WeldingProcess.gtawSmaw ||
+            WeldingProcess.gtawFcaw ||
+            WeldingProcess.gtawGmaw => '',
           };
     return '${strings.calcRateBasisLabel} $sourceText | ${strings.calcDepositionEfficiencyLabel} ${_formatPercent(efficiency)} | ${strings.calcDepositionRateLabel} ${_formatNumber(depositionRate, 2)} kg/h$detailText';
   }
@@ -2497,16 +2559,16 @@ class _CalculatorPageState extends State<CalculatorPage> {
   }
 
   String _presetRateHelperText(L10nStrings strings) {
-    if (_weldingProcess == WeldingProcess.gtawSmaw) {
-      return strings.calcPresetRateHelperGtawSmaw;
+    if (_weldingProcess.isCombined) {
+      return _weldingProcess.fillText(strings.calcPresetRateHelperGtawSmaw);
     }
 
     return strings.calcPresetRateHelperDefault;
   }
 
   String _manualRateHelperText(L10nStrings strings) {
-    if (_weldingProcess == WeldingProcess.gtawSmaw) {
-      return strings.calcManualRateHelperGtawSmaw;
+    if (_weldingProcess.isCombined) {
+      return _weldingProcess.fillText(strings.calcManualRateHelperGtawSmaw);
     }
 
     return strings.calcManualRateHelperDefault;
@@ -2520,7 +2582,8 @@ class _CalculatorPageState extends State<CalculatorPage> {
     final selection = _consumableSelection;
     if (selection is CustomConsumableSelection) {
       final entry = ConsumableCatalog.byId(selection.material.id);
-      if (entry != null && !entry.processes.contains(_weldingProcess)) {
+      if (entry != null &&
+          !_weldingProcess.acceptsConsumableFor(entry.processes)) {
         _consumableSelection = BuiltInConsumableSelection(
           WeldingDefaults.defaultConsumableFor(_weldingProcess),
         );
@@ -2723,6 +2786,7 @@ class _CalculatorPageState extends State<CalculatorPage> {
       data.secondaryBevelAngleDeg,
     );
     _setControllerValue(FieldKey.breakHeightMm, data.breakHeightMm);
+    _setControllerValue(FieldKey.backGougeDepthMm, data.backGougeDepthMm);
     // Cap fields are optional/nullable and _setControllerValue no-ops on
     // null, so a preset/template with no cap values (e.g. every built-in
     // InputPreset) must explicitly clear these, or a stale value typed
@@ -2970,6 +3034,9 @@ class _CalculatorPageState extends State<CalculatorPage> {
       'Secondary bevel angle',
     ),
     breakHeightMm: _parsePresetValue(FieldKey.breakHeightMm, 'Break height'),
+    backGougeDepthMm: _grooveType == GrooveType.doubleV
+        ? _parsePresetValue(FieldKey.backGougeDepthMm, 'Back-gouge depth')
+        : null,
     // Fillet has no cap-reinforcement concept (calculator already zeroes
     // its contribution), but the cap controllers are only hidden -- not
     // cleared -- for Fillet, so avoid persisting stale values into the
@@ -3049,7 +3116,7 @@ class _CalculatorPageState extends State<CalculatorPage> {
         ).toStringAsFixed(1);
     _controllers[FieldKey.manualSmawRateKgPerHour]!.text =
         WeldingDefaults.depositionRateFor(
-          WeldingProcess.smaw,
+          _weldingProcess.fillProcess,
         ).toStringAsFixed(1);
 
     if (_weldingProcess == WeldingProcess.gtaw) {
@@ -3064,6 +3131,11 @@ class _CalculatorPageState extends State<CalculatorPage> {
       _setDiameterPreset(FieldKey.wireDiameterMm, 1.2);
     } else if (_weldingProcess == WeldingProcess.fcaw) {
       _setDiameterPreset(FieldKey.wireDiameterMm, 1.6);
+    } else if (_weldingProcess == WeldingProcess.gtawFcaw ||
+        _weldingProcess == WeldingProcess.gtawGmaw) {
+      _controllers[FieldKey.gtawTransitionMm]!.text = '3';
+      _setDiameterPreset(FieldKey.gtawWireDiameterMm, 2.4);
+      _setDiameterPreset(FieldKey.wireDiameterMm, 1.2);
     }
   }
 
@@ -3079,6 +3151,7 @@ class _CalculatorPageState extends State<CalculatorPage> {
     bevelAngleDeg: _parsePreviewValue(FieldKey.bevelAngleDeg),
     secondaryBevelAngleDeg: _parsePreviewValue(FieldKey.secondaryBevelAngleDeg),
     breakHeightMm: _parsePreviewValue(FieldKey.breakHeightMm),
+    backGougeDepthMm: _parsePreviewValue(FieldKey.backGougeDepthMm),
     capOverlapMm: _parsePreviewValue(FieldKey.capOverlapMm),
     capHeightMm: _parsePreviewValue(FieldKey.capHeightMm),
     legSizeMm: _parsePreviewValue(FieldKey.legSizeMm),
@@ -3350,6 +3423,7 @@ class _CalculatorPageState extends State<CalculatorPage> {
   // Fields the calculator treats as optional (it falls back to defaults or
   // zero); every other visible field must hold a number to calculate.
   static const _optionalFieldKeys = {
+    FieldKey.backGougeDepthMm,
     FieldKey.capOverlapMm,
     FieldKey.capHeightMm,
     FieldKey.wireDiameterMm,
@@ -3390,115 +3464,144 @@ class _CalculatorPageState extends State<CalculatorPage> {
     return true;
   }
 
+  /// Builds the calculator input from the form. Throws the same errors
+  /// as a calculation would (missing / out-of-range values).
+  WeldInputData _buildInput(L10nStrings strings) {
+    return WeldInputData(
+      jointType: _jointType,
+      grooveType: _grooveType,
+      weldingProcess: _weldingProcess,
+      depositionRateMode: _depositionRateMode,
+      quantity: _parseRequired(
+        FieldKey.quantity,
+        strings.calcErrorLabelQuantity,
+        strings,
+      ),
+      densityGPerCm3: _parseRequired(
+        FieldKey.density,
+        strings.calcErrorLabelDensity,
+        strings,
+      ),
+      wasteFactorPercent: _parseRequired(
+        FieldKey.wasteFactor,
+        strings.calcErrorLabelWasteFactor,
+        strings,
+      ),
+      lengthPerPieceMm: _parseOptional(FieldKey.lengthMm),
+      pipeOdMm: _checkDimensionBound(
+        _resolvePipeOdForCalculation(),
+        FieldKey.pipeOdMm,
+        strings.calcFieldPipeOdLabel,
+        strings,
+      ),
+      thicknessMm: _checkDimensionBound(
+        _resolveThicknessForCalculation(),
+        FieldKey.thicknessMm,
+        strings.calcFieldThicknessLabel,
+        strings,
+      ),
+      rootGapMm: _checkDimensionBound(
+        _parseOptional(FieldKey.rootGapMm),
+        FieldKey.rootGapMm,
+        strings.calcFieldRootGapLabel,
+        strings,
+      ),
+      rootFaceMm: _checkDimensionBound(
+        _parseOptional(FieldKey.rootFaceMm),
+        FieldKey.rootFaceMm,
+        strings.calcFieldRootFaceLabel,
+        strings,
+      ),
+      bevelAngleDeg: _checkDimensionBound(
+        _parseOptional(FieldKey.bevelAngleDeg),
+        FieldKey.bevelAngleDeg,
+        strings.calcFieldBevelAngleLabel,
+        strings,
+      ),
+      secondaryBevelAngleDeg: _checkDimensionBound(
+        _parseOptional(FieldKey.secondaryBevelAngleDeg),
+        FieldKey.secondaryBevelAngleDeg,
+        strings.calcFieldSecondaryAngleLabel,
+        strings,
+      ),
+      breakHeightMm: _checkDimensionBound(
+        _parseOptional(FieldKey.breakHeightMm),
+        FieldKey.breakHeightMm,
+        strings.calcFieldBreakHeightLabel,
+        strings,
+      ),
+      capOverlapMm: _checkDimensionBound(
+        _parseOptional(FieldKey.capOverlapMm),
+        FieldKey.capOverlapMm,
+        strings.calcFieldCapOverlapLabel,
+        strings,
+      ),
+      capHeightMm: _checkDimensionBound(
+        _parseOptional(FieldKey.capHeightMm),
+        FieldKey.capHeightMm,
+        strings.calcFieldCapHeightLabel,
+        strings,
+      ),
+      backGougeDepthMm: _grooveType == GrooveType.doubleV
+          ? _checkDimensionBound(
+              _parseOptional(FieldKey.backGougeDepthMm),
+              FieldKey.backGougeDepthMm,
+              strings.calcFieldBackGougeDepthLabel,
+              strings,
+            )
+          : null,
+      legSizeMm: _checkDimensionBound(
+        _parseOptional(FieldKey.legSizeMm),
+        FieldKey.legSizeMm,
+        strings.calcFieldLegSizeLabel,
+        strings,
+      ),
+      gtawTransitionMm: _parseOptional(FieldKey.gtawTransitionMm),
+      wireDiameterMm: _parseOptional(FieldKey.wireDiameterMm),
+      electrodeDiameterMm: _parseOptional(FieldKey.electrodeDiameterMm),
+      gtawWireDiameterMm: _parseOptional(FieldKey.gtawWireDiameterMm),
+      smawElectrodeDiameterMm: _parseOptional(
+        FieldKey.smawElectrodeDiameterMm,
+      ),
+      manualDepositionRateKgPerHour: _parseOptional(
+        FieldKey.manualDepositionRateKgPerHour,
+      ),
+      manualGtawRateKgPerHour: _parseOptional(
+        FieldKey.manualGtawRateKgPerHour,
+      ),
+      manualSmawRateKgPerHour: _parseOptional(
+        FieldKey.manualSmawRateKgPerHour,
+      ),
+    );
+  }
+
   void _calculate() {
     final strings = AppLocaleScope.stringsOf(context);
     if (_revealMissingRequiredFields(strings)) return;
     _fieldErrors.clear();
     try {
-      final input = WeldInputData(
-        jointType: _jointType,
-        grooveType: _grooveType,
-        weldingProcess: _weldingProcess,
-        depositionRateMode: _depositionRateMode,
-        quantity: _parseRequired(
-          FieldKey.quantity,
-          strings.calcErrorLabelQuantity,
-          strings,
-        ),
-        densityGPerCm3: _parseRequired(
-          FieldKey.density,
-          strings.calcErrorLabelDensity,
-          strings,
-        ),
-        wasteFactorPercent: _parseRequired(
-          FieldKey.wasteFactor,
-          strings.calcErrorLabelWasteFactor,
-          strings,
-        ),
-        lengthPerPieceMm: _parseOptional(FieldKey.lengthMm),
-        pipeOdMm: _checkDimensionBound(
-          _resolvePipeOdForCalculation(),
-          FieldKey.pipeOdMm,
-          strings.calcFieldPipeOdLabel,
-          strings,
-        ),
-        thicknessMm: _checkDimensionBound(
-          _resolveThicknessForCalculation(),
-          FieldKey.thicknessMm,
-          strings.calcFieldThicknessLabel,
-          strings,
-        ),
-        rootGapMm: _checkDimensionBound(
-          _parseOptional(FieldKey.rootGapMm),
-          FieldKey.rootGapMm,
-          strings.calcFieldRootGapLabel,
-          strings,
-        ),
-        rootFaceMm: _checkDimensionBound(
-          _parseOptional(FieldKey.rootFaceMm),
-          FieldKey.rootFaceMm,
-          strings.calcFieldRootFaceLabel,
-          strings,
-        ),
-        bevelAngleDeg: _checkDimensionBound(
-          _parseOptional(FieldKey.bevelAngleDeg),
-          FieldKey.bevelAngleDeg,
-          strings.calcFieldBevelAngleLabel,
-          strings,
-        ),
-        secondaryBevelAngleDeg: _checkDimensionBound(
-          _parseOptional(FieldKey.secondaryBevelAngleDeg),
-          FieldKey.secondaryBevelAngleDeg,
-          strings.calcFieldSecondaryAngleLabel,
-          strings,
-        ),
-        breakHeightMm: _checkDimensionBound(
-          _parseOptional(FieldKey.breakHeightMm),
-          FieldKey.breakHeightMm,
-          strings.calcFieldBreakHeightLabel,
-          strings,
-        ),
-        capOverlapMm: _checkDimensionBound(
-          _parseOptional(FieldKey.capOverlapMm),
-          FieldKey.capOverlapMm,
-          strings.calcFieldCapOverlapLabel,
-          strings,
-        ),
-        capHeightMm: _checkDimensionBound(
-          _parseOptional(FieldKey.capHeightMm),
-          FieldKey.capHeightMm,
-          strings.calcFieldCapHeightLabel,
-          strings,
-        ),
-        legSizeMm: _checkDimensionBound(
-          _parseOptional(FieldKey.legSizeMm),
-          FieldKey.legSizeMm,
-          strings.calcFieldLegSizeLabel,
-          strings,
-        ),
-        gtawTransitionMm: _parseOptional(FieldKey.gtawTransitionMm),
-        wireDiameterMm: _parseOptional(FieldKey.wireDiameterMm),
-        electrodeDiameterMm: _parseOptional(FieldKey.electrodeDiameterMm),
-        gtawWireDiameterMm: _parseOptional(FieldKey.gtawWireDiameterMm),
-        smawElectrodeDiameterMm: _parseOptional(
-          FieldKey.smawElectrodeDiameterMm,
-        ),
-        manualDepositionRateKgPerHour: _parseOptional(
-          FieldKey.manualDepositionRateKgPerHour,
-        ),
-        manualGtawRateKgPerHour: _parseOptional(
-          FieldKey.manualGtawRateKgPerHour,
-        ),
-        manualSmawRateKgPerHour: _parseOptional(
-          FieldKey.manualSmawRateKgPerHour,
-        ),
-      );
+      // Unequal joints size the weld on the thinner member, so a typo in the
+      // THICKER field would otherwise never be range-checked.
+      if (_isUnequalGeometry) {
+        for (final (key, label) in [
+          (FieldKey.thicknessAMm, strings.calcFieldThicknessALabel),
+          (FieldKey.thicknessBMm, strings.calcFieldThicknessBLabel),
+          if (_jointType == JointType.pipeButt) ...[
+            (FieldKey.pipeOdAMm, strings.calcFieldPipeOdALabel),
+            (FieldKey.pipeOdBMm, strings.calcFieldPipeOdBLabel),
+          ],
+        ]) {
+          _checkDimensionBound(_parseOptional(key), key, label, strings);
+        }
+      }
+      final input = _buildInput(strings);
 
       final result = _calculator.calculate(input);
       setState(() {
         _result = result;
         _showResultsScreen = true;
       });
+
     } on _RequiredFieldMissingException catch (error) {
       final key = _visibleFieldKeyFor(error.fieldKey);
       setState(() {
@@ -3679,22 +3782,19 @@ class _CalculatorPageState extends State<CalculatorPage> {
     }
     final a = _parseOptional(FieldKey.thicknessAMm);
     final b = _parseOptional(FieldKey.thicknessBMm);
-    if (a == null && b == null) return null;
-    if (a == null) return b;
-    if (b == null) return a;
-    return a >= b ? a : b;
+    return WeldFormulas.governingThicknessMm(a, b);
   }
 
   double? _resolvePipeOdForCalculation() {
     if (!_isUnequalGeometry) {
       return _parseOptional(FieldKey.pipeOdMm);
     }
-    final a = _parseOptional(FieldKey.pipeOdAMm);
-    final b = _parseOptional(FieldKey.pipeOdBMm);
-    if (a == null && b == null) return null;
-    if (a == null) return b;
-    if (b == null) return a;
-    return a >= b ? a : b;
+    return WeldFormulas.governingPipeOdMm(
+      thicknessAMm: _parseOptional(FieldKey.thicknessAMm),
+      thicknessBMm: _parseOptional(FieldKey.thicknessBMm),
+      odAMm: _parseOptional(FieldKey.pipeOdAMm),
+      odBMm: _parseOptional(FieldKey.pipeOdBMm),
+    );
   }
 
   void _resetFields() {
@@ -3711,6 +3811,7 @@ class _CalculatorPageState extends State<CalculatorPage> {
     _controllers[FieldKey.bevelAngleDeg]!.text = '30';
     _controllers[FieldKey.secondaryBevelAngleDeg]!.text = '10';
     _controllers[FieldKey.breakHeightMm]!.text = '4';
+    _controllers[FieldKey.backGougeDepthMm]!.text = '3';
     _controllers[FieldKey.legSizeMm]!.text = '6';
     _clearCapDimensionFields();
     _controllers[FieldKey.gtawTransitionMm]!.text = '3';
@@ -4087,7 +4188,7 @@ class _CalculatorPageState extends State<CalculatorPage> {
               ? BasisKey.rootFacePerSide
               : BasisKey.rootFace,
           _grooveType == GrooveType.doubleV
-              ? 'Root Face per Side'
+              ? 'Root Face (total land)'
               : 'Root Face',
           '${_controllers[FieldKey.rootFaceMm]!.text} mm',
         ),
@@ -4097,6 +4198,16 @@ class _CalculatorPageState extends State<CalculatorPage> {
           '${_controllers[FieldKey.bevelAngleDeg]!.text} deg',
         ),
       ]);
+      final gouge = _parsePreviewValue(FieldKey.backGougeDepthMm);
+      if (_grooveType == GrooveType.doubleV && gouge != null && gouge > 0) {
+        items.add(
+          CalculationBasisItem(
+            BasisKey.backGougeDepth,
+            'Back-Gouge Depth',
+            '${_controllers[FieldKey.backGougeDepthMm]!.text} mm',
+          ),
+        );
+      }
     }
 
     if (_grooveType == GrooveType.compoundV) {
@@ -4216,7 +4327,8 @@ class _CalculatorPageState extends State<CalculatorPage> {
           ),
         );
       }
-    } else if (_weldingProcess == WeldingProcess.gtawSmaw) {
+    } else if (_weldingProcess.isCombined) {
+      final fill = _weldingProcess.fillProcess;
       items.addAll([
         CalculationBasisItem(
           BasisKey.gtawTransitionDepth,
@@ -4237,15 +4349,25 @@ class _CalculatorPageState extends State<CalculatorPage> {
           ),
         if (_depositionRateMode == DepositionRateMode.manual)
           CalculationBasisItem(
-            BasisKey.smawDepositionRate,
-            'SMAW Deposition Rate',
+            switch (fill) {
+              WeldingProcess.fcaw => BasisKey.fcawDepositionRate,
+              WeldingProcess.gmaw => BasisKey.gmawDepositionRate,
+              _ => BasisKey.smawDepositionRate,
+            },
+            '${fill.label} Deposition Rate',
             '${_controllers[FieldKey.manualSmawRateKgPerHour]!.text} kg/h',
           )
-        else
+        else if (fill == WeldingProcess.smaw)
           CalculationBasisItem(
             BasisKey.smawElectrodeDiameter,
             'SMAW Electrode Diameter',
             '${_controllers[FieldKey.smawElectrodeDiameterMm]!.text} mm',
+          )
+        else
+          CalculationBasisItem(
+            BasisKey.wireDiameter,
+            'Wire Diameter',
+            '${_controllers[FieldKey.wireDiameterMm]!.text} mm',
           ),
       ]);
     }

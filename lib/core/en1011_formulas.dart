@@ -243,7 +243,9 @@ void _assertT0Valid(double t0) {
 // EN 1011-1 Table 1 efficiency is used for.
 // ---------------------------------------------------------------------
 
-enum ArcProcess { saw, smaw, gmawMag }
+/// EN 1011-1 Table 1 thermal efficiency k: SAW (121) 1.0, MMA (111) 0.8,
+/// MIG/MAG and flux-cored (13x) 0.8, TIG (141) 0.6.
+enum ArcProcess { saw, smaw, gmawMag, gtaw }
 
 /// Arc thermal efficiency per EN 1011-1 Table 1 (SMAW 0.8, MIG/MAG/FCAW 0.8,
 /// SAW 1.0), see https://www.ssab.com/en/support/how-to-process/how-to-weld/welding-heat-input/heat-input
@@ -258,6 +260,8 @@ double arcThermalEfficiencyFor(ArcProcess process) {
       return 0.8;
     case ArcProcess.gmawMag:
       return 0.8;
+    case ArcProcess.gtaw:
+      return 0.6;
   }
 }
 

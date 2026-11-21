@@ -6,7 +6,14 @@ enum JointType { pipeButt, plateButt, fillet }
 
 enum GrooveType { singleV, halfV, doubleV, compoundV, square, fillet }
 
-enum WeldingProcess { gtaw, smaw, gtawSmaw, gmaw, fcaw }
+enum WeldingProcess { gtaw, smaw, gtawSmaw, gmaw, fcaw, gtawFcaw, gtawGmaw }
+
+/// Non-blocking engineering warnings attached to a result.
+enum WeldWarning {
+  /// Double V on a pipe whose bore is too small to weld the second side
+  /// from inside.
+  doubleVPipeNoInternalAccess,
+}
 
 enum DepositionRateMode { preset, manual }
 
@@ -97,10 +104,13 @@ extension JointTypeX on JointType {
       GrooveType.compoundV,
       GrooveType.square,
     ],
+    // Compound V (steep lower bevel + shallow upper bevel) is also a
+    // standard heavy-plate preparation (ISO 9692-2), not pipe-only.
     JointType.plateButt => const [
       GrooveType.singleV,
       GrooveType.halfV,
       GrooveType.doubleV,
+      GrooveType.compoundV,
       GrooveType.square,
     ],
     JointType.fillet => const [GrooveType.fillet],
@@ -127,6 +137,13 @@ extension GrooveTypeX on GrooveType {
   };
 }
 
+extension WeldWarningX on WeldWarning {
+  String messageFor(L10nStrings strings) => switch (this) {
+    WeldWarning.doubleVPipeNoInternalAccess =>
+      strings.warningDoubleVPipeNoInternalAccess,
+  };
+}
+
 extension WeldingProcessX on WeldingProcess {
   // Never localized -- GTAW/SMAW/GMAW/FCAW are international AWS process
   // abbreviations, not prose (explicit user decision), so this label is
@@ -137,7 +154,36 @@ extension WeldingProcessX on WeldingProcess {
     WeldingProcess.gtawSmaw => 'GTAW + SMAW',
     WeldingProcess.gmaw => 'GMAW',
     WeldingProcess.fcaw => 'FCAW',
+    WeldingProcess.gtawFcaw => 'GTAW + FCAW',
+    WeldingProcess.gtawGmaw => 'GTAW + GMAW',
   };
+
+  /// GTAW root followed by another process for fill and cap.
+  bool get isCombined =>
+      this == WeldingProcess.gtawSmaw ||
+      this == WeldingProcess.gtawFcaw ||
+      this == WeldingProcess.gtawGmaw;
+
+  /// Process that deposits the fill/cap (itself for single processes).
+  WeldingProcess get fillProcess => switch (this) {
+    WeldingProcess.gtawSmaw => WeldingProcess.smaw,
+    WeldingProcess.gtawFcaw => WeldingProcess.fcaw,
+    WeldingProcess.gtawGmaw => WeldingProcess.gmaw,
+    _ => this,
+  };
+
+  /// Whether a consumable listed for [processes] can be used with this
+  /// process. GTAW+FCAW / GTAW+GMAW take the fill process's consumables
+  /// (the fill/cap dominates the deposited weight).
+  bool acceptsConsumableFor(List<WeldingProcess> processes) =>
+      processes.contains(this) ||
+      ((this == WeldingProcess.gtawFcaw || this == WeldingProcess.gtawGmaw) &&
+          processes.contains(fillProcess));
+
+  /// Replaces the literal "SMAW" in a GTAW+SMAW text with this process's
+  /// fill process (process abbreviations are never localized).
+  String fillText(String text) =>
+      isCombined ? text.replaceAll('SMAW', fillProcess.label) : text;
 }
 
 extension DepositionRateModeX on DepositionRateMode {
@@ -643,11 +689,14 @@ extension InputPresetX on InputPreset {
         ConsumablePreset.gtawRootSmawFill,
       ),
       quantity: 1,
-      pipeOdMm: 323.9,
-      thicknessMm: 16,
+      // Double V needs the inside welded, so a man-entry bore (36 in):
+      // a smaller pipe would trip the no-internal-access warning.
+      pipeOdMm: 914.4,
+      thicknessMm: 25.4,
       rootGapMm: 3,
       rootFaceMm: 2,
       bevelAngleDeg: 30,
+      backGougeDepthMm: 3,
       gtawTransitionMm: 4,
       gtawWireDiameterMm: 2.4,
       smawElectrodeDiameterMm: 4.0,
@@ -736,6 +785,7 @@ class WeldInputPresetData {
     this.breakHeightMm,
     this.capOverlapMm,
     this.capHeightMm,
+    this.backGougeDepthMm,
     this.legSizeMm,
     this.gtawTransitionMm,
     this.wireDiameterMm,
@@ -774,6 +824,7 @@ class WeldInputPresetData {
   final double? breakHeightMm;
   final double? capOverlapMm;
   final double? capHeightMm;
+  final double? backGougeDepthMm;
   final double? legSizeMm;
   final double? gtawTransitionMm;
   final double? wireDiameterMm;
@@ -814,12 +865,17 @@ class WeldInputPresetData {
     if (thicknessBMm != null) 'thicknessBMm': thicknessBMm,
     if (rootGapMm != null) 'rootGapMm': rootGapMm,
     if (rootFaceMm != null) 'rootFaceMm': rootFaceMm,
+    // Marks Double V root faces saved as the TOTAL land (ISO 9692-1 c).
+    // Presets without it were saved when c meant "per side".
+    if (rootFaceMm != null && grooveType == GrooveType.doubleV)
+      'rootFaceTotalLand': true,
     if (bevelAngleDeg != null) 'bevelAngleDeg': bevelAngleDeg,
     if (secondaryBevelAngleDeg != null)
       'secondaryBevelAngleDeg': secondaryBevelAngleDeg,
     if (breakHeightMm != null) 'breakHeightMm': breakHeightMm,
     if (capOverlapMm != null) 'capOverlapMm': capOverlapMm,
     if (capHeightMm != null) 'capHeightMm': capHeightMm,
+    if (backGougeDepthMm != null) 'backGougeDepthMm': backGougeDepthMm,
     if (legSizeMm != null) 'legSizeMm': legSizeMm,
     if (gtawTransitionMm != null) 'gtawTransitionMm': gtawTransitionMm,
     if (wireDiameterMm != null) 'wireDiameterMm': wireDiameterMm,
@@ -882,12 +938,13 @@ class WeldInputPresetData {
     thicknessAMm: _nullableDouble(json['thicknessAMm']),
     thicknessBMm: _nullableDouble(json['thicknessBMm']),
     rootGapMm: _nullableDouble(json['rootGapMm']),
-    rootFaceMm: _nullableDouble(json['rootFaceMm']),
+    rootFaceMm: _migratedRootFace(json),
     bevelAngleDeg: _nullableDouble(json['bevelAngleDeg']),
     secondaryBevelAngleDeg: _nullableDouble(json['secondaryBevelAngleDeg']),
     breakHeightMm: _nullableDouble(json['breakHeightMm']),
     capOverlapMm: _nullableDouble(json['capOverlapMm']),
     capHeightMm: _nullableDouble(json['capHeightMm']),
+    backGougeDepthMm: _nullableDouble(json['backGougeDepthMm']),
     legSizeMm: _nullableDouble(json['legSizeMm']),
     gtawTransitionMm: _nullableDouble(json['gtawTransitionMm']),
     wireDiameterMm: _nullableDouble(json['wireDiameterMm']),
@@ -964,6 +1021,7 @@ class WeldInputData {
     this.breakHeightMm,
     this.capOverlapMm,
     this.capHeightMm,
+    this.backGougeDepthMm,
     this.legSizeMm,
     this.gtawTransitionMm,
     this.wireDiameterMm,
@@ -992,6 +1050,7 @@ class WeldInputData {
   final double? breakHeightMm;
   final double? capOverlapMm;
   final double? capHeightMm;
+  final double? backGougeDepthMm;
   final double? legSizeMm;
   final double? gtawTransitionMm;
   final double? wireDiameterMm;
@@ -1014,8 +1073,10 @@ class WeldCalculationResult {
     required this.depositionEfficiency,
     required this.depositionRateKgPerHour,
     required this.processBreakdowns,
+    this.warnings = const [],
   });
 
+  final List<WeldWarning> warnings;
   final double areaMm2;
   final double lengthMm;
   final double volumeCm3;
@@ -1054,4 +1115,16 @@ class InputValidationException implements Exception {
 
   @override
   String toString() => message;
+}
+
+/// Double V presets saved before 1.0.2 stored the root face PER SIDE; it is
+/// now the total land, so those values are doubled on load to keep the same
+/// joint (and the same result).
+double? _migratedRootFace(Map<String, dynamic> json) {
+  final raw = json['rootFaceMm'];
+  if (raw is! num) return null;
+  final c = raw.toDouble();
+  final isDoubleV = json['grooveType'] == GrooveType.doubleV.name;
+  if (isDoubleV && json['rootFaceTotalLand'] != true) return c * 2;
+  return c;
 }

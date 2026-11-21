@@ -29,25 +29,19 @@ ARCHIVE="build/ios/archive/Runner.xcarchive"
 /usr/libexec/PlistBuddy -c "Print :ApplicationProperties:CFBundleShortVersionString" \
   -c "Print :ApplicationProperties:CFBundleVersion" "$ARCHIVE/Info.plist"
 
-OPTS="$(mktemp -t exportopts).plist"
-cat > "$OPTS" <<'EOF'
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0"><dict>
-<key>method</key><string>app-store-connect</string>
-<key>destination</key><string>upload</string>
-<key>teamID</key><string>2R677ND6B7</string>
-<key>signingStyle</key><string>automatic</string>
-</dict></plist>
-EOF
+# Signing: dedicated CI keychain + manual App Store profile (no Xcode account,
+# no Mac password). Setup lives in ~/.appstoreconnect/signing (see agent baglanti-sorumlusu).
+SIGN_DIR="$HOME/.appstoreconnect/signing"
+source "$SIGN_DIR/kc.env"
+security unlock-keychain -p "$KC_PASS" "$SIGN_DIR/varyos-ci.keychain-db"
 
+rm -rf build/ios/ipa_local
 xcodebuild -exportArchive \
   -archivePath "$ARCHIVE" \
-  -exportOptionsPlist "$OPTS" \
-  -exportPath "build/ios/upload" \
-  -allowProvisioningUpdates \
-  -authenticationKeyPath "$KEY_PATH" \
-  -authenticationKeyID "$ASC_KEY_ID" \
-  -authenticationKeyIssuerID "$ASC_ISSUER_ID"
+  -exportOptionsPlist "$SIGN_DIR/weld_export.plist" \
+  -exportPath "build/ios/ipa_local"
+
+IPA="$(ls build/ios/ipa_local/*.ipa | head -1)"
+xcrun altool --upload-app -f "$IPA" -t ios --apiKey "$ASC_KEY_ID" --apiIssuer "$ASC_ISSUER_ID"
 
 echo "Uploaded. TestFlight processing takes ~10-30 min."

@@ -2,6 +2,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
+import '../../core/weld_formulas.dart';
 import '../../l10n/strings.dart';
 import '../../models/weld_models.dart';
 import '../calculator_page/calculator_page_models.dart' show FieldKey;
@@ -100,6 +101,7 @@ class WeldDrawingData {
     this.pipeOdAMm,
     this.pipeOdBMm,
     this.gtawTransitionMm,
+    this.backGougeDepthMm,
   });
 
   final WeldingProcess weldingProcess;
@@ -120,6 +122,7 @@ class WeldDrawingData {
   final double? pipeOdAMm;
   final double? pipeOdBMm;
   final double? gtawTransitionMm;
+  final double? backGougeDepthMm;
 }
 
 class WeldDrawingPreview extends StatefulWidget {
@@ -296,6 +299,11 @@ class WeldDrawingScene {
   Path weld = Path();
   // Canvas y from which the weld is tinted as the GTAW root zone.
   double? rootZoneTopY;
+  // Canvas y where the GTAW zone ends (Double V: bottom of the land). Null
+  // means it runs to the weld's root face.
+  double? rootZoneBottomY;
+  // Double V back-gouge outline (inside the weld), or null.
+  Path? backGouge;
   final List<_Seg> _lines = [];
   final List<_Seg> _leaders = [];
   final List<_Arrow> _arrows = [];
@@ -661,11 +669,18 @@ class _SceneBuilder {
     } else {
       _buildButt();
     }
+    // Last guarantee on crowded canvases: a leader that ended up running
+    // through a label's text is dropped (the label stays next to its spot).
+    scene._leaders.removeWhere(
+      (seg) => scene.labels.any(
+        (l) => _segHitsRect(seg.a, seg.b, l.rect.deflate(1)),
+      ),
+    );
     return scene;
   }
 
   bool get _combined =>
-      data.weldingProcess == WeldingProcess.gtawSmaw &&
+      data.weldingProcess.isCombined &&
       _positive(data.gtawTransitionMm) != null;
 
   void _buildButt() {
@@ -718,7 +733,8 @@ class _SceneBuilder {
     final tanA = math.tan(_rad(alphaDeg));
     final tanB = math.tan(_rad(betaDeg));
     final cSingle = _vis(data.rootFaceMm, 2, gv * 0.08, gv * 0.45);
-    final cDouble = _vis(data.rootFaceMm, 2, gv * 0.05, gv * 0.25);
+    // Double V: c is the TOTAL land, centred on mid-thickness.
+    final cDouble = _vis(data.rootFaceMm, 2, gv * 0.08, gv * 0.4);
     final brkVis = _vis(data.breakHeightMm, 4, gv * 0.12, gv * 0.6);
 
     final capOv = _positive(data.capOverlapMm);
@@ -749,7 +765,7 @@ class _SceneBuilder {
           ];
         case GrooveType.doubleV:
           final mid = (yT + yB) / 2;
-          final c = math.min(cDouble, thick * 0.3);
+          final c = math.min(cDouble, thick * 0.6) / 2;
           return [
             Offset(hG + (mid - c - yT) * tanA, yT),
             Offset(hG, mid - c),
@@ -771,8 +787,13 @@ class _SceneBuilder {
       }
     }
 
-    final faceL = face(false, lt, lb);
-    final faceR = face(true, rt, rb);
+    // Unequal walls: the thicker member is tapered (1:4) down to the
+    // thinner one, so the groove is cut on the thinner wall (jT..jB) on
+    // both sides (ASME B16.25 / B31.3 328.4.3, AWS D1.1 transition).
+    final jT = math.max(lt, rt);
+    final jB = math.min(lb, rb);
+    final faceL = face(false, jT, jB);
+    final faceR = face(true, jT, jB);
     final xTop = math.max(faceL.first.dx, faceR.first.dx);
 
     // ---- Pixel frame ----
@@ -820,14 +841,40 @@ class _SceneBuilder {
     final endMm = areaW / 2 / s;
 
     // ---- Shapes ----
+    // Horizontal start of a taper of [step] from a face edge at [x].
+    // A short flat at the thin-wall height separates the taper from the
+    // groove bevel, so the two never read as one slanted face. The taper is
+    // 1:4 when it fits the card, steeper (drawing only) when it does not.
+    final flat = math.max(1.5, 14 / s);
+    double flatX(double x) => math.min(x + flat, endMm * 0.6);
+    double taperX(double x, double step) => math.min(
+      flatX(x) + step * WeldFormulas.unequalTaperRatio,
+      endMm * 0.92,
+    );
     final leftPts = [
       p(-endMm, lt),
+      if (jT - lt > 1e-6) ...[
+        p(-taperX(faceL.first.dx, jT - lt), lt),
+        p(-flatX(faceL.first.dx), jT),
+      ],
       for (final f in faceL) p(-f.dx, f.dy),
+      if (lb - jB > 1e-6) ...[
+        p(-flatX(faceL.last.dx), jB),
+        p(-taperX(faceL.last.dx, lb - jB), lb),
+      ],
       p(-endMm, lb),
     ];
     final rightPts = [
       p(endMm, rt),
+      if (jT - rt > 1e-6) ...[
+        p(taperX(faceR.first.dx, jT - rt), rt),
+        p(flatX(faceR.first.dx), jT),
+      ],
       for (final f in faceR) p(f.dx, f.dy),
+      if (rb - jB > 1e-6) ...[
+        p(flatX(faceR.last.dx), jB),
+        p(taperX(faceR.last.dx, rb - jB), rb),
+      ],
       p(endMm, rb),
     ];
     scene.plates
@@ -836,8 +883,8 @@ class _SceneBuilder {
     _outlineOf(leftPts);
     _outlineOf(rightPts);
 
-    final topCtrl = p(0, math.min(lt, rt) - 2 * riseTop);
-    final botCtrl = p(0, math.max(lb, rb) + 2 * riseBot);
+    final topCtrl = p(0, jT - 2 * riseTop);
+    final botCtrl = p(0, jB + 2 * riseBot);
     final tl = p(-faceL.first.dx, faceL.first.dy);
     final tr = p(faceR.first.dx, faceR.first.dy);
     final br = p(faceR.last.dx, faceR.last.dy);
@@ -889,19 +936,19 @@ class _SceneBuilder {
     final xGapL = cx - hG * s;
     final xGapR = cx + hG * s;
     _cur = FieldKey.rootGapMm;
-    _seg(Offset(xGapL, yLb + 2), Offset(xGapL, dimY + 4));
-    _seg(Offset(xGapR, yRb + 2), Offset(xGapR, dimY + 4));
+    final yJb = p(0, jB).dy;
+    _seg(Offset(xGapL, yJb + 2), Offset(xGapL, dimY + 4));
+    _seg(Offset(xGapR, yJb + 2), Offset(xGapR, dimY + 4));
     _dim(Offset(xGapL, dimY), Offset(xGapR, dimY));
 
     // Root face c (right plate): from the groove's lower corner to the
-    // plate's back face. Double V measures from the mid-plane to the land
-    // end, because the land is c on each side of it.
+    // plate's back face. Double V measures the whole land (both ends).
     final hasRootFace = grooveType != GrooveType.square;
     double? yC1, yC2, xC;
     if (hasRootFace) {
       final i = faceR.length - 2;
       final lowerRoot = isDouble ? faceR[2] : faceR[i];
-      final upper = isDouble ? (rt + rb) / 2 : faceR[i].dy;
+      final upper = isDouble ? faceR[1].dy : faceR[i].dy;
       yC1 = p(0, upper).dy;
       yC2 = p(0, isDouble ? lowerRoot.dy : faceR.last.dy).dy;
       xC = cx + hG * s + 12;
@@ -993,7 +1040,7 @@ class _SceneBuilder {
         final dirY = spec.top ? -1.0 : 1.0;
         final rise = spec.top ? riseTop : riseBot;
         if (capOv != null) {
-          final surf = spec.top ? yRt : yRb;
+          final surf = p(0, spec.top ? jT : jB).dy;
           final x0 = cx + faceR.first.dx * s;
           final capW = (capOv * s).clamp(14.0, 40.0);
           final lineY = surf + dirY * 14;
@@ -1019,10 +1066,10 @@ class _SceneBuilder {
           ));
         }
         if (capH != null) {
-          final surf = spec.top ? yLt : yLb;
+          final surf = p(0, spec.top ? jT : jB).dy;
           final apex = p(
             0,
-            spec.top ? math.min(lt, rt) - rise : math.max(lb, rb) + rise,
+            spec.top ? jT - rise : jB + rise,
           ).dy;
           final xl = cx - faceL.first.dx * s - 16;
           _cur = FieldKey.capHeightMm;
@@ -1043,6 +1090,36 @@ class _SceneBuilder {
           ));
         }
       }
+    }
+
+    // Back-gouge (Double V): U-groove dug from the second (bottom) side's
+    // root up into the land, refilled by the fill/cap process.
+    final gougeReal = isDouble ? _positive(data.backGougeDepthMm) : null;
+    Offset? gougeCenter;
+    if (gougeReal != null) {
+      final k = gv / gov;
+      final landBot = math.max(faceL[2].dy, faceR[2].dy);
+      final landTop = math.min(faceL[1].dy, faceR[1].dy);
+      final dDraw = (gougeReal * k).clamp(
+        (landBot - landTop) * 0.5,
+        (landBot - jT) * 0.9,
+      );
+      final wReal = math.max(1.5 * gougeReal, (data.rootGapMm ?? 0) + 2);
+      final halfW = math.max(wReal * k / 2, hG + 0.6);
+      final a = p(-halfW, landBot);
+      final apex = p(0, landBot - dDraw);
+      final b = p(halfW, landBot);
+      final pts = <Offset>[
+        a,
+        for (var j = 1; j < 16; j++)
+          () {
+            final t = math.pi * j / 16;
+            return p(-halfW * math.cos(t), landBot - dDraw * math.sin(t));
+          }(),
+        b,
+      ];
+      scene.backGouge = _poly(pts);
+      gougeCenter = Offset(apex.dx, (apex.dy + a.dy) / 2);
     }
 
     _cur = null;
@@ -1082,8 +1159,35 @@ class _SceneBuilder {
 
     if (_combined) {
       final tr0 = _positive(data.gtawTransitionMm)!;
-      final trVis = _vis(tr0, 0, gv * 0.12, gv * 0.7);
-      final zoneTop = math.max(lb, rb) - trVis;
+      // GTAW depth in drawn units, kept in proportion to the real thickness
+      // (the plate itself may be drawn thicker/thinner than it really is).
+      final k = gv / gov;
+      // Where the GTAW zone starts (the root) and how far it climbs.
+      // Single-sided grooves: root at the back face. Double V: root pass
+      // sits on the land at mid-thickness and GTAW climbs into the first
+      // (top) side; the back-gouged second side stays SMAW.
+      final double rootBase;
+      final double zoneTop;
+      if (isDouble) {
+        final landTop = math.min(faceL[1].dy, faceR[1].dy);
+        final landBot = math.max(faceL[2].dy, faceR[2].dy);
+        rootBase = landBot;
+        final landReal = _positive(data.rootFaceMm) ?? 0;
+        final drawnLand = landBot - landTop;
+        final climb = tr0 <= landReal && landReal > 0
+            ? drawnLand * (tr0 / landReal)
+            : drawnLand + (tr0 - landReal) * k;
+        zoneTop = math.max(
+          jT,
+          landBot - math.max(climb, drawnLand * 0.6),
+        );
+        scene.rootZoneBottomY = p(0, landBot).dy;
+      } else {
+        rootBase = jB;
+        final depth = (tr0 * k).clamp(gv * 0.12, gv);
+        zoneTop = rootBase - depth;
+      }
+      final trVis = rootBase - zoneTop;
       scene.rootZoneTopY = p(0, zoneTop).dy;
       final smaw = labels.smawFillCap;
       final sw = _labelSize(smaw).width;
@@ -1095,7 +1199,7 @@ class _SceneBuilder {
         leaderTargets: [
           for (final fx in [0.0, -0.4, 0.4])
             for (final fy in [0.5, 0.3, 0.7])
-              p(fx * faceR.first.dx, (math.min(lt, rt) + zoneTop) * fy),
+              p(fx * faceR.first.dx, (jT + zoneTop) * fy),
         ],
       );
       final root = '${labels.gtawRoot} ${_fmt(tr0)} mm';
@@ -1108,8 +1212,24 @@ class _SceneBuilder {
         leaderTargets: [
           for (final fx in [0.0, -0.6, 0.6])
             for (final fy in [0.5, 0.25, 0.75])
-              p(fx * hG, math.max(lb, rb) - trVis * fy),
+              p(fx * hG, rootBase - trVis * fy),
         ],
+      );
+    }
+
+    if (gougeReal != null && gougeCenter != null) {
+      final text = 'BG ${_fmt(gougeReal)} mm';
+      final lw = _labelSize(text).width;
+      _label(
+        FieldKey.backGougeDepthMm,
+        text,
+        gougeReal,
+        [
+          // Left plate, clear of the thickness dimension line and its label.
+          for (final f in [2.5, -2.5, 4.0, -4.0])
+            Offset(xDimL + 8 + lw / 2, (yLt + yLb) / 2 + f * _labelH),
+        ],
+        leaderTargets: [gougeCenter],
       );
     }
 
@@ -1271,7 +1391,12 @@ class _WeldDrawingPainter extends CustomPainter {
       canvas.save();
       canvas.clipPath(scene.weld);
       canvas.drawRect(
-        Rect.fromLTRB(0, rootY, size.width, size.height),
+        Rect.fromLTRB(
+          0,
+          rootY,
+          size.width,
+          scene.rootZoneBottomY ?? size.height,
+        ),
         Paint()..color = _rootColor.withValues(alpha: 0.85),
       );
       canvas.restore();
@@ -1280,6 +1405,20 @@ class _WeldDrawingPainter extends CustomPainter {
       canvas.drawPath(plate, outline);
     }
     canvas.drawPath(scene.weld, outline);
+    final gouge = scene.backGouge;
+    if (gouge != null) {
+      canvas.drawPath(
+        gouge,
+        Paint()..color = const Color(0xFFB5462A).withValues(alpha: 0.28),
+      );
+      canvas.drawPath(
+        gouge,
+        Paint()
+          ..color = const Color(0xFFB5462A)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 1.2,
+      );
+    }
 
     // Fields with no label on the drawing (quantity, length...) highlight
     // nothing, so the drawing is left as is.

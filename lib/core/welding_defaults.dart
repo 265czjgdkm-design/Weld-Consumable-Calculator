@@ -12,6 +12,9 @@ class WeldingDefaults {
     WeldingProcess.gtawSmaw => 0.80,
     WeldingProcess.gmaw => 0.90,
     WeldingProcess.fcaw => 0.85,
+    // Blended single-figure values (only used where no split is computed).
+    WeldingProcess.gtawFcaw => 0.87,
+    WeldingProcess.gtawGmaw => 0.91,
   };
 
   static double depositionRateFor(WeldingProcess process) => switch (process) {
@@ -20,6 +23,8 @@ class WeldingDefaults {
     WeldingProcess.gtawSmaw => 1.0,
     WeldingProcess.gmaw => 3.5,
     WeldingProcess.fcaw => 4.0,
+    WeldingProcess.gtawFcaw => 2.8,
+    WeldingProcess.gtawGmaw => 2.5,
   };
 
   static double gtawRateForWire(double? diameterMm) {
@@ -59,7 +64,9 @@ class WeldingDefaults {
 
   static List<ConsumablePreset> consumablesFor(WeldingProcess process) =>
       ConsumablePreset.values
-          .where((preset) => preset.supportedProcesses.contains(process))
+          .where(
+            (preset) => process.acceptsConsumableFor(preset.supportedProcesses),
+          )
           .toList();
 
   static ConsumablePreset defaultConsumableFor(WeldingProcess process) =>
@@ -69,5 +76,18 @@ class WeldingDefaults {
         WeldingProcess.gtawSmaw => ConsumablePreset.gtawRootSmawFill,
         WeldingProcess.gmaw => ConsumablePreset.er70s6,
         WeldingProcess.fcaw => ConsumablePreset.e71t1,
+        WeldingProcess.gtawFcaw => ConsumablePreset.e71t1,
+        WeldingProcess.gtawGmaw => ConsumablePreset.er70s6,
       };
+
+  /// Preset deposition rate of a combined process's fill/cap portion.
+  static double fillRateFor(
+    WeldingProcess process, {
+    double? smawElectrodeDiameterMm,
+    double? wireDiameterMm,
+  }) => switch (process.fillProcess) {
+    WeldingProcess.fcaw => fcawRateForWire(wireDiameterMm),
+    WeldingProcess.gmaw => gmawRateForWire(wireDiameterMm),
+    _ => smawRateForElectrode(smawElectrodeDiameterMm),
+  };
 }

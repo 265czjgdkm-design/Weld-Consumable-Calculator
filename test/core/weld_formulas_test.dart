@@ -111,7 +111,7 @@ void main() {
           closeTo(
             WeldFormulas.singleVTopWidthMm(
               thicknessMm: thicknessMm / 2,
-              rootFaceMm: rootFaceMm,
+              rootFaceMm: rootFaceMm / 2,
               rootGapMm: rootGapMm,
               bevelAngleDeg: bevelAngleDeg,
             ),

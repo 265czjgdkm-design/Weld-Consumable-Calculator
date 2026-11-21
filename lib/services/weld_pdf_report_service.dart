@@ -176,7 +176,7 @@ class WeldPdfReportService {
             strings.pdfSectionEngineeringNotesSubtitle,
           ),
           pw.SizedBox(height: 10),
-          _buildEngineeringNotes(strings),
+          _buildEngineeringNotes(strings, result.warnings),
         ],
       ),
     );
@@ -296,10 +296,7 @@ class WeldPdfReportService {
               runSpacing: 10,
               children: [
                 _summaryChip(strings.basisJoint, jointType.labelFor(strings)),
-                _summaryChip(
-                  strings.basisGroove,
-                  grooveType.labelFor(strings),
-                ),
+                _summaryChip(strings.basisGroove, grooveType.labelFor(strings)),
                 _summaryChip(strings.basisProcess, weldingProcess.label),
                 _summaryChip(
                   strings.basisClassification,
@@ -658,22 +655,17 @@ class WeldPdfReportService {
     );
   }
 
-  pw.Widget _buildMetricGrid(WeldCalculationResult result, L10nStrings strings) {
+  pw.Widget _buildMetricGrid(
+    WeldCalculationResult result,
+    L10nStrings strings,
+  ) {
     final metrics = [
       (strings.metricWeldArea, _number(result.areaMm2, 2), 'mm2'),
       (strings.metricWeldLength, _number(result.lengthMm, 2), 'mm'),
       (strings.metricWeldMetalVolume, _number(result.volumeCm3, 3), 'cm3'),
       (strings.metricWeldMetalWeight, _number(result.weldMetalKg, 3), 'kg'),
-      (
-        strings.metricFillerMetalConsumption,
-        _number(result.fillerKg, 3),
-        'kg',
-      ),
-      (
-        strings.metricEstimatedArcOnTime,
-        _number(result.arcTimeHours, 3),
-        'h',
-      ),
+      (strings.metricFillerMetalConsumption, _number(result.fillerKg, 3), 'kg'),
+      (strings.metricEstimatedArcOnTime, _number(result.arcTimeHours, 3), 'h'),
       (
         strings.metricEffectiveDepositionEfficiency,
         _percent(result.depositionEfficiency),
@@ -955,8 +947,12 @@ class WeldPdfReportService {
     );
   }
 
-  pw.Widget _buildEngineeringNotes(L10nStrings strings) {
+  pw.Widget _buildEngineeringNotes(
+    L10nStrings strings, [
+    List<WeldWarning> warnings = const [],
+  ]) {
     final notes = [
+      for (final w in warnings) w.messageFor(strings),
       strings.pdfNote1,
       strings.pdfNote2,
       strings.pdfNote3,
@@ -1122,6 +1118,7 @@ class WeldPdfReportService {
       BasisKey.breakHeight,
       BasisKey.capOverlap,
       BasisKey.capHeight,
+      BasisKey.backGougeDepth,
       BasisKey.filletLegSize,
     ];
     const processOrder = [
@@ -1133,6 +1130,8 @@ class WeldPdfReportService {
       BasisKey.smawElectrodeDiameter,
       BasisKey.gtawDepositionRate,
       BasisKey.smawDepositionRate,
+      BasisKey.fcawDepositionRate,
+      BasisKey.gmawDepositionRate,
     ];
 
     final setup = _orderedEntries(entries, setupOrder);

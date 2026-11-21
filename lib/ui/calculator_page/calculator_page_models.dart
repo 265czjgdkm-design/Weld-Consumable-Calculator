@@ -28,6 +28,7 @@ enum FieldKey {
   breakHeightMm,
   capOverlapMm,
   capHeightMm,
+  backGougeDepthMm,
   legSizeMm,
   gtawTransitionMm,
   wireDiameterMm,
@@ -108,6 +109,7 @@ enum BasisKey {
   breakHeight,
   capOverlap,
   capHeight,
+  backGougeDepth,
   filletLegSize,
   userDefinedRate,
   wireDiameter,
@@ -116,6 +118,8 @@ enum BasisKey {
   gtawDepositionRate,
   gtawWireDiameter,
   smawDepositionRate,
+  fcawDepositionRate,
+  gmawDepositionRate,
   smawElectrodeDiameter,
 }
 
@@ -155,6 +159,7 @@ extension BasisKeyX on BasisKey {
     BasisKey.breakHeight => strings.basisBreakHeight,
     BasisKey.capOverlap => strings.basisCapOverlap,
     BasisKey.capHeight => strings.basisCapHeight,
+    BasisKey.backGougeDepth => strings.basisBackGougeDepth,
     BasisKey.filletLegSize => strings.basisFilletLegSize,
     BasisKey.userDefinedRate => strings.basisUserDefinedRate,
     BasisKey.wireDiameter => strings.basisWireDiameter,
@@ -163,6 +168,14 @@ extension BasisKeyX on BasisKey {
     BasisKey.gtawDepositionRate => strings.basisGtawDepositionRate,
     BasisKey.gtawWireDiameter => strings.basisGtawWireDiameter,
     BasisKey.smawDepositionRate => strings.basisSmawDepositionRate,
+    BasisKey.fcawDepositionRate => strings.basisSmawDepositionRate.replaceAll(
+      'SMAW',
+      'FCAW',
+    ),
+    BasisKey.gmawDepositionRate => strings.basisSmawDepositionRate.replaceAll(
+      'SMAW',
+      'GMAW',
+    ),
     BasisKey.smawElectrodeDiameter => strings.basisSmawElectrodeDiameter,
   };
 }
