@@ -10,9 +10,9 @@
  * WHY: the /exec URL is public. Up to 1.0 the client sent a bare email, so
  * anyone could read, overwrite or delete anyone's presets and wipe anyone's
  * account. From 1.0.1 the client sends a Firebase ID token (`idToken`) in
- * the POST body; this file verifies it with Google (identitytoolkit
- * accounts:lookup, script property FIREBASE_WEB_API_KEY) and uses only the
- * VERIFIED email. A bare `email` is never trusted.
+ * the POST body; this file verifies it locally like the Firebase Admin SDK
+ * (RS256 against Google's securetoken JWKs + aud/iss/exp/email_verified, no
+ * API key needed) and uses only the VERIFIED email. A bare `email` is never trusted.
  *
  * OLD 1.0 CLIENTS (App Store) send no token and get
  * {"ok":false,"error":"update_required"} for everything (GET list, POST
@@ -30,8 +30,8 @@
  *     action delete        T  removes (email, presetId)    {ok}
  *     action deleteAccount T  signup rows + presets + Form responses
  *   errors: update_required (no token), invalid_token, email_not_verified,
- *           auth_unavailable (Google 429/5xx/network), server_misconfigured
- *           (FIREBASE_WEB_API_KEY missing / 403), bad_request, unknown action
+ *           auth_unavailable (Google key endpoint unreachable), bad_request,
+ *           unknown action
  *   onFormSubmit           no auth; Form trigger -> sendWelcomeEmail
  *   buildWelcomeEmailHtml  ORIGINAL live mail (verbatim)
  *   buildWelcomeEmail_     localized templates (+ English fallback)
@@ -378,49 +378,160 @@ function authenticateRequest_(params) {
     } catch (err) { /* fall through to a real lookup */ }
   }
 
-  var apiKey = PropertiesService.getScriptProperties().getProperty('FIREBASE_WEB_API_KEY');
-  if (!apiKey) return { ok: false, error: 'server_misconfigured' };
-  var response;
-  try {
-    response = UrlFetchApp.fetch(
-      'https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=' +
-        encodeURIComponent(apiKey),
-      {
-        method: 'post',
-        contentType: 'application/json',
-        payload: JSON.stringify({ idToken: idToken }),
-        muteHttpExceptions: true
-      }
-    );
-  } catch (err) {
-    return { ok: false, error: 'auth_unavailable' };
-  }
-  var code = response.getResponseCode();
-  // Google throttling / outage: the client says "try later", not "sign in".
-  if (code === 429 || code >= 500) return { ok: false, error: 'auth_unavailable' };
-  if (code === 403) return { ok: false, error: 'server_misconfigured' };
-  if (code !== 200) return { ok: false, error: 'invalid_token' };
-
-  var body;
-  try {
-    body = JSON.parse(response.getContentText());
-  } catch (err) {
-    return { ok: false, error: 'auth_unavailable' };
-  }
-  var user = body && body.users && body.users[0];
-  if (!user || !user.email) return { ok: false, error: 'invalid_token' };
-  if (user.emailVerified !== true) return { ok: false, error: 'email_not_verified' };
+  var verified = verifyFirebaseIdToken_(idToken, Math.floor(Date.now() / 1000));
+  if (!verified.ok) return verified;
 
   var result = {
     ok: true,
-    email: normalizeEmail_(user.email),
-    uid: user.localId
+    email: normalizeEmail_(verified.email),
+    uid: verified.uid
   };
   var ttl = Math.min(jwtExpiry_(idToken) - Math.floor(Date.now() / 1000), AUTH_MAX_CACHE_SECONDS_);
   if (ttl >= 30) {
     cache.put(cacheKey, JSON.stringify({ email: result.email, uid: result.uid }), ttl);
   }
   return result;
+}
+
+// ------------------------------------------------- Firebase ID token check
+//
+// Verified locally, exactly as the Firebase Admin SDK does it, so no API key
+// or script property is needed: RS256 signature against Google's published
+// securetoken keys (JWK), then aud/iss = this project, exp/iat/auth_time,
+// sub, and email_verified. Keys are cached for 6 h (Google rotates them
+// daily and keeps old ones valid for longer than that).
+var FIREBASE_PROJECT_ID_ = 'varyos-weld';
+var FIREBASE_JWK_URL_ =
+  'https://www.googleapis.com/service_accounts/v1/jwk/securetoken@system.gserviceaccount.com';
+var FIREBASE_JWK_CACHE_KEY_ = 'fb_jwks_v1';
+// DER prefix of a SHA-256 DigestInfo (PKCS#1 v1.5, RFC 8017 9.2).
+var SHA256_DIGEST_INFO_HEX_ = '3031300d060960864801650304020105000420';
+var AUTH_CLOCK_SKEW_SECONDS_ = 300;
+
+function verifyFirebaseIdToken_(idToken, nowSec) {
+  var parts = String(idToken).split('.');
+  if (parts.length !== 3) return { ok: false, error: 'invalid_token' };
+  var header, payload, sig;
+  try {
+    header = JSON.parse(bytesToUtf8_(b64urlToBytes_(parts[0])));
+    payload = JSON.parse(bytesToUtf8_(b64urlToBytes_(parts[1])));
+    sig = b64urlToBytes_(parts[2]);
+  } catch (err) {
+    return { ok: false, error: 'invalid_token' };
+  }
+  if (!header || header.alg !== 'RS256' || typeof header.kid !== 'string') {
+    return { ok: false, error: 'invalid_token' };
+  }
+  var jwk = firebaseJwk_(header.kid);
+  if (jwk === null) return { ok: false, error: 'auth_unavailable' };
+  if (!jwk) return { ok: false, error: 'invalid_token' };
+  if (!rs256Verify_(parts[0] + '.' + parts[1], sig, jwk)) {
+    return { ok: false, error: 'invalid_token' };
+  }
+  var p = payload || {};
+  if (p.aud !== FIREBASE_PROJECT_ID_ ||
+      p.iss !== 'https://securetoken.google.com/' + FIREBASE_PROJECT_ID_ ||
+      typeof p.sub !== 'string' || !p.sub || p.sub.length > 128 ||
+      typeof p.exp !== 'number' || p.exp <= nowSec ||
+      typeof p.iat !== 'number' || p.iat > nowSec + AUTH_CLOCK_SKEW_SECONDS_ ||
+      (typeof p.auth_time === 'number' && p.auth_time > nowSec + AUTH_CLOCK_SKEW_SECONDS_)) {
+    return { ok: false, error: 'invalid_token' };
+  }
+  if (typeof p.email !== 'string' || !p.email) return { ok: false, error: 'invalid_token' };
+  if (p.email_verified !== true) return { ok: false, error: 'email_not_verified' };
+  return { ok: true, email: p.email, uid: p.sub };
+}
+
+/** JWK for [kid]; undefined = unknown kid, null = keys unreachable. */
+function firebaseJwk_(kid) {
+  var cache = CacheService.getScriptCache();
+  var keys = null;
+  var cached = cache.get(FIREBASE_JWK_CACHE_KEY_);
+  if (cached) {
+    try { keys = JSON.parse(cached); } catch (err) { keys = null; }
+  }
+  var found = findJwk_(keys, kid);
+  if (found) return found;
+  // Unknown kid (rotation) or empty cache: refetch, but at most once per
+  // 5 min while keys are cached, so random kids cannot burn fetch quota.
+  if (keys && cache.get(FIREBASE_JWK_CACHE_KEY_ + '_refetch')) return undefined;
+  cache.put(FIREBASE_JWK_CACHE_KEY_ + '_refetch', '1', 300);
+  var response;
+  try {
+    response = UrlFetchApp.fetch(FIREBASE_JWK_URL_, { muteHttpExceptions: true });
+  } catch (err) {
+    return null;
+  }
+  if (response.getResponseCode() !== 200) return null;
+  try {
+    keys = JSON.parse(response.getContentText()).keys;
+  } catch (err) {
+    return null;
+  }
+  if (!keys || !keys.length) return null;
+  cache.put(FIREBASE_JWK_CACHE_KEY_, JSON.stringify(keys), 21600);
+  return findJwk_(keys, kid);
+}
+
+function findJwk_(keys, kid) {
+  if (!keys) return undefined;
+  for (var i = 0; i < keys.length; i++) {
+    if (keys[i] && keys[i].kid === kid && keys[i].kty === 'RSA') return keys[i];
+  }
+  return undefined;
+}
+
+function rs256Verify_(signingInput, sigBytes, jwk) {
+  var n = bytesToBigInt_(b64urlToBytes_(jwk.n));
+  var e = bytesToBigInt_(b64urlToBytes_(jwk.e));
+  var k = b64urlToBytes_(jwk.n).length;
+  if (sigBytes.length !== k) return false;
+  var s = bytesToBigInt_(sigBytes);
+  if (s >= n) return false;
+  var em = modPow_(s, e, n).toString(16);
+  while (em.length < k * 2) em = '0' + em;
+  var hash = bytesToHex_(Utilities.computeDigest(
+    Utilities.DigestAlgorithm.SHA_256, signingInput, Utilities.Charset.UTF_8));
+  var tail = '00' + SHA256_DIGEST_INFO_HEX_ + hash;
+  var padLen = k * 2 - 4 - tail.length;
+  if (padLen < 16) return false;
+  var expected = '0001' + new Array(padLen / 2 + 1).join('ff') + tail;
+  return em === expected;
+}
+
+function modPow_(base, exp, mod) {
+  var result = BigInt(1);
+  base = base % mod;
+  while (exp > BigInt(0)) {
+    if (exp & BigInt(1)) result = (result * base) % mod;
+    exp = exp >> BigInt(1);
+    base = (base * base) % mod;
+  }
+  return result;
+}
+
+function b64urlToBytes_(s) {
+  s = String(s).replace(/-/g, '+').replace(/_/g, '/');
+  while (s.length % 4) s += '=';
+  return Utilities.base64Decode(s);
+}
+
+function bytesToHex_(bytes) {
+  var out = '';
+  for (var i = 0; i < bytes.length; i++) {
+    var b = (bytes[i] + 256) % 256;
+    out += (b < 16 ? '0' : '') + b.toString(16);
+  }
+  return out;
+}
+
+function bytesToBigInt_(bytes) {
+  var hex = bytesToHex_(bytes);
+  return hex ? BigInt('0x' + hex) : BigInt(0);
+}
+
+function bytesToUtf8_(bytes) {
+  return Utilities.newBlob(bytes).getDataAsString('UTF-8');
 }
 
 function testAuthenticateRequest() {
